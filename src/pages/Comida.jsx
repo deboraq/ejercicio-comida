@@ -137,36 +137,36 @@ export default function Comida() {
   const consejos = getConsejosDelDia(config?.objetivo, diaData, config?.pesoKg || 70)
 
   return (
-    <section className="section">
+    <section className="section py-4">
       <div className="container" style={{ maxWidth: '560px' }}>
-        <header className="mb-5">
-          <h1 className="title is-4">Comida</h1>
-          <p className="subtitle is-6 has-text-grey">Añade varios alimentos por comida (ej. panqueques + yogur + kiwi)</p>
+        <header className="mb-4">
+          <h1 className="title is-5 mb-2">Comida</h1>
+          <p className="is-size-7 has-text-grey mb-0">Añade varios alimentos por comida (ej. panqueques + yogur + kiwi)</p>
         </header>
 
         {consejos.length > 0 && (
-          <div className="mb-5">
+          <div className="mb-4">
             {consejos.map((c, i) => (
-              <article key={i} className="message is-info is-light mb-3">
-                <div className="message-body">{c.texto}</div>
+              <article key={i} className="message is-info is-light mb-2 py-3 px-3">
+                <div className="message-body is-size-7 py-0">{c.texto}</div>
               </article>
             ))}
           </div>
         )}
 
-        <div className="box mb-5">
-          <h2 className="title is-6 mb-4">Registrar comida</h2>
+        <div className="box mb-4 py-3">
+          <h2 className="title is-6 is-size-7 mb-2">Registrar comida</h2>
           <form onSubmit={guardarComida}>
             <div className="field">
-              <label className="label">Fecha</label>
+              <label className="label is-size-7">Fecha</label>
               <div className="control">
-                <input className="input" type="date" value={fechaInput} onChange={(e) => setFechaInput(e.target.value)} />
+                <input className="input is-small" type="date" value={fechaInput} onChange={(e) => setFechaInput(e.target.value)} />
               </div>
             </div>
             <div className="field">
-              <label className="label">Comida</label>
+              <label className="label is-size-7">Comida</label>
               <div className="control">
-                <div className="select is-fullwidth">
+                <div className="select is-fullwidth is-small">
                   <select value={comida} onChange={(e) => setComida(e.target.value)}>
                     {COMIDAS.map((c) => (
                       <option key={c} value={c}>{c}</option>
@@ -176,12 +176,12 @@ export default function Comida() {
               </div>
             </div>
 
-            <p className="label">Qué comiste (puedes añadir varias cosas)</p>
+            <p className="label is-size-7 mb-2">Qué comiste (puedes añadir varias cosas)</p>
             <div className="field">
               <label className="label is-size-7">Buscar en referencia</label>
               <div className="control has-icons-left">
                 <input
-                  className="input"
+                  className="input is-small"
                   type="text"
                   value={busquedaRef}
                   onChange={(e) => setBusquedaRef(e.target.value)}
@@ -195,7 +195,7 @@ export default function Comida() {
                   <div className="field has-addons mb-2">
                     <div className="control">
                       <input
-                        className="input"
+                        className="input is-small"
                         type="number"
                         min="1"
                         max="20"
@@ -205,7 +205,7 @@ export default function Comida() {
                       />
                     </div>
                     <div className="control is-expanded">
-                      <span className="button is-static">porciones</span>
+                      <span className="button is-static is-small">porciones</span>
                     </div>
                   </div>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -230,8 +230,8 @@ export default function Comida() {
             </div>
 
             {items.map((it) => (
-              <div key={it.id} className="box py-3 px-3 mb-3">
-                <div className="is-flex is-justify-content-space-between is-align-items-center mb-2">
+              <div key={it.id} className="box py-2 px-2 mb-2">
+                <div className="is-flex is-justify-content-space-between is-align-items-center mb-1">
                   <span className="is-size-7 has-text-grey">Alimento</span>
                   <button type="button" className="button is-small is-text has-text-grey" onClick={() => quitarItem(it.id)} aria-label="Quitar">
                     ×
@@ -240,7 +240,7 @@ export default function Comida() {
                 <div className="field">
                   <div className="control">
                     <input
-                      className="input"
+                      className="input is-small"
                       type="text"
                       value={it.descripcion}
                       onChange={(e) => actualizarItem(it.id, 'descripcion', e.target.value)}
@@ -251,7 +251,7 @@ export default function Comida() {
                 <div className="columns is-mobile">
                   <div className="column">
                     <input
-                      className="input"
+                      className="input is-small"
                       type="number"
                       min="0"
                       placeholder="kcal"
@@ -261,7 +261,7 @@ export default function Comida() {
                   </div>
                   <div className="column">
                     <input
-                      className="input"
+                      className="input is-small"
                       type="number"
                       min="0"
                       placeholder="P (g)"
@@ -271,7 +271,7 @@ export default function Comida() {
                   </div>
                   <div className="column">
                     <input
-                      className="input"
+                      className="input is-small"
                       type="number"
                       min="0"
                       placeholder="C (g)"
@@ -281,7 +281,7 @@ export default function Comida() {
                   </div>
                   <div className="column">
                     <input
-                      className="input"
+                      className="input is-small"
                       type="text"
                       placeholder="Porción"
                       value={it.porciones}
@@ -293,7 +293,7 @@ export default function Comida() {
             ))}
 
             <div className="field">
-              <button type="button" className="button is-light is-fullwidth mb-3" onClick={añadirLineaVacia}>
+              <button type="button" className="button is-light is-fullwidth is-small mb-2" onClick={añadirLineaVacia}>
                 + Añadir otro alimento
               </button>
             </div>
@@ -305,14 +305,14 @@ export default function Comida() {
             )}
 
             <div className="field">
-              <label className="label">Notas (opcional)</label>
+              <label className="label is-size-7">Notas (opcional)</label>
               <div className="control">
-                <input className="input" type="text" value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Hambre, ánimo..." />
+                <input className="input is-small" type="text" value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Hambre, ánimo..." />
               </div>
             </div>
             <div className="field">
               <div className="control">
-                <button type="submit" className="button is-link is-fullwidth" disabled={!items.some((it) => it.descripcion.trim())}>
+                <button type="submit" className="button is-link is-fullwidth is-small" disabled={!items.some((it) => it.descripcion.trim())}>
                   Guardar comida
                 </button>
               </div>
@@ -320,24 +320,24 @@ export default function Comida() {
           </form>
         </div>
 
-        <h2 className="title is-6 mb-3">Hoy — Resumen</h2>
-        <div className="box mb-4">
+        <h2 className="title is-6 is-size-7 mb-2">Hoy — Resumen</h2>
+        <div className="box mb-3 py-3">
           <div className="columns is-mobile is-multiline">
             <div className="column is-half">
-              <p className="is-size-7 has-text-grey">Calorías</p>
-              <p className="title is-5">{caloriasHoy || '—'}</p>
+              <p className="is-size-7 has-text-grey mb-1">Calorías</p>
+              <p className="title is-6 mb-0">{caloriasHoy || '—'}</p>
             </div>
             <div className="column is-half">
-              <p className="is-size-7 has-text-grey">Proteínas (g)</p>
-              <p className="title is-5">{proteinasHoy || '—'}</p>
+              <p className="is-size-7 has-text-grey mb-1">Proteínas (g)</p>
+              <p className="title is-6 mb-0">{proteinasHoy || '—'}</p>
             </div>
             <div className="column is-half">
-              <p className="is-size-7 has-text-grey">Carbohidratos (g)</p>
-              <p className="title is-5">{carbosHoy || '—'}</p>
+              <p className="is-size-7 has-text-grey mb-1">Carbohidratos (g)</p>
+              <p className="title is-6 mb-0">{carbosHoy || '—'}</p>
             </div>
             <div className="column is-half">
-              <p className="is-size-7 has-text-grey">Comidas registradas</p>
-              <p className="title is-5">{hoyRegistros.length}</p>
+              <p className="is-size-7 has-text-grey mb-1">Comidas registradas</p>
+              <p className="title is-6 mb-0">{hoyRegistros.length}</p>
             </div>
           </div>
           {(config.metaCalorias || config.metaProteina) && (
@@ -359,24 +359,24 @@ export default function Comida() {
           )}
         </div>
 
-        <h2 className="title is-6 mb-3">Hoy — Detalle</h2>
+        <h2 className="title is-6 is-size-7 mb-2">Hoy — Detalle</h2>
         {hoyRegistros.length === 0 ? (
-          <div className="box has-text-centered has-text-grey mb-6">Aún no has registrado comidas hoy.</div>
+          <div className="box has-text-centered has-text-grey is-size-7 py-3 mb-4">Aún no has registrado comidas hoy.</div>
         ) : (
-          <div className="mb-6">
+          <div className="mb-4">
             {COMIDAS.map((tipoComida) => {
               const itemsDelTipo = hoyRegistros.filter((r) => r.comida === tipoComida)
               if (itemsDelTipo.length === 0) return null
               const calTipo = itemsDelTipo.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
               return (
-                <div key={tipoComida} className="mb-4">
+                <div key={tipoComida} className="mb-3">
                   <p className="is-size-7 has-text-grey mb-2">
                     <strong>{tipoComida}</strong>
                     {calTipo > 0 && <span className="ml-2">— {calTipo} kcal</span>}
                   </p>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {itemsDelTipo.map((r) => (
-                      <li key={r.id} className="box py-3 px-4 mb-2">
+                      <li key={r.id} className="box py-2 px-3 mb-2">
                         <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
                           <div className="is-flex-grow-1">
                             <strong>{r.descripcion}</strong>
@@ -401,12 +401,12 @@ export default function Comida() {
           </div>
         )}
 
-        <h2 className="title is-6 mb-3">Historial por período</h2>
-        <div className="box mb-3">
-          <label className="label">Ver período</label>
+        <h2 className="title is-6 is-size-7 mb-2">Historial por período</h2>
+        <div className="box mb-3 py-3">
+          <label className="label is-size-7">Ver período</label>
           <div className="field">
             <div className="control">
-              <div className="select is-fullwidth">
+              <div className="select is-fullwidth is-small">
                 <select value={periodo} onChange={(e) => setPeriodo(e.target.value)}>
                   {PERIODOS.map((p) => (
                     <option key={p.value} value={p.value}>{p.label}</option>
@@ -420,13 +420,13 @@ export default function Comida() {
               <div className="column">
                 <div className="field">
                   <label className="label is-size-7">Desde</label>
-                  <input className="input" type="date" value={desdeCustom} onChange={(e) => setDesdeCustom(e.target.value)} />
+                  <input className="input is-small" type="date" value={desdeCustom} onChange={(e) => setDesdeCustom(e.target.value)} />
                 </div>
               </div>
               <div className="column">
                 <div className="field">
                   <label className="label is-size-7">Hasta</label>
-                  <input className="input" type="date" value={hastaCustom} onChange={(e) => setHastaCustom(e.target.value)} />
+                  <input className="input is-small" type="date" value={hastaCustom} onChange={(e) => setHastaCustom(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -447,18 +447,18 @@ export default function Comida() {
                 const pro = lista.reduce((s, r) => s + (Number(r.proteinas) || 0), 0)
                 const car = lista.reduce((s, r) => s + (Number(r.carbohidratos) || 0), 0)
                 return (
-                  <li key={fecha} className="mb-5">
+                  <li key={fecha} className="mb-4">
                     <div className="is-flex is-justify-content-space-between is-align-items-center mb-2">
                       <p className="is-size-7 has-text-grey mb-0" style={{ textTransform: 'capitalize' }}>
                         {formatearFecha(fecha)}
                       </p>
-                      <span className="tag is-info is-light">
+                      <span className="tag is-info is-light is-size-7">
                         {cal || '—'} kcal · P: {pro || '—'}g · C: {car || '—'}g
                       </span>
                     </div>
                     <ul style={{ listStyle: 'none', padding: 0 }}>
                       {lista.map((r) => (
-                        <li key={r.id} className="box py-3 px-4 mb-2">
+                        <li key={r.id} className="box py-2 px-3 mb-2">
                           <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
                             <div>
                               <span className="tag is-info is-light mr-2">{r.comida}</span>
