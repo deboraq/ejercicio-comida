@@ -134,7 +134,9 @@ export default function Config() {
           ) : isConfigured ? (
             <Link to="/login" className="button is-link">Iniciar sesión o crear cuenta</Link>
           ) : (
-            <p className="is-size-7 has-text-grey">Configura Supabase (ver README) para usar cuentas.</p>
+            <p className="is-size-7 has-text-grey">
+              Configura Supabase (ver README) para usar cuentas.
+            </p>
           )}
         </div>
       </div>
