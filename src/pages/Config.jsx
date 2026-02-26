@@ -15,7 +15,14 @@ export default function Config() {
   })
 
   const setObjetivo = (v) => setConfig((c) => ({ ...c, objetivo: v }))
-  const setPeso = (v) => setConfig((c) => ({ ...c, pesoKg: Math.max(30, Math.min(200, Number(v) || 70)) }))
+  const setPeso = (v) => {
+    if (v === '' || v == null) {
+      setConfig((c) => ({ ...c, pesoKg: '' }))
+      return
+    }
+    const num = Number(v)
+    if (!Number.isNaN(num) && num >= 0) setConfig((c) => ({ ...c, pesoKg: num }))
+  }
   const setMetaCalorias = (v) => setConfig((c) => ({ ...c, metaCalorias: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
   const setMetaProteina = (v) => setConfig((c) => ({ ...c, metaProteina: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
 
@@ -108,9 +115,9 @@ export default function Config() {
               <input
                 className="input is-small"
                 type="number"
-                min="30"
-                max="200"
-                value={config.pesoKg}
+                min="0"
+                step="0.1"
+                value={config.pesoKg === '' || config.pesoKg == null ? '' : config.pesoKg}
                 onChange={(e) => setPeso(e.target.value)}
                 placeholder="70"
               />
