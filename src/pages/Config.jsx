@@ -134,9 +134,12 @@ export default function Config() {
           ) : isConfigured ? (
             <Link to="/login" className="button is-link">Iniciar sesión o crear cuenta</Link>
           ) : (
-            <p className="is-size-7 has-text-grey">
-              Configura Supabase (ver README) para usar cuentas.
-            </p>
+            <div className="is-size-7 has-text-grey">
+              <p>Configura Supabase (ver README) para usar cuentas.</p>
+              <p className="mt-2 has-text-weight-medium">
+                En este build: URL = {import.meta.env.VITE_SUPABASE_URL ? 'sí' : 'no'}, Key = {import.meta.env.VITE_SUPABASE_ANON_KEY ? 'sí' : 'no'}
+              </p>
+            </div>
           )}
         </div>
       </div>
