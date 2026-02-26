@@ -42,6 +42,9 @@ export default function Login() {
     if (!error) {
       setEnviado(true)
       setAuthError(null)
+    } else {
+      const msg = (error.message || '').toLowerCase()
+      if (msg.includes('already') && msg.includes('registered')) setTab(TAB.login)
     }
   }
 

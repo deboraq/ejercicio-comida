@@ -29,6 +29,20 @@ Build para producción:
 npm run build
 ```
 
+## Ver la app en el celular u otra PC
+
+**Misma red (Wi‑Fi):** En la PC donde está el proyecto ejecutá:
+
+```bash
+npm run dev:lan
+```
+
+En la terminal vas a ver una línea tipo `Local: http://192.168.x.x:5173`. Desde el celular u otra PC (conectados al mismo Wi‑Fi) abrí en el navegador esa URL (reemplazá por la IP que te muestre).
+
+**Desde cualquier lugar (internet):** Hacé deploy del build. Opciones sencillas:
+- **[Vercel](https://vercel.com):** Conectá el repo de GitHub, elegí este proyecto y deploy automático en cada push.
+- **Netlify** o **GitHub Pages:** Subí la carpeta `dist` (después de `npm run build`) o conectá el repo; ambos tienen guías para proyectos Vite/React.
+
 ## Stack
 
 - React 19, Vite 7, React Router

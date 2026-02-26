@@ -38,6 +38,27 @@ export default function Config() {
         </header>
 
         <div className="box mb-5">
+          <h2 className="title is-6 mb-4">Cuenta</h2>
+          <p className="is-size-7 has-text-grey mb-3">
+            Con una cuenta tu progreso se guarda en la nube y podrás recuperarlo en otro dispositivo.
+          </p>
+          {user ? (
+            <div className="is-flex is-align-items-center is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
+              <span className="is-size-7">{user.email}</span>
+              <button type="button" className="button is-small is-light" onClick={() => signOut()}>
+                Cerrar sesión
+              </button>
+            </div>
+          ) : isConfigured ? (
+            <Link to="/login" className="button is-link">Iniciar sesión o crear cuenta</Link>
+          ) : (
+            <p className="is-size-7 has-text-grey">
+              Configura Supabase (ver README) para usar cuentas.
+            </p>
+          )}
+        </div>
+
+        <div className="box mb-5">
           <h2 className="title is-6 mb-4">Tu objetivo</h2>
           <div className="buttons are-medium is-flex-wrap-wrap">
             {OBJETIVOS.map((o) => (
@@ -119,29 +140,6 @@ export default function Config() {
           </div>
         </div>
 
-        <div className="box">
-          <h2 className="title is-6 mb-4">Cuenta</h2>
-          <p className="is-size-7 has-text-grey mb-3">
-            Con una cuenta tu progreso se guarda en la nube y podrás recuperarlo en otro dispositivo.
-          </p>
-          {user ? (
-            <div className="is-flex is-align-items-center is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
-              <span className="is-size-7">{user.email}</span>
-              <button type="button" className="button is-small is-light" onClick={() => signOut()}>
-                Cerrar sesión
-              </button>
-            </div>
-          ) : isConfigured ? (
-            <Link to="/login" className="button is-link">Iniciar sesión o crear cuenta</Link>
-          ) : (
-            <div className="is-size-7 has-text-grey">
-              <p>Configura Supabase (ver README) para usar cuentas.</p>
-              <p className="mt-2 has-text-weight-medium">
-                En este build: URL = {import.meta.env.VITE_SUPABASE_URL ? 'sí' : 'no'}, Key = {import.meta.env.VITE_SUPABASE_ANON_KEY ? 'sí' : 'no'}
-              </p>
-            </div>
-          )}
-        </div>
       </div>
     </section>
   )

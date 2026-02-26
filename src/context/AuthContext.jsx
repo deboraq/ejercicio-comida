@@ -34,7 +34,11 @@ export function AuthProvider({ children }) {
       password,
       options: { data: metadata },
     })
-    if (error) setAuthError(error.message)
+    if (error) {
+      const msg = (error.message || '').toLowerCase()
+      const yaRegistrado = msg.includes('already been registered') || msg.includes('already registered') || error.code === 'user_already_registered'
+      setAuthError(yaRegistrado ? 'Ya existe una cuenta con ese correo. Iniciá sesión en su lugar.' : error.message)
+    }
     return { data, error }
   }
 

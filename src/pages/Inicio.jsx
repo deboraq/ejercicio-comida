@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import { useStorage } from '../hooks/useStorage'
 import { caloriasQuemadas, formatearFecha, fechaToISO, getCategoriaTipo, etiquetaTipo } from '../utils/calorias'
 import { getConsejosDelDia, OBJETIVOS } from '../utils/consejos'
@@ -7,6 +8,7 @@ import { getRachaDias, PERIODOS, getRangoPorPeriodo, getFechasEnRango } from '..
 import { SUPLEMENTOS, getSuplementoLabel } from '../utils/suplementos'
 
 export default function Inicio() {
+  const { user, isConfigured } = useAuth()
   const [ejercicios] = useStorage('ejercicios', [])
   const [comida] = useStorage('comida', [])
   const [suplementos, setSuplementos] = useStorage('suplementos', [])
@@ -168,6 +170,17 @@ export default function Inicio() {
           <h1 className="title is-3">Mi rutina</h1>
           <p className="subtitle is-6 has-text-grey">Resumen por día y consejos según tu objetivo</p>
         </header>
+
+        {isConfigured && !user && (
+          <div className="box mb-4 has-background-light">
+            <p className="is-size-7 mb-2">
+              Iniciá sesión para guardar tu progreso en la nube y usarlo en el celular u otra PC.
+            </p>
+            <Link to="/login" className="button is-link is-small">
+              Iniciar sesión o crear cuenta
+            </Link>
+          </div>
+        )}
 
         <div className="box mb-4">
           <h2 className="title is-6 mb-2">Calendario</h2>
