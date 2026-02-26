@@ -167,13 +167,13 @@ export default function Inicio() {
     <section className="section" style={{ paddingBottom: '2rem' }}>
       <div className="container" style={{ maxWidth: '560px', paddingBottom: '1.5rem' }}>
         <header className="has-text-centered mb-5">
-          <h1 className="title is-3">Mi rutina</h1>
+          <h1 className="title is-4">Mi rutina</h1>
           <p className="subtitle is-6 has-text-grey">Resumen por día y consejos según tu objetivo</p>
         </header>
 
         {isConfigured && !user && (
-          <div className="box mb-4 has-background-link-light">
-            <p className="is-size-7 mb-2 has-text-dark">
+          <div className="box mb-4">
+            <p className="is-size-7 mb-2 has-text-grey">
               Iniciá sesión para guardar tu progreso en la nube y usarlo en el celular u otra PC.
             </p>
             <Link to="/login" className="button is-link is-small">
