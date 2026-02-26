@@ -30,16 +30,16 @@ export default function Config() {
   const suplementosActivos = config.suplementosActivos ?? SUPLEMENTOS.map((s) => s.id)
 
   return (
-    <section className="section">
+    <section className="section py-4">
       <div className="container" style={{ maxWidth: '560px' }}>
-        <header className="mb-5">
-          <h1 className="title is-4">Configuración</h1>
-          <p className="subtitle is-6 has-text-grey">Tu objetivo y peso se usan para calorías quemadas y consejos personalizados</p>
+        <header className="mb-4">
+          <h1 className="title is-5 mb-2">Configuración</h1>
+          <p className="is-size-7 has-text-grey mb-0">Tu objetivo y peso se usan para calorías quemadas y consejos personalizados</p>
         </header>
 
-        <div className="box mb-5">
-          <h2 className="title is-6 mb-4">Cuenta</h2>
-          <p className="is-size-7 has-text-grey mb-3">
+        <div className="box mb-4 py-3">
+          <h2 className="title is-6 is-size-7 mb-2">Cuenta</h2>
+          <p className="is-size-7 has-text-grey mb-2">
             Con una cuenta tu progreso se guarda en la nube y podrás recuperarlo en otro dispositivo.
           </p>
           {user ? (
@@ -50,17 +50,17 @@ export default function Config() {
               </button>
             </div>
           ) : isConfigured ? (
-            <Link to="/login" className="button is-link">Iniciar sesión o crear cuenta</Link>
+            <Link to="/login" className="button is-link is-small">Iniciar sesión o crear cuenta</Link>
           ) : (
-            <p className="is-size-7 has-text-grey">
+            <p className="is-size-7 has-text-grey mb-0">
               Configura Supabase (ver README) para usar cuentas.
             </p>
           )}
         </div>
 
-        <div className="box mb-5">
-          <h2 className="title is-6 mb-4">Tu objetivo</h2>
-          <div className="buttons are-medium is-flex-wrap-wrap">
+        <div className="box mb-4 py-3">
+          <h2 className="title is-6 is-size-7 mb-2">Tu objetivo</h2>
+          <div className="buttons are-small is-flex-wrap-wrap">
             {OBJETIVOS.map((o) => (
               <button
                 key={o.value}
@@ -75,38 +75,38 @@ export default function Config() {
           </div>
         </div>
 
-        <div className="box mb-5">
-          <h2 className="title is-6 mb-4">Metas diarias (opcional)</h2>
-          <p className="is-size-7 has-text-grey mb-3">Para ver barras de progreso en Inicio y Comida.</p>
+        <div className="box mb-4 py-3">
+          <h2 className="title is-6 is-size-7 mb-2">Metas diarias (opcional)</h2>
+          <p className="is-size-7 has-text-grey mb-2">Para ver barras de progreso en Inicio y Comida.</p>
           <div className="columns">
             <div className="column">
               <div className="field">
-                <label className="label">Meta calorías (kcal/día)</label>
+                <label className="label is-size-7">Meta calorías (kcal/día)</label>
                 <div className="control">
-                  <input className="input" type="number" min="0" placeholder="Ej: 2000" value={config.metaCalorias ?? ''} onChange={(e) => setMetaCalorias(e.target.value)} />
+                  <input className="input is-small" type="number" min="0" placeholder="Ej: 2000" value={config.metaCalorias ?? ''} onChange={(e) => setMetaCalorias(e.target.value)} />
                 </div>
               </div>
             </div>
             <div className="column">
               <div className="field">
-                <label className="label">Meta proteína (g/día)</label>
+                <label className="label is-size-7">Meta proteína (g/día)</label>
                 <div className="control">
-                  <input className="input" type="number" min="0" placeholder="Ej: 100" value={config.metaProteina ?? ''} onChange={(e) => setMetaProteina(e.target.value)} />
+                  <input className="input is-small" type="number" min="0" placeholder="Ej: 100" value={config.metaProteina ?? ''} onChange={(e) => setMetaProteina(e.target.value)} />
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="box">
-          <h2 className="title is-6 mb-4">Peso (kg)</h2>
-          <p className="is-size-7 has-text-grey mb-3">
+        <div className="box mb-4 py-3">
+          <h2 className="title is-6 is-size-7 mb-2">Peso (kg)</h2>
+          <p className="is-size-7 has-text-grey mb-2">
             Se usa para estimar calorías quemadas en ejercicio. Aproximado.
           </p>
           <div className="field">
             <div className="control">
               <input
-                className="input"
+                className="input is-small"
                 type="number"
                 min="30"
                 max="200"
@@ -118,9 +118,9 @@ export default function Config() {
           </div>
         </div>
 
-        <div className="box">
-          <h2 className="title is-6 mb-4">Suplementos que tomas</h2>
-          <p className="is-size-7 has-text-grey mb-3">
+        <div className="box py-3">
+          <h2 className="title is-6 is-size-7 mb-2">Suplementos que tomas</h2>
+          <p className="is-size-7 has-text-grey mb-2">
             Elige cuáles quieres registrar cada día. En Inicio podrás marcar si los tomaste.
           </p>
           <div className="buttons are-small are-flex-wrap-wrap">
