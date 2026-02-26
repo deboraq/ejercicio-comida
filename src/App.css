@@ -88,3 +88,98 @@
   min-width: 0;
   width: 100%;
 }
+
+/* Desplegables de búsqueda: mismo tono que el resto de la app */
+.box.dropdown-panel,
+.dropdown-panel {
+  background-color: #363636 !important;
+  border: 1px solid #4a4a4a !important;
+  color: #f5f5f5 !important;
+  scrollbar-width: thin;
+  scrollbar-color: #a0a0a0 #505050;
+}
+.box.dropdown-panel::-webkit-scrollbar,
+.dropdown-panel::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.box.dropdown-panel::-webkit-scrollbar-track,
+.dropdown-panel::-webkit-scrollbar-track {
+  background: #505050;
+  border-radius: 5px;
+}
+.box.dropdown-panel::-webkit-scrollbar-thumb,
+.dropdown-panel::-webkit-scrollbar-thumb {
+  background: #a0a0a0;
+  border-radius: 5px;
+}
+.box.dropdown-panel::-webkit-scrollbar-thumb:hover,
+.dropdown-panel::-webkit-scrollbar-thumb:hover {
+  background: #b8b8b8;
+}
+.dropdown-panel .button.is-light,
+.box.dropdown-panel .button.is-light {
+  background-color: #4a4a4a !important;
+  color: #f5f5f5 !important;
+  border-color: transparent !important;
+}
+.dropdown-panel .button.is-light:hover,
+.box.dropdown-panel .button.is-light:hover {
+  background-color: #5a5a5a !important;
+  color: #fff !important;
+}
+.dropdown-panel .has-text-grey,
+.dropdown-panel .is-size-7.has-text-grey,
+.box.dropdown-panel .has-text-grey,
+.box.dropdown-panel .is-size-7.has-text-grey {
+  color: #b5b5b5 !important;
+}
+.dropdown-panel .input,
+.box.dropdown-panel .input {
+  background-color: #4a4a4a !important;
+  border-color: #5a5a5a !important;
+  color: #f5f5f5 !important;
+}
+.dropdown-panel .button.is-static,
+.box.dropdown-panel .button.is-static {
+  background-color: #4a4a4a !important;
+  color: #b5b5b5 !important;
+  border-color: #5a5a5a !important;
+}
+/* Texto de ítems en listas del desplegable */
+.dropdown-panel li,
+.dropdown-panel .button.has-text-left,
+.box.dropdown-panel li,
+.box.dropdown-panel .button.has-text-left {
+  color: #f5f5f5 !important;
+}
+
+/* Comida: botones de resultados siempre oscuros y barra bien visible */
+.dropdown-panel-comida .button,
+.box.dropdown-panel-comida .button {
+  background-color: #4a4a4a !important;
+  color: #f5f5f5 !important;
+  border-color: #5a5a5a !important;
+}
+.dropdown-panel-comida .button:hover,
+.box.dropdown-panel-comida .button:hover {
+  background-color: #5a5a5a !important;
+  color: #fff !important;
+}
+.dropdown-panel-comida::-webkit-scrollbar-track,
+.box.dropdown-panel-comida::-webkit-scrollbar-track {
+  background: #5a5a5a !important;
+}
+.dropdown-panel-comida::-webkit-scrollbar-thumb,
+.box.dropdown-panel-comida::-webkit-scrollbar-thumb {
+  background: #b8b8b8 !important;
+}
+.dropdown-panel-comida::-webkit-scrollbar-thumb:hover,
+.box.dropdown-panel-comida::-webkit-scrollbar-thumb:hover {
+  background: #d0d0d0 !important;
+}
+.dropdown-panel-comida,
+.box.dropdown-panel-comida {
+  scrollbar-color: #b8b8b8 #5a5a5a !important;
+}
+

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useStorage } from '../hooks/useStorage'
 import { caloriasQuemadas, formatearFecha, TIPOS_EJERCICIO_AGRUPADOS, etiquetaTipo } from '../utils/calorias'
 
@@ -17,6 +17,22 @@ export default function Ejercicios() {
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroDesde, setFiltroDesde] = useState('')
   const [filtroHasta, setFiltroHasta] = useState('')
+  const [busquedaTipo, setBusquedaTipo] = useState('')
+  const [mostrarDropdownTipo, setMostrarDropdownTipo] = useState(false)
+  const refTipoDropdown = useRef(null)
+
+  const tipoSeleccionadoLabel = TIPOS_FLAT.find((o) => o.value === tipo)?.label ?? ''
+  const tiposFiltrados = busquedaTipo.trim()
+    ? TIPOS_FLAT.filter((o) => o.label.toLowerCase().includes(busquedaTipo.toLowerCase()))
+    : TIPOS_FLAT
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (refTipoDropdown.current && !refTipoDropdown.current.contains(e.target)) setMostrarDropdownTipo(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const pesoKg = config?.pesoKg || 70
 
@@ -119,27 +135,52 @@ export default function Ejercicios() {
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
                   placeholder="Ej: Correr, Yoga, Pesas..."
+                  autoComplete="off"
                 />
               </div>
             </div>
             <div className="columns">
               <div className="column">
-                <div className="field">
+                <div className="field" ref={refTipoDropdown} style={{ position: 'relative' }}>
                   <label className="label is-size-7">Tipo de actividad</label>
                   <div className="control">
-                    <div className="select is-fullwidth is-small">
-                      <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
-                        {TIPOS_EJERCICIO_AGRUPADOS.map((grupo) => (
-                          <optgroup key={grupo.categoria} label={grupo.categoria}>
-                            {grupo.opciones.map((op) => (
-                              <option key={op.value} value={op.value}>
-                                {op.label}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
-                    </div>
+                    <input
+                      className="input is-small"
+                      type="text"
+                      value={mostrarDropdownTipo || busquedaTipo ? busquedaTipo : tipoSeleccionadoLabel}
+                      onChange={(e) => {
+                        setBusquedaTipo(e.target.value)
+                        setMostrarDropdownTipo(true)
+                      }}
+                      onFocus={() => setMostrarDropdownTipo(true)}
+                      placeholder="Buscar tipo (ej. correr, yoga, pesas...)"
+                      autoComplete="off"
+                    />
+                    {mostrarDropdownTipo && (
+                      <div className="box p-2 mt-1 dropdown-panel" style={{ maxHeight: '220px', overflowY: 'auto', position: 'absolute', left: 0, right: 0, zIndex: 30, minWidth: '200px' }}>
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                          {tiposFiltrados.length === 0 ? (
+                            <li className="is-size-7 has-text-grey">Sin resultados</li>
+                          ) : (
+                            tiposFiltrados.map((op) => (
+                              <li key={op.value}>
+                                <button
+                                  type="button"
+                                  className="button is-fullwidth is-small is-light has-text-left"
+                                  onClick={() => {
+                                    setTipo(op.value)
+                                    setBusquedaTipo('')
+                                    setMostrarDropdownTipo(false)
+                                  }}
+                                >
+                                  {op.label}
+                                </button>
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

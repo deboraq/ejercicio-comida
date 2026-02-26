@@ -25,7 +25,7 @@ export default function Comida() {
   const [comida, setComida] = useState('Desayuno')
   const [fechaInput, setFechaInput] = useState(new Date().toISOString().slice(0, 10))
   const [notas, setNotas] = useState('')
-  const [items, setItems] = useState([crearItemVacio()])
+  const [items, setItems] = useState([])
   const [busquedaRef, setBusquedaRef] = useState('')
   const [cantidadPorciones, setCantidadPorciones] = useState(1)
   const [periodo, setPeriodo] = useState('semana')
@@ -44,17 +44,15 @@ export default function Comida() {
 
   const añadirDesdeReferencia = (itemRef, cantidad = cantidadPorciones) => {
     const n = Math.max(1, Number(cantidad) || 1)
-    setItems((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        descripcion: itemRef.nombre,
-        calorias: String(Math.round(itemRef.calorias * n)),
-        proteinas: String(Math.round(itemRef.proteinas * n)),
-        carbohidratos: String(Math.round(itemRef.carbohidratos * n)),
-        porciones: n > 1 ? `${n} × (${itemRef.porcion || 'porción'})` : (itemRef.porcion || ''),
-      },
-    ])
+    const nuevo = {
+      id: crypto.randomUUID(),
+      descripcion: itemRef.nombre,
+      calorias: String(Math.round(itemRef.calorias * n)),
+      proteinas: String(Math.round(itemRef.proteinas * n)),
+      carbohidratos: String(Math.round(itemRef.carbohidratos * n)),
+      porciones: n > 1 ? `${n} × (${itemRef.porcion || 'porción'})` : (itemRef.porcion || ''),
+    }
+    setItems((prev) => [nuevo, ...prev])
     setBusquedaRef('')
   }
 
@@ -63,7 +61,7 @@ export default function Comida() {
   }
 
   const quitarItem = (id) => {
-    setItems((prev) => (prev.length <= 1 ? [crearItemVacio()] : prev.filter((it) => it.id !== id)))
+    setItems((prev) => (prev.length <= 1 ? [] : prev.filter((it) => it.id !== id)))
   }
 
   const añadirLineaVacia = () => {
@@ -96,7 +94,7 @@ export default function Comida() {
       fecha,
     }))
     setRegistros([...nuevos, ...registros])
-    setItems([crearItemVacio()])
+    setItems([])
     setNotas('')
     setFechaInput(hoy)
   }
@@ -141,7 +139,7 @@ export default function Comida() {
       <div className="container" style={{ maxWidth: '560px' }}>
         <header className="mb-4">
           <h1 className="title is-5 mb-2">Comida</h1>
-          <p className="is-size-7 has-text-grey mb-0">Añade varios alimentos por comida (ej. panqueques + yogur + kiwi)</p>
+          <p className="is-size-7 has-text-grey mb-0">Busca en la referencia (ej. panqueque, yogur, kiwi) o añade uno que no esté en la lista.</p>
         </header>
 
         {consejos.length > 0 && (
@@ -190,7 +188,7 @@ export default function Comida() {
                 <span className="icon is-small is-left">🔍</span>
               </div>
               {busquedaRef.length >= 1 && (
-                <div className="box mt-2 p-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                <div className="box mt-2 p-2 dropdown-panel dropdown-panel-comida" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                   <p className="is-size-7 has-text-grey mb-2">Cantidad antes de elegir:</p>
                   <div className="field has-addons mb-2">
                     <div className="control">
@@ -244,7 +242,7 @@ export default function Comida() {
                       type="text"
                       value={it.descripcion}
                       onChange={(e) => actualizarItem(it.id, 'descripcion', e.target.value)}
-                      placeholder="Nombre o elige de la búsqueda arriba"
+                      placeholder="Nombre (o elegido de la búsqueda de arriba)"
                     />
                   </div>
                 </div>
@@ -292,6 +290,9 @@ export default function Comida() {
               </div>
             ))}
 
+            <p className="label is-size-7 mt-2 mb-2 has-text-grey">
+              Si no está en la referencia, añade uno abajo y completa los datos.
+            </p>
             <div className="field">
               <button type="button" className="button is-light is-fullwidth is-small mb-2" onClick={añadirLineaVacia}>
                 + Añadir otro alimento

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStorage } from '../hooks/useStorage'
 import { formatearFecha } from '../utils/calorias'
 import { EJERCICIOS_RUTINA, buscarEjercicios } from '../utils/rutinaEjercicios'
@@ -756,6 +756,21 @@ function RegistroRapido({ ejercicios, onAñadir }) {
   const [repeticiones, setRepeticiones] = useState('')
   const [pesoKg, setPesoKg] = useState('')
   const [notas, setNotas] = useState('')
+  const [busquedaEjercicio, setBusquedaEjercicio] = useState('')
+  const [mostrarDropdownEjercicio, setMostrarDropdownEjercicio] = useState(false)
+  const refEjercicioDropdown = useRef(null)
+
+  const ejerciciosFiltrados = busquedaEjercicio.trim()
+    ? ejercicios.filter((ex) => ex.toLowerCase().includes(busquedaEjercicio.toLowerCase()))
+    : ejercicios
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (refEjercicioDropdown.current && !refEjercicioDropdown.current.contains(e.target)) setMostrarDropdownEjercicio(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -769,16 +784,46 @@ function RegistroRapido({ ejercicios, onAñadir }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="field">
+      <div className="field" ref={refEjercicioDropdown} style={{ position: 'relative' }}>
         <label className="label is-size-7">Ejercicio</label>
         <div className="control">
-          <div className="select is-fullwidth is-small">
-            <select value={ejercicio} onChange={(e) => setEjercicio(e.target.value)}>
-              {ejercicios.map((ex) => (
-                <option key={ex} value={ex}>{ex}</option>
-              ))}
-            </select>
-          </div>
+          <input
+            className="input is-small"
+            type="text"
+            value={mostrarDropdownEjercicio || busquedaEjercicio ? busquedaEjercicio : ejercicio}
+            onChange={(e) => {
+              setBusquedaEjercicio(e.target.value)
+              setMostrarDropdownEjercicio(true)
+            }}
+            onFocus={() => setMostrarDropdownEjercicio(true)}
+            placeholder="Buscar ejercicio (ej. press banca, squat...)"
+            autoComplete="off"
+          />
+          {mostrarDropdownEjercicio && (
+            <div className="box p-2 mt-1 dropdown-panel" style={{ maxHeight: '200px', overflowY: 'auto', position: 'absolute', left: 0, right: 0, zIndex: 30, minWidth: '200px' }}>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {ejerciciosFiltrados.length === 0 ? (
+                  <li className="is-size-7 has-text-grey">Sin resultados</li>
+                ) : (
+                  ejerciciosFiltrados.map((ex) => (
+                    <li key={ex}>
+                      <button
+                        type="button"
+                        className="button is-fullwidth is-small is-light has-text-left"
+                        onClick={() => {
+                          setEjercicio(ex)
+                          setBusquedaEjercicio('')
+                          setMostrarDropdownEjercicio(false)
+                        }}
+                      >
+                        {ex}
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
       <div className="columns is-mobile">
