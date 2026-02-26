@@ -172,8 +172,8 @@ export default function Inicio() {
         </header>
 
         {isConfigured && !user && (
-          <div className="box mb-4 has-background-light">
-            <p className="is-size-7 mb-2">
+          <div className="box mb-4 has-background-link-light">
+            <p className="is-size-7 mb-2 has-text-dark">
               Iniciá sesión para guardar tu progreso en la nube y usarlo en el celular u otra PC.
             </p>
             <Link to="/login" className="button is-link is-small">
