@@ -74,36 +74,36 @@ export default function Ejercicios() {
     .reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoKg), 0)
 
   return (
-    <section className="section">
+    <section className="section py-4">
       <div className="container" style={{ maxWidth: '560px' }}>
-        <header className="mb-5">
-          <h1 className="title is-4">Ejercicios</h1>
-          <p className="subtitle is-6 has-text-grey">Registra por día. Calorías quemadas son aproximadas según tipo y duración.</p>
+        <header className="mb-4">
+          <h1 className="title is-5 mb-2">Ejercicios</h1>
+          <p className="is-size-7 has-text-grey mb-0">Registra por día. Calorías quemadas son aproximadas según tipo y duración.</p>
         </header>
 
-        <div className="columns mb-5">
+        <div className="columns mb-4">
           <div className="column">
-            <div className="box">
-              <p className="is-size-7 has-text-grey">Minutos hoy</p>
-              <p className="title is-4 has-text-link">{minutosHoy}</p>
+            <div className="box py-3">
+              <p className="is-size-7 has-text-grey mb-1">Minutos hoy</p>
+              <p className="title is-5 mb-0 has-text-link">{minutosHoy}</p>
             </div>
           </div>
           <div className="column">
-            <div className="box">
-              <p className="is-size-7 has-text-grey">Calorías quemadas hoy (aprox.)</p>
-              <p className="title is-4 has-text-success">{caloriasHoy}</p>
+            <div className="box py-3">
+              <p className="is-size-7 has-text-grey mb-1">Calorías quemadas hoy (aprox.)</p>
+              <p className="title is-5 mb-0 has-text-success">{caloriasHoy}</p>
             </div>
           </div>
         </div>
 
-        <div className="box mb-6">
-          <h2 className="title is-6 mb-4">Nuevo ejercicio</h2>
+        <div className="box mb-4 py-3">
+          <h2 className="title is-6 is-size-7 mb-2">Nuevo ejercicio</h2>
           <form onSubmit={agregar}>
             <div className="field">
-              <label className="label">Fecha</label>
+              <label className="label is-size-7">Fecha</label>
               <div className="control">
                 <input
-                  className="input"
+                  className="input is-small"
                   type="date"
                   value={fechaInput}
                   onChange={(e) => setFechaInput(e.target.value)}
@@ -111,10 +111,10 @@ export default function Ejercicios() {
               </div>
             </div>
             <div className="field">
-              <label className="label">Nombre</label>
+              <label className="label is-size-7">Nombre</label>
               <div className="control">
                 <input
-                  className="input"
+                  className="input is-small"
                   type="text"
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
@@ -125,9 +125,9 @@ export default function Ejercicios() {
             <div className="columns">
               <div className="column">
                 <div className="field">
-                  <label className="label">Tipo de actividad</label>
+                  <label className="label is-size-7">Tipo de actividad</label>
                   <div className="control">
-                    <div className="select is-fullwidth">
+                    <div className="select is-fullwidth is-small">
                       <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
                         {TIPOS_EJERCICIO_AGRUPADOS.map((grupo) => (
                           <optgroup key={grupo.categoria} label={grupo.categoria}>
@@ -145,10 +145,10 @@ export default function Ejercicios() {
               </div>
               <div className="column">
                 <div className="field">
-                  <label className="label">Duración (min)</label>
+                  <label className="label is-size-7">Duración (min)</label>
                   <div className="control">
                     <input
-                      className="input"
+                      className="input is-small"
                       type="number"
                       min="1"
                       value={duracion}
@@ -160,15 +160,15 @@ export default function Ejercicios() {
               </div>
             </div>
             {duracion && tipo && (
-              <p className="is-size-7 has-text-grey mb-3">
+              <p className="is-size-7 has-text-grey mb-2">
                 Aprox. {caloriasQuemadas(tipo, duracion, pesoKg)} kcal quemadas (según tu peso en Config).
               </p>
             )}
             <div className="field">
-              <label className="label">Notas (opcional)</label>
+              <label className="label is-size-7">Notas (opcional)</label>
               <div className="control">
                 <input
-                  className="input"
+                  className="input is-small"
                   type="text"
                   value={notas}
                   onChange={(e) => setNotas(e.target.value)}
@@ -178,13 +178,13 @@ export default function Ejercicios() {
             </div>
             <div className="field">
               <div className="control">
-                <button type="submit" className="button is-link is-fullwidth">Guardar ejercicio</button>
+                <button type="submit" className="button is-link is-fullwidth is-small">Guardar ejercicio</button>
               </div>
             </div>
           </form>
         </div>
 
-        <h2 className="title is-6 mb-2">Historial por día</h2>
+        <h2 className="title is-6 is-size-7 mb-2">Historial por día</h2>
         <div className="box mb-4 py-3">
           <p className="is-size-7 has-text-grey mb-2">Filtrar historial</p>
           <div className="columns is-mobile is-multiline is-variable is-1">
@@ -244,7 +244,7 @@ export default function Ejercicios() {
           )}
         </div>
         {Object.keys(porFecha).length === 0 ? (
-          <div className="box has-text-centered has-text-grey">
+          <div className="box has-text-centered has-text-grey is-size-7 py-3">
             Aún no hay ejercicios registrados.
           </div>
         ) : (
@@ -255,18 +255,18 @@ export default function Ejercicios() {
                 const totalCal = lista.reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoKg), 0)
                 const totalMin = lista.reduce((s, e) => s + e.duracion, 0)
                 return (
-                  <li key={fecha} className="mb-5">
+                  <li key={fecha} className="mb-4">
                     <div className="is-flex is-justify-content-space-between is-align-items-center mb-2">
                       <p className="is-size-7 has-text-grey mb-0" style={{ textTransform: 'capitalize' }}>
                         {formatearFecha(fecha)}
                       </p>
-                      <span className="tag is-success is-light">
+                      <span className="tag is-success is-light is-size-7">
                         {totalCal} kcal · {totalMin} min
                       </span>
                     </div>
                     <ul style={{ listStyle: 'none', padding: 0 }}>
                       {lista.map((e) => (
-                        <li key={e.id} className="box py-3 px-4 mb-2">
+                        <li key={e.id} className="box py-2 px-3 mb-2">
                           <div className="is-flex is-justify-content-space-between is-align-items-flex-start">
                             <div className="is-flex-wrap-wrap is-flex is-align-items-center" style={{ gap: '0.5rem' }}>
                               <strong>{e.nombre}</strong>

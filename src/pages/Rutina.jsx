@@ -279,18 +279,18 @@ export default function Rutina() {
   const sinCambio = progresoOrdenadoEnPeriodo.filter((p) => p.tendencia === '—').length
 
   return (
-    <section className="section">
+    <section className="section py-4">
       <div className="container" style={{ maxWidth: '560px' }}>
-        <header className="mb-5">
-          <h1 className="title is-4">Rutina de gimnasio</h1>
-          <p className="subtitle is-6 has-text-grey">Crea varias rutinas, configura días y registra pesos.</p>
+        <header className="mb-4">
+          <h1 className="title is-5 mb-2">Rutina de gimnasio</h1>
+          <p className="is-size-7 has-text-grey mb-0">Crea varias rutinas, configura días y registra pesos.</p>
         </header>
 
-        <div className="box mb-4">
-          <label className="label">Rutina activa</label>
+        <div className="box mb-4 py-3">
+          <label className="label is-size-7">Rutina activa</label>
           <div className="field has-addons">
             <div className="control is-expanded">
-              <div className="select is-fullwidth">
+              <div className="select is-fullwidth is-small">
                 <select
                   value={rutinaActivaId || rutinaIdActual}
                   onChange={(e) => setRutinaActivaId(e.target.value)}
@@ -317,7 +317,7 @@ export default function Rutina() {
           <div className="field has-addons mt-2">
             <div className="control is-expanded">
               <input
-                className="input"
+                className="input is-small"
                 type="text"
                 value={nombreNuevaRutina}
                 onChange={(e) => setNombreNuevaRutina(e.target.value)}
@@ -325,7 +325,7 @@ export default function Rutina() {
               />
             </div>
             <div className="control">
-              <button type="button" className="button is-link" onClick={crearRutina}>
+              <button type="button" className="button is-link is-small" onClick={crearRutina}>
                 Crear rutina
               </button>
             </div>
@@ -350,8 +350,8 @@ export default function Rutina() {
         </div>
 
         {vista === 'calendario' && (
-          <div className="box mb-4">
-            <h2 className="title is-6 mb-3">Días que entrenaste</h2>
+          <div className="box mb-4 py-3">
+            <h2 className="title is-6 is-size-7 mb-2">Días que entrenaste</h2>
             <p className="is-size-7 has-text-grey mb-3">Toca un día marcado para ver la rutina que hiciste.</p>
             <div className="is-flex is-align-items-center is-justify-content-space-between mb-3">
               <button
@@ -407,7 +407,7 @@ export default function Rutina() {
             </div>
             {fechaCalendarioSeleccionada && (
               <div className="mt-4 pt-4" style={{ borderTop: '1px solid #eee' }}>
-                <h3 className="title is-6 mb-2">
+                <h3 className="title is-6 is-size-7 mb-2">
                   Rutina del {formatearFecha(fechaCalendarioSeleccionada)}
                 </h3>
                 {registrosDiaSeleccionado.length === 0 ? (
@@ -415,7 +415,7 @@ export default function Rutina() {
                 ) : (
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {registrosDiaSeleccionado.map((r) => (
-                      <li key={r.id} className="box py-3 px-4 mb-2">
+                      <li key={r.id} className="box py-2 px-3 mb-2">
                         <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
                           <div>
                             <strong>{r.ejercicio}</strong>
@@ -438,10 +438,10 @@ export default function Rutina() {
 
         {vista === 'progreso' && (
           <>
-          <div className="box mb-4">
-            <h2 className="title is-6 mb-2">Tu avance</h2>
+          <div className="box mb-4 py-3">
+            <h2 className="title is-6 is-size-7 mb-2">Tu avance</h2>
             <label className="label is-size-7 mb-2">Período</label>
-            <div className="select is-fullwidth mb-2">
+            <div className="select is-fullwidth is-small mb-2">
               <select value={periodProgreso} onChange={(e) => setPeriodProgreso(e.target.value)}>
                 <option value="semana">Última semana (7 días)</option>
                 <option value="mes">Último mes (30 días)</option>
@@ -452,11 +452,11 @@ export default function Rutina() {
               <div className="columns is-mobile mb-2">
                 <div className="column">
                   <label className="label is-size-7">Desde</label>
-                  <input className="input" type="date" value={desdeProgresoCustom} onChange={(e) => setDesdeProgresoCustom(e.target.value)} />
+                  <input className="input is-small" type="date" value={desdeProgresoCustom} onChange={(e) => setDesdeProgresoCustom(e.target.value)} />
                 </div>
                 <div className="column">
                   <label className="label is-size-7">Hasta</label>
-                  <input className="input" type="date" value={hastaProgresoCustom} onChange={(e) => setHastaProgresoCustom(e.target.value)} />
+                  <input className="input is-small" type="date" value={hastaProgresoCustom} onChange={(e) => setHastaProgresoCustom(e.target.value)} />
                 </div>
               </div>
             )}
@@ -468,23 +468,23 @@ export default function Rutina() {
             ) : (
               <div className="columns is-mobile is-multiline">
                 <div className="column is-half">
-                  <div className="box has-background-light py-3">
+                  <div className="box has-background-light py-2">
                     <p className="is-size-7 has-text-grey mb-0">Sesiones</p>
-                    <p className="title is-5 mb-0 has-text-dark" style={{ color: '#363636' }}>{sesionesEnPeriodo}</p>
+                    <p className="title is-6 mb-0 has-text-dark" style={{ color: '#363636' }}>{sesionesEnPeriodo}</p>
                     <p className="is-size-7 has-text-grey mt-0">días entrenados</p>
                   </div>
                 </div>
                 <div className="column is-half">
-                  <div className="box has-background-light py-3">
+                  <div className="box has-background-light py-2">
                     <p className="is-size-7 has-text-grey mb-0">Registros</p>
-                    <p className="title is-5 mb-0 has-text-dark" style={{ color: '#363636' }}>{totalRegistrosPeriodo}</p>
+                    <p className="title is-6 mb-0 has-text-dark" style={{ color: '#363636' }}>{totalRegistrosPeriodo}</p>
                     <p className="is-size-7 has-text-grey mt-0">series/ejercicios</p>
                   </div>
                 </div>
                 <div className="column is-half">
-                  <div className="box has-background-light py-3">
+                  <div className="box has-background-light py-2">
                     <p className="is-size-7 has-text-grey mb-0">Ejercicios distintos</p>
-                    <p className="title is-5 mb-0 has-text-dark" style={{ color: '#363636' }}>{ejerciciosEnPeriodo}</p>
+                    <p className="title is-6 mb-0 has-text-dark" style={{ color: '#363636' }}>{ejerciciosEnPeriodo}</p>
                   </div>
                 </div>
                 <div className="column is-half">
@@ -504,8 +504,8 @@ export default function Rutina() {
             )}
           </div>
 
-          <div className="box mb-5">
-            <h2 className="title is-6 mb-3">Avance por ejercicio</h2>
+          <div className="box mb-4 py-3">
+            <h2 className="title is-6 is-size-7 mb-2">Avance por ejercicio</h2>
             <p className="is-size-7 has-text-grey mb-4">
               Comparación: última sesión, anterior y mejor peso. ↑ subiste, ↓ bajaste.
             </p>
@@ -564,8 +564,8 @@ export default function Rutina() {
         )}
 
         {vista === 'configurar' && (
-          <div className="box mb-5">
-            <h2 className="title is-6 mb-3">Ejercicios por día</h2>
+          <div className="box mb-4 py-3">
+            <h2 className="title is-6 is-size-7 mb-2">Ejercicios por día</h2>
             <div className="is-flex is-flex-wrap-wrap is-align-items-center mb-3" style={{ gap: '0.5rem' }}>
               {dias.map((d) => (
                 <span key={d.id} className="tag is-medium">
@@ -601,7 +601,7 @@ export default function Rutina() {
             <div className="field has-addons mb-3">
               <div className="control is-expanded">
                 <input
-                  className="input"
+                  className="input is-small"
                   type="text"
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
@@ -653,18 +653,18 @@ export default function Rutina() {
 
         {vista === 'registrar' && (
           <>
-            <div className="box mb-4">
-              <h2 className="title is-6 mb-4">Cargar pesos del día</h2>
+            <div className="box mb-4 py-3">
+              <h2 className="title is-6 is-size-7 mb-2">Cargar pesos del día</h2>
               <div className="field">
-                <label className="label">Fecha de la sesión</label>
+                <label className="label is-size-7">Fecha de la sesión</label>
                 <div className="control">
-                  <input className="input" type="date" value={fechaInput} onChange={(e) => setFechaInput(e.target.value)} />
+                  <input className="input is-small" type="date" value={fechaInput} onChange={(e) => setFechaInput(e.target.value)} />
                 </div>
               </div>
               <div className="field">
-                <label className="label">¿Qué día de la rutina hiciste?</label>
+                <label className="label is-size-7">¿Qué día de la rutina hiciste?</label>
                 <div className="control">
-                  <div className="select is-fullwidth">
+                  <div className="select is-fullwidth is-small">
                     <select value={diaSeleccionado} onChange={(e) => setDiaSeleccionado(e.target.value)}>
                       {dias.map((d) => (
                         <option key={d.id} value={d.id}>{d.nombre}</option>
@@ -707,9 +707,9 @@ export default function Rutina() {
               </div>
             )}
 
-            <h2 className="title is-6 mb-3">Historial por fecha</h2>
+            <h2 className="title is-6 is-size-7 mb-2">Historial por fecha</h2>
             {fechasOrdenadas.length === 0 ? (
-              <div className="box has-text-centered has-text-grey">Aún no hay registros.</div>
+              <div className="box has-text-centered has-text-grey is-size-7 py-3">Aún no hay registros.</div>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {fechasOrdenadas.map((fecha) => {
@@ -723,7 +723,7 @@ export default function Rutina() {
                       </p>
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                         {lista.map((r) => (
-                          <li key={r.id} className="box py-3 px-4 mb-2">
+                          <li key={r.id} className="box py-2 px-3 mb-2">
                             <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
                               <div>
                                 <strong>{r.ejercicio}</strong>
@@ -772,7 +772,7 @@ function RegistroRapido({ ejercicios, onAñadir }) {
       <div className="field">
         <label className="label is-size-7">Ejercicio</label>
         <div className="control">
-          <div className="select is-fullwidth">
+          <div className="select is-fullwidth is-small">
             <select value={ejercicio} onChange={(e) => setEjercicio(e.target.value)}>
               {ejercicios.map((ex) => (
                 <option key={ex} value={ex}>{ex}</option>
@@ -785,26 +785,26 @@ function RegistroRapido({ ejercicios, onAñadir }) {
         <div className="column">
           <div className="field">
             <label className="label is-size-7">Series</label>
-            <input className="input" type="number" min="1" max="20" value={series} onChange={(e) => setSeries(e.target.value)} placeholder="3" />
+            <input className="input is-small" type="number" min="1" max="20" value={series} onChange={(e) => setSeries(e.target.value)} placeholder="3" />
           </div>
         </div>
         <div className="column">
           <div className="field">
             <label className="label is-size-7">Reps</label>
-            <input className="input" type="number" min="1" max="100" value={repeticiones} onChange={(e) => setRepeticiones(e.target.value)} placeholder="10" />
+            <input className="input is-small" type="number" min="1" max="100" value={repeticiones} onChange={(e) => setRepeticiones(e.target.value)} placeholder="10" />
           </div>
         </div>
         <div className="column">
           <div className="field">
             <label className="label is-size-7">Peso (kg)</label>
-            <input className="input" type="number" min="0" step="0.5" value={pesoKg} onChange={(e) => setPesoKg(e.target.value)} placeholder="20" />
+            <input className="input is-small" type="number" min="0" step="0.5" value={pesoKg} onChange={(e) => setPesoKg(e.target.value)} placeholder="20" />
           </div>
         </div>
       </div>
       <div className="field">
-        <input className="input is-size-7" type="text" value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Notas (opcional)" />
+        <input className="input is-small is-size-7" type="text" value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Notas (opcional)" />
       </div>
-      <button type="submit" className="button is-link is-fullwidth" disabled={!ejercicio || !series || !repeticiones}>
+      <button type="submit" className="button is-link is-fullwidth is-small" disabled={!ejercicio || !series || !repeticiones}>
         Añadir registro
       </button>
     </form>
