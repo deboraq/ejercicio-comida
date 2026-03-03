@@ -203,7 +203,10 @@ export default function Inicio() {
               ← Anterior
             </button>
             <span className="is-size-6 has-text-weight-medium">
-              {new Date(mesCalendario + '-01').toLocaleDateString('es', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase())}
+              {(() => {
+                const [y, m] = mesCalendario.split('-').map(Number)
+                return new Date(y, m - 1, 1).toLocaleDateString('es', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase())
+              })()}
             </span>
             <button
               type="button"
