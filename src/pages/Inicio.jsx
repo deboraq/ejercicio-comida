@@ -2,7 +2,16 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useStorage } from '../hooks/useStorage'
-import { caloriasQuemadas, formatearFecha, fechaToISO, fechaSoloDia, getCategoriaTipo, etiquetaTipo } from '../utils/calorias'
+import {
+  caloriasQuemadas,
+  caloriasQuemadasRutinaDia,
+  formatearFecha,
+  fechaToISO,
+  fechaSoloDia,
+  getCategoriaTipo,
+  minutosRutinaDia,
+  etiquetaTipo,
+} from '../utils/calorias'
 import { getConsejosDelDia, OBJETIVOS } from '../utils/consejos'
 import { getRachaDias, PERIODOS, getRangoPorPeriodo, getFechasEnRango, getUltimosNDias } from '../utils/estadisticas'
 import { SUPLEMENTOS, getSuplementoLabel } from '../utils/suplementos'
@@ -68,19 +77,25 @@ export default function Inicio() {
     })
   }
 
-  const minutosDia = ejerciciosDelDia.reduce((s, e) => s + e.duracion, 0)
-  const caloriasQuemadasDia = ejerciciosDelDia.reduce(
-    (s, e) => s + caloriasQuemadas(e.tipo, e.duracion, config?.pesoKg || 70),
-    0
-  )
+  const pesoCfg = config?.pesoKg || 70
+  const minutosEjercicioDia = ejerciciosDelDia.reduce((s, e) => s + e.duracion, 0)
+  const minutosRutinaEstDia = minutosRutinaDia(registrosRutina, diaEnVista)
+  const minutosDia = minutosEjercicioDia + minutosRutinaEstDia
+  const calQuemEjercicioDia = ejerciciosDelDia.reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoCfg), 0)
+  const calQuemRutinaDia = caloriasQuemadasRutinaDia(registrosRutina, diaEnVista, pesoCfg)
+  const caloriasQuemadasDia = calQuemEjercicioDia + calQuemRutinaDia
   const caloriasConsumidasDia = comidasDelDia.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
   const proteinasDia = comidasDelDia.reduce((s, r) => s + (Number(r.proteinas) || 0), 0)
   const carbosDia = comidasDelDia.reduce((s, r) => s + (Number(r.carbohidratos) || 0), 0)
 
   const diasUltimos7 = getUltimosNDias(7)
   const ejerciciosUltimos7 = ejercicios.filter((e) => diasUltimos7.includes(fechaSoloDia(e.fecha)))
-  const minutosUltimos7 = ejerciciosUltimos7.reduce((s, e) => s + e.duracion, 0)
-  const calQuemUltimos7 = ejerciciosUltimos7.reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, config?.pesoKg || 70), 0)
+  const minutosUltimos7Ej = ejerciciosUltimos7.reduce((s, e) => s + e.duracion, 0)
+  const minutosUltimos7Rut = diasUltimos7.reduce((s, f) => s + minutosRutinaDia(registrosRutina, f), 0)
+  const minutosUltimos7 = minutosUltimos7Ej + minutosUltimos7Rut
+  const calQuemUltimos7Ej = ejerciciosUltimos7.reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoCfg), 0)
+  const calQuemUltimos7Rut = diasUltimos7.reduce((s, f) => s + caloriasQuemadasRutinaDia(registrosRutina, f, pesoCfg), 0)
+  const calQuemUltimos7 = calQuemUltimos7Ej + calQuemUltimos7Rut
   const comidasUltimos7 = comida.filter((c) => diasUltimos7.includes(fechaSoloDia(c.fecha)))
   const calConsumidasUltimos7 = comidasUltimos7.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
 
@@ -97,12 +112,16 @@ export default function Inicio() {
     carbohidratos: carbosDia,
     ejerciciosPorTipo,
   }
-  const consejos = getConsejosDelDia(config?.objetivo, diaData, config?.pesoKg || 70)
+  const consejos = getConsejosDelDia(config?.objetivo, diaData, pesoCfg)
 
   const objetivoLabel = OBJETIVOS.find((o) => o.value === config?.objetivo)?.label || 'Mantener peso'
 
   const racha = getRachaDias(
-    [...ejercicios.map((e) => ({ fecha: fechaSoloDia(e.fecha) })), ...comida.map((c) => ({ fecha: fechaSoloDia(c.fecha) }))],
+    [
+      ...ejercicios.map((e) => ({ fecha: fechaSoloDia(e.fecha) })),
+      ...comida.map((c) => ({ fecha: fechaSoloDia(c.fecha) })),
+      ...registrosRutina.map((r) => ({ fecha: fechaSoloDia(r.fecha) })),
+    ],
     hoy
   )
 
@@ -111,7 +130,9 @@ export default function Inicio() {
   const caloriasPorDiaEnPeriodo = fechasEnPeriodo.slice(-31).map((f) => ({
     fecha: f,
     cal: comida.filter((c) => fechaSoloDia(c.fecha) === f).reduce((s, r) => s + (Number(r.calorias) || 0), 0),
-    quemadas: ejercicios.filter((e) => fechaSoloDia(e.fecha) === f).reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, config?.pesoKg || 70), 0),
+    quemadas:
+      ejercicios.filter((e) => fechaSoloDia(e.fecha) === f).reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoCfg), 0) +
+      caloriasQuemadasRutinaDia(registrosRutina, f, pesoCfg),
     pro: comida.filter((c) => fechaSoloDia(c.fecha) === f).reduce((s, r) => s + (Number(r.proteinas) || 0), 0),
   }))
   const totalCalPeriodo = caloriasPorDiaEnPeriodo.reduce((s, d) => s + d.cal, 0)
@@ -137,14 +158,32 @@ export default function Inicio() {
   function getDetalleDia(fecha) {
     const comidasDelDiaF = comida.filter((c) => fechaSoloDia(c.fecha) === fecha)
     const cal = comidasDelDiaF.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
-    const quemadas = ejercicios.filter((e) => fechaSoloDia(e.fecha) === fecha).reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, config?.pesoKg || 70), 0)
+    const minutosEj = ejercicios.filter((e) => fechaSoloDia(e.fecha) === fecha).reduce((s, e) => s + e.duracion, 0)
+    const minutosRut = minutosRutinaDia(registrosRutina, fecha)
+    const quemadasEj = ejercicios.filter((e) => fechaSoloDia(e.fecha) === fecha).reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoCfg), 0)
+    const quemadasRut = caloriasQuemadasRutinaDia(registrosRutina, fecha, pesoCfg)
+    const quemadas = quemadasEj + quemadasRut
     const pro = comidasDelDiaF.reduce((s, r) => s + (Number(r.proteinas) || 0), 0)
     const carbos = comidasDelDiaF.reduce((s, r) => s + (Number(r.carbohidratos) || 0), 0)
     const numComidas = comidasDelDiaF.length
-    const minutos = ejercicios.filter((e) => fechaSoloDia(e.fecha) === fecha).reduce((s, e) => s + e.duracion, 0)
+    const minutos = minutosEj + minutosRut
     const sups = suplementos.find((s) => fechaSoloDia(s.fecha) === fecha)?.items ?? []
     const itemsComida = comidasDelDiaF.map((r) => ({ tipo: r.comida || 'Comida', descripcion: r.descripcion || '', kcal: r.calorias }))
-    return { fecha, cal, quemadas, pro, carbos, numComidas, minutos, suplementos: sups, itemsComida }
+    return {
+      fecha,
+      cal,
+      quemadas,
+      quemadasEj,
+      quemadasRut,
+      minutosEj,
+      minutosRut,
+      pro,
+      carbos,
+      numComidas,
+      minutos,
+      suplementos: sups,
+      itemsComida,
+    }
   }
 
   function getDiasDelMes(yearMonth) {
@@ -262,7 +301,7 @@ export default function Inicio() {
                   <p className="is-size-7 has-text-grey mb-2 has-text-weight-semibold">Rutina / Gimnasio</p>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {rutinaDelDiaCalendario.map((r) => (
-                      <li key={r.id} className="box py-2 px-3 mb-2">
+                      <li key={r.id} className="box py-2 px-3 mb-2 has-background-light">
                         <strong>{r.ejercicio}</strong>
                         <span className="is-size-7 ml-2">
                           {r.series}×{r.repeticiones}
@@ -279,12 +318,12 @@ export default function Inicio() {
                   <p className="is-size-7 has-text-grey mb-2 has-text-weight-semibold">Ejercicios (cardio, etc.)</p>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {ejerciciosDelDiaCalendario.map((e) => (
-                      <li key={e.id} className="box py-2 px-3 mb-2">
+                      <li key={e.id} className="box py-2 px-3 mb-2 has-background-light">
                         <strong>{e.nombre}</strong>
                         <span className="tag is-link is-light is-size-7 ml-2">{etiquetaTipo(e.tipo)}</span>
                         <span className="is-size-7 ml-2">{e.duracion} min</span>
                         <span className="is-size-7 has-text-success ml-1">
-                          ~{caloriasQuemadas(e.tipo, e.duracion, config?.pesoKg || 70)} kcal
+                          ~{caloriasQuemadas(e.tipo, e.duracion, pesoCfg)} kcal
                         </span>
                         {e.notas && <p className="is-size-7 has-text-grey mt-1 mb-0">— {e.notas}</p>}
                       </li>
@@ -360,7 +399,7 @@ export default function Inicio() {
           </div>
           <div className="column is-half">
             <div className="box">
-              <p className="is-size-7 has-text-grey">Calorías quemadas (ejercicio)</p>
+              <p className="is-size-7 has-text-grey">Calorías quemadas (ejercicio + rutina aprox.)</p>
               <p className="title is-5 has-text-success">{caloriasQuemadasDia || '—'}</p>
             </div>
           </div>
@@ -378,7 +417,7 @@ export default function Inicio() {
           </div>
           <div className="column is-half">
             <div className="box">
-              <p className="is-size-7 has-text-grey">Minutos de ejercicio</p>
+              <p className="is-size-7 has-text-grey">Minutos (ejercicio + rutina estim.)</p>
               <p className="title is-5">{minutosDia}</p>
             </div>
           </div>
@@ -468,7 +507,8 @@ export default function Inicio() {
             Cada columna es un día del rango (orden cronológico). Debajo: día de la semana en español.
           </p>
           <p className="is-size-7 graf-cal-ayuda mb-2">
-            Solo cuenta registros de la pantalla <strong className="graf-cal-ayuda-strong">Ejercicios</strong> (cardio/deporte), no las series del gimnasio en Rutina.
+            <strong className="graf-cal-ayuda-strong">Quemadas</strong>: suma <strong className="graf-cal-ayuda-strong">Ejercicios</strong> (lo que cargás en minutos) y{' '}
+            <strong className="graf-cal-ayuda-strong">Rutina</strong> (gimnasio, kcal aprox. por series con MET de musculación).
           </p>
           <p className="is-size-7 graf-cal-ayuda mb-2">
             Referencia: máx. consumidas <strong className="graf-cal-ayuda-strong">{maxCalDiaPeriodo}</strong> kcal · máx. quemadas{' '}
@@ -481,8 +521,8 @@ export default function Inicio() {
           >
           <div className="is-flex is-align-items-flex-end" style={{ gap: '4px', height: '160px' }}>
             {caloriasPorDiaEnPeriodo.map((d) => {
-              const altCalPx = d.cal > 0 ? Math.max(2, (d.cal / maxCalDiaPeriodo) * 78) : 0
-              const altQuemPx = d.quemadas > 0 ? Math.max(2, (d.quemadas / maxQuemadasPeriodo) * 78) : 0
+              const altCalPx = Math.max(4, (d.cal / maxCalDiaPeriodo) * 78)
+              const altQuemPx = Math.max(4, (d.quemadas / maxQuemadasPeriodo) * 78)
               return (
                 <div
                   key={d.fecha}
@@ -610,7 +650,7 @@ export default function Inicio() {
                 aria-label={`Detalle del día ${tooltipDia}`}
               >
                 <div className="is-flex is-justify-content-space-between is-align-items-center mb-2">
-                  <p className="title is-6 mb-0 has-text-weight-semibold">{formatearFecha(det.fecha)}</p>
+                  <p className="title is-6 mb-0 has-text-weight-semibold inicio-detalle-dia-titulo">{formatearFecha(det.fecha)}</p>
                   <button
                     type="button"
                     className="button is-small is-light"
@@ -628,6 +668,11 @@ export default function Inicio() {
                   <div className="column is-half">
                     <span style={{ color: '#4a4a4a' }}>Calorías quemadas:</span>{' '}
                     <strong style={{ color: '#257a2a' }}>{det.quemadas}</strong> kcal
+                    {(det.quemadasEj > 0 || det.quemadasRut > 0) && (
+                      <p className="is-size-7 mb-0 mt-1" style={{ color: '#5c5c5c' }}>
+                        Ejercicios ~{det.quemadasEj} · Rutina ~{det.quemadasRut}
+                      </p>
+                    )}
                   </div>
                   <div className="column is-half">
                     <span style={{ color: '#4a4a4a' }}>Proteínas:</span> <strong style={{ color: '#363636' }}>{det.pro}</strong> g
@@ -639,7 +684,12 @@ export default function Inicio() {
                     <span style={{ color: '#4a4a4a' }}>Comidas registradas:</span> <strong style={{ color: '#363636' }}>{det.numComidas}</strong>
                   </div>
                   <div className="column is-half">
-                    <span style={{ color: '#4a4a4a' }}>Minutos de ejercicio:</span> <strong style={{ color: '#363636' }}>{det.minutos}</strong>
+                    <span style={{ color: '#4a4a4a' }}>Minutos (aprox.):</span> <strong style={{ color: '#363636' }}>{det.minutos}</strong>
+                    {(det.minutosEj > 0 || det.minutosRut > 0) && (
+                      <p className="is-size-7 mb-0 mt-1" style={{ color: '#5c5c5c' }}>
+                        Ejercicio {det.minutosEj} · Rutina estim. {det.minutosRut}
+                      </p>
+                    )}
                   </div>
                   {det.suplementos.length > 0 && (
                     <div className="column is-full">

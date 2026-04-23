@@ -126,6 +126,21 @@ export function caloriasQuemadas(tipo, duracionMin, pesoKg = PESO_DEFAULT_KG) {
   return Math.round(met * pesoKg * (Number(duracionMin) / 60))
 }
 
+/**
+ * Registros de Rutina no traen minutos: estimamos ~2,5 min por serie (serie + descanso).
+ * Tope por ejercicio para no inflar sesiones largas en un solo bloque.
+ */
+export function minutosEstimadosRegistroRutina(reg) {
+  const s = Math.max(1, Math.round(Number(reg?.series)) || 1)
+  return Math.min(50, Math.max(2, Math.round(s * 2.5)))
+}
+
+/** Kcal aprox. de un bloque de gimnasio (MET musculación general). */
+export function caloriasQuemadasRegistroRutina(reg, pesoKg = PESO_DEFAULT_KG) {
+  const mins = minutosEstimadosRegistroRutina(reg)
+  return caloriasQuemadas('pesas_general', mins, pesoKg)
+}
+
 // Etiqueta legible para mostrar en historial (datos antiguos pueden tener "Cardio", nuevos tienen "caminata_rapida")
 export function etiquetaTipo(tipo) {
   if (!tipo) return 'Otro'
@@ -179,6 +194,20 @@ export function fechaSoloDia(valor) {
   const s = String(valor)
   const m = s.match(/^(\d{4}-\d{2}-\d{2})/)
   return m ? m[1] : s.slice(0, 10)
+}
+
+export function caloriasQuemadasRutinaDia(registros, fechaIsoDia, pesoKg = PESO_DEFAULT_KG) {
+  if (!registros?.length) return 0
+  return registros
+    .filter((r) => fechaSoloDia(r.fecha) === fechaIsoDia)
+    .reduce((sum, r) => sum + caloriasQuemadasRegistroRutina(r, pesoKg), 0)
+}
+
+export function minutosRutinaDia(registros, fechaIsoDia) {
+  if (!registros?.length) return 0
+  return registros
+    .filter((r) => fechaSoloDia(r.fecha) === fechaIsoDia)
+    .reduce((sum, r) => sum + minutosEstimadosRegistroRutina(r), 0)
 }
 
 /** Normaliza texto para búsqueda (minúsculas, sin tildes). */
