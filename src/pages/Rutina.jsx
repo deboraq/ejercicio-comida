@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStorage } from '../hooks/useStorage'
-import { formatearFecha } from '../utils/calorias'
+import { formatearFecha, fechaToISO } from '../utils/calorias'
 import { EJERCICIOS_RUTINA, buscarEjercicios } from '../utils/rutinaEjercicios'
 
 function crearDia(num) {
@@ -36,7 +36,7 @@ export default function Rutina() {
   const [vista, setVista] = useState('calendario') // 'calendario' | 'registrar' | 'configurar' | 'progreso'
   const [diaEditando, setDiaEditando] = useState('')
   const [busqueda, setBusqueda] = useState('')
-  const [fechaInput, setFechaInput] = useState(new Date().toISOString().slice(0, 10))
+  const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
   const [diaSeleccionado, setDiaSeleccionado] = useState('')
   const [nombreNuevaRutina, setNombreNuevaRutina] = useState('')
   const [mesCalendario, setMesCalendario] = useState(() => {
@@ -46,9 +46,11 @@ export default function Rutina() {
   const [fechaCalendarioSeleccionada, setFechaCalendarioSeleccionada] = useState(null)
   const [periodProgreso, setPeriodProgreso] = useState('mes')
   const [desdeProgresoCustom, setDesdeProgresoCustom] = useState('')
-  const [hastaProgresoCustom, setHastaProgresoCustom] = useState(() => new Date().toISOString().slice(0, 10))
+  const [hastaProgresoCustom, setHastaProgresoCustom] = useState(() => fechaToISO(new Date()))
+  /** Edición de un registro de pesos: { id, ejercicio, series, repeticiones, pesoKg, notas } */
+  const [editandoRegistro, setEditandoRegistro] = useState(null)
 
-  const hoy = new Date().toISOString().slice(0, 10)
+  const hoy = fechaToISO(new Date())
 
   function getDiasDelMes(yearMonth) {
     const [y, m] = yearMonth.split('-').map(Number)
@@ -104,6 +106,10 @@ export default function Rutina() {
       if (!dias.some((d) => d.id === diaSeleccionado)) setDiaSeleccionado(idPrimero)
     }
   }, [rutinaIdActual])
+
+  useEffect(() => {
+    setEditandoRegistro(null)
+  }, [vista])
 
   const resultadosBusqueda = busqueda.trim() ? buscarEjercicios(busqueda) : []
 
@@ -195,8 +201,46 @@ export default function Rutina() {
   }
 
   const eliminarRegistro = (id) => {
-    setRegistros(registros.filter((r) => r.id !== id))
+    setEditandoRegistro((d) => (d?.id === id ? null : d))
+    setRegistros((regs) => regs.filter((r) => r.id !== id))
   }
+
+  const patchEditandoRegistro = (patch) => {
+    setEditandoRegistro((d) => (d ? { ...d, ...patch } : null))
+  }
+
+  const iniciarEdicionRegistro = (r) => {
+    setEditandoRegistro({
+      id: r.id,
+      ejercicio: r.ejercicio || '',
+      series: String(r.series ?? ''),
+      repeticiones: String(r.repeticiones ?? ''),
+      pesoKg: r.pesoKg != null && Number(r.pesoKg) > 0 ? String(r.pesoKg) : '',
+      notas: r.notas || '',
+    })
+  }
+
+  const guardarEdicionRegistro = (d) => {
+    const repsStr = String(d.repeticiones ?? '').trim()
+    if (!d.ejercicio?.trim() || !repsStr || d.series === '' || d.series == null) return
+    setRegistros((regs) =>
+      regs.map((x) =>
+        x.id !== d.id
+          ? x
+          : {
+              ...x,
+              ejercicio: d.ejercicio.trim(),
+              series: Number(d.series) || 1,
+              repeticiones: repsStr,
+              pesoKg: d.pesoKg !== '' && d.pesoKg != null ? Number(d.pesoKg) : undefined,
+              notas: (d.notas || '').trim(),
+            }
+      )
+    )
+    setEditandoRegistro(null)
+  }
+
+  const cancelarEdicionRegistro = () => setEditandoRegistro(null)
 
   const registrosDeEstaSesion = registros.filter(
     (r) =>
@@ -243,12 +287,12 @@ export default function Rutina() {
     if (periodProgreso === 'semana') {
       const d = new Date()
       d.setDate(d.getDate() - 6)
-      return { desde: d.toISOString().slice(0, 10), hasta: hoy }
+      return { desde: fechaToISO(d), hasta: hoy }
     }
     if (periodProgreso === 'mes') {
       const d = new Date()
       d.setDate(d.getDate() - 30)
-      return { desde: d.toISOString().slice(0, 10), hasta: hoy }
+      return { desde: fechaToISO(d), hasta: hoy }
     }
     return { desde: desdeProgresoCustom || hoy, hasta: hastaProgresoCustom || hoy }
   }
@@ -356,7 +400,7 @@ export default function Rutina() {
 
         {vista === 'calendario' && (
           <div className="box mb-4 py-3">
-            <h2 className="title is-6 is-size-7 mb-2">Días que entrenaste</h2>
+            <h2 className="title is-6 mb-2">Días que entrenaste</h2>
             <p className="is-size-7 has-text-grey mb-3">Toca un día marcado para ver la rutina que hiciste.</p>
             <div className="is-flex is-align-items-center is-justify-content-space-between mb-3">
               <button
@@ -415,7 +459,7 @@ export default function Rutina() {
             </div>
             {fechaCalendarioSeleccionada && (
               <div className="mt-4 pt-4" style={{ borderTop: '1px solid #eee' }}>
-                <h3 className="title is-6 is-size-7 mb-2">
+                <h3 className="title is-6 mb-2">
                   Rutina del {formatearFecha(fechaCalendarioSeleccionada)}
                 </h3>
                 {registrosDiaSeleccionado.length === 0 ? (
@@ -423,19 +467,16 @@ export default function Rutina() {
                 ) : (
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {registrosDiaSeleccionado.map((r) => (
-                      <li key={r.id} className="box py-2 px-3 mb-2">
-                        <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
-                          <div>
-                            <strong>{r.ejercicio}</strong>
-                            <p className="is-size-7 mt-1 mb-0">
-                              {r.series}×{r.repeticiones}
-                              {r.pesoKg != null && r.pesoKg > 0 && <span> · <strong>{r.pesoKg} kg</strong></span>}
-                            </p>
-                            {r.notas && <p className="is-size-7 has-text-grey mt-1 mb-0">— {r.notas}</p>}
-                          </div>
-                          <button type="button" className="button is-small is-text has-text-grey" onClick={() => eliminarRegistro(r.id)}>×</button>
-                        </div>
-                      </li>
+                      <FilaRegistroRutinaEditable
+                        key={r.id}
+                        registro={r}
+                        draft={editandoRegistro}
+                        onPatch={patchEditandoRegistro}
+                        onEditar={iniciarEdicionRegistro}
+                        onGuardar={guardarEdicionRegistro}
+                        onCancelar={cancelarEdicionRegistro}
+                        onEliminar={eliminarRegistro}
+                      />
                     ))}
                   </ul>
                 )}
@@ -447,7 +488,7 @@ export default function Rutina() {
         {vista === 'progreso' && (
           <>
           <div className="box mb-4 py-3">
-            <h2 className="title is-6 is-size-7 mb-2">Tu avance</h2>
+            <h2 className="title is-6 mb-2">Tu avance</h2>
             <label className="label is-size-7 mb-2">Período</label>
             <div className="select is-fullwidth is-small mb-2">
               <select value={periodProgreso} onChange={(e) => setPeriodProgreso(e.target.value)}>
@@ -478,21 +519,21 @@ export default function Rutina() {
                 <div className="column is-half">
                   <div className="box has-background-light py-2">
                     <p className="is-size-7 has-text-grey mb-0">Sesiones</p>
-                    <p className="title is-6 mb-0 has-text-dark" style={{ color: '#363636' }}>{sesionesEnPeriodo}</p>
+                    <p className="title is-6 mb-0 has-text-weight-bold">{sesionesEnPeriodo}</p>
                     <p className="is-size-7 has-text-grey mt-0">días entrenados</p>
                   </div>
                 </div>
                 <div className="column is-half">
                   <div className="box has-background-light py-2">
                     <p className="is-size-7 has-text-grey mb-0">Registros</p>
-                    <p className="title is-6 mb-0 has-text-dark" style={{ color: '#363636' }}>{totalRegistrosPeriodo}</p>
+                    <p className="title is-6 mb-0 has-text-weight-bold">{totalRegistrosPeriodo}</p>
                     <p className="is-size-7 has-text-grey mt-0">series/ejercicios</p>
                   </div>
                 </div>
                 <div className="column is-half">
                   <div className="box has-background-light py-2">
                     <p className="is-size-7 has-text-grey mb-0">Ejercicios distintos</p>
-                    <p className="title is-6 mb-0 has-text-dark" style={{ color: '#363636' }}>{ejerciciosEnPeriodo}</p>
+                    <p className="title is-6 mb-0 has-text-weight-bold">{ejerciciosEnPeriodo}</p>
                   </div>
                 </div>
                 <div className="column is-half">
@@ -513,7 +554,7 @@ export default function Rutina() {
           </div>
 
           <div className="box mb-4 py-3">
-            <h2 className="title is-6 is-size-7 mb-2">Avance por ejercicio</h2>
+            <h2 className="title is-6 mb-2">Avance por ejercicio</h2>
             <p className="is-size-7 has-text-grey mb-4">
               Comparación: última sesión, anterior y mejor peso. ↑ subiste, ↓ bajaste.
             </p>
@@ -573,7 +614,7 @@ export default function Rutina() {
 
         {vista === 'configurar' && (
           <div className="box mb-4 py-3">
-            <h2 className="title is-6 is-size-7 mb-2">Ejercicios por día</h2>
+            <h2 className="title is-6 mb-2">Ejercicios por día</h2>
             <div className="is-flex is-flex-wrap-wrap is-align-items-center mb-3" style={{ gap: '0.5rem' }}>
               {dias.map((d) => (
                 <span key={d.id} className="tag is-medium">
@@ -662,7 +703,7 @@ export default function Rutina() {
         {vista === 'registrar' && (
           <>
             <div className="box mb-4 py-3">
-              <h2 className="title is-6 is-size-7 mb-2">Cargar pesos del día</h2>
+              <h2 className="title is-6 mb-2">Cargar pesos del día</h2>
               <div className="field">
                 <label className="label is-size-7">Fecha de la sesión</label>
                 <div className="control">
@@ -709,19 +750,23 @@ export default function Rutina() {
                 </p>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {registrosDeEstaSesion.map((r) => (
-                    <li key={r.id} className="is-flex is-justify-content-space-between is-align-items-center py-2 subtle-divider-b">
-                      <span>
-                        <strong>{r.ejercicio}</strong> — {r.series}×{r.repeticiones}
-                        {r.pesoKg != null && r.pesoKg > 0 && <span className="has-text-grey"> · {r.pesoKg} kg</span>}
-                      </span>
-                      <button type="button" className="button is-small is-text has-text-grey" onClick={() => eliminarRegistro(r.id)}>×</button>
-                    </li>
+                    <FilaRegistroRutinaEditable
+                      key={r.id}
+                      registro={r}
+                      draft={editandoRegistro}
+                      onPatch={patchEditandoRegistro}
+                      onEditar={iniciarEdicionRegistro}
+                      onGuardar={guardarEdicionRegistro}
+                      onCancelar={cancelarEdicionRegistro}
+                      onEliminar={eliminarRegistro}
+                      variant="compacto"
+                    />
                   ))}
                 </ul>
               </div>
             )}
 
-            <h2 className="title is-6 is-size-7 mb-2">Historial por fecha</h2>
+            <h2 className="title is-6 mb-2">Historial por fecha</h2>
             {fechasOrdenadas.length === 0 ? (
               <div className="box has-text-centered has-text-grey is-size-7 py-3">Aún no hay registros.</div>
             ) : (
@@ -737,19 +782,16 @@ export default function Rutina() {
                       </p>
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                         {lista.map((r) => (
-                          <li key={r.id} className="box py-2 px-3 mb-2">
-                            <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
-                              <div>
-                                <strong>{r.ejercicio}</strong>
-                                <p className="is-size-7 mt-1 mb-0">
-                                  {r.series}×{r.repeticiones}
-                                  {r.pesoKg != null && r.pesoKg > 0 && <span> · <strong>{r.pesoKg} kg</strong></span>}
-                                </p>
-                                {r.notas && <p className="is-size-7 has-text-grey mt-1 mb-0">— {r.notas}</p>}
-                              </div>
-                              <button type="button" className="button is-small is-text has-text-grey" onClick={() => eliminarRegistro(r.id)}>×</button>
-                            </div>
-                          </li>
+                          <FilaRegistroRutinaEditable
+                            key={r.id}
+                            registro={r}
+                            draft={editandoRegistro}
+                            onPatch={patchEditandoRegistro}
+                            onEditar={iniciarEdicionRegistro}
+                            onGuardar={guardarEdicionRegistro}
+                            onCancelar={cancelarEdicionRegistro}
+                            onEliminar={eliminarRegistro}
+                          />
                         ))}
                       </ul>
                     </li>
@@ -762,6 +804,120 @@ export default function Rutina() {
       </div>
     </section>
   )
+}
+
+function FilaRegistroRutinaEditable({
+  registro,
+  draft,
+  onPatch,
+  onEditar,
+  onGuardar,
+  onCancelar,
+  onEliminar,
+  variant,
+}) {
+  const editando = draft?.id === registro.id
+  const compacto = variant === 'compacto'
+
+  const botonesAccion = (
+    <div className="is-flex is-align-items-flex-start" style={{ gap: '0.15rem' }}>
+      <button type="button" className="button is-small is-text" onClick={() => onEditar(registro)}>
+        Editar
+      </button>
+      <button type="button" className="button is-small is-text has-text-grey" onClick={() => onEliminar(registro.id)} aria-label="Eliminar">
+        ×
+      </button>
+    </div>
+  )
+
+  if (!editando) {
+    if (compacto) {
+      return (
+        <li className="py-2 subtle-divider-b">
+          <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
+            <span>
+              <strong>{registro.ejercicio}</strong> — {registro.series}×{registro.repeticiones}
+              {registro.pesoKg != null && registro.pesoKg > 0 && <span className="has-text-grey"> · {registro.pesoKg} kg</span>}
+              {registro.notas && <span className="has-text-grey"> — {registro.notas}</span>}
+            </span>
+            {botonesAccion}
+          </div>
+        </li>
+      )
+    }
+    return (
+      <li className="box py-2 px-3 mb-2">
+        <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
+          <div>
+            <strong>{registro.ejercicio}</strong>
+            <p className="is-size-7 mt-1 mb-0">
+              {registro.series}×{registro.repeticiones}
+              {registro.pesoKg != null && registro.pesoKg > 0 && <span> · <strong>{registro.pesoKg} kg</strong></span>}
+            </p>
+            {registro.notas && <p className="is-size-7 has-text-grey mt-1 mb-0">— {registro.notas}</p>}
+          </div>
+          {botonesAccion}
+        </div>
+      </li>
+    )
+  }
+
+  const formulario = (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        onGuardar(draft)
+      }}
+    >
+      <div className="field mb-2">
+        <label className="label is-size-7">Ejercicio</label>
+        <input className="input is-small" type="text" value={draft.ejercicio} onChange={(e) => onPatch({ ejercicio: e.target.value })} />
+      </div>
+      <div className="columns is-mobile mb-2">
+        <div className="column">
+          <label className="label is-size-7">Series</label>
+          <input className="input is-small" type="number" min="1" value={draft.series} onChange={(e) => onPatch({ series: e.target.value })} />
+        </div>
+        <div className="column">
+          <label className="label is-size-7">Reps</label>
+          <input className="input is-small" type="text" value={draft.repeticiones} onChange={(e) => onPatch({ repeticiones: e.target.value })} />
+        </div>
+        <div className="column">
+          <label className="label is-size-7">Peso (kg)</label>
+          <input
+            className="input is-small"
+            type="number"
+            min="0"
+            step="0.5"
+            value={draft.pesoKg}
+            onChange={(e) => onPatch({ pesoKg: e.target.value })}
+            placeholder="Opcional"
+          />
+        </div>
+      </div>
+      <div className="field mb-2">
+        <label className="label is-size-7">Notas</label>
+        <input className="input is-small" type="text" value={draft.notas} onChange={(e) => onPatch({ notas: e.target.value })} />
+      </div>
+      <div className="is-flex is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
+        <button type="submit" className="button is-link is-small">
+          Guardar
+        </button>
+        <button type="button" className="button is-light is-small" onClick={onCancelar}>
+          Cancelar
+        </button>
+      </div>
+    </form>
+  )
+
+  if (compacto) {
+    return (
+      <li className="mb-2">
+        <div className="box py-2 px-3">{formulario}</div>
+      </li>
+    )
+  }
+  return <li className="box py-2 px-3 mb-2">{formulario}</li>
 }
 
 function filasIniciales(ejercicios) {

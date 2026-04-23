@@ -577,7 +577,7 @@ export default function Inicio() {
                 aria-label={`Detalle del día ${tooltipDia}`}
               >
                 <div className="is-flex is-justify-content-space-between is-align-items-center mb-2">
-                  <p className="title is-6 mb-0" style={{ fontSize: '1rem', color: '#363636' }}>{formatearFecha(det.fecha)}</p>
+                  <p className="title is-6 mb-0 has-text-weight-semibold">{formatearFecha(det.fecha)}</p>
                   <button
                     type="button"
                     className="button is-small is-light"
@@ -587,7 +587,7 @@ export default function Inicio() {
                     Cerrar
                   </button>
                 </div>
-                <div className="columns is-mobile is-multiline" style={{ fontSize: '0.75rem' }}>
+                <div className="columns is-mobile is-multiline">
                   <div className="column is-half">
                     <span style={{ color: '#4a4a4a' }}>Calorías consumidas:</span>{' '}
                     <strong style={{ color: '#3273dc' }}>{det.cal}</strong> kcal
@@ -617,7 +617,7 @@ export default function Inicio() {
                   {det.itemsComida && det.itemsComida.length > 0 && (
                     <div className="column is-full mt-2 pt-2" style={{ borderTop: '1px solid #eee' }}>
                       <span style={{ color: '#4a4a4a' }}>Comidas:</span>
-                      <ul className="mt-1 mb-0 pl-4 is-size-7" style={{ listStyle: 'disc', color: '#363636' }}>
+                      <ul className="mt-1 mb-0 pl-4 is-size-7 has-text-grey" style={{ listStyle: 'disc' }}>
                         {det.itemsComida.map((it, i) => (
                           <li key={i}>
                             <strong style={{ color: '#363636' }}>{it.tipo}</strong>
@@ -654,7 +654,7 @@ export default function Inicio() {
               <div className="card-content">
                 <p className="mb-2">🏃</p>
                 <p className="title is-5">Ejercicios</p>
-                <p className="subtitle is-7 has-text-grey">Registra actividad y calorías quemadas</p>
+                <p className="subtitle has-text-grey">Registra actividad y calorías quemadas</p>
                 <p className="mt-3">
                   <strong className="has-text-link">{minutosDia}</strong>
                   <span className="is-size-7 has-text-grey ml-1">min</span>
@@ -671,7 +671,7 @@ export default function Inicio() {
               <div className="card-content">
                 <p className="mb-2">🥗</p>
                 <p className="title is-5">Comida</p>
-                <p className="subtitle is-7 has-text-grey">Calorías, proteínas, carbos, porciones</p>
+                <p className="subtitle has-text-grey">Calorías, proteínas, carbos, porciones</p>
                 <p className="mt-3">
                   <strong className="has-text-info">{caloriasConsumidasDia || '—'}</strong>
                   <span className="is-size-7 has-text-grey ml-1">kcal</span>

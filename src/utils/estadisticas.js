@@ -2,9 +2,9 @@
  * Helpers para estadísticas: últimos N días, resumen semanal, etc.
  */
 
-export function fechaToISO(d) {
-  return d.toISOString().slice(0, 10)
-}
+import { fechaToISO } from './calorias.js'
+
+export { fechaToISO }
 
 export function getUltimosNDias(n = 7) {
   const hoy = new Date()

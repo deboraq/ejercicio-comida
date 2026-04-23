@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStorage } from '../hooks/useStorage'
 import { getConsejosDelDia } from '../utils/consejos'
-import { caloriasQuemadas, formatearFecha, getCategoriaTipo } from '../utils/calorias'
+import { caloriasQuemadas, formatearFecha, fechaToISO, getCategoriaTipo } from '../utils/calorias'
 import { REFERENCIA_ALIMENTOS, buscarAlimentos } from '../utils/referenciaComidas'
 import { PERIODOS, getRangoPorPeriodo, filtrarPorRango } from '../utils/estadisticas'
 
@@ -23,7 +23,7 @@ export default function Comida() {
   const [ejercicios] = useStorage('ejercicios', [])
   const [config] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
   const [comida, setComida] = useState('Desayuno')
-  const [fechaInput, setFechaInput] = useState(new Date().toISOString().slice(0, 10))
+  const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
   const [notas, setNotas] = useState('')
   const [items, setItems] = useState([])
   const [busquedaRef, setBusquedaRef] = useState('')
@@ -33,7 +33,7 @@ export default function Comida() {
   const [hastaCustom, setHastaCustom] = useState('')
 
   const resultadosBusqueda = buscarAlimentos(busquedaRef)
-  const hoy = new Date().toISOString().slice(0, 10)
+  const hoy = fechaToISO(new Date())
   const { desde, hasta } = getRangoPorPeriodo(periodo, desdeCustom, hastaCustom)
   const registrosEnRango = filtrarPorRango(registros, desde, hasta)
   const porFechaEnRango = registrosEnRango.reduce((acc, r) => {
@@ -153,7 +153,7 @@ export default function Comida() {
         )}
 
         <div className="box mb-4 py-3">
-          <h2 className="title is-6 is-size-7 mb-2">Registrar comida</h2>
+          <h2 className="title is-6 mb-2">Registrar comida</h2>
           <form onSubmit={guardarComida}>
             <div className="field">
               <label className="label is-size-7">Fecha</label>
@@ -321,7 +321,7 @@ export default function Comida() {
           </form>
         </div>
 
-        <h2 className="title is-6 is-size-7 mb-2">Hoy — Resumen</h2>
+        <h2 className="title is-6 mb-2">Hoy — Resumen</h2>
         <div className="box mb-3 py-3">
           <div className="columns is-mobile is-multiline">
             <div className="column is-half">
@@ -360,7 +360,7 @@ export default function Comida() {
           )}
         </div>
 
-        <h2 className="title is-6 is-size-7 mb-2">Hoy — Detalle</h2>
+        <h2 className="title is-6 mb-2">Hoy — Detalle</h2>
         {hoyRegistros.length === 0 ? (
           <div className="box has-text-centered has-text-grey is-size-7 py-3 mb-4">Aún no has registrado comidas hoy.</div>
         ) : (
@@ -402,7 +402,7 @@ export default function Comida() {
           </div>
         )}
 
-        <h2 className="title is-6 is-size-7 mb-2">Historial por período</h2>
+        <h2 className="title is-6 mb-2">Historial por período</h2>
         <div className="box mb-3 py-3">
           <label className="label is-size-7">Ver período</label>
           <div className="field">

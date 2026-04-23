@@ -45,7 +45,7 @@ export default function Config() {
         </header>
 
         <div className="box mb-4 py-3">
-          <h2 className="title is-6 is-size-7 mb-2">Cuenta</h2>
+          <h2 className="title is-6 mb-2">Cuenta</h2>
           <p className="is-size-7 has-text-grey mb-2">
             Con una cuenta tu progreso se guarda en la nube y podrás recuperarlo en otro dispositivo.
           </p>
@@ -66,7 +66,7 @@ export default function Config() {
         </div>
 
         <div className="box mb-4 py-3">
-          <h2 className="title is-6 is-size-7 mb-2">Tu objetivo</h2>
+          <h2 className="title is-6 mb-2">Tu objetivo</h2>
           <div className="buttons are-small is-flex-wrap-wrap">
             {OBJETIVOS.map((o) => (
               <button
@@ -83,7 +83,7 @@ export default function Config() {
         </div>
 
         <div className="box mb-4 py-3">
-          <h2 className="title is-6 is-size-7 mb-2">Metas diarias (opcional)</h2>
+          <h2 className="title is-6 mb-2">Metas diarias (opcional)</h2>
           <p className="is-size-7 has-text-grey mb-2">Para ver barras de progreso en Inicio y Comida.</p>
           <div className="columns">
             <div className="column">
@@ -106,7 +106,7 @@ export default function Config() {
         </div>
 
         <div className="box mb-4 py-3">
-          <h2 className="title is-6 is-size-7 mb-2">Peso (kg)</h2>
+          <h2 className="title is-6 mb-2">Peso (kg)</h2>
           <p className="is-size-7 has-text-grey mb-2">
             Se usa para estimar calorías quemadas en ejercicio. Aproximado.
           </p>
@@ -126,7 +126,7 @@ export default function Config() {
         </div>
 
         <div className="box py-3">
-          <h2 className="title is-6 is-size-7 mb-2">Suplementos que tomas</h2>
+          <h2 className="title is-6 mb-2">Suplementos que tomas</h2>
           <p className="is-size-7 has-text-grey mb-2">
             Elige cuáles quieres registrar cada día. En Inicio podrás marcar si los tomaste.
           </p>

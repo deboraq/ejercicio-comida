@@ -159,14 +159,18 @@ export function formatearFecha(iso) {
   const hoy = new Date()
   const ayer = new Date(hoy)
   ayer.setDate(ayer.getDate() - 1)
-  if (iso === hoy.toISOString().slice(0, 10)) return 'Hoy'
-  if (iso === ayer.toISOString().slice(0, 10)) return 'Ayer'
+  if (iso === fechaToISO(hoy)) return 'Hoy'
+  if (iso === fechaToISO(ayer)) return 'Ayer'
   const d = new Date(iso + 'T12:00:00')
   return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
+/** Fecha calendario local en YYYY-MM-DD (no usar toISOString: es UTC y desfasa el día según zona). */
 export function fechaToISO(date) {
-  return date.toISOString().slice(0, 10)
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 export function restarDias(iso, dias) {

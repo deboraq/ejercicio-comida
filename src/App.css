@@ -1,8 +1,77 @@
+/* Tipografía unificada: un tamaño de cuerpo; títulos de sección un poco más; título de página un poco más */
+:root {
+  --app-fs-body: 0.9375rem; /* 15px */
+  --app-fs-title: 1.0625rem; /* ~17px secciones h2/h3 */
+  --app-fs-page: 1.25rem; /* ~20px título principal */
+  --app-lh: 1.45;
+}
+
 .app-layout {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   padding-bottom: 80px; /* espacio para la barra inferior y que no tape el contenido */
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: var(--app-fs-body);
+  line-height: var(--app-lh);
+}
+
+/* Cuerpo: mismo tamaño en labels, ayudas, listas, tags, checkboxes */
+.app-layout .label,
+.app-layout .is-size-7,
+.app-layout .message-body,
+.app-layout .checkbox,
+.app-layout .notification,
+.app-layout .tabs a,
+.app-layout .navbar-item span:not(.navbar-emoji) {
+  font-size: var(--app-fs-body) !important;
+}
+
+.app-layout .subtitle,
+.app-layout .subtitle.is-6,
+.app-layout .subtitle.is-7 {
+  font-size: var(--app-fs-body) !important;
+  line-height: var(--app-lh) !important;
+}
+
+.app-layout .input,
+.app-layout .input.is-small,
+.app-layout .textarea,
+.app-layout .select select {
+  font-size: var(--app-fs-body) !important;
+}
+
+.app-layout .button.is-small {
+  font-size: var(--app-fs-body) !important;
+}
+
+/* Título principal de página (h1) */
+.app-layout h1.title {
+  font-size: var(--app-fs-page) !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+}
+
+/* Títulos de sección (h2 / h3 con .title.is-6) */
+.app-layout h2.title.is-6,
+.app-layout h3.title.is-6 {
+  font-size: var(--app-fs-title) !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+}
+
+/* Números y énfasis en cajas (no son títulos de sección): mismo tamaño que cuerpo, en negrita */
+.app-layout p.title.is-5,
+.app-layout p.title.is-6 {
+  font-size: var(--app-fs-body) !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+}
+
+/* Mes del calendario (Inicio / Rutina) alineado con títulos de sección */
+.app-layout .is-size-6.has-text-weight-medium {
+  font-size: var(--app-fs-title) !important;
+  font-weight: 600 !important;
 }
 
 .main-content {

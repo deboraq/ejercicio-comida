@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useStorage } from '../hooks/useStorage'
-import { caloriasQuemadas, formatearFecha, TIPOS_EJERCICIO_AGRUPADOS, etiquetaTipo } from '../utils/calorias'
+import { caloriasQuemadas, formatearFecha, fechaToISO, TIPOS_EJERCICIO_AGRUPADOS, etiquetaTipo } from '../utils/calorias'
 
 const TIPO_DEFAULT = TIPOS_EJERCICIO_AGRUPADOS[0].opciones[0].value
 const TIPOS_FLAT = TIPOS_EJERCICIO_AGRUPADOS.flatMap((g) => g.opciones)
@@ -12,13 +12,14 @@ export default function Ejercicios() {
   const [tipo, setTipo] = useState(TIPO_DEFAULT)
   const [duracion, setDuracion] = useState('')
   const [notas, setNotas] = useState('')
-  const [fechaInput, setFechaInput] = useState(new Date().toISOString().slice(0, 10))
+  const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
   const [filtroTexto, setFiltroTexto] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroDesde, setFiltroDesde] = useState('')
   const [filtroHasta, setFiltroHasta] = useState('')
   const [busquedaTipo, setBusquedaTipo] = useState('')
   const [mostrarDropdownTipo, setMostrarDropdownTipo] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
   const refTipoDropdown = useRef(null)
 
   const tipoSeleccionadoLabel = TIPOS_FLAT.find((o) => o.value === tipo)?.label ?? ''
@@ -36,29 +37,59 @@ export default function Ejercicios() {
 
   const pesoKg = config?.pesoKg || 70
 
+  const limpiarFormulario = () => {
+    setNombre('')
+    setTipo(TIPO_DEFAULT)
+    setDuracion('')
+    setNotas('')
+    setFechaInput(fechaToISO(new Date()))
+    setEditandoId(null)
+    setBusquedaTipo('')
+    setMostrarDropdownTipo(false)
+  }
+
   const agregar = (e) => {
     e.preventDefault()
     if (!nombre.trim() || !duracion || Number(duracion) <= 0) return
-    const fecha = fechaInput || new Date().toISOString().slice(0, 10)
-    setEjercicios([
-      {
-        id: crypto.randomUUID(),
-        nombre: nombre.trim(),
-        tipo,
-        duracion: Number(duracion),
-        notas: notas.trim(),
-        fecha,
-      },
-      ...ejercicios,
-    ])
-    setNombre('')
-    setDuracion('')
-    setNotas('')
-    setFechaInput(new Date().toISOString().slice(0, 10))
+    const fecha = fechaInput || fechaToISO(new Date())
+    if (editandoId) {
+      setEjercicios((prev) =>
+        prev.map((item) =>
+          item.id === editandoId
+            ? { ...item, nombre: nombre.trim(), tipo, duracion: Number(duracion), notas: notas.trim(), fecha }
+            : item
+        )
+      )
+    } else {
+      setEjercicios((prev) => [
+        {
+          id: crypto.randomUUID(),
+          nombre: nombre.trim(),
+          tipo,
+          duracion: Number(duracion),
+          notas: notas.trim(),
+          fecha,
+        },
+        ...prev,
+      ])
+    }
+    limpiarFormulario()
+  }
+
+  const iniciarEdicion = (item) => {
+    setEditandoId(item.id)
+    setNombre(item.nombre || '')
+    setTipo(item.tipo || TIPO_DEFAULT)
+    setDuracion(item.duracion != null ? String(item.duracion) : '')
+    setNotas(item.notas || '')
+    setFechaInput(item.fecha || fechaToISO(new Date()))
+    setBusquedaTipo('')
+    setMostrarDropdownTipo(false)
   }
 
   const eliminar = (id) => {
-    setEjercicios(ejercicios.filter((e) => e.id !== id))
+    setEditandoId((eid) => (eid === id ? null : eid))
+    setEjercicios((prev) => prev.filter((e) => e.id !== id))
   }
 
   const ejerciciosFiltrados = ejercicios.filter((e) => {
@@ -82,11 +113,11 @@ export default function Ejercicios() {
   }, {})
 
   const minutosHoy = ejercicios
-    .filter((e) => e.fecha === new Date().toISOString().slice(0, 10))
+    .filter((e) => e.fecha === fechaToISO(new Date()))
     .reduce((s, e) => s + e.duracion, 0)
 
   const caloriasHoy = ejercicios
-    .filter((e) => e.fecha === new Date().toISOString().slice(0, 10))
+    .filter((e) => e.fecha === fechaToISO(new Date()))
     .reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoKg), 0)
 
   return (
@@ -113,7 +144,7 @@ export default function Ejercicios() {
         </div>
 
         <div className="box mb-4 py-3">
-          <h2 className="title is-6 is-size-7 mb-2">Nuevo ejercicio</h2>
+          <h2 className="title is-6 mb-2">{editandoId ? 'Editar ejercicio' : 'Nuevo ejercicio'}</h2>
           <form onSubmit={agregar}>
             <div className="field">
               <label className="label is-size-7">Fecha</label>
@@ -219,13 +250,22 @@ export default function Ejercicios() {
             </div>
             <div className="field">
               <div className="control">
-                <button type="submit" className="button is-link is-fullwidth is-small">Guardar ejercicio</button>
+                <button type="submit" className="button is-link is-fullwidth is-small">
+                  {editandoId ? 'Guardar cambios' : 'Guardar ejercicio'}
+                </button>
               </div>
             </div>
+            {editandoId && (
+              <div className="field mb-0">
+                <button type="button" className="button is-light is-fullwidth is-small" onClick={limpiarFormulario}>
+                  Cancelar edición
+                </button>
+              </div>
+            )}
           </form>
         </div>
 
-        <h2 className="title is-6 is-size-7 mb-2">Historial por día</h2>
+        <h2 className="title is-6 mb-2">Historial por día</h2>
         <div className="box mb-4 py-3">
           <p className="is-size-7 has-text-grey mb-2">Filtrar historial</p>
           <div className="columns is-mobile is-multiline is-variable is-1">
@@ -322,14 +362,23 @@ export default function Ejercicios() {
                                 </span>
                               )}
                             </div>
-                            <button
-                              type="button"
-                              className="button is-small is-text has-text-grey"
-                              onClick={() => eliminar(e.id)}
-                              aria-label="Eliminar"
-                            >
-                              ×
-                            </button>
+                            <div className="is-flex is-align-items-flex-start" style={{ gap: '0.25rem' }}>
+                              <button
+                                type="button"
+                                className="button is-small is-text"
+                                onClick={() => iniciarEdicion(e)}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                className="button is-small is-text has-text-grey"
+                                onClick={() => eliminar(e.id)}
+                                aria-label="Eliminar"
+                              >
+                                ×
+                              </button>
+                            </div>
                           </div>
                         </li>
                       ))}
