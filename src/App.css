@@ -362,7 +362,6 @@
 /* —— Comida: layout y legibilidad —— */
 .comida-page .comida-hoy-resumen,
 .comida-page .comida-form-card,
-.comida-page .comida-detalle-hoy-card,
 .comida-page .comida-filtro-periodo {
   border-radius: 12px;
 }
@@ -502,7 +501,7 @@
 }
 
 /*
- * Filas de comida (detalle + historial): tono oscuro fijo.
+ * Filas de comida (historial): tono oscuro fijo.
  * No usar solo prefers-color-scheme: si el SO está en claro o el navegador aplica “auto dark”,
  * las filas quedaban casi blancas (#fff + rgba negro mínimo). Mismo criterio que dropdown-panel.
  */

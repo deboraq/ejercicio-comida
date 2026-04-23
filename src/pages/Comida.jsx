@@ -159,12 +159,6 @@ export default function Comida() {
     setRegistros(registros.filter((r) => r.id !== id))
   }
 
-  const porFecha = registros.reduce((acc, r) => {
-    if (!acc[r.fecha]) acc[r.fecha] = []
-    acc[r.fecha].push(r)
-    return acc
-  }, {})
-
   const hoyRegistros = registros.filter((r) => fechaSoloDia(r.fecha) === hoy)
   const caloriasHoy = hoyRegistros.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
   const proteinasHoy = hoyRegistros.reduce((s, r) => s + (Number(r.proteinas) || 0), 0)
@@ -197,7 +191,7 @@ export default function Comida() {
       <div className="container" style={{ maxWidth: '560px' }}>
         <header className="mb-4">
           <h1 className="title is-5 mb-2">Comida</h1>
-          <p className="subtitle has-text-grey mb-0">Resumen del día, registro rápido e historial en un solo lugar.</p>
+          <p className="subtitle has-text-grey mb-0">Resumen del día, registro rápido e historial.</p>
         </header>
 
         {consejos.length > 0 && (
@@ -462,15 +456,6 @@ export default function Comida() {
               </div>
             </div>
           </form>
-        </div>
-
-        <div className="box comida-detalle-hoy-card mb-4">
-          <h2 className="title is-6 mb-2">Detalle de hoy</h2>
-          {hoyRegistros.length === 0 ? (
-            <p className="is-size-7 has-text-grey mb-0">Todavía no cargaste comidas para hoy. Usá el formulario de arriba.</p>
-          ) : (
-            <ListaComidaAgrupada bloques={agruparComidasPorMomento(hoyRegistros)} onEliminar={eliminar} />
-          )}
         </div>
 
         <h2 className="title is-6 mb-2">Historial</h2>
