@@ -30,6 +30,50 @@ function crearItemVacio() {
   }
 }
 
+function ListaComidaAgrupada({ bloques, onEliminar }) {
+  if (!bloques.length) return null
+  return (
+    <>
+      {bloques.map(({ tipo, items: itemsGrupo }) => {
+        const calGrupo = itemsGrupo.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
+        return (
+          <div key={tipo} className="mb-3">
+            <p className="comida-grupo-titulo mb-2">
+              <span className={`tag is-light is-size-7 ${tipo === 'Otros' ? 'is-dark' : 'is-info'}`}>{tipo}</span>
+              {calGrupo > 0 && (
+                <span className="is-size-7 has-text-grey ml-2">{calGrupo} kcal en este momento</span>
+              )}
+            </p>
+            <ul className="comida-lista-dia">
+              {itemsGrupo.map((r) => (
+                <li key={r.id} className="comida-linea-dia">
+                  <div className="comida-linea-dia-inner">
+                    <div className="is-flex-grow-1" style={{ minWidth: 0 }}>
+                      <p className="comida-linea-nombre mb-1">{r.descripcion}</p>
+                      {(r.calorias != null || r.proteinas != null || r.carbohidratos != null || r.porciones) && (
+                        <div className="comida-macros">
+                          {r.calorias != null && <span className="tag is-light is-size-7">{r.calorias} kcal</span>}
+                          {r.proteinas != null && <span className="tag is-success is-light is-size-7">P {r.proteinas} g</span>}
+                          {r.carbohidratos != null && <span className="tag is-warning is-light is-size-7">C {r.carbohidratos} g</span>}
+                          {r.porciones && <span className="is-size-7 has-text-grey ml-1">{r.porciones}</span>}
+                        </div>
+                      )}
+                      {r.notas && <p className="is-size-7 has-text-grey mt-1 mb-0">Nota: {r.notas}</p>}
+                    </div>
+                    <button type="button" className="button is-small is-text comida-linea-eliminar" onClick={() => onEliminar(r.id)} aria-label="Eliminar">
+                      ×
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 export default function Comida() {
   const [registros, setRegistros] = useStorage('comida', [])
   const [ejercicios] = useStorage('ejercicios', [])
@@ -218,50 +262,6 @@ export default function Comida() {
               )}
             </div>
           )}
-
-          <div className="mt-4 pt-4 comida-meta-borde">
-            <p className="is-size-7 has-text-grey mb-2 has-text-weight-semibold">Detalle de hoy</p>
-            {hoyRegistros.length === 0 ? (
-              <p className="is-size-7 has-text-grey mb-0">Todavía no cargaste comidas para hoy. Usá el formulario de abajo.</p>
-            ) : (
-              <div>
-                {COMIDAS.map((tipoComida) => {
-                  const itemsDelTipo = hoyRegistros.filter((r) => r.comida === tipoComida)
-                  if (itemsDelTipo.length === 0) return null
-                  const calTipo = itemsDelTipo.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
-                  return (
-                    <div key={tipoComida} className="mb-3">
-                      <p className="comida-grupo-titulo mb-2">
-                        <span className="tag is-info is-light">{tipoComida}</span>
-                        {calTipo > 0 && <span className="is-size-7 has-text-grey ml-2">{calTipo} kcal en este momento</span>}
-                      </p>
-                      <ul className="comida-lista-dia">
-                        {itemsDelTipo.map((r) => (
-                          <li key={r.id} className="comida-linea-dia">
-                            <div className="comida-linea-dia-inner">
-                              <div className="is-flex-grow-1" style={{ minWidth: 0 }}>
-                                <p className="comida-linea-nombre mb-1">{r.descripcion}</p>
-                                <div className="comida-macros">
-                                  {r.calorias != null && <span className="tag is-light">{r.calorias} kcal</span>}
-                                  {r.proteinas != null && <span className="tag is-success is-light">P {r.proteinas} g</span>}
-                                  {r.carbohidratos != null && <span className="tag is-warning is-light">C {r.carbohidratos} g</span>}
-                                  {r.porciones && <span className="is-size-7 has-text-grey ml-1">{r.porciones}</span>}
-                                </div>
-                                {r.notas && <p className="is-size-7 has-text-grey mt-1 mb-0">Nota: {r.notas}</p>}
-                              </div>
-                              <button type="button" className="button is-small is-light" onClick={() => eliminar(r.id)} aria-label="Eliminar">
-                                ×
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
         </div>
 
         <div className="box comida-form-card mb-4">
@@ -463,6 +463,15 @@ export default function Comida() {
           </form>
         </div>
 
+        <div className="box comida-detalle-hoy-card mb-4">
+          <h2 className="title is-6 mb-2">Detalle de hoy</h2>
+          {hoyRegistros.length === 0 ? (
+            <p className="is-size-7 has-text-grey mb-0">Todavía no cargaste comidas para hoy. Usá el formulario de arriba.</p>
+          ) : (
+            <ListaComidaAgrupada bloques={agruparComidasPorMomento(hoyRegistros)} onEliminar={eliminar} />
+          )}
+        </div>
+
         <h2 className="title is-6 mb-2">Historial</h2>
         <div className="box comida-filtro-periodo mb-3 py-3">
           <label className="label is-size-7 mb-2">Período</label>
@@ -513,42 +522,7 @@ export default function Comida() {
                       </span>
                     </div>
                     <div className="comida-hist-grupos-dia">
-                      {agruparComidasPorMomento(lista).map(({ tipo, items: itemsGrupo }) => {
-                        const calGrupo = itemsGrupo.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
-                        return (
-                          <div key={tipo} className="mb-3">
-                            <p className="comida-grupo-titulo mb-2">
-                              <span className={`tag is-light is-size-7 ${tipo === 'Otros' ? 'is-dark' : 'is-info'}`}>{tipo}</span>
-                              {calGrupo > 0 && (
-                                <span className="is-size-7 has-text-grey ml-2">{calGrupo} kcal en este momento</span>
-                              )}
-                            </p>
-                            <ul className="comida-lista-dia">
-                              {itemsGrupo.map((r) => (
-                                <li key={r.id} className="comida-linea-dia">
-                                  <div className="comida-linea-dia-inner">
-                                    <div className="is-flex-grow-1" style={{ minWidth: 0 }}>
-                                      <p className="comida-linea-nombre mb-1">{r.descripcion}</p>
-                                      {(r.calorias != null || r.proteinas != null || r.carbohidratos != null || r.porciones) && (
-                                        <div className="comida-macros">
-                                          {r.calorias != null && <span className="tag is-light is-size-7">{r.calorias} kcal</span>}
-                                          {r.proteinas != null && <span className="tag is-success is-light is-size-7">P {r.proteinas} g</span>}
-                                          {r.carbohidratos != null && <span className="tag is-warning is-light is-size-7">C {r.carbohidratos} g</span>}
-                                          {r.porciones && <span className="is-size-7 has-text-grey ml-1">{r.porciones}</span>}
-                                        </div>
-                                      )}
-                                      {r.notas && <p className="is-size-7 has-text-grey mt-1 mb-0">Nota: {r.notas}</p>}
-                                    </div>
-                                    <button type="button" className="button is-small is-light" onClick={() => eliminar(r.id)} aria-label="Eliminar">
-                                      ×
-                                    </button>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )
-                      })}
+                      <ListaComidaAgrupada bloques={agruparComidasPorMomento(lista)} onEliminar={eliminar} />
                     </div>
                   </li>
                 )
