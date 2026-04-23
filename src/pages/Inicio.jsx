@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useStorage } from '../hooks/useStorage'
-import { caloriasQuemadas, formatearFecha, fechaToISO, getCategoriaTipo, etiquetaTipo } from '../utils/calorias'
+import { caloriasQuemadas, formatearFecha, fechaToISO, fechaSoloDia, getCategoriaTipo, etiquetaTipo } from '../utils/calorias'
 import { getConsejosDelDia, OBJETIVOS } from '../utils/consejos'
-import { getRachaDias, PERIODOS, getRangoPorPeriodo, getFechasEnRango } from '../utils/estadisticas'
+import { getRachaDias, PERIODOS, getRangoPorPeriodo, getFechasEnRango, getUltimosNDias } from '../utils/estadisticas'
 import { SUPLEMENTOS, getSuplementoLabel } from '../utils/suplementos'
 
 export default function Inicio() {
@@ -50,17 +50,17 @@ export default function Inicio() {
   }, [tooltipDia, detalleFijado])
 
   const diaEnVista = fechaCalendarioSeleccionada || hoy
-  const ejerciciosDelDia = ejercicios.filter((e) => e.fecha === diaEnVista)
-  const comidasDelDia = comida.filter((c) => c.fecha === diaEnVista)
-  const suplementosDelDia = suplementos.find((s) => s.fecha === diaEnVista)?.items ?? []
+  const ejerciciosDelDia = ejercicios.filter((e) => fechaSoloDia(e.fecha) === diaEnVista)
+  const comidasDelDia = comida.filter((c) => fechaSoloDia(c.fecha) === diaEnVista)
+  const suplementosDelDia = suplementos.find((s) => fechaSoloDia(s.fecha) === diaEnVista)?.items ?? []
 
   const suplementosActivos = config?.suplementosActivos ?? SUPLEMENTOS.map((s) => s.id)
   const listaParaMarcar = SUPLEMENTOS.filter((s) => suplementosActivos.includes(s.id))
 
   const toggleSuplementoDia = (id) => {
     setSuplementos((prev) => {
-      const rest = prev.filter((s) => s.fecha !== diaEnVista)
-      const current = prev.find((s) => s.fecha === diaEnVista)?.items ?? []
+      const rest = prev.filter((s) => fechaSoloDia(s.fecha) !== diaEnVista)
+      const current = prev.find((s) => fechaSoloDia(s.fecha) === diaEnVista)?.items ?? []
       const has = current.includes(id)
       const newItems = has ? current.filter((x) => x !== id) : [...current, id]
       if (newItems.length === 0) return rest
@@ -76,6 +76,13 @@ export default function Inicio() {
   const caloriasConsumidasDia = comidasDelDia.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
   const proteinasDia = comidasDelDia.reduce((s, r) => s + (Number(r.proteinas) || 0), 0)
   const carbosDia = comidasDelDia.reduce((s, r) => s + (Number(r.carbohidratos) || 0), 0)
+
+  const diasUltimos7 = getUltimosNDias(7)
+  const ejerciciosUltimos7 = ejercicios.filter((e) => diasUltimos7.includes(fechaSoloDia(e.fecha)))
+  const minutosUltimos7 = ejerciciosUltimos7.reduce((s, e) => s + e.duracion, 0)
+  const calQuemUltimos7 = ejerciciosUltimos7.reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, config?.pesoKg || 70), 0)
+  const comidasUltimos7 = comida.filter((c) => diasUltimos7.includes(fechaSoloDia(c.fecha)))
+  const calConsumidasUltimos7 = comidasUltimos7.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
 
   const ejerciciosPorTipo = ejerciciosDelDia.reduce((acc, ex) => {
     const cat = getCategoriaTipo(ex.tipo)
@@ -94,15 +101,18 @@ export default function Inicio() {
 
   const objetivoLabel = OBJETIVOS.find((o) => o.value === config?.objetivo)?.label || 'Mantener peso'
 
-  const racha = getRachaDias([...ejercicios.map((e) => ({ fecha: e.fecha })), ...comida.map((c) => ({ fecha: c.fecha }))], hoy)
+  const racha = getRachaDias(
+    [...ejercicios.map((e) => ({ fecha: fechaSoloDia(e.fecha) })), ...comida.map((c) => ({ fecha: fechaSoloDia(c.fecha) }))],
+    hoy
+  )
 
   const { desde, hasta } = getRangoPorPeriodo(periodo, desdeCustom, hastaCustom)
   const fechasEnPeriodo = getFechasEnRango(desde, hasta)
   const caloriasPorDiaEnPeriodo = fechasEnPeriodo.slice(-31).map((f) => ({
     fecha: f,
-    cal: comida.filter((c) => c.fecha === f).reduce((s, r) => s + (Number(r.calorias) || 0), 0),
-    quemadas: ejercicios.filter((e) => e.fecha === f).reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, config?.pesoKg || 70), 0),
-    pro: comida.filter((c) => c.fecha === f).reduce((s, r) => s + (Number(r.proteinas) || 0), 0),
+    cal: comida.filter((c) => fechaSoloDia(c.fecha) === f).reduce((s, r) => s + (Number(r.calorias) || 0), 0),
+    quemadas: ejercicios.filter((e) => fechaSoloDia(e.fecha) === f).reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, config?.pesoKg || 70), 0),
+    pro: comida.filter((c) => fechaSoloDia(c.fecha) === f).reduce((s, r) => s + (Number(r.proteinas) || 0), 0),
   }))
   const totalCalPeriodo = caloriasPorDiaEnPeriodo.reduce((s, d) => s + d.cal, 0)
   const totalQuemadasPeriodo = caloriasPorDiaEnPeriodo.reduce((s, d) => s + d.quemadas, 0)
@@ -113,26 +123,26 @@ export default function Inicio() {
   const numDiasPeriodo = caloriasPorDiaEnPeriodo.length
 
   const diasConSuplementosPeriodo = caloriasPorDiaEnPeriodo.filter((d) => {
-    const items = suplementos.find((s) => s.fecha === d.fecha)?.items ?? []
+    const items = suplementos.find((s) => fechaSoloDia(s.fecha) === d.fecha)?.items ?? []
     return items.length > 0
   }).length
   const suplementosPorTipoPeriodo = (config?.suplementosActivos ?? SUPLEMENTOS.map((s) => s.id)).reduce((acc, id) => {
     acc[id] = caloriasPorDiaEnPeriodo.filter((d) => {
-      const items = suplementos.find((s) => s.fecha === d.fecha)?.items ?? []
+      const items = suplementos.find((s) => fechaSoloDia(s.fecha) === d.fecha)?.items ?? []
       return items.includes(id)
     }).length
     return acc
   }, {})
 
   function getDetalleDia(fecha) {
-    const comidasDelDiaF = comida.filter((c) => c.fecha === fecha)
+    const comidasDelDiaF = comida.filter((c) => fechaSoloDia(c.fecha) === fecha)
     const cal = comidasDelDiaF.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
-    const quemadas = ejercicios.filter((e) => e.fecha === fecha).reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, config?.pesoKg || 70), 0)
+    const quemadas = ejercicios.filter((e) => fechaSoloDia(e.fecha) === fecha).reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, config?.pesoKg || 70), 0)
     const pro = comidasDelDiaF.reduce((s, r) => s + (Number(r.proteinas) || 0), 0)
     const carbos = comidasDelDiaF.reduce((s, r) => s + (Number(r.carbohidratos) || 0), 0)
     const numComidas = comidasDelDiaF.length
-    const minutos = ejercicios.filter((e) => e.fecha === fecha).reduce((s, e) => s + e.duracion, 0)
-    const sups = suplementos.find((s) => s.fecha === fecha)?.items ?? []
+    const minutos = ejercicios.filter((e) => fechaSoloDia(e.fecha) === fecha).reduce((s, e) => s + e.duracion, 0)
+    const sups = suplementos.find((s) => fechaSoloDia(s.fecha) === fecha)?.items ?? []
     const itemsComida = comidasDelDiaF.map((r) => ({ tipo: r.comida || 'Comida', descripcion: r.descripcion || '', kcal: r.calorias }))
     return { fecha, cal, quemadas, pro, carbos, numComidas, minutos, suplementos: sups, itemsComida }
   }
@@ -157,11 +167,11 @@ export default function Inicio() {
 
   const diasDelMes = getDiasDelMes(mesCalendario)
   const fechasConActividad = new Set([
-    ...ejercicios.map((e) => e.fecha),
-    ...registrosRutina.map((r) => r.fecha),
+    ...ejercicios.map((e) => fechaSoloDia(e.fecha)),
+    ...registrosRutina.map((r) => fechaSoloDia(r.fecha)),
   ])
-  const rutinaDelDiaCalendario = registrosRutina.filter((r) => r.fecha === diaEnVista)
-  const ejerciciosDelDiaCalendario = ejercicios.filter((e) => e.fecha === diaEnVista)
+  const rutinaDelDiaCalendario = registrosRutina.filter((r) => fechaSoloDia(r.fecha) === diaEnVista)
+  const ejerciciosDelDiaCalendario = ejercicios.filter((e) => fechaSoloDia(e.fecha) === diaEnVista)
 
   return (
     <section className="section" style={{ paddingBottom: '2rem' }}>
@@ -455,6 +465,9 @@ export default function Inicio() {
           )}
           <p className="is-size-7 has-text-grey mt-3 mb-2">Calorías por día</p>
           <p className="is-size-7 has-text-grey mb-2">
+            Cada columna es un día del rango (orden cronológico). Debajo: día de la semana en español.
+          </p>
+          <p className="is-size-7 has-text-grey mb-2">
             Referencia: máx. consumidas <strong>{maxCalDiaPeriodo}</strong> kcal · máx. quemadas <strong>{maxQuemadasPeriodo}</strong> kcal
           </p>
           <div
@@ -537,11 +550,21 @@ export default function Inicio() {
             <span className="ml-3 has-background-success" style={{ padding: '0 6px', marginRight: '4px', opacity: 0.85 }} /> Quemadas
           </p>
           <div className="is-flex is-size-7 has-text-grey mt-2" style={{ gap: '2px' }}>
-            {caloriasPorDiaEnPeriodo.map((d) => (
-              <span key={d.fecha} className="is-flex-grow-1 has-text-centered" style={{ overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.65rem' }}>
-                {d.fecha.slice(8)}/{d.fecha.slice(5, 7)}
-              </span>
-            ))}
+            {caloriasPorDiaEnPeriodo.map((d) => {
+              const diaSem = new Date(`${d.fecha}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short' })
+              return (
+                <span
+                  key={d.fecha}
+                  className="is-flex-grow-1 has-text-centered"
+                  style={{ overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.65rem', lineHeight: 1.2 }}
+                >
+                  <span className="is-block">{d.fecha.slice(8)}/{d.fecha.slice(5, 7)}</span>
+                  <span className="is-block" style={{ fontSize: '0.58rem', opacity: 0.9 }}>
+                    {diaSem}
+                  </span>
+                </span>
+              )
+            })}
           </div>
           <div className="is-flex mt-1 is-size-7" style={{ gap: '2px' }}>
             {caloriasPorDiaEnPeriodo.map((d) => (
@@ -655,11 +678,23 @@ export default function Inicio() {
                 <p className="mb-2">🏃</p>
                 <p className="title is-5">Ejercicios</p>
                 <p className="subtitle has-text-grey">Registra actividad y calorías quemadas</p>
-                <p className="mt-3">
+                <p className="is-size-7 has-text-grey mt-2 mb-1">
+                  {diaEnVista === hoy ? 'Hoy' : formatearFecha(diaEnVista)} (día en calendario)
+                </p>
+                <p className="mb-2">
                   <strong className="has-text-link">{minutosDia}</strong>
                   <span className="is-size-7 has-text-grey ml-1">min</span>
                   <span className="ml-2">
                     <strong className="has-text-success">{caloriasQuemadasDia}</strong>
+                    <span className="is-size-7 has-text-grey ml-1">kcal</span>
+                  </span>
+                </p>
+                <p className="is-size-7 has-text-grey mb-1">Últimos 7 días (todos tus registros)</p>
+                <p className="mb-0">
+                  <strong className="has-text-link">{minutosUltimos7}</strong>
+                  <span className="is-size-7 has-text-grey ml-1">min</span>
+                  <span className="ml-2">
+                    <strong className="has-text-success">{calQuemUltimos7}</strong>
                     <span className="is-size-7 has-text-grey ml-1">kcal</span>
                   </span>
                 </p>
@@ -672,11 +707,23 @@ export default function Inicio() {
                 <p className="mb-2">🥗</p>
                 <p className="title is-5">Comida</p>
                 <p className="subtitle has-text-grey">Calorías, proteínas, carbos, porciones</p>
-                <p className="mt-3">
+                <p className="is-size-7 has-text-grey mt-2 mb-1">
+                  {diaEnVista === hoy ? 'Hoy' : formatearFecha(diaEnVista)} (día en calendario)
+                </p>
+                <p className="mb-2">
                   <strong className="has-text-info">{caloriasConsumidasDia || '—'}</strong>
                   <span className="is-size-7 has-text-grey ml-1">kcal</span>
                   <span className="ml-2">
                     <strong>{comidasDelDia.length}</strong>
+                    <span className="is-size-7 has-text-grey ml-1">comidas</span>
+                  </span>
+                </p>
+                <p className="is-size-7 has-text-grey mb-1">Últimos 7 días</p>
+                <p className="mb-0">
+                  <strong className="has-text-info">{calConsumidasUltimos7 || '—'}</strong>
+                  <span className="is-size-7 has-text-grey ml-1">kcal</span>
+                  <span className="ml-2">
+                    <strong>{comidasUltimos7.length}</strong>
                     <span className="is-size-7 has-text-grey ml-1">comidas</span>
                   </span>
                 </p>

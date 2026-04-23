@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useStorage } from '../hooks/useStorage'
-import { caloriasQuemadas, formatearFecha, fechaToISO, TIPOS_EJERCICIO_AGRUPADOS, etiquetaTipo } from '../utils/calorias'
+import { caloriasQuemadas, formatearFecha, fechaToISO, fechaSoloDia, sinAcentos, TIPOS_EJERCICIO_AGRUPADOS, etiquetaTipo } from '../utils/calorias'
+import { getUltimosNDias } from '../utils/estadisticas'
 
 const TIPO_DEFAULT = TIPOS_EJERCICIO_AGRUPADOS[0].opciones[0].value
 const TIPOS_FLAT = TIPOS_EJERCICIO_AGRUPADOS.flatMap((g) => g.opciones)
@@ -21,10 +22,11 @@ export default function Ejercicios() {
   const [mostrarDropdownTipo, setMostrarDropdownTipo] = useState(false)
   const [editandoId, setEditandoId] = useState(null)
   const refTipoDropdown = useRef(null)
+  const refPanelFormulario = useRef(null)
 
   const tipoSeleccionadoLabel = TIPOS_FLAT.find((o) => o.value === tipo)?.label ?? ''
   const tiposFiltrados = busquedaTipo.trim()
-    ? TIPOS_FLAT.filter((o) => o.label.toLowerCase().includes(busquedaTipo.toLowerCase()))
+    ? TIPOS_FLAT.filter((o) => sinAcentos(o.label).includes(sinAcentos(busquedaTipo)))
     : TIPOS_FLAT
 
   useEffect(() => {
@@ -34,6 +36,13 @@ export default function Ejercicios() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    if (!editandoId) return
+    const el = refPanelFormulario.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [editandoId])
 
   const pesoKg = config?.pesoKg || 70
 
@@ -82,7 +91,7 @@ export default function Ejercicios() {
     setTipo(item.tipo || TIPO_DEFAULT)
     setDuracion(item.duracion != null ? String(item.duracion) : '')
     setNotas(item.notas || '')
-    setFechaInput(item.fecha || fechaToISO(new Date()))
+    setFechaInput(fechaSoloDia(item.fecha) || fechaToISO(new Date()))
     setBusquedaTipo('')
     setMostrarDropdownTipo(false)
   }
@@ -94,30 +103,39 @@ export default function Ejercicios() {
 
   const ejerciciosFiltrados = ejercicios.filter((e) => {
     if (filtroTexto.trim()) {
-      const t = filtroTexto.trim().toLowerCase()
-      const matchNombre = e.nombre?.toLowerCase().includes(t)
-      const matchNotas = e.notas?.toLowerCase().includes(t)
-      const matchTipo = etiquetaTipo(e.tipo).toLowerCase().includes(t)
+      const t = sinAcentos(filtroTexto.trim())
+      const matchNombre = sinAcentos(e.nombre || '').includes(t)
+      const matchNotas = sinAcentos(e.notas || '').includes(t)
+      const matchTipo = sinAcentos(etiquetaTipo(e.tipo)).includes(t)
       if (!matchNombre && !matchNotas && !matchTipo) return false
     }
     if (filtroTipo && e.tipo !== filtroTipo) return false
-    if (filtroDesde && e.fecha < filtroDesde) return false
-    if (filtroHasta && e.fecha > filtroHasta) return false
+    const fKey = fechaSoloDia(e.fecha)
+    if (filtroDesde && fKey < filtroDesde) return false
+    if (filtroHasta && fKey > filtroHasta) return false
     return true
   })
 
   const porFecha = ejerciciosFiltrados.reduce((acc, e) => {
-    if (!acc[e.fecha]) acc[e.fecha] = []
-    acc[e.fecha].push(e)
+    const key = fechaSoloDia(e.fecha)
+    if (!acc[key]) acc[key] = []
+    acc[key].push(e)
     return acc
   }, {})
 
-  const minutosHoy = ejercicios
-    .filter((e) => e.fecha === fechaToISO(new Date()))
-    .reduce((s, e) => s + e.duracion, 0)
+  const hoyIso = fechaToISO(new Date())
+  const minutosHoy = ejercicios.filter((e) => fechaSoloDia(e.fecha) === hoyIso).reduce((s, e) => s + e.duracion, 0)
 
   const caloriasHoy = ejercicios
-    .filter((e) => e.fecha === fechaToISO(new Date()))
+    .filter((e) => fechaSoloDia(e.fecha) === hoyIso)
+    .reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoKg), 0)
+
+  const dias7 = getUltimosNDias(7)
+  const minutosUltimos7 = ejercicios
+    .filter((e) => dias7.includes(fechaSoloDia(e.fecha)))
+    .reduce((s, e) => s + e.duracion, 0)
+  const caloriasUltimos7 = ejercicios
+    .filter((e) => dias7.includes(fechaSoloDia(e.fecha)))
     .reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoKg), 0)
 
   return (
@@ -128,22 +146,37 @@ export default function Ejercicios() {
           <p className="is-size-7 has-text-grey mb-0">Registra por día. Calorías quemadas son aproximadas según tipo y duración.</p>
         </header>
 
-        <div className="columns mb-4">
-          <div className="column">
-            <div className="box py-3">
-              <p className="is-size-7 has-text-grey mb-1">Minutos hoy</p>
-              <p className="title is-5 mb-0 has-text-link">{minutosHoy}</p>
+        <div className="box py-3 mb-4">
+          <div className="columns is-mobile mb-0">
+            <div className="column">
+              <p className="is-size-7 has-text-grey mb-1">Hoy ({hoyIso})</p>
+              <p className="mb-0">
+                <span className="title is-5 has-text-link">{minutosHoy}</span>
+                <span className="is-size-7 has-text-grey ml-1">min</span>
+                <span className="ml-2">
+                  <span className="title is-5 has-text-success">{caloriasHoy}</span>
+                  <span className="is-size-7 has-text-grey ml-1">kcal aprox.</span>
+                </span>
+              </p>
+            </div>
+            <div className="column">
+              <p className="is-size-7 has-text-grey mb-1">Últimos 7 días</p>
+              <p className="mb-0">
+                <span className="title is-5 has-text-link">{minutosUltimos7}</span>
+                <span className="is-size-7 has-text-grey ml-1">min</span>
+                <span className="ml-2">
+                  <span className="title is-5 has-text-success">{caloriasUltimos7}</span>
+                  <span className="is-size-7 has-text-grey ml-1">kcal aprox.</span>
+                </span>
+              </p>
             </div>
           </div>
-          <div className="column">
-            <div className="box py-3">
-              <p className="is-size-7 has-text-grey mb-1">Calorías quemadas hoy (aprox.)</p>
-              <p className="title is-5 mb-0 has-text-success">{caloriasHoy}</p>
-            </div>
-          </div>
+          <p className="is-size-7 has-text-grey mb-0 mt-2">
+            Si hoy no registraste nada pero sí otros días, los totales de la semana muestran tu actividad reciente.
+          </p>
         </div>
 
-        <div className="box mb-4 py-3">
+        <div ref={refPanelFormulario} className="box mb-4 py-3" style={{ scrollMarginTop: '0.75rem' }}>
           <h2 className="title is-6 mb-2">{editandoId ? 'Editar ejercicio' : 'Nuevo ejercicio'}</h2>
           <form onSubmit={agregar}>
             <div className="field">

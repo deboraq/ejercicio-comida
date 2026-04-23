@@ -173,6 +173,23 @@ export function fechaToISO(date) {
   return `${y}-${m}-${day}`
 }
 
+/** Si el dato viene con hora (ISO), quedarse solo en YYYY-MM-DD para comparar con el calendario. */
+export function fechaSoloDia(valor) {
+  if (valor == null || valor === '') return ''
+  const s = String(valor)
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/)
+  return m ? m[1] : s.slice(0, 10)
+}
+
+/** Normaliza texto para búsqueda (minúsculas, sin tildes). */
+export function sinAcentos(s) {
+  if (s == null) return ''
+  return String(s)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
 export function restarDias(iso, dias) {
   const d = new Date(iso + 'T12:00:00')
   d.setDate(d.getDate() - dias)
