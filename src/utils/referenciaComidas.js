@@ -4,6 +4,8 @@
  * Sirve para rellenar calorías, proteínas y carbohidratos al registrar comidas.
  */
 
+import { sinAcentos } from './calorias.js'
+
 export const REFERENCIA_ALIMENTOS = [
   // Desayunos y lácteos
   { categoria: 'Desayuno / Lácteos', nombre: 'Avena con leche (1 taza)', calorias: 150, proteinas: 5, carbohidratos: 27, porcion: '1 taza' },
@@ -17,6 +19,14 @@ export const REFERENCIA_ALIMENTOS = [
   { categoria: 'Desayuno / Lácteos', nombre: 'Huevo cocido (1 unidad)', calorias: 78, proteinas: 6, carbohidratos: 0.5, porcion: '1 huevo' },
   { categoria: 'Desayuno / Lácteos', nombre: 'Café con leche', calorias: 50, proteinas: 3, carbohidratos: 5, porcion: '1 taza' },
   { categoria: 'Desayuno / Lácteos', nombre: 'Tostadas con mermelada (2 unid)', calorias: 180, proteinas: 4, carbohidratos: 36, porcion: '2 tostadas' },
+  {
+    categoria: 'Desayuno / Lácteos',
+    nombre: 'Tostadas con huevo y palta (aguacate)',
+    calorias: 430,
+    proteinas: 18,
+    carbohidratos: 34,
+    porcion: '2 tostadas integrales, 2 huevos, 1/2 palta',
+  },
   { categoria: 'Desayuno / Lácteos', nombre: 'Croissant (1 unidad)', calorias: 230, proteinas: 5, carbohidratos: 26, porcion: '1 unidad' },
   { categoria: 'Desayuno / Lácteos', nombre: 'Fruta (plátano mediano)', calorias: 105, proteinas: 1, carbohidratos: 27, porcion: '1 plátano' },
   { categoria: 'Desayuno / Lácteos', nombre: 'Manzana (1 unidad)', calorias: 95, proteinas: 0.5, carbohidratos: 25, porcion: '1 manzana' },
@@ -418,12 +428,12 @@ export function getCategoriasUnicas() {
 /** Buscar por nombre (texto). Devuelve items con _idx para aplicar. */
 export function buscarAlimentos(texto) {
   if (!texto || texto.length < 1) return []
-  const t = texto.toLowerCase().trim()
+  const t = sinAcentos(texto.trim())
   return REFERENCIA_ALIMENTOS.map((a, idx) => ({ ...a, _idx: idx }))
     .filter(
       (a) =>
-        a.nombre.toLowerCase().includes(t) ||
-        a.categoria.toLowerCase().includes(t)
+        sinAcentos(a.nombre).includes(t) ||
+        sinAcentos(a.categoria).includes(t)
     )
     .slice(0, 50)
 }
