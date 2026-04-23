@@ -37,11 +37,11 @@ function ListaComidaAgrupada({ bloques, onEliminar }) {
       {bloques.map(({ tipo, items: itemsGrupo }) => {
         const calGrupo = itemsGrupo.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
         return (
-          <div key={tipo} className="mb-3">
-            <p className="comida-grupo-titulo mb-2">
+          <div key={tipo} className="comida-grupo-bloque">
+            <p className="comida-grupo-titulo mb-0">
               <span className={`tag is-light is-size-7 ${tipo === 'Otros' ? 'is-dark' : 'is-info'}`}>{tipo}</span>
               {calGrupo > 0 && (
-                <span className="is-size-7 has-text-grey ml-2">{calGrupo} kcal en este momento</span>
+                <span className="is-size-7 has-text-grey ml-1">{calGrupo} kcal en este momento</span>
               )}
             </p>
             <ul className="comida-lista-dia">
@@ -49,9 +49,9 @@ function ListaComidaAgrupada({ bloques, onEliminar }) {
                 <li key={r.id} className="comida-linea-dia">
                   <div className="comida-linea-dia-inner">
                     <div className="is-flex-grow-1" style={{ minWidth: 0 }}>
-                      <p className="comida-linea-nombre mb-1">{r.descripcion}</p>
+                      <p className="comida-linea-nombre mb-0">{r.descripcion}</p>
                       {(r.calorias != null || r.proteinas != null || r.carbohidratos != null || r.porciones) && (
-                        <div className="comida-macros">
+                        <div className="comida-macros comida-macros--linea">
                           {r.calorias != null && <span className="tag is-light is-size-7">{r.calorias} kcal</span>}
                           {r.proteinas != null && <span className="tag is-success is-light is-size-7">P {r.proteinas} g</span>}
                           {r.carbohidratos != null && <span className="tag is-warning is-light is-size-7">C {r.carbohidratos} g</span>}
@@ -498,12 +498,12 @@ export default function Comida() {
                 const pro = lista.reduce((s, r) => s + (Number(r.proteinas) || 0), 0)
                 const car = lista.reduce((s, r) => s + (Number(r.carbohidratos) || 0), 0)
                 return (
-                  <li key={fecha} className="mb-4">
-                    <div className="is-flex is-justify-content-space-between is-align-items-center mb-2 is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
+                  <li key={fecha} className="comida-hist-dia">
+                    <div className="is-flex is-justify-content-space-between is-align-items-center comida-hist-dia-cabecera is-flex-wrap-wrap">
                       <p className="title is-6 mb-0 comida-hist-fecha" style={{ textTransform: 'capitalize' }}>
                         {formatearFecha(fecha)}
                       </p>
-                      <span className="tag is-info is-light comida-hist-resumen">
+                      <span className="tag is-info is-light is-size-7 comida-hist-resumen">
                         {cal || '—'} kcal · P {pro || '—'} · C {car || '—'}
                       </span>
                     </div>
