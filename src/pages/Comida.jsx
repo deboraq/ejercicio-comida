@@ -291,10 +291,10 @@ export default function Comida() {
               </div>
             </div>
 
-            <div className="field">
-              <label className="label is-size-7" htmlFor="comida-buscar">Buscar en referencia</label>
+            <div className="field mb-0">
               <div className="columns is-mobile is-variable is-2 mb-0">
                 <div className="column is-two-thirds">
+                  <label className="label is-size-7 mb-1" htmlFor="comida-buscar">Buscar en referencia</label>
                   <div className="control has-icons-left">
                     <input
                       id="comida-buscar"
@@ -309,9 +309,10 @@ export default function Comida() {
                   </div>
                 </div>
                 <div className="column">
-                  <div className="field mb-0">
-                    <label className="is-size-7 has-text-grey is-block mb-1">Cant.</label>
+                  <label className="label is-size-7 has-text-grey mb-1" htmlFor="comida-cant-porciones">Cant.</label>
+                  <div className="control">
                     <input
+                      id="comida-cant-porciones"
                       className="input is-small"
                       type="number"
                       min="1"
