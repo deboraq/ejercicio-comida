@@ -298,16 +298,16 @@ export default function Inicio() {
               <h3 className="title is-6 mb-3">{diaEnVista === hoy ? 'Hoy' : formatearFecha(diaEnVista)} — Lo que hiciste</h3>
               {rutinaDelDiaCalendario.length > 0 && (
                 <div className="mb-4">
-                  <p className="is-size-7 has-text-grey mb-2 has-text-weight-semibold">Rutina / Gimnasio</p>
+                  <p className="is-size-7 mb-2 has-text-weight-semibold inicio-actividad-seccion">Rutina / Gimnasio</p>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {rutinaDelDiaCalendario.map((r) => (
-                      <li key={r.id} className="box py-2 px-3 mb-2 has-background-light">
-                        <strong>{r.ejercicio}</strong>
-                        <span className="is-size-7 ml-2">
+                      <li key={r.id} className="box py-2 px-3 mb-2 inicio-actividad-card">
+                        <strong className="inicio-actividad-card-titulo">{r.ejercicio}</strong>
+                        <span className="is-size-7 ml-2 inicio-actividad-card-meta">
                           {r.series}×{r.repeticiones}
                           {r.pesoKg != null && r.pesoKg > 0 && ` · ${r.pesoKg} kg`}
                         </span>
-                        {r.notas && <p className="is-size-7 has-text-grey mt-1 mb-0">— {r.notas}</p>}
+                        {r.notas && <p className="is-size-7 mt-1 mb-0 inicio-actividad-card-notas">— {r.notas}</p>}
                       </li>
                     ))}
                   </ul>
@@ -315,17 +315,17 @@ export default function Inicio() {
               )}
               {ejerciciosDelDiaCalendario.length > 0 && (
                 <div className="mb-2">
-                  <p className="is-size-7 has-text-grey mb-2 has-text-weight-semibold">Ejercicios (cardio, etc.)</p>
+                  <p className="is-size-7 mb-2 has-text-weight-semibold inicio-actividad-seccion">Ejercicios (cardio, etc.)</p>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {ejerciciosDelDiaCalendario.map((e) => (
-                      <li key={e.id} className="box py-2 px-3 mb-2 has-background-light">
-                        <strong>{e.nombre}</strong>
+                      <li key={e.id} className="box py-2 px-3 mb-2 inicio-actividad-card">
+                        <strong className="inicio-actividad-card-titulo">{e.nombre}</strong>
                         <span className="tag is-link is-light is-size-7 ml-2">{etiquetaTipo(e.tipo)}</span>
-                        <span className="is-size-7 ml-2">{e.duracion} min</span>
-                        <span className="is-size-7 has-text-success ml-1">
+                        <span className="is-size-7 ml-2 inicio-actividad-card-meta">{e.duracion} min</span>
+                        <span className="is-size-7 has-text-success ml-1 inicio-actividad-card-kcal">
                           ~{caloriasQuemadas(e.tipo, e.duracion, pesoCfg)} kcal
                         </span>
-                        {e.notas && <p className="is-size-7 has-text-grey mt-1 mb-0">— {e.notas}</p>}
+                        {e.notas && <p className="is-size-7 mt-1 mb-0 inicio-actividad-card-notas">— {e.notas}</p>}
                       </li>
                     ))}
                   </ul>

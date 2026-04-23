@@ -359,3 +359,29 @@
   color: #111 !important;
 }
 
+/* Subtítulos de sección bajo el calendario (fondo oscuro de la página) */
+.app-layout .inicio-actividad-seccion {
+  color: #d1d5db !important;
+}
+
+/* Calendario Inicio — “Lo que hiciste”: tarjetas siempre legibles (tema oscuro / auto-dark no debe aclarar el título) */
+.app-layout .inicio-actividad-card.box {
+  color-scheme: light;
+  background-color: #f0f0f0 !important;
+  color: #1a1a1a !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+.app-layout .inicio-actividad-card-titulo {
+  color: #0a0a0a !important;
+  font-weight: 700 !important;
+}
+.app-layout .inicio-actividad-card-meta {
+  color: #2d3748 !important;
+}
+.app-layout .inicio-actividad-card-notas {
+  color: #4a5568 !important;
+}
+.app-layout .inicio-actividad-card-kcal {
+  color: #1e5f24 !important;
+}
+
