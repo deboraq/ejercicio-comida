@@ -501,6 +501,11 @@
   margin-top: 0.35rem;
 }
 
+/*
+ * Filas de comida (detalle + historial): tono oscuro fijo.
+ * No usar solo prefers-color-scheme: si el SO está en claro o el navegador aplica “auto dark”,
+ * las filas quedaban casi blancas (#fff + rgba negro mínimo). Mismo criterio que dropdown-panel.
+ */
 .comida-page .comida-linea-dia-inner {
   display: flex;
   justify-content: space-between;
@@ -508,25 +513,46 @@
   gap: 0.5rem;
   padding: 0.6rem 0.5rem 0.6rem 0.65rem;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background-color: #363636 !important;
+  border: 1px solid #4a4a4a !important;
+  color: #e8e8e8;
 }
 
 .comida-page .comida-linea-nombre {
   font-weight: 600;
-  color: #1a1a1a;
+  color: #f5f5f5 !important;
   word-break: break-word;
+}
+
+.comida-page .comida-linea-dia-inner .has-text-grey {
+  color: #b8b8b8 !important;
+}
+
+.comida-page .comida-linea-dia-inner .tag.is-light {
+  background-color: #4a4a4a !important;
+  color: #ececec !important;
+  border-color: transparent;
+}
+
+.comida-page .comida-linea-dia-inner .tag.is-success.is-light {
+  background-color: rgba(72, 199, 116, 0.25) !important;
+  color: #c8f5d4 !important;
+}
+
+.comida-page .comida-linea-dia-inner .tag.is-warning.is-light {
+  background-color: rgba(255, 221, 87, 0.22) !important;
+  color: #fff3bf !important;
 }
 
 .comida-page .comida-linea-eliminar {
   flex-shrink: 0;
   min-width: 2rem;
-  color: #7a7a7a !important;
+  color: #a8a8a8 !important;
   text-decoration: none !important;
 }
 .comida-page .comida-linea-eliminar:hover {
-  color: #db1f1f !important;
-  background: rgba(219, 31, 31, 0.08) !important;
+  color: #ff9a9a !important;
+  background: rgba(255, 154, 154, 0.12) !important;
 }
 
 .comida-page .comida-macros {
@@ -568,38 +594,6 @@
   }
   .comida-page .comida-meta-borde {
     border-top-color: rgba(255, 255, 255, 0.1);
-  }
-
-  /* Filas de comida (detalle + historial): integradas al fondo oscuro, sin “planchas” blancas */
-  .comida-page .comida-linea-dia-inner {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  .comida-page .comida-linea-nombre {
-    color: #f0f0f0;
-  }
-  .comida-page .comida-linea-dia-inner .has-text-grey {
-    color: #b0b0b0 !important;
-  }
-  .comida-page .comida-linea-dia-inner .tag.is-light {
-    background: rgba(255, 255, 255, 0.12) !important;
-    color: #ececec !important;
-    border-color: transparent;
-  }
-  .comida-page .comida-linea-dia-inner .tag.is-success.is-light {
-    background: rgba(72, 199, 116, 0.22) !important;
-    color: #b8f0c8 !important;
-  }
-  .comida-page .comida-linea-dia-inner .tag.is-warning.is-light {
-    background: rgba(255, 221, 87, 0.2) !important;
-    color: #ffe9a0 !important;
-  }
-  .comida-page .comida-linea-eliminar {
-    color: #a8a8a8 !important;
-  }
-  .comida-page .comida-linea-eliminar:hover {
-    color: #ff8a8a !important;
-    background: rgba(255, 138, 138, 0.12) !important;
   }
 }
 
