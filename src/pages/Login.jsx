@@ -22,8 +22,12 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault()
     setAuthError(null)
-    if (!email.trim() || !password) return
-    const { error } = await signIn(email.trim(), password)
+    const correo = email.trim().toLowerCase()
+    if (!correo || !password) {
+      setAuthError('Ingresá tu correo y contraseña.')
+      return
+    }
+    const { error } = await signIn(correo, password)
     if (!error) navigate('/', { replace: true })
   }
 
@@ -38,7 +42,7 @@ export default function Login() {
       setAuthError('La contraseña debe tener al menos 6 caracteres.')
       return
     }
-    const { error } = await signUp(email.trim(), password, { nombre: nombre.trim() || undefined })
+    const { error } = await signUp(email.trim().toLowerCase(), password, { nombre: nombre.trim() || undefined })
     if (!error) {
       setEnviado(true)
       setAuthError(null)
@@ -52,7 +56,7 @@ export default function Login() {
     e.preventDefault()
     setAuthError(null)
     if (!email.trim()) return
-    const { error } = await resetPasswordForEmail(email.trim())
+    const { error } = await resetPasswordForEmail(email.trim().toLowerCase())
     if (!error) setEnviado(true)
   }
 

@@ -30,11 +30,16 @@ export const EJERCICIOS_RUTINA = [
   'Hip thrust',
   'Zancadas',
   'Curl de pierna',
+  'Pádel',
   'Otro',
 ]
 
+function sinAcentos(s) {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
 export function buscarEjercicios(texto) {
   if (!texto || texto.length < 1) return EJERCICIOS_RUTINA.filter((e) => e !== 'Otro')
-  const t = texto.toLowerCase().trim()
-  return EJERCICIOS_RUTINA.filter((e) => e !== 'Otro' && e.toLowerCase().includes(t))
+  const t = sinAcentos(texto.trim())
+  return EJERCICIOS_RUTINA.filter((e) => e !== 'Otro' && sinAcentos(e).includes(t))
 }

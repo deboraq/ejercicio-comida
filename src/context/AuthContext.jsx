@@ -42,6 +42,24 @@ export function AuthProvider({ children }) {
     return { data, error }
   }
 
+  function mensajeAuth(error) {
+    if (!error?.message) return 'No se pudo iniciar sesión. Probá de nuevo.'
+    if (error.code === 'email_not_confirmed') {
+      return 'Tenés que confirmar el correo antes de entrar. Revisá la bandeja de entrada y spam.'
+    }
+    const m = error.message.toLowerCase()
+    if (m.includes('email not confirmed') || m.includes('not confirmed')) {
+      return 'Tenés que confirmar el correo antes de entrar. Revisá la bandeja de entrada y spam.'
+    }
+    if (m.includes('invalid login') || m.includes('invalid credentials') || m.includes('wrong password')) {
+      return 'Correo o contraseña incorrectos.'
+    }
+    if (m.includes('too many requests') || m.includes('rate limit')) {
+      return 'Demasiados intentos. Esperá un minuto y probá de nuevo.'
+    }
+    return error.message
+  }
+
   const signIn = async (email, password) => {
     setAuthError(null)
     if (!supabase) {
@@ -49,7 +67,7 @@ export function AuthProvider({ children }) {
       return { error: { message: 'Supabase no configurado' } }
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setAuthError(error.message)
+    if (error) setAuthError(mensajeAuth(error))
     return { data, error }
   }
 

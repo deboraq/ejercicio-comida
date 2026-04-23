@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useStorage } from '../hooks/useStorage'
 import { formatearFecha } from '../utils/calorias'
 import { EJERCICIOS_RUTINA, buscarEjercicios } from '../utils/rutinaEjercicios'
@@ -170,23 +170,28 @@ export default function Rutina() {
     if (rutinaActivaId === id) setRutinaActivaId(listaRutinas.find((r) => r.id !== id)?.id || '')
   }
 
-  const agregarRegistro = (ejercicio, series, repeticiones, pesoKg, notas) => {
-    if (!ejercicio || !series || !repeticiones) return
+  const agregarRegistrosVarios = (lista) => {
     const fecha = fechaInput || hoy
-    setRegistros([
-      {
+    const validos = lista.filter(({ ejercicio, series, repeticiones }) => {
+      const repsStr = typeof repeticiones === 'string' ? repeticiones.trim() : String(repeticiones ?? '').trim()
+      return ejercicio && series !== '' && series != null && repsStr
+    })
+    if (validos.length === 0) return
+    const nuevos = validos.map(({ ejercicio, series, repeticiones, pesoKg, notas }) => {
+      const repsStr = typeof repeticiones === 'string' ? repeticiones.trim() : String(repeticiones ?? '').trim()
+      return {
         id: crypto.randomUUID(),
         fecha,
         rutinaId: rutinaIdActual,
         diaRutinaId: diaSeleccionado,
         ejercicio,
-        series: Number(series),
-        repeticiones: Number(repeticiones),
-        pesoKg: pesoKg ? Number(pesoKg) : undefined,
+        series: Number(series) || 1,
+        repeticiones: repsStr,
+        pesoKg: pesoKg !== '' && pesoKg != null ? Number(pesoKg) : undefined,
         notas: (notas || '').trim(),
-      },
-      ...registros,
-    ])
+      }
+    })
+    setRegistros([...nuevos, ...registros])
   }
 
   const eliminarRegistro = (id) => {
@@ -644,7 +649,7 @@ export default function Rutina() {
                 <li className="is-size-7 has-text-grey">Ninguno aún. Usa el buscador.</li>
               ) : (
                 ejerciciosDelDia.map((ex) => (
-                  <li key={ex} className="is-flex is-justify-content-space-between is-align-items-center py-2" style={{ borderBottom: '1px solid #eee' }}>
+                  <li key={ex} className="is-flex is-justify-content-space-between is-align-items-center py-2 subtle-divider-b">
                     <span>{ex}</span>
                     <button type="button" className="button is-small is-text has-text-grey" onClick={() => quitarEjercicioDelDia(ex)}>Quitar</button>
                   </li>
@@ -685,9 +690,15 @@ export default function Rutina() {
             ) : (
               <div className="box mb-4">
                 <p className="is-size-7 has-text-grey mb-3">
-                  Ejercicios de <strong>{diaParaRegistrar?.nombre}</strong> — añade series, reps y peso.
+                  Plan de <strong>{diaParaRegistrar?.nombre}</strong> (lo armás en Configurar). Marcá los que hiciste, completá series y reps — en reps podés escribir números, espacios o texto (ej. <strong>12+12</strong>, <strong>max</strong>). Podés <strong>guardar varias tandas</strong> del mismo ejercicio el mismo día: después de guardar, volvé a marcar y completar.
                 </p>
-                <RegistroRapido key={diaSeleccionado} ejercicios={ejerciciosParaCargar} onAñadir={agregarRegistro} />
+                <RegistrarPlanDelDia
+                  key={`${diaSeleccionado}-${fechaInput}`}
+                  ejercicios={ejerciciosParaCargar}
+                  registrosDeEstaSesion={registrosDeEstaSesion}
+                  onGuardarMarcados={agregarRegistrosVarios}
+                  onEliminarRegistro={eliminarRegistro}
+                />
               </div>
             )}
 
@@ -698,7 +709,7 @@ export default function Rutina() {
                 </p>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {registrosDeEstaSesion.map((r) => (
-                    <li key={r.id} className="is-flex is-justify-content-space-between is-align-items-center py-2" style={{ borderBottom: '1px solid #eee' }}>
+                    <li key={r.id} className="is-flex is-justify-content-space-between is-align-items-center py-2 subtle-divider-b">
                       <span>
                         <strong>{r.ejercicio}</strong> — {r.series}×{r.repeticiones}
                         {r.pesoKg != null && r.pesoKg > 0 && <span className="has-text-grey"> · {r.pesoKg} kg</span>}
@@ -753,108 +764,176 @@ export default function Rutina() {
   )
 }
 
-function RegistroRapido({ ejercicios, onAñadir }) {
-  const [ejercicio, setEjercicio] = useState(ejercicios[0] || '')
-  const [series, setSeries] = useState('')
-  const [repeticiones, setRepeticiones] = useState('')
-  const [pesoKg, setPesoKg] = useState('')
-  const [notas, setNotas] = useState('')
-  const [busquedaEjercicio, setBusquedaEjercicio] = useState('')
-  const [mostrarDropdownEjercicio, setMostrarDropdownEjercicio] = useState(false)
-  const refEjercicioDropdown = useRef(null)
+function filasIniciales(ejercicios) {
+  return Object.fromEntries(
+    ejercicios.map((ex) => [ex, { incluir: false, series: '3', repeticiones: '', pesoKg: '', notas: '' }])
+  )
+}
 
-  const ejerciciosFiltrados = busquedaEjercicio.trim()
-    ? ejercicios.filter((ex) => ex.toLowerCase().includes(busquedaEjercicio.toLowerCase()))
-    : ejercicios
+function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, onGuardarMarcados, onEliminarRegistro }) {
+  const hayRegistrosHoy = registrosDeEstaSesion.length > 0
+  const [filas, setFilas] = useState(() => filasIniciales(ejercicios))
+  const [errorLote, setErrorLote] = useState(null)
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (refEjercicioDropdown.current && !refEjercicioDropdown.current.contains(e.target)) setMostrarDropdownEjercicio(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    setFilas(filasIniciales(ejercicios))
+    setErrorLote(null)
+  }, [ejercicios.join('\u0001')])
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    if (!ejercicio || !series || !repeticiones) return
-    onAñadir(ejercicio, series, repeticiones, pesoKg, notas)
-    setSeries('')
-    setRepeticiones('')
-    setPesoKg('')
-    setNotas('')
+  const setFila = (nombre, patch) => {
+    setFilas((prev) => ({ ...prev, [nombre]: { ...prev[nombre], ...patch } }))
+  }
+
+  const regsPorEjercicio = ejercicios.reduce((acc, ex) => {
+    acc[ex] = registrosDeEstaSesion.filter((r) => r.ejercicio === ex)
+    return acc
+  }, {})
+
+  const pendientesGuardar = ejercicios.filter((ex) => {
+    const f = filas[ex]
+    if (!f?.incluir) return false
+    const reps = (f.repeticiones || '').trim()
+    return f.series !== '' && f.series != null && reps
+  })
+
+  const guardarLote = () => {
+    setErrorLote(null)
+    const marcadosSinReps = ejercicios.filter((ex) => {
+      const f = filas[ex]
+      return f?.incluir && (!(f.repeticiones || '').trim() || f.series === '' || f.series == null)
+    })
+    if (marcadosSinReps.length > 0) {
+      setErrorLote('En los marcados como hechos, completá series y reps (reps puede ser texto, ej. 10 o 8+8).')
+      return
+    }
+    const payload = pendientesGuardar.map((ex) => {
+      const f = filas[ex]
+      return {
+        ejercicio: ex,
+        series: f.series,
+        repeticiones: f.repeticiones,
+        pesoKg: f.pesoKg,
+        notas: f.notas,
+      }
+    })
+    if (payload.length === 0) {
+      setErrorLote('Marcá al menos un ejercicio con el tilde y completá series y reps.')
+      return
+    }
+    onGuardarMarcados(payload)
+    setFilas((prev) => {
+      const next = { ...prev }
+      for (const ex of pendientesGuardar) {
+        next[ex] = { incluir: false, series: '3', repeticiones: '', pesoKg: '', notas: '' }
+      }
+      return next
+    })
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="field" ref={refEjercicioDropdown} style={{ position: 'relative' }}>
-        <label className="label is-size-7">Ejercicio</label>
-        <div className="control">
-          <input
-            className="input is-small"
-            type="text"
-            value={mostrarDropdownEjercicio || busquedaEjercicio ? busquedaEjercicio : ejercicio}
-            onChange={(e) => {
-              setBusquedaEjercicio(e.target.value)
-              setMostrarDropdownEjercicio(true)
-            }}
-            onFocus={() => setMostrarDropdownEjercicio(true)}
-            placeholder="Buscar ejercicio (ej. press banca, squat...)"
-            autoComplete="off"
-          />
-          {mostrarDropdownEjercicio && (
-            <div className="box p-2 mt-1 dropdown-panel" style={{ maxHeight: '200px', overflowY: 'auto', position: 'absolute', left: 0, right: 0, zIndex: 30, minWidth: '200px' }}>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {ejerciciosFiltrados.length === 0 ? (
-                  <li className="is-size-7 has-text-grey">Sin resultados</li>
-                ) : (
-                  ejerciciosFiltrados.map((ex) => (
-                    <li key={ex}>
-                      <button
-                        type="button"
-                        className="button is-fullwidth is-small is-light has-text-left"
-                        onClick={() => {
-                          setEjercicio(ex)
-                          setBusquedaEjercicio('')
-                          setMostrarDropdownEjercicio(false)
-                        }}
-                      >
-                        {ex}
+    <div>
+      {errorLote && (
+        <div className="notification is-warning is-light is-size-7 py-2 px-3 mb-3">{errorLote}</div>
+      )}
+      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        {ejercicios.map((ex) => {
+          const ya = regsPorEjercicio[ex] || []
+          const f = filas[ex] || { incluir: false, series: '3', repeticiones: '', pesoKg: '', notas: '' }
+          return (
+            <li key={ex} className="mb-4 pb-3 subtle-divider-b">
+              <p className="is-size-7 has-text-weight-semibold mb-2">{ex}</p>
+              {ya.length > 0 && (
+                <div className="mb-2">
+                  {ya.map((r) => (
+                    <div key={r.id} className="is-flex is-justify-content-space-between is-align-items-center is-size-7 has-text-success mb-1">
+                      <span>
+                        ✓ {r.series}×{r.repeticiones}
+                        {r.pesoKg != null && r.pesoKg > 0 && <span className="has-text-grey"> · {r.pesoKg} kg</span>}
+                        {r.notas && <span className="has-text-grey"> — {r.notas}</span>}
+                      </span>
+                      <button type="button" className="button is-small is-text has-text-grey" onClick={() => onEliminarRegistro(r.id)} aria-label="Quitar registro">
+                        ×
                       </button>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="columns is-mobile">
-        <div className="column">
-          <div className="field">
-            <label className="label is-size-7">Series</label>
-            <input className="input is-small" type="number" min="1" max="20" value={series} onChange={(e) => setSeries(e.target.value)} placeholder="3" />
-          </div>
-        </div>
-        <div className="column">
-          <div className="field">
-            <label className="label is-size-7">Reps</label>
-            <input className="input is-small" type="number" min="1" max="100" value={repeticiones} onChange={(e) => setRepeticiones(e.target.value)} placeholder="10" />
-          </div>
-        </div>
-        <div className="column">
-          <div className="field">
-            <label className="label is-size-7">Peso (kg)</label>
-            <input className="input is-small" type="number" min="0" step="0.5" value={pesoKg} onChange={(e) => setPesoKg(e.target.value)} placeholder="20" />
-          </div>
-        </div>
-      </div>
-      <div className="field">
-        <input className="input is-small is-size-7" type="text" value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Notas (opcional)" />
-      </div>
-      <button type="submit" className="button is-link is-fullwidth is-small" disabled={!ejercicio || !series || !repeticiones}>
-        Añadir registro
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="field mb-0">
+                <label className="checkbox is-size-7">
+                  <input
+                    type="checkbox"
+                    checked={f.incluir}
+                    onChange={(e) => setFila(ex, { incluir: e.target.checked })}
+                  />
+                  <span className="ml-2">Lo hice (registrar ahora)</span>
+                </label>
+              </div>
+              {f.incluir && (
+                <div className="columns is-mobile is-multiline mt-2 mb-0">
+                  <div className="column is-narrow">
+                    <label className="label is-size-7 mb-1">Series</label>
+                    <input
+                      className="input is-small"
+                      type="number"
+                      min="1"
+                      max="99"
+                      value={f.series}
+                      onChange={(e) => setFila(ex, { series: e.target.value })}
+                      style={{ width: '4.5rem' }}
+                    />
+                  </div>
+                  <div className="column">
+                    <label className="label is-size-7 mb-1">Reps</label>
+                    <input
+                      className="input is-small"
+                      type="text"
+                      value={f.repeticiones}
+                      onChange={(e) => setFila(ex, { repeticiones: e.target.value })}
+                      placeholder="Ej: 10, 8+8, max, 12 cada lado…"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="column is-narrow">
+                    <label className="label is-size-7 mb-1">Peso (kg)</label>
+                    <input
+                      className="input is-small"
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={f.pesoKg}
+                      onChange={(e) => setFila(ex, { pesoKg: e.target.value })}
+                      placeholder="—"
+                      style={{ width: '5rem' }}
+                    />
+                  </div>
+                </div>
+              )}
+              {f.incluir && (
+                <input
+                  className="input is-small is-size-7 mt-2"
+                  type="text"
+                  value={f.notas}
+                  onChange={(e) => setFila(ex, { notas: e.target.value })}
+                  placeholder="Notas (opcional)"
+                />
+              )}
+            </li>
+          )
+        })}
+      </ul>
+      <button
+        type="button"
+        className="button is-link is-fullwidth is-small mt-2"
+        onClick={guardarLote}
+        disabled={pendientesGuardar.length === 0}
+      >
+        Guardar lo marcado{pendientesGuardar.length > 0 ? ` (${pendientesGuardar.length})` : ''}
       </button>
-    </form>
+      {hayRegistrosHoy && (
+        <p className="is-size-7 has-text-grey mt-2 mb-0">
+          ¿Otra tanda del mismo día? Volvé a marcar &quot;Lo hice&quot;, completá series/reps y tocá Guardar.
+        </p>
+      )}
+    </div>
   )
 }

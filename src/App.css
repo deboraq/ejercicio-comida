@@ -183,3 +183,8 @@
   scrollbar-color: #b8b8b8 #5a5a5a !important;
 }
 
+/* Separador entre filas: se ve bien en fondo claro u oscuro */
+.subtle-divider-b {
+  border-bottom: 1px solid rgba(128, 128, 128, 0.38);
+}
+
