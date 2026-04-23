@@ -380,17 +380,17 @@ export default function Ejercicios() {
                     </div>
                     <ul style={{ listStyle: 'none', padding: 0 }}>
                       {lista.map((e) => (
-                        <li key={e.id} className="box py-2 px-3 mb-2">
+                        <li key={e.id} className="box py-2 px-3 mb-2 ejercicio-historial-fila">
                           <div className="is-flex is-justify-content-space-between is-align-items-flex-start">
                             <div className="is-flex-wrap-wrap is-flex is-align-items-center" style={{ gap: '0.5rem' }}>
                               <strong>{e.nombre}</strong>
                               <span className="tag is-link is-light">{etiquetaTipo(e.tipo)}</span>
-                              <span>{e.duracion} min</span>
+                              <span className="is-size-7 ej-hist-duracion">{e.duracion} min</span>
                               <span className="tag is-success is-light">
                                 ~{caloriasQuemadas(e.tipo, e.duracion, pesoKg)} kcal
                               </span>
                               {e.notas && (
-                                <span className="is-size-7 has-text-grey" style={{ width: '100%' }}>
+                                <span className="is-size-7 ej-hist-notas" style={{ width: '100%' }}>
                                   — {e.notas}
                                 </span>
                               )}

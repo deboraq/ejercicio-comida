@@ -257,3 +257,100 @@
   border-bottom: 1px solid rgba(128, 128, 128, 0.38);
 }
 
+/* Rutina / avance: cajas con fondo claro — texto oscuro fijo (tema oscuro del SO no debe dejar texto blanco sobre blanco) */
+.app-layout .box.has-background-light {
+  color-scheme: light;
+  color: #1a1a1a !important;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.app-layout .box.has-background-light .title.is-6,
+.app-layout .box.has-background-light p.title.is-6 {
+  color: #111 !important;
+}
+.app-layout .box.has-background-light .is-size-7.has-text-grey,
+.app-layout .box.has-background-light p.has-text-grey {
+  color: #3d3d3d !important;
+}
+.app-layout .box.has-background-light .has-text-success {
+  color: #1e5f24 !important;
+}
+.app-layout .box.has-background-light .has-text-warning {
+  color: #946c00 !important;
+}
+.app-layout .box.has-background-light .has-text-grey {
+  color: #4a4a4a !important;
+}
+
+/* Gráfico calorías (Inicio): textos y números legibles en fondo claro u oscuro */
+.app-layout .graf-cal-ayuda {
+  color: #5c5c5c !important;
+}
+.app-layout .graf-cal-ayuda-strong {
+  color: #242424 !important;
+}
+.app-layout .graf-cal-leyenda,
+.app-layout .graf-cal-ejes {
+  color: #4a4a4a !important;
+}
+.app-layout .graf-cal-ejes span {
+  color: inherit;
+}
+.app-layout .graf-cal-valores {
+  color: #3d3d3d !important;
+}
+.app-layout .graf-cal-num-consumidas {
+  color: #2160c4 !important;
+}
+.app-layout .graf-cal-num-quemadas {
+  color: #257a2a !important;
+}
+.app-layout .graf-cal-sep {
+  color: #7a7a7a !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-layout .graf-cal-ayuda {
+    color: #c4c4c4 !important;
+  }
+  .app-layout .graf-cal-ayuda-strong {
+    color: #f0f0f0 !important;
+  }
+  .app-layout .graf-cal-leyenda,
+  .app-layout .graf-cal-ejes {
+    color: #c8c8c8 !important;
+  }
+  .app-layout .graf-cal-valores {
+    color: #d0d0d0 !important;
+  }
+  .app-layout .graf-cal-num-consumidas {
+    color: #7eb3ff !important;
+  }
+  .app-layout .graf-cal-num-quemadas {
+    color: #7fdc85 !important;
+  }
+  .app-layout .graf-cal-sep {
+    color: #9a9a9a !important;
+  }
+}
+
+/* Historial ejercicios: metadatos legibles sobre fondo oscuro o claro */
+.app-layout .ejercicio-historial-fila.box {
+  border: 1px solid rgba(128, 128, 128, 0.35);
+}
+.app-layout .ejercicio-historial-fila .ej-hist-duracion {
+  color: #4a5568 !important;
+  font-weight: 500;
+}
+.app-layout .ejercicio-historial-fila .ej-hist-notas {
+  color: #5a6578 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-layout .ejercicio-historial-fila .ej-hist-duracion {
+    color: #cbd5e1 !important;
+  }
+  .app-layout .ejercicio-historial-fila .ej-hist-notas {
+    color: #94a3b8 !important;
+  }
+}
+

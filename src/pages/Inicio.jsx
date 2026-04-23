@@ -463,12 +463,16 @@ export default function Inicio() {
             </div>
             </>
           )}
-          <p className="is-size-7 has-text-grey mt-3 mb-2">Calorías por día</p>
-          <p className="is-size-7 has-text-grey mb-2">
+          <p className="is-size-7 graf-cal-ayuda mt-3 mb-2">Calorías por día</p>
+          <p className="is-size-7 graf-cal-ayuda mb-2">
             Cada columna es un día del rango (orden cronológico). Debajo: día de la semana en español.
           </p>
-          <p className="is-size-7 has-text-grey mb-2">
-            Referencia: máx. consumidas <strong>{maxCalDiaPeriodo}</strong> kcal · máx. quemadas <strong>{maxQuemadasPeriodo}</strong> kcal
+          <p className="is-size-7 graf-cal-ayuda mb-2">
+            Solo cuenta registros de la pantalla <strong className="graf-cal-ayuda-strong">Ejercicios</strong> (cardio/deporte), no las series del gimnasio en Rutina.
+          </p>
+          <p className="is-size-7 graf-cal-ayuda mb-2">
+            Referencia: máx. consumidas <strong className="graf-cal-ayuda-strong">{maxCalDiaPeriodo}</strong> kcal · máx. quemadas{' '}
+            <strong className="graf-cal-ayuda-strong">{maxQuemadasPeriodo}</strong> kcal
           </p>
           <div
             ref={refZonaGrafico}
@@ -477,8 +481,8 @@ export default function Inicio() {
           >
           <div className="is-flex is-align-items-flex-end" style={{ gap: '4px', height: '160px' }}>
             {caloriasPorDiaEnPeriodo.map((d) => {
-              const altCalPx = Math.max(4, (d.cal / maxCalDiaPeriodo) * 78)
-              const altQuemPx = Math.max(4, (d.quemadas / maxQuemadasPeriodo) * 78)
+              const altCalPx = d.cal > 0 ? Math.max(2, (d.cal / maxCalDiaPeriodo) * 78) : 0
+              const altQuemPx = d.quemadas > 0 ? Math.max(2, (d.quemadas / maxQuemadasPeriodo) * 78) : 0
               return (
                 <div
                   key={d.fecha}
@@ -545,11 +549,11 @@ export default function Inicio() {
               )
             })}
           </div>
-          <p className="is-size-7 has-text-grey mt-1 mb-0">
+          <p className="is-size-7 graf-cal-leyenda mt-1 mb-0">
             <span className="has-background-info" style={{ padding: '0 6px', marginRight: '8px' }} /> Consumidas
             <span className="ml-3 has-background-success" style={{ padding: '0 6px', marginRight: '4px', opacity: 0.85 }} /> Quemadas
           </p>
-          <div className="is-flex is-size-7 has-text-grey mt-2" style={{ gap: '2px' }}>
+          <div className="is-flex is-size-7 graf-cal-ejes mt-2" style={{ gap: '2px' }}>
             {caloriasPorDiaEnPeriodo.map((d) => {
               const diaSem = new Date(`${d.fecha}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short' })
               return (
@@ -566,16 +570,22 @@ export default function Inicio() {
               )
             })}
           </div>
-          <div className="is-flex mt-1 is-size-7" style={{ gap: '2px' }}>
+          <div className="is-flex mt-1 is-size-7 graf-cal-valores" style={{ gap: '2px' }}>
             {caloriasPorDiaEnPeriodo.map((d) => (
               <div key={d.fecha} className="is-flex-grow-1 has-text-centered" style={{ minWidth: 0 }}>
-                <span className="has-text-info" title={`Consumidas: ${d.cal} kcal`}>{d.cal >= 1000 ? `${(d.cal / 1000).toFixed(1)}k` : d.cal}</span>
-                <span className="has-text-grey-light mx-1">/</span>
-                <span className="has-text-success" title={`Quemadas: ${d.quemadas} kcal`}>{d.quemadas}</span>
+                <span className="graf-cal-num-consumidas" title={`Consumidas: ${d.cal} kcal`}>
+                  {d.cal >= 1000 ? `${(d.cal / 1000).toFixed(1)}k` : d.cal}
+                </span>
+                <span className="graf-cal-sep mx-1">/</span>
+                <span className="graf-cal-num-quemadas" title={`Quemadas: ${d.quemadas} kcal`}>
+                  {d.quemadas}
+                </span>
               </div>
             ))}
           </div>
-          <p className="is-size-7 has-text-grey mt-0 mb-0">Cada columna: <span className="has-text-info">consumidas</span> / <span className="has-text-success">quemadas</span> (kcal)</p>
+          <p className="is-size-7 graf-cal-ayuda mt-0 mb-0">
+            Cada columna: <span className="graf-cal-num-consumidas">consumidas</span> / <span className="graf-cal-num-quemadas">quemadas</span> (kcal)
+          </p>
           {tooltipDia && (() => {
             const det = getDetalleDia(tooltipDia)
             return (
