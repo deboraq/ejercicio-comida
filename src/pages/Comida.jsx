@@ -23,11 +23,17 @@ function crearItemVacio() {
   return {
     id: crypto.randomUUID(),
     descripcion: '',
+    cantidad: 1,
     calorias: '',
     proteinas: '',
     carbohidratos: '',
     porciones: '',
   }
+}
+
+function textoPorcionDesdeRef(porcionRef, n) {
+  const t = porcionRef || 'porción'
+  return n > 1 ? `${n} × (${t})` : t
 }
 
 function ListaComidaAgrupada({ bloques, onEliminar }) {
@@ -100,19 +106,95 @@ export default function Comida() {
 
   const añadirDesdeReferencia = (itemRef, cantidad = cantidadPorciones) => {
     const n = Math.max(1, Number(cantidad) || 1)
+    const base = { cal: itemRef.calorias, pro: itemRef.proteinas, car: itemRef.carbohidratos }
+    const porcionRef = itemRef.porcion || 'porción'
     const nuevo = {
       id: crypto.randomUUID(),
       descripcion: itemRef.nombre,
-      calorias: String(Math.round(itemRef.calorias * n)),
-      proteinas: String(Math.round(itemRef.proteinas * n)),
-      carbohidratos: String(Math.round(itemRef.carbohidratos * n)),
-      porciones: n > 1 ? `${n} × (${itemRef.porcion || 'porción'})` : (itemRef.porcion || ''),
+      cantidad: n,
+      calorias: String(Math.round(base.cal * n)),
+      proteinas: String(Math.round(base.pro * n * 10) / 10),
+      carbohidratos: String(Math.round(base.car * n * 10) / 10),
+      porciones: textoPorcionDesdeRef(porcionRef, n),
+      _macrosPorUnidad: base,
+      _porcionRef: porcionRef,
     }
     setItems((prev) => [nuevo, ...prev])
     setBusquedaRef('')
   }
 
+  const actualizarItemCantidad = (id, raw) => {
+    const newQ = Math.max(1, Math.min(99, parseInt(String(raw), 10) || 1))
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.id !== id) return it
+        if (it._macrosPorUnidad) {
+          const { cal, pro, car } = it._macrosPorUnidad
+          return {
+            ...it,
+            cantidad: newQ,
+            calorias: String(Math.round(cal * newQ)),
+            proteinas: String(Math.round(pro * newQ * 10) / 10),
+            carbohidratos: String(Math.round(car * newQ * 10) / 10),
+            porciones: it._porcionRef != null ? textoPorcionDesdeRef(it._porcionRef, newQ) : it.porciones,
+          }
+        }
+        const oldQ = Math.max(1, Number(it.cantidad) || 1)
+        const r = newQ / oldQ
+        return {
+          ...it,
+          cantidad: newQ,
+          calorias: it.calorias !== '' ? String(Math.round((Number(it.calorias) || 0) * r)) : '',
+          proteinas: it.proteinas !== '' ? String(Math.round((Number(it.proteinas) || 0) * r * 10) / 10) : '',
+          carbohidratos: it.carbohidratos !== '' ? String(Math.round((Number(it.carbohidratos) || 0) * r * 10) / 10) : '',
+        }
+      })
+    )
+  }
+
+  const actualizarItemMacro = (id, field, value) => {
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.id !== id) return it
+        if (value === '') {
+          return { ...it, [field]: '', _macrosPorUnidad: undefined, _porcionRef: undefined }
+        }
+        const q = Math.max(1, Number(it.cantidad) || 1)
+        const num = Number(value)
+        if (!Number.isFinite(num)) {
+          return { ...it, [field]: value }
+        }
+        if (it._macrosPorUnidad) {
+          const m = { ...it._macrosPorUnidad }
+          if (field === 'calorias') m.cal = num / q
+          if (field === 'proteinas') m.pro = num / q
+          if (field === 'carbohidratos') m.car = num / q
+          return {
+            ...it,
+            _macrosPorUnidad: m,
+            calorias: String(Math.round(m.cal * q)),
+            proteinas: String(Math.round(m.pro * q * 10) / 10),
+            carbohidratos: String(Math.round(m.car * q * 10) / 10),
+          }
+        }
+        return { ...it, [field]: value, _macrosPorUnidad: undefined, _porcionRef: undefined }
+      })
+    )
+  }
+
   const actualizarItem = (id, field, value) => {
+    if (field === 'cantidad') {
+      actualizarItemCantidad(id, value)
+      return
+    }
+    if (field === 'calorias' || field === 'proteinas' || field === 'carbohidratos') {
+      actualizarItemMacro(id, field, value)
+      return
+    }
+    if (field === 'porciones') {
+      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, porciones: value, _porcionRef: undefined } : it)))
+      return
+    }
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, [field]: value } : it)))
   }
 
@@ -348,7 +430,10 @@ export default function Comida() {
               )}
             </div>
 
-            <p className="is-size-7 has-text-weight-semibold mb-2">Ítems a guardar (uno o varios)</p>
+            <p className="is-size-7 has-text-weight-semibold mb-1">Ítems a guardar (uno o varios)</p>
+            <p className="is-size-7 has-text-grey mb-2">
+              En cada fila, <span className="has-text-weight-semibold">Cant.</span> recalcula kcal, P y C (desde la referencia o escalando lo que cargaste a mano).
+            </p>
             {items.length === 0 ? (
               <div className="comida-vacio-cta mb-3">
                 <p className="is-size-7 has-text-grey mb-2">Todavía no agregaste alimentos a esta entrada.</p>
@@ -377,7 +462,23 @@ export default function Comida() {
                     </div>
                   </div>
                   <div className="columns is-mobile is-multiline is-variable is-1">
-                    <div className="column is-one-third">
+                    <div className="column is-narrow">
+                      <label className="is-size-7 has-text-grey" htmlFor={`comida-cant-${it.id}`}>
+                        Cant.
+                      </label>
+                      <input
+                        id={`comida-cant-${it.id}`}
+                        className="input is-small"
+                        style={{ maxWidth: '4.25rem' }}
+                        type="number"
+                        min="1"
+                        max="99"
+                        value={it.cantidad ?? 1}
+                        onChange={(e) => actualizarItem(it.id, 'cantidad', e.target.value)}
+                        title="Recalcula kcal, proteínas y carbohidratos según la porción base de la fila"
+                      />
+                    </div>
+                    <div className="column">
                       <label className="is-size-7 has-text-grey">kcal</label>
                       <input
                         className="input is-small"
@@ -388,7 +489,7 @@ export default function Comida() {
                         onChange={(e) => actualizarItem(it.id, 'calorias', e.target.value)}
                       />
                     </div>
-                    <div className="column is-one-third">
+                    <div className="column">
                       <label className="is-size-7 has-text-grey">Prot. (g)</label>
                       <input
                         className="input is-small"
@@ -399,7 +500,7 @@ export default function Comida() {
                         onChange={(e) => actualizarItem(it.id, 'proteinas', e.target.value)}
                       />
                     </div>
-                    <div className="column is-one-third">
+                    <div className="column">
                       <label className="is-size-7 has-text-grey">Carb. (g)</label>
                       <input
                         className="input is-small"
