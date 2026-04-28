@@ -24,6 +24,7 @@ function crearItemVacio() {
     id: crypto.randomUUID(),
     descripcion: '',
     cantidad: 1,
+    _cantidadPrev: 1,
     calorias: '',
     proteinas: '',
     carbohidratos: '',
@@ -34,6 +35,39 @@ function crearItemVacio() {
 function textoPorcionDesdeRef(porcionRef, n) {
   const t = porcionRef || 'porción'
   return n > 1 ? `${n} × (${t})` : t
+}
+
+/** Última cantidad válida usada para escalar macros si el campo quedó vacío un momento. */
+function cantidadBaseParaEscala(it) {
+  if (it.cantidad !== '' && it.cantidad != null && Number(it.cantidad) > 0) return Number(it.cantidad)
+  return Math.max(1, it._cantidadPrev ?? 1)
+}
+
+/** Aplica cantidad entera 1–99 y recalcula kcal/P/C desde referencia o por ratio. */
+function itemConCantidadAplicada(it, newQ) {
+  const q = Math.max(1, Math.min(99, Math.round(Number(newQ)) || 1))
+  if (it._macrosPorUnidad) {
+    const { cal, pro, car } = it._macrosPorUnidad
+    return {
+      ...it,
+      cantidad: q,
+      _cantidadPrev: q,
+      calorias: String(Math.round(cal * q)),
+      proteinas: String(Math.round(pro * q * 10) / 10),
+      carbohidratos: String(Math.round(car * q * 10) / 10),
+      porciones: it._porcionRef != null ? textoPorcionDesdeRef(it._porcionRef, q) : it.porciones,
+    }
+  }
+  const oldQ = cantidadBaseParaEscala(it)
+  const r = q / oldQ
+  return {
+    ...it,
+    cantidad: q,
+    _cantidadPrev: q,
+    calorias: it.calorias !== '' ? String(Math.round((Number(it.calorias) || 0) * r)) : '',
+    proteinas: it.proteinas !== '' ? String(Math.round((Number(it.proteinas) || 0) * r * 10) / 10) : '',
+    carbohidratos: it.carbohidratos !== '' ? String(Math.round((Number(it.carbohidratos) || 0) * r * 10) / 10) : '',
+  }
 }
 
 function ListaComidaAgrupada({ bloques, onEliminar }) {
@@ -89,7 +123,7 @@ export default function Comida() {
   const [notas, setNotas] = useState('')
   const [items, setItems] = useState([])
   const [busquedaRef, setBusquedaRef] = useState('')
-  const [cantidadPorciones, setCantidadPorciones] = useState(1)
+  const [cantidadPorciones, setCantidadPorciones] = useState('1')
   const [periodo, setPeriodo] = useState('semana')
   const [desdeCustom, setDesdeCustom] = useState('')
   const [hastaCustom, setHastaCustom] = useState('')
@@ -105,13 +139,15 @@ export default function Comida() {
   }, {})
 
   const añadirDesdeReferencia = (itemRef, cantidad = cantidadPorciones) => {
-    const n = Math.max(1, Number(cantidad) || 1)
+    const raw = cantidad === '' || cantidad == null ? String(cantidadPorciones) : String(cantidad)
+    const n = Math.max(1, Math.min(99, parseInt(raw.trim(), 10) || 1))
     const base = { cal: itemRef.calorias, pro: itemRef.proteinas, car: itemRef.carbohidratos }
     const porcionRef = itemRef.porcion || 'porción'
     const nuevo = {
       id: crypto.randomUUID(),
       descripcion: itemRef.nombre,
       cantidad: n,
+      _cantidadPrev: n,
       calorias: String(Math.round(base.cal * n)),
       proteinas: String(Math.round(base.pro * n * 10) / 10),
       carbohidratos: String(Math.round(base.car * n * 10) / 10),
@@ -124,30 +160,23 @@ export default function Comida() {
   }
 
   const actualizarItemCantidad = (id, raw) => {
-    const newQ = Math.max(1, Math.min(99, parseInt(String(raw), 10) || 1))
+    const s = String(raw).trim()
+    if (s === '') {
+      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, cantidad: '' } : it)))
+      return
+    }
+    const parsed = parseInt(s, 10)
+    if (!Number.isFinite(parsed)) return
+    const newQ = Math.max(1, Math.min(99, parsed))
+    setItems((prev) => prev.map((it) => (it.id === id ? itemConCantidadAplicada(it, newQ) : it)))
+  }
+
+  const blurCantidadItem = (id) => {
     setItems((prev) =>
       prev.map((it) => {
         if (it.id !== id) return it
-        if (it._macrosPorUnidad) {
-          const { cal, pro, car } = it._macrosPorUnidad
-          return {
-            ...it,
-            cantidad: newQ,
-            calorias: String(Math.round(cal * newQ)),
-            proteinas: String(Math.round(pro * newQ * 10) / 10),
-            carbohidratos: String(Math.round(car * newQ * 10) / 10),
-            porciones: it._porcionRef != null ? textoPorcionDesdeRef(it._porcionRef, newQ) : it.porciones,
-          }
-        }
-        const oldQ = Math.max(1, Number(it.cantidad) || 1)
-        const r = newQ / oldQ
-        return {
-          ...it,
-          cantidad: newQ,
-          calorias: it.calorias !== '' ? String(Math.round((Number(it.calorias) || 0) * r)) : '',
-          proteinas: it.proteinas !== '' ? String(Math.round((Number(it.proteinas) || 0) * r * 10) / 10) : '',
-          carbohidratos: it.carbohidratos !== '' ? String(Math.round((Number(it.carbohidratos) || 0) * r * 10) / 10) : '',
-        }
+        if (it.cantidad !== '' && it.cantidad != null) return it
+        return itemConCantidadAplicada(it, it._cantidadPrev ?? 1)
       })
     )
   }
@@ -159,7 +188,7 @@ export default function Comida() {
         if (value === '') {
           return { ...it, [field]: '', _macrosPorUnidad: undefined, _porcionRef: undefined }
         }
-        const q = Math.max(1, Number(it.cantidad) || 1)
+        const q = cantidadBaseParaEscala(it)
         const num = Number(value)
         if (!Number.isFinite(num)) {
           return { ...it, [field]: value }
@@ -218,7 +247,9 @@ export default function Comida() {
   const guardarComida = (e) => {
     e.preventDefault()
     const fecha = fechaInput || hoy
-    const aGuardar = items.filter((it) => it.descripcion.trim())
+    const aGuardar = items
+      .filter((it) => it.descripcion.trim())
+      .map((it) => (it.cantidad === '' || it.cantidad == null ? itemConCantidadAplicada(it, it._cantidadPrev ?? 1) : it))
     if (aGuardar.length === 0) return
     const nuevos = aGuardar.map((it) => ({
       id: crypto.randomUUID(),
@@ -394,7 +425,19 @@ export default function Comida() {
                       min="1"
                       max="99"
                       value={cantidadPorciones}
-                      onChange={(e) => setCantidadPorciones(Math.max(1, Math.min(99, parseInt(e.target.value, 10) || 1)))}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (v === '') {
+                          setCantidadPorciones('')
+                          return
+                        }
+                        const n = parseInt(v, 10)
+                        if (!Number.isFinite(n)) return
+                        setCantidadPorciones(String(Math.max(1, Math.min(99, n))))
+                      }}
+                      onBlur={() => {
+                        if (cantidadPorciones === '') setCantidadPorciones('1')
+                      }}
                       title="Solo al tocar un resultado de la lista: cuántas porciones base traer a la fila (luego podés cambiar Cant. en cada ítem abajo)"
                     />
                   </div>
@@ -473,8 +516,9 @@ export default function Comida() {
                         min="1"
                         max="99"
                         inputMode="numeric"
-                        value={it.cantidad ?? 1}
+                        value={it.cantidad === '' || it.cantidad == null ? '' : it.cantidad}
                         onChange={(e) => actualizarItem(it.id, 'cantidad', e.target.value)}
+                        onBlur={() => blurCantidadItem(it.id)}
                         title="Porciones base de esta fila (multiplica kcal, P y C desde la referencia, o escala lo cargado a mano)"
                       />
                     </div>

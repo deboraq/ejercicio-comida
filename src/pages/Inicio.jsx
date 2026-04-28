@@ -533,22 +533,38 @@ export default function Inicio() {
             onMouseLeave={() => { if (!refFijado.current) setTooltipDia(null) }}
             style={{ overflow: 'visible' }}
           >
-          <div className="is-flex is-align-items-flex-end" style={{ gap: '4px', height: '160px' }}>
+          <div className="graf-cal-chart-wrap">
+            <div
+              className="graf-cal-grid"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${numDiasPeriodo}, minmax(2.35rem, 1fr))`,
+                gap: '4px',
+                alignItems: 'end',
+                minWidth: `${Math.max(numDiasPeriodo * 40, 260)}px`,
+              }}
+            >
             {caloriasPorDiaEnPeriodo.map((d) => {
               const altCalPx = Math.max(4, (d.cal / maxCalDiaPeriodo) * 78)
               const altQuemPx = Math.max(4, (d.quemadas / maxQuemadasPeriodo) * 78)
+              const diaSem = new Date(`${d.fecha}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short' })
+              const txtCal = d.cal >= 1000 ? `${(d.cal / 1000).toFixed(1)}k` : String(d.cal)
+              const txtQuem = d.quemadas >= 1000 ? `${(d.quemadas / 1000).toFixed(1)}k` : String(d.quemadas)
               return (
                 <div
                   key={d.fecha}
-                  className={`is-flex-grow-1 ${tooltipDia === d.fecha ? 'has-background-light' : ''}`}
+                  className={`graf-cal-col ${tooltipDia === d.fecha ? 'has-background-light' : ''}`}
                   style={{
-                    minWidth: 0,
                     cursor: 'pointer',
                     borderRadius: '6px',
                     transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                     transform: tooltipDia === d.fecha ? 'scale(1.04)' : 'scale(1)',
                     transformOrigin: 'bottom',
                     boxShadow: tooltipDia === d.fecha ? '0 0 0 2px #3273dc' : 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
+                    minWidth: 0,
                   }}
                   onMouseEnter={() => setTooltipDia(d.fecha)}
                   onMouseLeave={() => { if (!refFijado.current) setTooltipDia(null) }}
@@ -582,63 +598,61 @@ export default function Inicio() {
                   }}
                 >
                   <div
-                    className="has-background-info"
+                    className="graf-cal-barras"
                     style={{
-                      height: barrasAnimadas ? `${altCalPx}px` : '0px',
-                      borderRadius: '4px 4px 0 0',
-                      transition: 'height 0.6s ease-out',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'flex-end',
+                      height: '160px',
                     }}
-                  />
+                  >
+                    <div
+                      className="has-background-info"
+                      style={{
+                        height: barrasAnimadas ? `${altCalPx}px` : '0px',
+                        borderRadius: '4px 4px 0 0',
+                        transition: 'height 0.6s ease-out',
+                      }}
+                    />
+                    <div
+                      className="has-background-success"
+                      style={{
+                        height: barrasAnimadas ? `${altQuemPx}px` : '0px',
+                        borderRadius: '2px 2px 0 0',
+                        marginTop: '2px',
+                        opacity: 0.85,
+                        transition: 'height 0.6s ease-out',
+                      }}
+                    />
+                  </div>
                   <div
-                    className="has-background-success"
-                    style={{
-                      height: barrasAnimadas ? `${altQuemPx}px` : '0px',
-                      borderRadius: '2px 2px 0 0',
-                      marginTop: '2px',
-                      opacity: 0.85,
-                      transition: 'height 0.6s ease-out',
-                    }}
-                  />
+                    className="graf-cal-ejes has-text-centered"
+                    style={{ fontSize: '0.65rem', lineHeight: 1.2, marginTop: '6px', wordBreak: 'break-word' }}
+                  >
+                    <span className="is-block">{d.fecha.slice(8)}/{d.fecha.slice(5, 7)}</span>
+                    <span className="is-block" style={{ fontSize: '0.58rem', opacity: 0.9 }}>
+                      {diaSem}
+                    </span>
+                  </div>
+                  <div className="graf-cal-valores has-text-centered" style={{ marginTop: '4px', lineHeight: 1.25 }}>
+                    <span className="graf-cal-num-consumidas is-block" title={`Consumidas: ${d.cal} kcal`}>
+                      {txtCal}
+                    </span>
+                    <span className="graf-cal-num-quemadas is-block" title={`Quemadas: ${d.quemadas} kcal`}>
+                      {txtQuem}
+                    </span>
+                  </div>
                 </div>
               )
             })}
+            </div>
           </div>
           <p className="is-size-7 graf-cal-leyenda mt-1 mb-0">
             <span className="has-background-info" style={{ padding: '0 6px', marginRight: '8px' }} /> Consumidas
             <span className="ml-3 has-background-success" style={{ padding: '0 6px', marginRight: '4px', opacity: 0.85 }} /> Quemadas
           </p>
-          <div className="is-flex is-size-7 graf-cal-ejes mt-2" style={{ gap: '2px' }}>
-            {caloriasPorDiaEnPeriodo.map((d) => {
-              const diaSem = new Date(`${d.fecha}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short' })
-              return (
-                <span
-                  key={d.fecha}
-                  className="is-flex-grow-1 has-text-centered"
-                  style={{ overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.65rem', lineHeight: 1.2 }}
-                >
-                  <span className="is-block">{d.fecha.slice(8)}/{d.fecha.slice(5, 7)}</span>
-                  <span className="is-block" style={{ fontSize: '0.58rem', opacity: 0.9 }}>
-                    {diaSem}
-                  </span>
-                </span>
-              )
-            })}
-          </div>
-          <div className="is-flex mt-1 is-size-7 graf-cal-valores" style={{ gap: '2px' }}>
-            {caloriasPorDiaEnPeriodo.map((d) => (
-              <div key={d.fecha} className="is-flex-grow-1 has-text-centered" style={{ minWidth: 0 }}>
-                <span className="graf-cal-num-consumidas" title={`Consumidas: ${d.cal} kcal`}>
-                  {d.cal >= 1000 ? `${(d.cal / 1000).toFixed(1)}k` : d.cal}
-                </span>
-                <span className="graf-cal-sep mx-1">/</span>
-                <span className="graf-cal-num-quemadas" title={`Quemadas: ${d.quemadas} kcal`}>
-                  {d.quemadas}
-                </span>
-              </div>
-            ))}
-          </div>
           <p className="is-size-7 graf-cal-ayuda mt-0 mb-0">
-            Cada columna: <span className="graf-cal-num-consumidas">consumidas</span> / <span className="graf-cal-num-quemadas">quemadas</span> (kcal)
+            Cada columna: arriba <span className="graf-cal-num-consumidas">consumidas</span>, abajo <span className="graf-cal-num-quemadas">quemadas</span> (kcal). Si hay muchos días, deslizá horizontalmente.
           </p>
           {tooltipDia && (() => {
             const det = getDetalleDia(tooltipDia)

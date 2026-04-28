@@ -337,6 +337,26 @@
   color: #4a4a4a !important;
 }
 
+/* Gráfico calorías (Inicio): en móvil las columnas no se pisan; scroll si hay muchos días */
+.app-layout .graf-cal-chart-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  max-width: 100%;
+  margin-left: -2px;
+  margin-right: -2px;
+  padding: 0 2px 4px;
+  box-sizing: border-box;
+}
+.app-layout .graf-cal-grid {
+  width: 100%;
+}
+.app-layout .graf-cal-valores .graf-cal-num-consumidas,
+.app-layout .graf-cal-valores .graf-cal-num-quemadas {
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Gráfico calorías (Inicio): textos y números legibles en fondo claro u oscuro */
 .app-layout .graf-cal-ayuda {
   color: #5c5c5c !important;
