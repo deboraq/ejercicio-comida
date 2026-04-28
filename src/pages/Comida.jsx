@@ -313,11 +313,14 @@ export default function Comida() {
                       max="20"
                       value={cantidadPorciones}
                       onChange={(e) => setCantidadPorciones(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                      title="Porciones al tocar un resultado"
+                      title="Cantidad de porciones base al añadir desde la referencia (multiplica kcal, P y C)"
                     />
                   </div>
                 </div>
               </div>
+              <p className="is-size-7 has-text-grey mt-1 mb-0">
+                Cada resultado es <span className="has-text-weight-semibold">una</span> porción base (ej. 1 triángulo de pizza). Si comiste varias, subí <span className="has-text-weight-semibold">Cant.</span> antes de tocar el alimento.
+              </p>
               {busquedaRef.trim().length >= 1 && (
                 <div className="box mt-2 p-2 dropdown-panel dropdown-panel-comida comida-resultados" style={{ maxHeight: 'min(45vh, 260px)', overflowY: 'auto' }}>
                   <ul className="comida-resultados-lista">
