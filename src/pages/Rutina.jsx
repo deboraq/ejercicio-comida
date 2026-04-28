@@ -402,10 +402,10 @@ export default function Rutina() {
           <div className="box mb-4 py-3">
             <h2 className="title is-6 mb-2">Días que entrenaste</h2>
             <p className="is-size-7 has-text-grey mb-3">Toca un día marcado para ver la rutina que hiciste.</p>
-            <div className="is-flex is-align-items-center is-justify-content-space-between mb-3">
+            <div className="cal-mes-nav mb-3">
               <button
                 type="button"
-                className="button is-small is-light"
+                className="button is-small is-light cal-mes-nav-prev"
                 onClick={() => {
                   const [y, m] = mesCalendario.split('-').map(Number)
                   const prev = new Date(y, m - 2, 1)
@@ -414,7 +414,7 @@ export default function Rutina() {
               >
                 ← Anterior
               </button>
-              <span className="is-size-6 has-text-weight-medium">
+              <span className="is-size-6 has-text-weight-medium cal-mes-nav-mes">
                 {(() => {
                   const [y, m] = mesCalendario.split('-').map(Number)
                   return new Date(y, m - 1, 1).toLocaleDateString('es', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase())
@@ -422,7 +422,7 @@ export default function Rutina() {
               </span>
               <button
                 type="button"
-                className="button is-small is-light"
+                className="button is-small is-light cal-mes-nav-next"
                 onClick={() => {
                   const [y, m] = mesCalendario.split('-').map(Number)
                   const next = new Date(y, m, 1)

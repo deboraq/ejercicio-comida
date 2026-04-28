@@ -239,10 +239,10 @@ export default function Inicio() {
               Ver hoy
             </button>
           )}
-          <div className="is-flex is-align-items-center is-justify-content-space-between mb-3">
+          <div className="cal-mes-nav mb-3">
             <button
               type="button"
-              className="button is-small is-light"
+              className="button is-small is-light cal-mes-nav-prev"
               onClick={() => {
                 const [y, m] = mesCalendario.split('-').map(Number)
                 const prev = new Date(y, m - 2, 1)
@@ -251,7 +251,7 @@ export default function Inicio() {
             >
               ← Anterior
             </button>
-            <span className="is-size-6 has-text-weight-medium">
+            <span className="is-size-6 has-text-weight-medium cal-mes-nav-mes">
               {(() => {
                 const [y, m] = mesCalendario.split('-').map(Number)
                 return new Date(y, m - 1, 1).toLocaleDateString('es', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase())
@@ -259,7 +259,7 @@ export default function Inicio() {
             </span>
             <button
               type="button"
-              className="button is-small is-light"
+              className="button is-small is-light cal-mes-nav-next"
               onClick={() => {
                 const [y, m] = mesCalendario.split('-').map(Number)
                 const next = new Date(y, m, 1)
