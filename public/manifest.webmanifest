@@ -1,0 +1,19 @@
+{
+  "name": "Mi rutina — Ejercicio y comida",
+  "short_name": "Mi rutina",
+  "description": "Seguimiento de ejercicio, rutina de gimnasio y comida",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#485fc7",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

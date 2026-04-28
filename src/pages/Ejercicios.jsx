@@ -1,6 +1,16 @@
 import { useState, useRef, useEffect } from 'react'
 import { useStorage } from '../hooks/useStorage'
-import { caloriasQuemadas, formatearFecha, fechaToISO, fechaSoloDia, sinAcentos, TIPOS_EJERCICIO_AGRUPADOS, etiquetaTipo } from '../utils/calorias'
+import {
+  caloriasEjercicioRegistro,
+  formatearFecha,
+  fechaToISO,
+  fechaSoloDia,
+  minutosDesdeKm,
+  sinAcentos,
+  tipoAdmiteKilometros,
+  TIPOS_EJERCICIO_AGRUPADOS,
+  etiquetaTipo,
+} from '../utils/calorias'
 import { getUltimosNDias } from '../utils/estadisticas'
 
 const TIPO_DEFAULT = TIPOS_EJERCICIO_AGRUPADOS[0].opciones[0].value
@@ -12,6 +22,9 @@ export default function Ejercicios() {
   const [nombre, setNombre] = useState('')
   const [tipo, setTipo] = useState(TIPO_DEFAULT)
   const [duracion, setDuracion] = useState('')
+  const [modoMedida, setModoMedida] = useState('minutos')
+  const [distanciaKm, setDistanciaKm] = useState('')
+  const [caloriasManual, setCaloriasManual] = useState('')
   const [notas, setNotas] = useState('')
   const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
   const [filtroTexto, setFiltroTexto] = useState('')
@@ -44,12 +57,19 @@ export default function Ejercicios() {
     el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [editandoId])
 
+  useEffect(() => {
+    if (!tipoAdmiteKilometros(tipo) && modoMedida === 'km') setModoMedida('minutos')
+  }, [tipo, modoMedida])
+
   const pesoKg = config?.pesoKg || 70
 
   const limpiarFormulario = () => {
     setNombre('')
     setTipo(TIPO_DEFAULT)
     setDuracion('')
+    setModoMedida('minutos')
+    setDistanciaKm('')
+    setCaloriasManual('')
     setNotas('')
     setFechaInput(fechaToISO(new Date()))
     setEditandoId(null)
@@ -57,30 +77,60 @@ export default function Ejercicios() {
     setMostrarDropdownTipo(false)
   }
 
+  const parseManualCal = () => {
+    const n = parseFloat(String(caloriasManual).replace(',', '.'))
+    return Number.isFinite(n) && n > 0 ? Math.round(n) : null
+  }
+
   const agregar = (e) => {
     e.preventDefault()
-    if (!nombre.trim() || !duracion || Number(duracion) <= 0) return
+    if (!nombre.trim()) return
     const fecha = fechaInput || fechaToISO(new Date())
+    const manualVal = parseManualCal()
+    const kmVal = Number(distanciaKm)
+    const kmOk = modoMedida === 'km' && tipoAdmiteKilometros(tipo) && kmVal > 0
+    const minVal = Number(duracion)
+    const minOk = modoMedida === 'minutos' && minVal > 0
+    if (!manualVal && !kmOk && !minOk) return
+
+    let duracionFinal = 0
+    let distanciaKmSave
+    if (kmOk) {
+      distanciaKmSave = kmVal
+      duracionFinal = minutosDesdeKm(tipo, kmVal)
+    } else if (minOk) {
+      duracionFinal = Math.round(minVal)
+    }
+
+    const camposBase = {
+      nombre: nombre.trim(),
+      tipo,
+      duracion: duracionFinal,
+      notas: notas.trim(),
+      fecha,
+    }
+    if (manualVal) camposBase.caloriasManual = manualVal
+    if (kmOk) camposBase.distanciaKm = distanciaKmSave
+
     if (editandoId) {
       setEjercicios((prev) =>
-        prev.map((item) =>
-          item.id === editandoId
-            ? { ...item, nombre: nombre.trim(), tipo, duracion: Number(duracion), notas: notas.trim(), fecha }
-            : item
-        )
+        prev.map((item) => {
+          if (item.id !== editandoId) return item
+          const durF = kmOk || minOk ? duracionFinal : manualVal ? Number(item.duracion) || 0 : duracionFinal
+          const merged = { ...item, ...camposBase, duracion: durF }
+          if (!manualVal) delete merged.caloriasManual
+          if (kmOk) merged.distanciaKm = distanciaKmSave
+          else delete merged.distanciaKm
+          return merged
+        })
       )
     } else {
-      setEjercicios((prev) => [
-        {
-          id: crypto.randomUUID(),
-          nombre: nombre.trim(),
-          tipo,
-          duracion: Number(duracion),
-          notas: notas.trim(),
-          fecha,
-        },
-        ...prev,
-      ])
+      const nuevo = {
+        id: crypto.randomUUID(),
+        ...camposBase,
+      }
+      if (!kmOk) delete nuevo.distanciaKm
+      setEjercicios((prev) => [nuevo, ...prev])
     }
     limpiarFormulario()
   }
@@ -88,8 +138,18 @@ export default function Ejercicios() {
   const iniciarEdicion = (item) => {
     setEditandoId(item.id)
     setNombre(item.nombre || '')
-    setTipo(item.tipo || TIPO_DEFAULT)
-    setDuracion(item.duracion != null ? String(item.duracion) : '')
+    const t = item.tipo || TIPO_DEFAULT
+    setTipo(t)
+    if (item.distanciaKm != null && Number(item.distanciaKm) > 0 && tipoAdmiteKilometros(t)) {
+      setModoMedida('km')
+      setDistanciaKm(String(item.distanciaKm))
+      setDuracion('')
+    } else {
+      setModoMedida('minutos')
+      setDistanciaKm('')
+      setDuracion(item.duracion != null ? String(item.duracion) : '')
+    }
+    setCaloriasManual(item.caloriasManual != null && Number(item.caloriasManual) > 0 ? String(item.caloriasManual) : '')
     setNotas(item.notas || '')
     setFechaInput(fechaSoloDia(item.fecha) || fechaToISO(new Date()))
     setBusquedaTipo('')
@@ -128,7 +188,7 @@ export default function Ejercicios() {
 
   const caloriasHoy = ejercicios
     .filter((e) => fechaSoloDia(e.fecha) === hoyIso)
-    .reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoKg), 0)
+    .reduce((s, e) => s + caloriasEjercicioRegistro(e, pesoKg), 0)
 
   const dias7 = getUltimosNDias(7)
   const minutosUltimos7 = ejercicios
@@ -136,7 +196,7 @@ export default function Ejercicios() {
     .reduce((s, e) => s + e.duracion, 0)
   const caloriasUltimos7 = ejercicios
     .filter((e) => dias7.includes(fechaSoloDia(e.fecha)))
-    .reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoKg), 0)
+    .reduce((s, e) => s + caloriasEjercicioRegistro(e, pesoKg), 0)
 
   return (
     <section className="section py-4">
@@ -233,6 +293,7 @@ export default function Ejercicios() {
                                   className="button is-fullwidth is-small is-light has-text-left"
                                   onClick={() => {
                                     setTipo(op.value)
+                                    if (!tipoAdmiteKilometros(op.value)) setModoMedida('minutos')
                                     setBusquedaTipo('')
                                     setMostrarDropdownTipo(false)
                                   }}
@@ -249,9 +310,60 @@ export default function Ejercicios() {
                 </div>
               </div>
               <div className="column">
-                <div className="field">
-                  <label className="label is-size-7">Duración (min)</label>
-                  <div className="control">
+                {tipoAdmiteKilometros(tipo) ? (
+                  <div className="field">
+                    <label className="label is-size-7">Medida</label>
+                    <div className="control">
+                      <div className="buttons has-addons are-small">
+                        <button
+                          type="button"
+                          className={`button is-small ${modoMedida === 'minutos' ? 'is-link' : ''}`}
+                          onClick={() => setModoMedida('minutos')}
+                        >
+                          Minutos
+                        </button>
+                        <button
+                          type="button"
+                          className={`button is-small ${modoMedida === 'km' ? 'is-link' : ''}`}
+                          onClick={() => setModoMedida('km')}
+                        >
+                          Kilómetros
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="field">
+                    <label className="label is-size-7">Duración (min)</label>
+                    <div className="control">
+                      <input
+                        className="input is-small"
+                        type="number"
+                        min="1"
+                        value={duracion}
+                        onChange={(e) => setDuracion(e.target.value)}
+                        placeholder="30"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            {tipoAdmiteKilometros(tipo) && (
+              <div className="field">
+                <label className="label is-size-7">{modoMedida === 'km' ? 'Distancia (km)' : 'Duración (min)'}</label>
+                <div className="control">
+                  {modoMedida === 'km' ? (
+                    <input
+                      className="input is-small"
+                      type="number"
+                      min="0.1"
+                      step="0.1"
+                      value={distanciaKm}
+                      onChange={(e) => setDistanciaKm(e.target.value)}
+                      placeholder="Ej: 5"
+                    />
+                  ) : (
                     <input
                       className="input is-small"
                       type="number"
@@ -260,15 +372,41 @@ export default function Ejercicios() {
                       onChange={(e) => setDuracion(e.target.value)}
                       placeholder="30"
                     />
-                  </div>
+                  )}
                 </div>
+                <p className="is-size-7 has-text-grey mt-1 mb-0">
+                  Los km usan la velocidad típica del tipo (ej. correr 10 km/h) para estimar minutos y kcal.
+                </p>
+              </div>
+            )}
+            <div className="field">
+              <label className="label is-size-7">Kcal manual (opcional)</label>
+              <div className="control">
+                <input
+                  className="input is-small"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={caloriasManual}
+                  onChange={(e) => setCaloriasManual(e.target.value)}
+                  placeholder="Si lo completás, reemplaza el cálculo automático"
+                />
               </div>
             </div>
-            {duracion && tipo && (
-              <p className="is-size-7 has-text-grey mb-2">
-                Aprox. {caloriasQuemadas(tipo, duracion, pesoKg)} kcal quemadas (según tu peso en Config).
-              </p>
-            )}
+            {(() => {
+              const m = parseManualCal()
+              const kmP = modoMedida === 'km' && tipoAdmiteKilometros(tipo) && Number(distanciaKm) > 0
+              const minP = modoMedida === 'minutos' && Number(duracion) > 0
+              if (!tipo || (!m && !kmP && !minP)) return null
+              const durEst = kmP ? minutosDesdeKm(tipo, Number(distanciaKm)) : Number(duracion) || 0
+              return (
+                <p className="is-size-7 has-text-grey mb-2">
+                  Aprox.{' '}
+                  <strong>{caloriasEjercicioRegistro({ tipo, duracion: durEst, caloriasManual: m || undefined }, pesoKg)}</strong> kcal
+                  {m ? ' (valor manual)' : ' según tu peso en Config'}.
+                </p>
+              )
+            })()}
             <div className="field">
               <label className="label is-size-7">Notas (opcional)</label>
               <div className="control">
@@ -366,7 +504,7 @@ export default function Ejercicios() {
             {Object.entries(porFecha)
               .sort(([a], [b]) => b.localeCompare(a))
               .map(([fecha, lista]) => {
-                const totalCal = lista.reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoKg), 0)
+                const totalCal = lista.reduce((s, e) => s + caloriasEjercicioRegistro(e, pesoKg), 0)
                 const totalMin = lista.reduce((s, e) => s + e.duracion, 0)
                 return (
                   <li key={fecha} className="mb-4">
@@ -385,9 +523,13 @@ export default function Ejercicios() {
                             <div className="is-flex-wrap-wrap is-flex is-align-items-center" style={{ gap: '0.5rem' }}>
                               <strong>{e.nombre}</strong>
                               <span className="tag is-link is-light">{etiquetaTipo(e.tipo)}</span>
-                              <span className="is-size-7 ej-hist-duracion">{e.duracion} min</span>
+                              <span className="is-size-7 ej-hist-duracion">
+                                {e.distanciaKm != null && Number(e.distanciaKm) > 0 ? `${e.distanciaKm} km · ` : ''}
+                                {e.duracion} min
+                              </span>
                               <span className="tag is-success is-light">
-                                ~{caloriasQuemadas(e.tipo, e.duracion, pesoKg)} kcal
+                                ~{caloriasEjercicioRegistro(e, pesoKg)} kcal
+                                {e.caloriasManual != null && Number(e.caloriasManual) > 0 ? ' (manual)' : ''}
                               </span>
                               {e.notas && (
                                 <span className="is-size-7 ej-hist-notas" style={{ width: '100%' }}>

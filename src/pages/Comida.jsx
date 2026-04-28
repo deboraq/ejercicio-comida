@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStorage } from '../hooks/useStorage'
 import { getConsejosDelDia } from '../utils/consejos'
-import { caloriasQuemadas, formatearFecha, fechaToISO, fechaSoloDia, getCategoriaTipo } from '../utils/calorias'
+import { caloriasEjercicioRegistro, formatearFecha, fechaToISO, fechaSoloDia, getCategoriaTipo } from '../utils/calorias'
 import { REFERENCIA_ALIMENTOS, buscarAlimentos } from '../utils/referenciaComidas'
 import { PERIODOS, getRangoPorPeriodo, filtrarPorRango } from '../utils/estadisticas'
 
@@ -253,7 +253,7 @@ export default function Comida() {
     return acc
   }, {})
   const caloriasQuemadasHoy = ejerciciosHoy.reduce(
-    (s, ex) => s + caloriasQuemadas(ex.tipo, ex.duracion, config?.pesoKg || 70),
+    (s, ex) => s + caloriasEjercicioRegistro(ex, config?.pesoKg || 70),
     0
   )
 
@@ -392,16 +392,16 @@ export default function Comida() {
                       className="input is-small"
                       type="number"
                       min="1"
-                      max="20"
+                      max="99"
                       value={cantidadPorciones}
-                      onChange={(e) => setCantidadPorciones(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                      title="Cantidad de porciones base al añadir desde la referencia (multiplica kcal, P y C)"
+                      onChange={(e) => setCantidadPorciones(Math.max(1, Math.min(99, parseInt(e.target.value, 10) || 1)))}
+                      title="Solo al tocar un resultado de la lista: cuántas porciones base traer a la fila (luego podés cambiar Cant. en cada ítem abajo)"
                     />
                   </div>
                 </div>
               </div>
               <p className="is-size-7 has-text-grey mt-1 mb-0">
-                Cada resultado es <span className="has-text-weight-semibold">una</span> porción base (ej. 1 triángulo de pizza). Si comiste varias, subí <span className="has-text-weight-semibold">Cant.</span> antes de tocar el alimento.
+                Cada resultado es <span className="has-text-weight-semibold">una</span> unidad base (1 taco, 1 pieza de sushi, 1 triángulo de pizza, 100 g de carne en Proteínas, etc.). Podés usar la <span className="has-text-weight-semibold">Cant.</span> de arriba al elegir de la lista, o ajustar la cantidad en cada fila más abajo.
               </p>
               {busquedaRef.trim().length >= 1 && (
                 <div className="box mt-2 p-2 dropdown-panel dropdown-panel-comida comida-resultados" style={{ maxHeight: 'min(45vh, 260px)', overflowY: 'auto' }}>
@@ -432,7 +432,7 @@ export default function Comida() {
 
             <p className="is-size-7 has-text-weight-semibold mb-1">Ítems a guardar (uno o varios)</p>
             <p className="is-size-7 has-text-grey mb-2">
-              En cada fila, <span className="has-text-weight-semibold">Cant.</span> recalcula kcal, P y C (desde la referencia o escalando lo que cargaste a mano).
+              En cada fila podés cambiar <span className="has-text-weight-semibold">Cant.</span> abajo: recalcula kcal, P y C (si venís de la referencia, mantiene la porción base; si cargaste a mano, escala los totales).
             </p>
             {items.length === 0 ? (
               <div className="comida-vacio-cta mb-3">
@@ -461,26 +461,29 @@ export default function Comida() {
                       />
                     </div>
                   </div>
-                  <div className="columns is-mobile is-multiline is-variable is-1">
-                    <div className="column is-narrow">
-                      <label className="is-size-7 has-text-grey" htmlFor={`comida-cant-${it.id}`}>
+                  <div className="comida-item-macros-grid">
+                    <div className="comida-item-macro-cell">
+                      <label className="is-size-7 has-text-grey comida-item-macro-label" htmlFor={`comida-cant-${it.id}`}>
                         Cant.
                       </label>
                       <input
                         id={`comida-cant-${it.id}`}
                         className="input is-small"
-                        style={{ maxWidth: '4.25rem' }}
                         type="number"
                         min="1"
                         max="99"
+                        inputMode="numeric"
                         value={it.cantidad ?? 1}
                         onChange={(e) => actualizarItem(it.id, 'cantidad', e.target.value)}
-                        title="Recalcula kcal, proteínas y carbohidratos según la porción base de la fila"
+                        title="Porciones base de esta fila (multiplica kcal, P y C desde la referencia, o escala lo cargado a mano)"
                       />
                     </div>
-                    <div className="column">
-                      <label className="is-size-7 has-text-grey">kcal</label>
+                    <div className="comida-item-macro-cell">
+                      <label className="is-size-7 has-text-grey comida-item-macro-label" htmlFor={`comida-kcal-${it.id}`}>
+                        kcal
+                      </label>
                       <input
+                        id={`comida-kcal-${it.id}`}
                         className="input is-small"
                         type="number"
                         min="0"
@@ -489,9 +492,12 @@ export default function Comida() {
                         onChange={(e) => actualizarItem(it.id, 'calorias', e.target.value)}
                       />
                     </div>
-                    <div className="column">
-                      <label className="is-size-7 has-text-grey">Prot. (g)</label>
+                    <div className="comida-item-macro-cell">
+                      <label className="is-size-7 has-text-grey comida-item-macro-label" htmlFor={`comida-prot-${it.id}`}>
+                        Prot. (g)
+                      </label>
                       <input
+                        id={`comida-prot-${it.id}`}
                         className="input is-small"
                         type="number"
                         min="0"
@@ -500,9 +506,12 @@ export default function Comida() {
                         onChange={(e) => actualizarItem(it.id, 'proteinas', e.target.value)}
                       />
                     </div>
-                    <div className="column">
-                      <label className="is-size-7 has-text-grey">Carb. (g)</label>
+                    <div className="comida-item-macro-cell">
+                      <label className="is-size-7 has-text-grey comida-item-macro-label" htmlFor={`comida-carb-${it.id}`}>
+                        Carb. (g)
+                      </label>
                       <input
+                        id={`comida-carb-${it.id}`}
                         className="input is-small"
                         type="number"
                         min="0"
@@ -511,16 +520,19 @@ export default function Comida() {
                         onChange={(e) => actualizarItem(it.id, 'carbohidratos', e.target.value)}
                       />
                     </div>
-                    <div className="column is-full">
-                      <label className="is-size-7 has-text-grey">Porción (texto libre)</label>
-                      <input
-                        className="input is-small"
-                        type="text"
-                        placeholder="Ej: 1 taza, 2 rebanadas…"
-                        value={it.porciones}
-                        onChange={(e) => actualizarItem(it.id, 'porciones', e.target.value)}
-                      />
-                    </div>
+                  </div>
+                  <div className="field mb-0 mt-2">
+                    <label className="is-size-7 has-text-grey is-block mb-1" htmlFor={`comida-porc-${it.id}`}>
+                      Porción (texto libre)
+                    </label>
+                    <input
+                      id={`comida-porc-${it.id}`}
+                      className="input is-small"
+                      type="text"
+                      placeholder="Ej: 1 taza, 2 rebanadas…"
+                      value={it.porciones}
+                      onChange={(e) => actualizarItem(it.id, 'porciones', e.target.value)}
+                    />
                   </div>
                 </div>
               ))

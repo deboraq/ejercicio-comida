@@ -121,9 +121,43 @@ export const MET_POR_TIPO = {
 
 const PESO_DEFAULT_KG = 70
 
+/** Velocidad típica (km/h) alineada con la etiqueta del tipo, para pasar de km → minutos y kcal. */
+export const VELOCIDAD_KM_H_POR_TIPO = {
+  caminata_lenta: 3.2,
+  caminata_rapida: 5.5,
+  correr_8: 8,
+  correr_10: 10,
+  correr_12: 12,
+  bici_estatica_ligera: 15,
+  bici_estatica_moderada: 20,
+  bici_estatica_intensa: 28,
+  bici_aire_paseo: 16,
+  bici_aire_intensa: 24,
+  patinar: 12,
+}
+
+export function tipoAdmiteKilometros(tipo) {
+  return tipo != null && Object.prototype.hasOwnProperty.call(VELOCIDAD_KM_H_POR_TIPO, tipo)
+}
+
+/** Minutos equivalentes a recorrer `km` a la velocidad típica del tipo (mínimo 1). */
+export function minutosDesdeKm(tipo, km) {
+  const v = VELOCIDAD_KM_H_POR_TIPO[tipo]
+  const k = Number(km)
+  if (!v || !k || k <= 0) return 0
+  return Math.max(1, Math.round((k / v) * 60))
+}
+
 export function caloriasQuemadas(tipo, duracionMin, pesoKg = PESO_DEFAULT_KG) {
   const met = MET_POR_TIPO[tipo] ?? 5
   return Math.round(met * pesoKg * (Number(duracionMin) / 60))
+}
+
+/** Kcal de un registro de la pantalla Ejercicios: manual si viene cargado, si no MET con tipo y duración. */
+export function caloriasEjercicioRegistro(e, pesoKg = PESO_DEFAULT_KG) {
+  const manual = Number(e?.caloriasManual)
+  if (manual > 0) return Math.round(manual)
+  return caloriasQuemadas(e?.tipo, e?.duracion, pesoKg)
 }
 
 /**
@@ -135,8 +169,10 @@ export function minutosEstimadosRegistroRutina(reg) {
   return Math.min(50, Math.max(2, Math.round(s * 2.5)))
 }
 
-/** Kcal aprox. de un bloque de gimnasio (MET musculación general). */
+/** Kcal de un bloque de gimnasio: `kcalManual` si lo cargaste, si no estimación MET. */
 export function caloriasQuemadasRegistroRutina(reg, pesoKg = PESO_DEFAULT_KG) {
+  const manual = Number(reg?.kcalManual)
+  if (manual > 0) return Math.round(manual)
   const mins = minutosEstimadosRegistroRutina(reg)
   return caloriasQuemadas('pesas_general', mins, pesoKg)
 }

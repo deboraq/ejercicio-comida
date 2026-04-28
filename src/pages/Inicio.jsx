@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useStorage } from '../hooks/useStorage'
 import {
-  caloriasQuemadas,
+  caloriasEjercicioRegistro,
+  caloriasQuemadasRegistroRutina,
   caloriasQuemadasRutinaDia,
   formatearFecha,
   fechaToISO,
@@ -81,7 +82,7 @@ export default function Inicio() {
   const minutosEjercicioDia = ejerciciosDelDia.reduce((s, e) => s + e.duracion, 0)
   const minutosRutinaEstDia = minutosRutinaDia(registrosRutina, diaEnVista)
   const minutosDia = minutosEjercicioDia + minutosRutinaEstDia
-  const calQuemEjercicioDia = ejerciciosDelDia.reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoCfg), 0)
+  const calQuemEjercicioDia = ejerciciosDelDia.reduce((s, e) => s + caloriasEjercicioRegistro(e, pesoCfg), 0)
   const calQuemRutinaDia = caloriasQuemadasRutinaDia(registrosRutina, diaEnVista, pesoCfg)
   const caloriasQuemadasDia = calQuemEjercicioDia + calQuemRutinaDia
   const caloriasConsumidasDia = comidasDelDia.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
@@ -93,7 +94,7 @@ export default function Inicio() {
   const minutosUltimos7Ej = ejerciciosUltimos7.reduce((s, e) => s + e.duracion, 0)
   const minutosUltimos7Rut = diasUltimos7.reduce((s, f) => s + minutosRutinaDia(registrosRutina, f), 0)
   const minutosUltimos7 = minutosUltimos7Ej + minutosUltimos7Rut
-  const calQuemUltimos7Ej = ejerciciosUltimos7.reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoCfg), 0)
+  const calQuemUltimos7Ej = ejerciciosUltimos7.reduce((s, e) => s + caloriasEjercicioRegistro(e, pesoCfg), 0)
   const calQuemUltimos7Rut = diasUltimos7.reduce((s, f) => s + caloriasQuemadasRutinaDia(registrosRutina, f, pesoCfg), 0)
   const calQuemUltimos7 = calQuemUltimos7Ej + calQuemUltimos7Rut
   const comidasUltimos7 = comida.filter((c) => diasUltimos7.includes(fechaSoloDia(c.fecha)))
@@ -131,7 +132,7 @@ export default function Inicio() {
     fecha: f,
     cal: comida.filter((c) => fechaSoloDia(c.fecha) === f).reduce((s, r) => s + (Number(r.calorias) || 0), 0),
     quemadas:
-      ejercicios.filter((e) => fechaSoloDia(e.fecha) === f).reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoCfg), 0) +
+      ejercicios.filter((e) => fechaSoloDia(e.fecha) === f).reduce((s, e) => s + caloriasEjercicioRegistro(e, pesoCfg), 0) +
       caloriasQuemadasRutinaDia(registrosRutina, f, pesoCfg),
     pro: comida.filter((c) => fechaSoloDia(c.fecha) === f).reduce((s, r) => s + (Number(r.proteinas) || 0), 0),
   }))
@@ -160,7 +161,7 @@ export default function Inicio() {
     const cal = comidasDelDiaF.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
     const minutosEj = ejercicios.filter((e) => fechaSoloDia(e.fecha) === fecha).reduce((s, e) => s + e.duracion, 0)
     const minutosRut = minutosRutinaDia(registrosRutina, fecha)
-    const quemadasEj = ejercicios.filter((e) => fechaSoloDia(e.fecha) === fecha).reduce((s, e) => s + caloriasQuemadas(e.tipo, e.duracion, pesoCfg), 0)
+    const quemadasEj = ejercicios.filter((e) => fechaSoloDia(e.fecha) === fecha).reduce((s, e) => s + caloriasEjercicioRegistro(e, pesoCfg), 0)
     const quemadasRut = caloriasQuemadasRutinaDia(registrosRutina, fecha, pesoCfg)
     const quemadas = quemadasEj + quemadasRut
     const pro = comidasDelDiaF.reduce((s, r) => s + (Number(r.proteinas) || 0), 0)
@@ -306,6 +307,11 @@ export default function Inicio() {
                         <span className="is-size-7 ml-2 inicio-actividad-card-meta">
                           {r.series}×{r.repeticiones}
                           {r.pesoKg != null && r.pesoKg > 0 && ` · ${r.pesoKg} kg`}
+                          {' '}
+                          <span className="has-text-success">~{caloriasQuemadasRegistroRutina(r, pesoCfg)} kcal</span>
+                          {r.kcalManual != null && Number(r.kcalManual) > 0 && (
+                            <span className="is-size-7 has-text-grey"> (manual)</span>
+                          )}
                         </span>
                         {r.notas && <p className="is-size-7 mt-1 mb-0 inicio-actividad-card-notas">— {r.notas}</p>}
                       </li>
@@ -321,9 +327,12 @@ export default function Inicio() {
                       <li key={e.id} className="box py-2 px-3 mb-2 inicio-actividad-card">
                         <strong className="inicio-actividad-card-titulo">{e.nombre}</strong>
                         <span className="tag is-link is-light is-size-7 ml-2">{etiquetaTipo(e.tipo)}</span>
-                        <span className="is-size-7 ml-2 inicio-actividad-card-meta">{e.duracion} min</span>
+                        <span className="is-size-7 ml-2 inicio-actividad-card-meta">
+                          {e.distanciaKm != null && Number(e.distanciaKm) > 0 ? `${e.distanciaKm} km · ` : ''}
+                          {e.duracion} min
+                        </span>
                         <span className="is-size-7 has-text-success ml-1 inicio-actividad-card-kcal">
-                          ~{caloriasQuemadas(e.tipo, e.duracion, pesoCfg)} kcal
+                          ~{caloriasEjercicioRegistro(e, pesoCfg)} kcal
                         </span>
                         {e.notas && <p className="is-size-7 mt-1 mb-0 inicio-actividad-card-notas">— {e.notas}</p>}
                       </li>
@@ -399,8 +408,13 @@ export default function Inicio() {
           </div>
           <div className="column is-half">
             <div className="box">
-              <p className="is-size-7 has-text-grey">Calorías quemadas (ejercicio + rutina aprox.)</p>
+              <p className="is-size-7 has-text-grey">Calorías quemadas (total aprox.)</p>
               <p className="title is-5 has-text-success">{caloriasQuemadasDia || '—'}</p>
+              <p className="is-size-7 has-text-grey mb-0 mt-2">
+                Ejercicios (cardio, etc.): <strong className="has-text-dark">{calQuemEjercicioDia || 0}</strong> kcal
+                <br />
+                Gimnasio (rutina): <strong className="has-text-dark">{calQuemRutinaDia || 0}</strong> kcal
+              </p>
             </div>
           </div>
           <div className="column is-half">

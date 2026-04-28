@@ -539,6 +539,38 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
+/* Fila Cant. + kcal + P + C: misma estructura (etiqueta arriba) y rejilla alineada */
+.comida-page .comida-item-macros-grid {
+  display: grid;
+  grid-template-columns: minmax(3.25rem, 3.75rem) repeat(3, minmax(0, 1fr));
+  gap: 0.45rem 0.6rem;
+  align-items: start;
+}
+
+.comida-page .comida-item-macro-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.comida-page .comida-item-macro-label {
+  line-height: 1.25;
+  min-height: 2.4em;
+  display: flex;
+  align-items: flex-end;
+}
+
+.comida-page .comida-item-macros-grid .input {
+  width: 100%;
+}
+
+@media screen and (max-width: 360px) {
+  .comida-page .comida-item-macros-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .comida-page .comida-vacio-cta {
   border: 1px dashed rgba(128, 128, 128, 0.45);
   border-radius: 10px;

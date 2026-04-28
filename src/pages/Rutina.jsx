@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStorage } from '../hooks/useStorage'
-import { formatearFecha, fechaToISO } from '../utils/calorias'
+import { formatearFecha, fechaToISO, caloriasQuemadasRegistroRutina } from '../utils/calorias'
 import { EJERCICIOS_RUTINA, buscarEjercicios } from '../utils/rutinaEjercicios'
 
 function crearDia(num) {
@@ -32,6 +32,7 @@ export default function Rutina() {
   const [rutinas, setRutinas] = useStorage('rutinas', [])
   const [rutinaActivaId, setRutinaActivaId] = useStorage('rutinaActivaId', '')
   const [registros, setRegistros] = useStorage('rutinaPesos', [])
+  const [config] = useStorage('config', { pesoKg: 70 })
 
   const [vista, setVista] = useState('calendario') // 'calendario' | 'registrar' | 'configurar' | 'progreso'
   const [diaEditando, setDiaEditando] = useState('')
@@ -51,6 +52,7 @@ export default function Rutina() {
   const [editandoRegistro, setEditandoRegistro] = useState(null)
 
   const hoy = fechaToISO(new Date())
+  const pesoCfg = config?.pesoKg || 70
 
   function getDiasDelMes(yearMonth) {
     const [y, m] = yearMonth.split('-').map(Number)
@@ -183,9 +185,10 @@ export default function Rutina() {
       return ejercicio && series !== '' && series != null && repsStr
     })
     if (validos.length === 0) return
-    const nuevos = validos.map(({ ejercicio, series, repeticiones, pesoKg, notas }) => {
+    const nuevos = validos.map(({ ejercicio, series, repeticiones, pesoKg, notas, kcalManual }) => {
       const repsStr = typeof repeticiones === 'string' ? repeticiones.trim() : String(repeticiones ?? '').trim()
-      return {
+      const kcalM = kcalManual !== '' && kcalManual != null && Number(kcalManual) > 0 ? Math.round(Number(kcalManual)) : undefined
+      const row = {
         id: crypto.randomUUID(),
         fecha,
         rutinaId: rutinaIdActual,
@@ -196,6 +199,8 @@ export default function Rutina() {
         pesoKg: pesoKg !== '' && pesoKg != null ? Number(pesoKg) : undefined,
         notas: (notas || '').trim(),
       }
+      if (kcalM != null) row.kcalManual = kcalM
+      return row
     })
     setRegistros([...nuevos, ...registros])
   }
@@ -217,25 +222,29 @@ export default function Rutina() {
       repeticiones: String(r.repeticiones ?? ''),
       pesoKg: r.pesoKg != null && Number(r.pesoKg) > 0 ? String(r.pesoKg) : '',
       notas: r.notas || '',
+      kcalManual: r.kcalManual != null && Number(r.kcalManual) > 0 ? String(r.kcalManual) : '',
     })
   }
 
   const guardarEdicionRegistro = (d) => {
     const repsStr = String(d.repeticiones ?? '').trim()
     if (!d.ejercicio?.trim() || !repsStr || d.series === '' || d.series == null) return
+    const kcalM = d.kcalManual !== '' && d.kcalManual != null && Number(d.kcalManual) > 0 ? Math.round(Number(d.kcalManual)) : undefined
     setRegistros((regs) =>
-      regs.map((x) =>
-        x.id !== d.id
-          ? x
-          : {
-              ...x,
-              ejercicio: d.ejercicio.trim(),
-              series: Number(d.series) || 1,
-              repeticiones: repsStr,
-              pesoKg: d.pesoKg !== '' && d.pesoKg != null ? Number(d.pesoKg) : undefined,
-              notas: (d.notas || '').trim(),
-            }
-      )
+      regs.map((x) => {
+        if (x.id !== d.id) return x
+        const next = {
+          ...x,
+          ejercicio: d.ejercicio.trim(),
+          series: Number(d.series) || 1,
+          repeticiones: repsStr,
+          pesoKg: d.pesoKg !== '' && d.pesoKg != null ? Number(d.pesoKg) : undefined,
+          notas: (d.notas || '').trim(),
+        }
+        if (kcalM != null) next.kcalManual = kcalM
+        else delete next.kcalManual
+        return next
+      })
     )
     setEditandoRegistro(null)
   }
@@ -471,6 +480,7 @@ export default function Rutina() {
                         key={r.id}
                         registro={r}
                         draft={editandoRegistro}
+                        pesoCfg={pesoCfg}
                         onPatch={patchEditandoRegistro}
                         onEditar={iniciarEdicionRegistro}
                         onGuardar={guardarEdicionRegistro}
@@ -731,12 +741,13 @@ export default function Rutina() {
             ) : (
               <div className="box mb-4">
                 <p className="is-size-7 has-text-grey mb-3">
-                  Plan de <strong>{diaParaRegistrar?.nombre}</strong> (lo armás en Configurar). Marcá los que hiciste, completá series y reps — en reps podés escribir números, espacios o texto (ej. <strong>12+12</strong>, <strong>max</strong>). Podés <strong>guardar varias tandas</strong> del mismo ejercicio el mismo día: después de guardar, volvé a marcar y completar.
+                  Plan de <strong>{diaParaRegistrar?.nombre}</strong> (lo armás en Configurar). Marcá los que hiciste, completá series y reps — en reps podés escribir números, espacios o texto (ej. <strong>12+12</strong>, <strong>max</strong>). En <strong>Kcal</strong> podés dejar vacío (estimación automática) o un número para usar solo ese valor. Podés <strong>guardar varias tandas</strong> del mismo ejercicio el mismo día: después de guardar, volvé a marcar y completar.
                 </p>
                 <RegistrarPlanDelDia
                   key={`${diaSeleccionado}-${fechaInput}`}
                   ejercicios={ejerciciosParaCargar}
                   registrosDeEstaSesion={registrosDeEstaSesion}
+                  pesoCfg={pesoCfg}
                   onGuardarMarcados={agregarRegistrosVarios}
                   onEliminarRegistro={eliminarRegistro}
                 />
@@ -754,6 +765,7 @@ export default function Rutina() {
                       key={r.id}
                       registro={r}
                       draft={editandoRegistro}
+                      pesoCfg={pesoCfg}
                       onPatch={patchEditandoRegistro}
                       onEditar={iniciarEdicionRegistro}
                       onGuardar={guardarEdicionRegistro}
@@ -786,6 +798,7 @@ export default function Rutina() {
                             key={r.id}
                             registro={r}
                             draft={editandoRegistro}
+                            pesoCfg={pesoCfg}
                             onPatch={patchEditandoRegistro}
                             onEditar={iniciarEdicionRegistro}
                             onGuardar={guardarEdicionRegistro}
@@ -809,6 +822,7 @@ export default function Rutina() {
 function FilaRegistroRutinaEditable({
   registro,
   draft,
+  pesoCfg,
   onPatch,
   onEditar,
   onGuardar,
@@ -838,6 +852,10 @@ function FilaRegistroRutinaEditable({
             <span>
               <strong>{registro.ejercicio}</strong> — {registro.series}×{registro.repeticiones}
               {registro.pesoKg != null && registro.pesoKg > 0 && <span className="has-text-grey"> · {registro.pesoKg} kg</span>}
+              <span className="has-text-success"> · ~{caloriasQuemadasRegistroRutina(registro, pesoCfg)} kcal</span>
+              {registro.kcalManual != null && Number(registro.kcalManual) > 0 && (
+                <span className="has-text-grey is-size-7"> (manual)</span>
+              )}
               {registro.notas && <span className="has-text-grey"> — {registro.notas}</span>}
             </span>
             {botonesAccion}
@@ -853,6 +871,10 @@ function FilaRegistroRutinaEditable({
             <p className="is-size-7 mt-1 mb-0">
               {registro.series}×{registro.repeticiones}
               {registro.pesoKg != null && registro.pesoKg > 0 && <span> · <strong>{registro.pesoKg} kg</strong></span>}
+              <span className="has-text-success"> · ~{caloriasQuemadasRegistroRutina(registro, pesoCfg)} kcal</span>
+              {registro.kcalManual != null && Number(registro.kcalManual) > 0 && (
+                <span className="has-text-grey"> (manual)</span>
+              )}
             </p>
             {registro.notas && <p className="is-size-7 has-text-grey mt-1 mb-0">— {registro.notas}</p>}
           </div>
@@ -894,6 +916,18 @@ function FilaRegistroRutinaEditable({
             placeholder="Opcional"
           />
         </div>
+        <div className="column">
+          <label className="label is-size-7">Kcal (opc.)</label>
+          <input
+            className="input is-small"
+            type="number"
+            min="1"
+            step="1"
+            value={draft.kcalManual}
+            onChange={(e) => onPatch({ kcalManual: e.target.value })}
+            placeholder="Auto"
+          />
+        </div>
       </div>
       <div className="field mb-2">
         <label className="label is-size-7">Notas</label>
@@ -922,11 +956,11 @@ function FilaRegistroRutinaEditable({
 
 function filasIniciales(ejercicios) {
   return Object.fromEntries(
-    ejercicios.map((ex) => [ex, { incluir: false, series: '3', repeticiones: '', pesoKg: '', notas: '' }])
+    ejercicios.map((ex) => [ex, { incluir: false, series: '3', repeticiones: '', pesoKg: '', kcalManual: '', notas: '' }])
   )
 }
 
-function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, onGuardarMarcados, onEliminarRegistro }) {
+function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGuardarMarcados, onEliminarRegistro }) {
   const hayRegistrosHoy = registrosDeEstaSesion.length > 0
   const [filas, setFilas] = useState(() => filasIniciales(ejercicios))
   const [errorLote, setErrorLote] = useState(null)
@@ -969,6 +1003,7 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, onGuardarMarca
         series: f.series,
         repeticiones: f.repeticiones,
         pesoKg: f.pesoKg,
+        kcalManual: f.kcalManual,
         notas: f.notas,
       }
     })
@@ -980,7 +1015,7 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, onGuardarMarca
     setFilas((prev) => {
       const next = { ...prev }
       for (const ex of pendientesGuardar) {
-        next[ex] = { incluir: false, series: '3', repeticiones: '', pesoKg: '', notas: '' }
+        next[ex] = { incluir: false, series: '3', repeticiones: '', pesoKg: '', kcalManual: '', notas: '' }
       }
       return next
     })
@@ -994,7 +1029,7 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, onGuardarMarca
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {ejercicios.map((ex) => {
           const ya = regsPorEjercicio[ex] || []
-          const f = filas[ex] || { incluir: false, series: '3', repeticiones: '', pesoKg: '', notas: '' }
+          const f = filas[ex] || { incluir: false, series: '3', repeticiones: '', pesoKg: '', kcalManual: '', notas: '' }
           return (
             <li key={ex} className="mb-4 pb-3 subtle-divider-b">
               <p className="is-size-7 has-text-weight-semibold mb-2">{ex}</p>
@@ -1005,6 +1040,7 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, onGuardarMarca
                       <span>
                         ✓ {r.series}×{r.repeticiones}
                         {r.pesoKg != null && r.pesoKg > 0 && <span className="has-text-grey"> · {r.pesoKg} kg</span>}
+                        <span className="has-text-success"> · ~{caloriasQuemadasRegistroRutina(r, pesoCfg)} kcal</span>
                         {r.notas && <span className="has-text-grey"> — {r.notas}</span>}
                       </span>
                       <button type="button" className="button is-small is-text has-text-grey" onClick={() => onEliminarRegistro(r.id)} aria-label="Quitar registro">
@@ -1060,6 +1096,20 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, onGuardarMarca
                       onChange={(e) => setFila(ex, { pesoKg: e.target.value })}
                       placeholder="—"
                       style={{ width: '5rem' }}
+                    />
+                  </div>
+                  <div className="column is-narrow">
+                    <label className="label is-size-7 mb-1">Kcal</label>
+                    <input
+                      className="input is-small"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={f.kcalManual}
+                      onChange={(e) => setFila(ex, { kcalManual: e.target.value })}
+                      placeholder="Auto"
+                      style={{ width: '4.5rem' }}
+                      title="Opcional: si lo cargás, reemplaza la estimación por series"
                     />
                   </div>
                 </div>
