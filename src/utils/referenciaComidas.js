@@ -511,6 +511,7 @@ export const REFERENCIA_ALIMENTOS = [
   { categoria: 'Tartas (por porción)', nombre: 'Tarta de pollo (1 porción)', calorias: 310, proteinas: 18, carbohidratos: 27, porcion: '1/8' },
   { categoria: 'Tartas (por porción)', nombre: 'Tarta de carne picada (1 porción)', calorias: 330, proteinas: 17, carbohidratos: 26, porcion: '1/8' },
   { categoria: 'Tartas (por porción)', nombre: 'Tarta de espinaca y ricota (1 porción)', calorias: 270, proteinas: 12, carbohidratos: 28, porcion: '1/8' },
+  { categoria: 'Tartas (por porción)', nombre: 'Tarta de acelga (1 porción)', calorias: 265, proteinas: 11, carbohidratos: 28, porcion: '1/8' },
   { categoria: 'Tartas (por porción)', nombre: 'Tarta de calabaza y queso (1 porción)', calorias: 250, proteinas: 8, carbohidratos: 30, porcion: '1/8' },
   { categoria: 'Tartas (por porción)', nombre: 'Tarta de choclo cremosa (1 porción)', calorias: 290, proteinas: 10, carbohidratos: 32, porcion: '1/8' },
   { categoria: 'Tartas (por porción)', nombre: 'Tarta de zapallito (1 porción)', calorias: 220, proteinas: 7, carbohidratos: 28, porcion: '1/8' },
