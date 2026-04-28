@@ -13,6 +13,7 @@ export const SUPLEMENTOS = [
   { id: 'magnesio', label: 'Magnesio' },
   { id: 'bcaa', label: 'BCAA' },
   { id: 'cafeina', label: 'Cafeína' },
+  { id: 'hydromax', label: 'Hydromax' },
   { id: 'otro', label: 'Otro' },
 ]
 
