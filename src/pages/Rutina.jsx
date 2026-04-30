@@ -74,6 +74,8 @@ export default function Rutina() {
   const [hastaProgresoCustom, setHastaProgresoCustom] = useState(() => fechaToISO(new Date()))
   /** Edición de un registro de pesos: { id, ejercicio, series, repeticiones, pesoKg, notas } */
   const [editandoRegistro, setEditandoRegistro] = useState(null)
+  /** Fechas ISO con el bloque del historial plegado (Registrar → Historial por fecha). */
+  const [historialFechasPlegadas, setHistorialFechasPlegadas] = useState(() => new Set())
 
   const hoy = fechaToISO(new Date())
   const pesoCfg = config?.pesoKg || 70
@@ -918,26 +920,56 @@ export default function Rutina() {
                   const lista = porFecha[fecha]
                   const diaId = lista[0]?.diaRutinaId
                   const nombreDia = dias.find((d) => d.id === diaId)?.nombre || 'Día'
+                  const historialAbierto = !historialFechasPlegadas.has(fecha)
                   return (
-                    <li key={fecha} className="mb-4">
-                      <p className="is-size-7 has-text-grey mb-2" style={{ textTransform: 'capitalize' }}>
-                        {formatearFecha(fecha)} — {nombreDia}
-                      </p>
-                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                        {lista.map((r) => (
-                          <FilaRegistroRutinaEditable
-                            key={r.id}
-                            registro={r}
-                            draft={editandoRegistro}
-                            pesoCfg={pesoCfg}
-                            onPatch={patchEditandoRegistro}
-                            onEditar={iniciarEdicionRegistro}
-                            onGuardar={guardarEdicionRegistro}
-                            onCancelar={cancelarEdicionRegistro}
-                            onEliminar={eliminarRegistro}
-                          />
-                        ))}
-                      </ul>
+                    <li key={fecha} className="mb-3">
+                      <button
+                        type="button"
+                        className="is-flex is-align-items-center is-justify-content-space-between mb-2"
+                        style={{
+                          width: '100%',
+                          background: 'transparent',
+                          border: 'none',
+                          padding: '0.35rem 0',
+                          cursor: 'pointer',
+                          color: 'inherit',
+                          font: 'inherit',
+                          textAlign: 'left',
+                        }}
+                        aria-expanded={historialAbierto}
+                        onClick={() => {
+                          setHistorialFechasPlegadas((prev) => {
+                            const n = new Set(prev)
+                            if (n.has(fecha)) n.delete(fecha)
+                            else n.add(fecha)
+                            return n
+                          })
+                        }}
+                      >
+                        <span className="is-size-7 has-text-grey" style={{ textTransform: 'capitalize' }}>
+                          {formatearFecha(fecha)} — {nombreDia}
+                        </span>
+                        <span className="is-size-7 has-text-grey ml-2" aria-hidden>
+                          {historialAbierto ? '▼' : '▶'}
+                        </span>
+                      </button>
+                      {historialAbierto && (
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                          {lista.map((r) => (
+                            <FilaRegistroRutinaEditable
+                              key={r.id}
+                              registro={r}
+                              draft={editandoRegistro}
+                              pesoCfg={pesoCfg}
+                              onPatch={patchEditandoRegistro}
+                              onEditar={iniciarEdicionRegistro}
+                              onGuardar={guardarEdicionRegistro}
+                              onCancelar={cancelarEdicionRegistro}
+                              onEliminar={eliminarRegistro}
+                            />
+                          ))}
+                        </ul>
+                      )}
                     </li>
                   )
                 })}
