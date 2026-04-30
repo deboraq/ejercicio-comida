@@ -10,19 +10,15 @@ function mensajeErrorRoleNav(m) {
     t.includes('schema cache') ||
     /relation.*does not exist|no existe la relación/i.test(t)
   ) {
-    return 'Falta crear la tabla en Supabase: abrí el SQL Editor de tu proyecto, pegá y ejecutá el bloque «Menú por rol» (tabla public.role_nav_hidden) del archivo SUPABASE.md en el repositorio. Luego recargá esta página.'
+    return 'No se pudo guardar: el menú por rol no está configurado en el servidor.'
   }
-  return t || 'No se pudo guardar. Revisá Supabase y SUPABASE.md.'
+  return t || 'No se pudo guardar.'
 }
 
 const ROLES_META = [
-  { id: 'alumno', label: 'Alumno', help: 'Cuentas que usan rutina, ejercicios, comida, etc.' },
-  { id: 'profe', label: 'Entrenador', help: 'Por defecto suelen trabajar solo desde Profe.' },
-  {
-    id: 'admin',
-    label: 'Administrador',
-    help: 'En la app las cuentas admin siempre ven todas las pestañas; acá podés guardar valores igualmente.',
-  },
+  { id: 'alumno', label: 'Alumno' },
+  { id: 'profe', label: 'Entrenador' },
+  { id: 'admin', label: 'Administrador' },
 ]
 
 export default function AdminRoleMenuSection() {
@@ -66,17 +62,10 @@ export default function AdminRoleMenuSection() {
 
   return (
     <div className="box mb-4 py-3">
-      <h2 className="title is-6 mb-2">Menú por rol</h2>
-      <p className="is-size-7 has-text-grey mb-3">
-        Elegí qué pestañas del menú inferior están <strong>ocultas</strong> para cada rol. En <strong>Usuarios y roles</strong> podés
-        sumar ocultaciones <strong>extra por cuenta</strong> (se unen con las del rol). Si al guardar ves error de tabla
-        inexistente, ejecutá primero el SQL «Menú por rol» en Supabase (<code>SUPABASE.md</code> del proyecto).
-      </p>
       <div className="columns is-multiline">
-        {ROLES_META.map(({ id, label, help }) => (
+        {ROLES_META.map(({ id, label }) => (
           <div key={id} className="column is-12-tablet is-4-desktop">
-            <p className="is-size-7 has-text-weight-semibold mb-1">{label}</p>
-            <p className="is-size-7 has-text-grey mb-2">{help}</p>
+            <p className="is-size-7 has-text-weight-semibold mb-2">{label}</p>
             <div className="is-flex is-flex-direction-column" style={{ gap: '0.25rem' }}>
               {BLOCKABLE_NAV_KEYS.map((key) => (
                 <label key={key} className="checkbox is-size-7">
