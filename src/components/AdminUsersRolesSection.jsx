@@ -139,59 +139,6 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
     })
   }
 
-  const bloqueCampo = (
-    <>
-      <input
-        className="input is-small"
-        type="text"
-        value={nombre}
-        onChange={(e) => setNombre(e.target.value)}
-        placeholder="Ej. Ana García"
-        autoComplete="off"
-      />
-      <button
-        type="button"
-        className="button is-small is-link is-light is-fullwidth"
-        disabled={!nombreCambio}
-        onClick={() => onGuardarNombre(row.id, nombre)}
-      >
-        Guardar nombre
-      </button>
-    </>
-  )
-
-  const bloqueRol = (
-    <>
-      <div className="select is-small is-fullwidth">
-        <select
-          value={rol}
-          onChange={(e) => {
-            const v = e.target.value
-            setRol(v)
-            setBloqueados(adminHiddenCheckboxSet(v, row.blocked_modules, row.nav_force_visible, roleNavMap))
-          }}
-        >
-          <option value="alumno">alumno</option>
-          <option value="profe">profe</option>
-          <option value="admin">admin</option>
-        </select>
-      </div>
-      <button
-        type="button"
-        className="button is-small is-link is-light is-fullwidth"
-        disabled={rol === row.role}
-        onClick={() => {
-          if (row.id === actualUserId && row.role === 'admin' && rol !== 'admin') {
-            if (!window.confirm('¿Sacarte el rol admin? Perderás acceso a esta sección.')) return
-          }
-          onGuardarRol(row.id, rol)
-        }}
-      >
-        Guardar rol
-      </button>
-    </>
-  )
-
   return (
     <article
       className="box py-3 px-3 mb-0"
@@ -209,19 +156,82 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(10.5rem, 1fr))',
               gap: '0.75rem 1rem',
-              alignItems: 'start',
+              alignItems: 'stretch',
             }}
           >
-            <div style={{ minWidth: 0, width: '100%' }}>
+            <div
+              style={{
+                minWidth: 0,
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
               <p className="is-size-7 has-text-weight-semibold mb-2">Nombre y apellido</p>
-              <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem', width: '100%' }}>
-                {bloqueCampo}
+              <div
+                className="is-flex is-flex-direction-column"
+                style={{ flex: 1, gap: '0.5rem', width: '100%', minHeight: 0 }}
+              >
+                <input
+                  className="input is-small"
+                  type="text"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Ej. Ana García"
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  className="button is-small is-link is-light is-fullwidth"
+                  style={{ marginTop: 'auto' }}
+                  disabled={!nombreCambio}
+                  onClick={() => onGuardarNombre(row.id, nombre)}
+                >
+                  Guardar nombre
+                </button>
               </div>
             </div>
-            <div style={{ minWidth: 0, width: '100%' }}>
+            <div
+              style={{
+                minWidth: 0,
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
               <p className="is-size-7 has-text-weight-semibold mb-2">Rol</p>
-              <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem', width: '100%' }}>
-                {bloqueRol}
+              <div
+                className="is-flex is-flex-direction-column"
+                style={{ flex: 1, gap: '0.5rem', width: '100%', minHeight: 0 }}
+              >
+                <div className="select is-small is-fullwidth">
+                  <select
+                    value={rol}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setRol(v)
+                      setBloqueados(adminHiddenCheckboxSet(v, row.blocked_modules, row.nav_force_visible, roleNavMap))
+                    }}
+                  >
+                    <option value="alumno">alumno</option>
+                    <option value="profe">profe</option>
+                    <option value="admin">admin</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  className="button is-small is-link is-light is-fullwidth"
+                  style={{ marginTop: 'auto' }}
+                  disabled={rol === row.role}
+                  onClick={() => {
+                    if (row.id === actualUserId && row.role === 'admin' && rol !== 'admin') {
+                      if (!window.confirm('¿Sacarte el rol admin? Perderás acceso a esta sección.')) return
+                    }
+                    onGuardarRol(row.id, rol)
+                  }}
+                >
+                  Guardar rol
+                </button>
               </div>
             </div>
           </div>

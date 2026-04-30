@@ -55,7 +55,14 @@ function AppRoutes() {
           <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Ejercicios /></ModuleGate>} />
           <Route path="/rutina" element={<ModuleGate module="rutina" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Rutina /></ModuleGate>} />
           <Route path="/comida" element={<ModuleGate module="comida" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Comida /></ModuleGate>} />
-          <Route path="/config" element={<Config />} />
+          <Route
+            path="/config"
+            element={
+              <ModuleGate module="config" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}>
+                <Config />
+              </ModuleGate>
+            }
+          />
           <Route path="/profe" element={<ModuleGate module="profe" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Profe /></ModuleGate>} />
           <Route path="/admin" element={<ModuleGate module="admin" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Admin /></ModuleGate>} />
           <Route path="/login" element={<Login />} />
@@ -72,7 +79,7 @@ function AppRoutes() {
               {!ocultarNav('comida') && <NavLink to="/comida" icon="🥗">Comida</NavLink>}
               {mostrarProfe && !ocultarNav('profe') && <NavLink to="/profe" icon="🧑‍🏫">Profe</NavLink>}
               {mostrarAdmin && !ocultarNav('admin') && <NavLink to="/admin" icon="🛡️">Admin</NavLink>}
-              <NavLink to="/config" icon="⚙️">Config</NavLink>
+              {!ocultarNav('config') && <NavLink to="/config" icon="⚙️">Config</NavLink>}
             </div>
           </div>
         </nav>

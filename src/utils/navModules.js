@@ -1,18 +1,20 @@
 /** Valores por defecto si aún no existe la tabla `role_nav_hidden` en Supabase. */
 export const DEFAULT_ROLE_NAV_HIDDEN = {
   alumno: [],
-  profe: ['inicio', 'ejercicios', 'rutina', 'comida'],
+  /** El entrenador no usa metas, peso corporal ni suplementos del alumno (eso vive en Config). */
+  profe: ['inicio', 'ejercicios', 'rutina', 'comida', 'config'],
   admin: [],
 }
 
 /** Claves guardadas en `profiles.blocked_modules` (extras por usuario, además del rol). */
-export const BLOCKABLE_NAV_KEYS = ['inicio', 'ejercicios', 'rutina', 'comida', 'profe', 'admin']
+export const BLOCKABLE_NAV_KEYS = ['inicio', 'ejercicios', 'rutina', 'comida', 'config', 'profe', 'admin']
 
 export const BLOCKABLE_LABELS = {
   inicio: 'Inicio',
   ejercicios: 'Ejercicios',
   rutina: 'Rutina',
   comida: 'Comida',
+  config: 'Config',
   profe: 'Profe',
   admin: 'Admin',
 }
@@ -31,6 +33,10 @@ export function normalizeRoleNavMap(raw) {
     if (Array.isArray(raw[role])) {
       out[role] = [...new Set(raw[role].filter(Boolean))]
     }
+  }
+  /* Despliegues viejos en BD sin `config`: el entrenador no debe ver metas/peso/suplementos del alumno. */
+  if (!out.profe.includes('config')) {
+    out.profe = [...out.profe, 'config']
   }
   return out
 }
@@ -75,4 +81,19 @@ export function toNavStorageFromHiddenSet(rol, hiddenSet, roleNavMap) {
 
 export function isNavModuleBlocked(profile, key, roleNavMap) {
   return effectiveHiddenNavKeys(profile, roleNavMap).has(key)
+}
+
+/** Primera pestaña permitida al redirigir desde un módulo bloqueado (evita mandar al profe a Config). */
+export function defaultFallbackPath(profile, roleNavMap) {
+  if (!profile || profile.role === 'admin') return '/admin'
+  const order =
+    profile.role === 'profe'
+      ? ['profe', 'config', 'inicio', 'ejercicios', 'rutina', 'comida']
+      : ['inicio', 'ejercicios', 'rutina', 'comida', 'config', 'profe']
+  for (const k of order) {
+    if (!isNavModuleBlocked(profile, k, roleNavMap)) {
+      return k === 'inicio' ? '/' : `/${k}`
+    }
+  }
+  return '/login'
 }

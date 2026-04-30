@@ -1,12 +1,17 @@
+import { ejercicioDiaAJson } from './rutinaEjercicioDia'
+
 /** JSON mínimo para compartir / importar (sin ids de rutina; se regeneran al importar). */
 export function exportarRutinaAJson(rutina) {
   if (!rutina) return ''
   return JSON.stringify({
     nombre: rutina.nombre || 'Rutina',
-    dias: (rutina.dias || []).map((d) => ({
-      nombre: d.nombre || 'Día',
-      ejercicios: [...(d.ejercicios || [])],
-    })),
+    dias: (rutina.dias || []).map((d) => {
+      const ej = (d.ejercicios || []).map((e) => ejercicioDiaAJson(e)).filter((x) => x != null && (typeof x === 'string' ? x : x.nombre))
+      return {
+        nombre: d.nombre || 'Día',
+        ejercicios: ej,
+      }
+    }),
   })
 }
 
@@ -21,7 +26,21 @@ export function rutinaDesdeJsonAsignada(texto, asignadaPorDefecto = 'Entrenador'
   const base = Date.now()
   const dias = diasRaw.map((d, i) => {
     const nm = String(d?.nombre || `Día ${i + 1}`).trim() || `Día ${i + 1}`
-    const ej = Array.isArray(d?.ejercicios) ? d.ejercicios.map((e) => String(e).trim()).filter(Boolean) : []
+    const rawEj = Array.isArray(d?.ejercicios) ? d.ejercicios : []
+    const ej = rawEj
+      .map((e) => {
+        if (e == null) return null
+        if (typeof e === 'string') return e.trim() || null
+        if (typeof e === 'object' && e.nombre != null) {
+          const o = { nombre: String(e.nombre).trim() }
+          if (!o.nombre) return null
+          if (e.series != null && String(e.series).trim()) o.series = String(e.series).trim()
+          if (e.repeticiones != null && String(e.repeticiones).trim()) o.repeticiones = String(e.repeticiones).trim()
+          return o.series || o.repeticiones ? o : o.nombre
+        }
+        return null
+      })
+      .filter(Boolean)
     return { id: `d_asig_${base}_${i}`, nombre: nm, ejercicios: ej }
   })
   const por = String(obj.asignadaPor ?? asignadaPorDefecto).trim() || asignadaPorDefecto

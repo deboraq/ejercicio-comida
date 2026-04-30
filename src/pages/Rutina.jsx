@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useStorage } from '../hooks/useStorage'
 import { useAuth } from '../context/AuthContext'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
@@ -6,6 +6,12 @@ import { listAssignmentsForStudent, assignmentsToRutinasItems, deleteRoutineAssi
 import { formatearFecha, fechaToISO, caloriasQuemadasRegistroRutina } from '../utils/calorias'
 import { EJERCICIOS_RUTINA, buscarEjercicios } from '../utils/rutinaEjercicios'
 import { exportarRutinaAJson } from '../utils/rutinaShare'
+import {
+  nombreDeEjercicioDiaItem,
+  itemEjercicioDiaNormalizado,
+  etiquetaPlanEjercicio,
+  nombresEjerciciosDia,
+} from '../utils/rutinaEjercicioDia'
 
 export { exportarRutinaAJson } from '../utils/rutinaShare'
 
@@ -39,7 +45,17 @@ function clonarRutinaParaMisRutinas(orig) {
   const dias = (orig.dias || []).map((d, i) => ({
     id: `d${base}_${i}_${Math.random().toString(36).slice(2, 7)}`,
     nombre: d.nombre || `Día ${i + 1}`,
-    ejercicios: [...(d.ejercicios || [])],
+    ejercicios: (d.ejercicios || [])
+      .map((e) => {
+        const it = itemEjercicioDiaNormalizado(e)
+        if (!it) return null
+        if (!it.series.trim() && !it.repeticiones.trim()) return it.nombre
+        const o = { nombre: it.nombre }
+        if (it.series.trim()) o.series = it.series.trim()
+        if (it.repeticiones.trim()) o.repeticiones = it.repeticiones.trim()
+        return o
+      })
+      .filter(Boolean),
   }))
   return {
     id: `r${base}_${Math.random().toString(36).slice(2, 9)}`,
@@ -126,7 +142,13 @@ export default function Rutina() {
   const diaActual = dias.find((d) => d.id === diaEditando) || dias[0]
   const diaParaRegistrar = dias.find((d) => d.id === diaSeleccionado) || dias[0]
   const ejerciciosDelDia = diaActual?.ejercicios || []
-  const ejerciciosParaCargar = diaParaRegistrar?.ejercicios || []
+  const ejerciciosParaCargar = useMemo(
+    () =>
+      (diaParaRegistrar?.ejercicios || [])
+        .map(itemEjercicioDiaNormalizado)
+        .filter(Boolean),
+    [diaParaRegistrar?.id, diaParaRegistrar?.ejercicios]
+  )
 
   useEffect(() => {
     if (dias.length > 0) {
@@ -224,12 +246,15 @@ export default function Rutina() {
   }
 
   const añadirEjercicioAlDia = (nombre) => {
-    if (!nombre || (diaActual?.ejercicios || []).includes(nombre)) return
+    const n = String(nombre || '').trim()
+    if (!n) return
+    const ya = nombresEjerciciosDia({ ejercicios: diaActual?.ejercicios })
+    if (ya.includes(n)) return
     actualizarRutina((r) => ({
       ...r,
       dias: r.dias.map((d) =>
         d.id === diaEditando
-          ? { ...d, ejercicios: [...(d.ejercicios || []), nombre] }
+          ? { ...d, ejercicios: [...(d.ejercicios || []), n] }
           : d
       ),
     }))
@@ -241,7 +266,10 @@ export default function Rutina() {
       ...r,
       dias: r.dias.map((d) =>
         d.id === diaEditando
-          ? { ...d, ejercicios: (d.ejercicios || []).filter((e) => e !== nombre) }
+          ? {
+              ...d,
+              ejercicios: (d.ejercicios || []).filter((e) => nombreDeEjercicioDiaItem(e) !== nombre),
+            }
           : d
       ),
     }))
@@ -833,10 +861,19 @@ export default function Rutina() {
               {ejerciciosDelDia.length === 0 ? (
                 <li className="is-size-7 has-text-grey">Ninguno aún. Usa el buscador.</li>
               ) : (
-                ejerciciosDelDia.map((ex) => (
-                  <li key={ex} className="is-flex is-justify-content-space-between is-align-items-center py-2 subtle-divider-b">
-                    <span>{ex}</span>
-                    <button type="button" className="button is-small is-text has-text-grey" onClick={() => quitarEjercicioDelDia(ex)}>Quitar</button>
+                ejerciciosDelDia.map((ex, idx) => (
+                  <li
+                    key={`${nombreDeEjercicioDiaItem(ex)}-${idx}`}
+                    className="is-flex is-justify-content-space-between is-align-items-center py-2 subtle-divider-b"
+                  >
+                    <span>{etiquetaPlanEjercicio(ex)}</span>
+                    <button
+                      type="button"
+                      className="button is-small is-text has-text-grey"
+                      onClick={() => quitarEjercicioDelDia(nombreDeEjercicioDiaItem(ex))}
+                    >
+                      Quitar
+                    </button>
                   </li>
                 ))
               )}
@@ -1076,9 +1113,9 @@ function VistaRutinasAsignadas({
                       <p className="is-size-7 has-text-grey mb-0">Sin ejercicios en la plantilla.</p>
                     ) : (
                       <ul className="mt-1 mb-0 pl-3" style={{ listStyle: 'circle' }}>
-                        {(d.ejercicios || []).map((ex) => (
-                          <li key={ex} className="is-size-7">
-                            {ex}
+                        {(d.ejercicios || []).map((ex, ei) => (
+                          <li key={`${nombreDeEjercicioDiaItem(ex)}-${ei}`} className="is-size-7">
+                            {etiquetaPlanEjercicio(ex)}
                           </li>
                         ))}
                       </ul>
@@ -1229,10 +1266,21 @@ function FilaRegistroRutinaEditable({
   return <li className="box py-2 px-3 mb-2">{formulario}</li>
 }
 
-function filasIniciales(ejercicios) {
+function filasIniciales(planItems) {
   return Object.fromEntries(
-    ejercicios.map((ex) => [ex, { incluir: false, series: '3', repeticiones: '', pesoKg: '', kcalManual: '', notas: '' }])
+    planItems.map((it) => {
+      const seriesIni = it.series?.trim() ? it.series.trim() : '3'
+      const repsIni = it.repeticiones?.trim() || ''
+      return [
+        it.nombre,
+        { incluir: false, series: seriesIni, repeticiones: repsIni, pesoKg: '', kcalManual: '', notas: '' },
+      ]
+    })
   )
+}
+
+function serializarPlanItems(planItems) {
+  return JSON.stringify(planItems.map((it) => ({ n: it.nombre, s: it.series, r: it.repeticiones })))
 }
 
 function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGuardarMarcados, onEliminarRegistro }) {
@@ -1243,19 +1291,19 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
   useEffect(() => {
     setFilas(filasIniciales(ejercicios))
     setErrorLote(null)
-  }, [ejercicios.join('\u0001')])
+  }, [serializarPlanItems(ejercicios)])
 
   const setFila = (nombre, patch) => {
     setFilas((prev) => ({ ...prev, [nombre]: { ...prev[nombre], ...patch } }))
   }
 
-  const regsPorEjercicio = ejercicios.reduce((acc, ex) => {
-    acc[ex] = registrosDeEstaSesion.filter((r) => r.ejercicio === ex)
+  const regsPorEjercicio = ejercicios.reduce((acc, it) => {
+    acc[it.nombre] = registrosDeEstaSesion.filter((r) => r.ejercicio === it.nombre)
     return acc
   }, {})
 
-  const pendientesGuardar = ejercicios.filter((ex) => {
-    const f = filas[ex]
+  const pendientesGuardar = ejercicios.filter((it) => {
+    const f = filas[it.nombre]
     if (!f?.incluir) return false
     const reps = (f.repeticiones || '').trim()
     return f.series !== '' && f.series != null && reps
@@ -1263,18 +1311,18 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
 
   const guardarLote = () => {
     setErrorLote(null)
-    const marcadosSinReps = ejercicios.filter((ex) => {
-      const f = filas[ex]
+    const marcadosSinReps = ejercicios.filter((it) => {
+      const f = filas[it.nombre]
       return f?.incluir && (!(f.repeticiones || '').trim() || f.series === '' || f.series == null)
     })
     if (marcadosSinReps.length > 0) {
       setErrorLote('En los marcados como hechos, completá series y reps (reps puede ser texto, ej. 10 o 8+8).')
       return
     }
-    const payload = pendientesGuardar.map((ex) => {
-      const f = filas[ex]
+    const payload = pendientesGuardar.map((it) => {
+      const f = filas[it.nombre]
       return {
-        ejercicio: ex,
+        ejercicio: it.nombre,
         series: f.series,
         repeticiones: f.repeticiones,
         pesoKg: f.pesoKg,
@@ -1289,8 +1337,17 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
     onGuardarMarcados(payload)
     setFilas((prev) => {
       const next = { ...prev }
-      for (const ex of pendientesGuardar) {
-        next[ex] = { incluir: false, series: '3', repeticiones: '', pesoKg: '', kcalManual: '', notas: '' }
+      for (const it of pendientesGuardar) {
+        const seriesReset = it.series?.trim() ? it.series.trim() : '3'
+        const repsReset = it.repeticiones?.trim() || ''
+        next[it.nombre] = {
+          incluir: false,
+          series: seriesReset,
+          repeticiones: repsReset,
+          pesoKg: '',
+          kcalManual: '',
+          notas: '',
+        }
       }
       return next
     })
@@ -1302,12 +1359,28 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
         <div className="notification is-warning is-light is-size-7 py-2 px-3 mb-3">{errorLote}</div>
       )}
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {ejercicios.map((ex) => {
+        {ejercicios.map((it) => {
+          const ex = it.nombre
           const ya = regsPorEjercicio[ex] || []
-          const f = filas[ex] || { incluir: false, series: '3', repeticiones: '', pesoKg: '', kcalManual: '', notas: '' }
+          const f = filas[ex] || {
+            incluir: false,
+            series: '3',
+            repeticiones: '',
+            pesoKg: '',
+            kcalManual: '',
+            notas: '',
+          }
+          const sugSer = it.series?.trim()
+          const sugRep = it.repeticiones?.trim()
           return (
             <li key={ex} className="mb-4 pb-3 subtle-divider-b">
-              <p className="is-size-7 has-text-weight-semibold mb-2">{ex}</p>
+              <p className="is-size-7 has-text-weight-semibold mb-1">{ex}</p>
+              {(sugSer || sugRep) && (
+                <p className="is-size-7 has-text-grey mb-2">
+                  Sugerido por tu plan:
+                  {sugSer && sugRep ? ` ${sugSer} × ${sugRep}` : sugSer ? ` ${sugSer} series` : ` ${sugRep} reps`}
+                </p>
+              )}
               {ya.length > 0 && (
                 <div className="mb-2">
                   {ya.map((r) => (
@@ -1330,7 +1403,7 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
                   <input
                     type="checkbox"
                     checked={f.incluir}
-                    onChange={(e) => setFila(ex, { incluir: e.target.checked })}
+                    onChange={(e) => setFila(it.nombre, { incluir: e.target.checked })}
                   />
                   <span className="ml-2">Lo hice (registrar ahora)</span>
                 </label>

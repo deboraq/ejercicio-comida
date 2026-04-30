@@ -277,7 +277,24 @@ export function assignmentsToRutinasItems(rows, teacherLabelById) {
     const diasArr = Array.isArray(diasRaw) && diasRaw.length > 0 ? diasRaw : [{ nombre: 'Día 1', ejercicios: [] }]
     const dias = diasArr.map((d, i) => {
       const nm = String(d?.nombre || `Día ${i + 1}`).trim() || `Día ${i + 1}`
-      const ej = Array.isArray(d?.ejercicios) ? d.ejercicios.map((e) => String(e).trim()).filter(Boolean) : []
+      const raw = Array.isArray(d?.ejercicios) ? d.ejercicios : []
+      const ej = raw
+        .map((e) => {
+          if (e == null) return null
+          if (typeof e === 'string') {
+            const t = e.trim()
+            return t || null
+          }
+          if (typeof e === 'object' && e.nombre != null) {
+            const o = { nombre: String(e.nombre).trim() }
+            if (!o.nombre) return null
+            if (e.series != null && String(e.series).trim()) o.series = String(e.series).trim()
+            if (e.repeticiones != null && String(e.repeticiones).trim()) o.repeticiones = String(e.repeticiones).trim()
+            return o
+          }
+          return null
+        })
+        .filter(Boolean)
       return { id: `d_cloud_${row.id}_${i}`, nombre: nm, ejercicios: ej }
     })
     const label = teacherLabelById[row.teacher_id] || 'Entrenador'
