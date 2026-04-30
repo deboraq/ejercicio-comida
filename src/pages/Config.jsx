@@ -39,6 +39,20 @@ export default function Config() {
 
   const suplementosActivos = config.suplementosActivos ?? SUPLEMENTOS.map((s) => s.id)
 
+  const etiquetaRol = (role) => {
+    if (role === 'admin') return 'Administrador'
+    if (role === 'profe') return 'Entrenador'
+    if (role === 'alumno') return 'Alumno'
+    return role || '—'
+  }
+
+  const claseTagRol = (role) => {
+    if (role === 'admin') return 'tag is-warning mb-0'
+    if (role === 'profe') return 'tag is-info mb-0'
+    if (role === 'alumno') return 'tag is-link is-light mb-0'
+    return 'tag is-light mb-0'
+  }
+
   return (
     <section className="section py-4">
       <div className="container" style={{ maxWidth: '560px' }}>
@@ -47,50 +61,58 @@ export default function Config() {
           <p className="is-size-7 has-text-grey mb-0">Tu objetivo y peso se usan para calorías quemadas y consejos personalizados</p>
         </header>
 
+        {user && (
+          <div
+            className="mb-4 px-3 py-3"
+            style={{
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(0,0,0,0.25)',
+            }}
+          >
+            <p className="is-size-7 has-text-grey mb-2">Sesión iniciada</p>
+            <div className="is-flex is-flex-wrap-wrap is-align-items-center" style={{ gap: '0.5rem' }}>
+              <span className="is-size-7" style={{ wordBreak: 'break-all' }}>{user.email}</span>
+              {isConfigured && (
+                <>
+                  {profileLoading ? (
+                    <span className="tag is-light">Cargando rol…</span>
+                  ) : (
+                    <span className={claseTagRol(profile?.role)}>{etiquetaRol(profile?.role)}</span>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="is-flex is-flex-wrap-wrap is-align-items-center mt-2" style={{ gap: '0.5rem' }}>
+              {isConfigured && profile?.role === 'admin' && !profileLoading && (
+                <Link to="/admin" className="button is-warning is-small">
+                  Ir al panel Admin
+                </Link>
+              )}
+              {isConfigured && !profileLoading && (
+                <button type="button" className="button is-small is-light" onClick={() => refreshProfile()}>
+                  Actualizar perfil
+                </button>
+              )}
+              <button type="button" className="button is-small is-light" onClick={() => signOut()}>
+                Cerrar sesión
+              </button>
+            </div>
+            {isConfigured && profileError && (
+              <p className="is-size-7 has-text-warning mt-2 mb-0">{profileError}</p>
+            )}
+          </div>
+        )}
+
         <div className="box mb-4 py-3">
           <h2 className="title is-6 mb-2">Cuenta</h2>
           <p className="is-size-7 has-text-grey mb-2">
             Con una cuenta tu progreso se guarda en la nube y podrás recuperarlo en otro dispositivo.
           </p>
-          {user ? (
-            <div>
-              <div className="is-flex is-align-items-center is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
-                <span className="is-size-7">{user.email}</span>
-                <button type="button" className="button is-small is-light" onClick={() => signOut()}>
-                  Cerrar sesión
-                </button>
-              </div>
-              {isConfigured && (
-                <p className="is-size-7 mt-2 mb-0 has-text-grey">
-                  Rol en la plataforma:{' '}
-                  {profileLoading ? (
-                    '…'
-                  ) : (
-                    <strong>{profile?.role || '—'}</strong>
-                  )}
-                  {profile?.role === 'admin' && (
-                    <>
-                      {' · '}
-                      <Link to="/admin">Panel Admin</Link>
-                    </>
-                  )}
-                  {!profileLoading && (
-                    <>
-                      {' '}
-                      <button type="button" className="button is-small is-text p-0 ml-1" onClick={() => refreshProfile()}>
-                        Actualizar
-                      </button>
-                    </>
-                  )}
-                </p>
-              )}
-              {isConfigured && user && profileError && (
-                <p className="is-size-7 has-text-warning mt-2 mb-0">{profileError}</p>
-              )}
-            </div>
-          ) : isConfigured ? (
+          {!user && isConfigured && (
             <Link to="/login" className="button is-link is-small">Iniciar sesión o crear cuenta</Link>
-          ) : (
+          )}
+          {!user && !isConfigured && (
             <p className="is-size-7 has-text-grey mb-0">
               Configura Supabase (ver README) para usar cuentas.
             </p>
