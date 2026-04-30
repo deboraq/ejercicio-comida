@@ -297,6 +297,25 @@ create trigger admin_messages_validate_teacher
   execute function public.validate_admin_message_recipient();
 ```
 
+**Lectura del perfil en la app** (si en Config ves «Rol: —» pero en SQL sí existe tu fila, ejecutá esto):
+
+```sql
+create or replace function public.get_my_profile()
+returns setof public.profiles
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select * from public.profiles where id = auth.uid() limit 1;
+$$;
+
+revoke all on function public.get_my_profile() from public;
+grant execute on function public.get_my_profile() to authenticated;
+```
+
+La app intenta esta función primero y, si no existe, usa `select` directo sobre `profiles`.
+
 **Primer administrador** (una vez, con tu correo ya registrado en la app):
 
 ```sql

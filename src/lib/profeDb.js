@@ -26,6 +26,11 @@ export async function ensureMyProfile(user) {
 
 export async function fetchMyProfile(userId) {
   if (!supabase || !userId) return { data: null, error: new Error('Sin cliente') }
+  const { data: rpcData, error: rpcError } = await supabase.rpc('get_my_profile')
+  if (!rpcError && rpcData != null) {
+    const row = Array.isArray(rpcData) ? rpcData[0] : rpcData
+    if (row?.id) return { data: row, error: null }
+  }
   return supabase.from('profiles').select('id, email, full_name, role').eq('id', userId).maybeSingle()
 }
 

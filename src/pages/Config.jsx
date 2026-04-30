@@ -8,7 +8,7 @@ import PesoSeguimiento from '../components/PesoSeguimiento'
 
 export default function Config() {
   const { user, signOut, isConfigured } = useAuth()
-  const { profile, loading: profileLoading, refresh: refreshProfile } = useMyProfile()
+  const { profile, profileError, loading: profileLoading, refresh: refreshProfile } = useMyProfile()
   const [historialPeso, setHistorialPeso] = useStorage('pesoHistorial', [])
   const [config, setConfig] = useStorage('config', {
     objetivo: 'mantener_peso',
@@ -84,6 +84,9 @@ export default function Config() {
                     </>
                   )}
                 </p>
+              )}
+              {isConfigured && user && profileError && (
+                <p className="is-size-7 has-text-warning mt-2 mb-0">{profileError}</p>
               )}
             </div>
           ) : isConfigured ? (
