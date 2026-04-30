@@ -43,7 +43,16 @@ export async function adminUpdateUserRole(targetUserId, role) {
 
 export async function listProfilesForAdmin() {
   if (!supabase) return { data: [], error: new Error('Sin cliente') }
-  return supabase.from('profiles').select('id, email, full_name, role, created_at').order('created_at', { ascending: false })
+  return supabase
+    .from('profiles')
+    .select('id, email, full_name, role, blocked_modules, created_at')
+    .order('created_at', { ascending: false })
+}
+
+export async function adminUpdateBlockedModules(targetUserId, blockedModules) {
+  if (!supabase || !targetUserId) return { error: new Error('Sin cliente') }
+  const arr = Array.isArray(blockedModules) ? blockedModules.filter(Boolean) : []
+  return supabase.from('profiles').update({ blocked_modules: arr }).eq('id', targetUserId)
 }
 
 export async function listAdminMessagesForTeacher(teacherId) {

@@ -5,6 +5,7 @@ import { useMyProfile } from '../hooks/useMyProfile'
 import { OBJETIVOS } from '../utils/consejos'
 import { SUPLEMENTOS } from '../utils/suplementos'
 import PesoSeguimiento from '../components/PesoSeguimiento'
+import AdminUsersRolesSection from '../components/AdminUsersRolesSection'
 
 export default function Config() {
   const { user, signOut, isConfigured } = useAuth()
@@ -111,6 +112,16 @@ export default function Config() {
             )}
           </div>
         </div>
+
+        {isConfigured && user && profile?.role === 'admin' && !profileLoading && (
+          <div className="mb-4">
+            <h2 className="title is-6 mb-2">Gestión de usuarios</h2>
+            <p className="is-size-7 has-text-grey mb-2">
+              Misma tabla que en <Link to="/admin">Admin</Link>: roles y qué pestañas ve cada cuenta (los administradores siempre ven todo).
+            </p>
+            <AdminUsersRolesSection showAdminLink />
+          </div>
+        )}
 
         <div className="box mb-4 py-3">
           <h2 className="title is-6 mb-2">Tu objetivo</h2>

@@ -10,6 +10,8 @@ import Admin from './pages/Admin'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import { useMyProfile } from './hooks/useMyProfile'
+import ModuleGate from './components/ModuleGate'
+import { isNavModuleBlocked } from './utils/navModules'
 import './App.css'
 
 function NavLink({ to, children, icon }) {
@@ -29,24 +31,31 @@ function NavLink({ to, children, icon }) {
 
 function AppRoutes() {
   const location = useLocation()
-  const { isConfigured } = useAuth()
-  const { profile } = useMyProfile()
+  const { user, isConfigured } = useAuth()
+  const { profile, loading: profileLoading } = useMyProfile()
   const isAuthPage = location.pathname === '/login' || location.pathname === '/reset-password'
   /* Profe: con Supabase alcanza; la pantalla pide login si hace falta */
   const mostrarProfe = Boolean(isConfigured)
   const mostrarAdmin = Boolean(isConfigured && profile?.role === 'admin')
 
+  const ocultarNav = (clave) => {
+    if (!isConfigured || !user) return false
+    if (profileLoading) return false
+    if (!profile || profile.role === 'admin') return false
+    return isNavModuleBlocked(profile, clave)
+  }
+
   return (
     <>
       <main className="main-content">
         <Routes>
-          <Route path="/" element={<Inicio />} />
-          <Route path="/ejercicios" element={<Ejercicios />} />
-          <Route path="/rutina" element={<Rutina />} />
-          <Route path="/comida" element={<Comida />} />
+          <Route path="/" element={<ModuleGate module="inicio" profile={profile} profileLoading={profileLoading}><Inicio /></ModuleGate>} />
+          <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading}><Ejercicios /></ModuleGate>} />
+          <Route path="/rutina" element={<ModuleGate module="rutina" profile={profile} profileLoading={profileLoading}><Rutina /></ModuleGate>} />
+          <Route path="/comida" element={<ModuleGate module="comida" profile={profile} profileLoading={profileLoading}><Comida /></ModuleGate>} />
           <Route path="/config" element={<Config />} />
-          <Route path="/profe" element={<Profe />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/profe" element={<ModuleGate module="profe" profile={profile} profileLoading={profileLoading}><Profe /></ModuleGate>} />
+          <Route path="/admin" element={<ModuleGate module="admin" profile={profile} profileLoading={profileLoading}><Admin /></ModuleGate>} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
@@ -55,12 +64,12 @@ function AppRoutes() {
         <nav className="navbar is-fixed-bottom has-shadow" role="navigation" aria-label="Principal">
           <div className="navbar-menu is-active">
             <div className="navbar-start" style={{ flexGrow: 1, justifyContent: 'center', gap: 0, flexWrap: 'wrap' }}>
-              <NavLink to="/" icon="🏠">Inicio</NavLink>
-              <NavLink to="/ejercicios" icon="🏃">Ejercicios</NavLink>
-              <NavLink to="/rutina" icon="🏋️">Rutina</NavLink>
-              <NavLink to="/comida" icon="🥗">Comida</NavLink>
-              {mostrarProfe && <NavLink to="/profe" icon="🧑‍🏫">Profe</NavLink>}
-              {mostrarAdmin && <NavLink to="/admin" icon="🛡️">Admin</NavLink>}
+              {!ocultarNav('inicio') && <NavLink to="/" icon="🏠">Inicio</NavLink>}
+              {!ocultarNav('ejercicios') && <NavLink to="/ejercicios" icon="🏃">Ejercicios</NavLink>}
+              {!ocultarNav('rutina') && <NavLink to="/rutina" icon="🏋️">Rutina</NavLink>}
+              {!ocultarNav('comida') && <NavLink to="/comida" icon="🥗">Comida</NavLink>}
+              {mostrarProfe && !ocultarNav('profe') && <NavLink to="/profe" icon="🧑‍🏫">Profe</NavLink>}
+              {mostrarAdmin && !ocultarNav('admin') && <NavLink to="/admin" icon="🛡️">Admin</NavLink>}
               <NavLink to="/config" icon="⚙️">Config</NavLink>
             </div>
           </div>

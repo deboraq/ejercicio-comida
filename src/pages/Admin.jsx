@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useMyProfile } from '../hooks/useMyProfile'
-import { listProfilesForAdmin, adminUpdateUserRole, createAdminMessage } from '../lib/profeDb'
+import { createAdminMessage } from '../lib/profeDb'
+import AdminUsersRolesSection from '../components/AdminUsersRolesSection'
 
 export default function Admin() {
   const { user, isConfigured } = useAuth()
   const { profile, loading: profileLoading } = useMyProfile()
   const [rows, setRows] = useState([])
-  const [listLoading, setListLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
   const [teacherIdMsg, setTeacherIdMsg] = useState('')
@@ -16,35 +16,6 @@ export default function Admin() {
   const [enviandoMsg, setEnviandoMsg] = useState(false)
 
   const esAdmin = profile?.role === 'admin'
-
-  const load = useCallback(async () => {
-    setListLoading(true)
-    setErr('')
-    const { data, error } = await listProfilesForAdmin()
-    setListLoading(false)
-    if (error) {
-      setErr(error.message || 'No se pudo cargar la lista.')
-      setRows([])
-      return
-    }
-    setRows(data || [])
-  }, [])
-
-  useEffect(() => {
-    if (esAdmin) load()
-  }, [esAdmin, load])
-
-  const guardarRol = async (userId, nuevoRol) => {
-    setErr('')
-    setMsg('')
-    const { error } = await adminUpdateUserRole(userId, nuevoRol)
-    if (error) {
-      setErr(error.message || 'No se pudo guardar el rol.')
-      return
-    }
-    setMsg('Rol actualizado.')
-    await load()
-  }
 
   const enviarMensaje = async () => {
     if (!teacherIdMsg || !bodyMsg.trim()) {
@@ -161,30 +132,7 @@ export default function Admin() {
           )}
         </div>
 
-        <div className="box mb-4 py-3">
-          <h2 className="title is-6 mb-3">Usuarios y roles</h2>
-          {listLoading ? (
-            <p className="is-size-7 has-text-grey mb-0">Cargando…</p>
-          ) : (
-            <div className="table-container">
-              <table className="table is-size-7 is-fullwidth">
-                <thead>
-                  <tr>
-                    <th>Correo</th>
-                    <th>Nombre</th>
-                    <th>Rol</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => (
-                    <FilaRol key={r.id} row={r} actualUserId={user.id} onGuardar={guardarRol} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <AdminUsersRolesSection showAdminLink={false} onRowsLoaded={setRows} />
 
         {msg && <p className="notification is-success is-light is-size-7 py-2 px-3 mb-2">{msg}</p>}
         {err && <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-0">{err}</p>}
@@ -196,43 +144,5 @@ export default function Admin() {
         </p>
       </div>
     </section>
-  )
-}
-
-function FilaRol({ row, actualUserId, onGuardar }) {
-  const [rol, setRol] = useState(row.role || 'alumno')
-  useEffect(() => {
-    setRol(row.role || 'alumno')
-  }, [row.role])
-
-  return (
-    <tr>
-      <td>{row.email || '—'}</td>
-      <td>{(row.full_name || '').trim() || '—'}</td>
-      <td>
-        <div className="select is-small">
-          <select value={rol} onChange={(e) => setRol(e.target.value)}>
-            <option value="alumno">alumno</option>
-            <option value="profe">profe</option>
-            <option value="admin">admin</option>
-          </select>
-        </div>
-      </td>
-      <td>
-        <button
-          type="button"
-          className="button is-small is-link is-light"
-          disabled={rol === row.role}
-          onClick={() => {
-            if (row.id === actualUserId && row.role === 'admin' && rol !== 'admin') {
-              if (!window.confirm('¿Sacarte el rol admin a vos mismo? Perderás acceso a esta pantalla.')) return
-            }
-            onGuardar(row.id, rol)
-          }}
-        >
-          Guardar
-        </button>
-      </td>
-    </tr>
   )
 }

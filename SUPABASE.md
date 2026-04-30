@@ -44,6 +44,7 @@ create table if not exists public.profiles (
   email text,
   full_name text default '',
   role text not null default 'alumno' check (role in ('alumno', 'profe', 'admin')),
+  blocked_modules text[] not null default '{}',
   created_at timestamptz default now()
 );
 
@@ -189,6 +190,24 @@ Flujo: el alumno y el entrenador se registran e inician sesión al menos una vez
 alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles add constraint profiles_role_check check (role in ('alumno', 'profe', 'admin'));
 
+-- Evita recursión infinita en políticas RLS que consultan «profiles» (SECURITY DEFINER + dueño tabla bypass RLS)
+create or replace function public.auth_is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+set row_security = off
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'admin'
+  );
+$$;
+
+revoke all on function public.auth_is_admin() from public;
+grant execute on function public.auth_is_admin() to authenticated;
+
 -- El perfil solo se crea como alumno; solo un admin puede cambiar roles (y altas con otro rol)
 create or replace function public.enforce_profile_role_rules()
 returns trigger
@@ -204,7 +223,7 @@ begin
     return new;
   end if;
 
-  select exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin') into is_admin;
+  is_admin := public.auth_is_admin();
 
   if tg_op = 'INSERT' then
     if new.role <> 'alumno' and not is_admin then
@@ -231,19 +250,13 @@ create trigger profiles_role_rules
 drop policy if exists "profiles_admin_select_all" on public.profiles;
 create policy "profiles_admin_select_all"
   on public.profiles for select
-  using (
-    exists (select 1 from public.profiles ad where ad.id = auth.uid() and ad.role = 'admin')
-  );
+  using (public.auth_is_admin());
 
 drop policy if exists "profiles_admin_update_any" on public.profiles;
 create policy "profiles_admin_update_any"
   on public.profiles for update
-  using (
-    exists (select 1 from public.profiles ad where ad.id = auth.uid() and ad.role = 'admin')
-  )
-  with check (
-    exists (select 1 from public.profiles ad where ad.id = auth.uid() and ad.role = 'admin')
-  );
+  using (public.auth_is_admin())
+  with check (public.auth_is_admin());
 
 -- Mensajes del admin hacia un entrenador (solo destinatarios con rol profe)
 create table if not exists public.admin_messages (
@@ -264,16 +277,14 @@ create policy "am_select_teacher"
 drop policy if exists "am_select_admin" on public.admin_messages;
 create policy "am_select_admin"
   on public.admin_messages for select
-  using (
-    exists (select 1 from public.profiles ad where ad.id = auth.uid() and ad.role = 'admin')
-  );
+  using (public.auth_is_admin());
 
 drop policy if exists "am_insert_admin" on public.admin_messages;
 create policy "am_insert_admin"
   on public.admin_messages for insert
   with check (
     admin_id = auth.uid()
-    and exists (select 1 from public.profiles ad where ad.id = auth.uid() and ad.role = 'admin')
+    and public.auth_is_admin()
   );
 
 create or replace function public.validate_admin_message_recipient()
@@ -297,6 +308,12 @@ create trigger admin_messages_validate_teacher
   execute function public.validate_admin_message_recipient();
 ```
 
+**Módulos ocultos por usuario** (pestañas del menú; los `admin` ignoran esta lista):
+
+```sql
+alter table public.profiles add column if not exists blocked_modules text[] not null default '{}';
+```
+
 **Lectura del perfil en la app** (si en Config ves «Rol: —» pero en SQL sí existe tu fila, ejecutá esto):
 
 ```sql
@@ -306,6 +323,7 @@ language sql
 stable
 security definer
 set search_path = public
+set row_security = off
 as $$
   select * from public.profiles where id = auth.uid() limit 1;
 $$;
