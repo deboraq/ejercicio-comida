@@ -1,5 +1,5 @@
-/** Módulos que los entrenadores no ven por defecto (enfoque en Profe y alumnos; el admin puede forzar más vía `blocked_modules`). */
-export const COACH_DEFAULT_HIDDEN_NAV = ['ejercicios', 'comida']
+/** Módulos que los entrenadores no ven por defecto (trabajan solo desde Profe; el admin puede forzar más vía `blocked_modules`). */
+export const COACH_DEFAULT_HIDDEN_NAV = ['inicio', 'ejercicios', 'rutina', 'comida']
 
 /** Claves guardadas en `profiles.blocked_modules` (sin config: siempre visible). */
 export const BLOCKABLE_NAV_KEYS = ['inicio', 'ejercicios', 'rutina', 'comida', 'profe', 'admin']

@@ -136,6 +136,16 @@ export async function listAssignmentsForStudent(studentId) {
     .order('created_at', { ascending: false })
 }
 
+/** Rutinas que este entrenador envió (para historial / resumen en Profe). */
+export async function listRoutineAssignmentsForTeacher(teacherId) {
+  if (!supabase || !teacherId) return { data: [], error: null }
+  return supabase
+    .from('routine_assignments')
+    .select('id, student_id, title, created_at')
+    .eq('teacher_id', teacherId)
+    .order('created_at', { ascending: false })
+}
+
 export async function deleteRoutineAssignment(assignmentId) {
   if (!supabase) return { error: new Error('Sin cliente') }
   return supabase.from('routine_assignments').delete().eq('id', assignmentId)

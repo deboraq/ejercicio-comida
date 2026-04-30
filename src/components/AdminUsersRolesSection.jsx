@@ -59,8 +59,8 @@ export default function AdminUsersRolesSection({ onRowsLoaded }) {
     <div className="box mb-4 py-3">
       <h2 className="title is-6 mb-2">Usuarios y roles</h2>
       <p className="is-size-7 has-text-grey mb-3">
-        Asigná rol <strong>alumno</strong>, <strong>profe</strong> o <strong>admin</strong>. Podés ocultar pestañas del menú por usuario; los administradores siempre ven todo. Los entrenadores no ven{' '}
-        <strong>Ejercicios</strong> ni <strong>Comida</strong> por defecto (enfoque en <strong>Profe</strong> y alumnos).
+        Asigná rol <strong>alumno</strong>, <strong>profe</strong> o <strong>admin</strong>. Podés ocultar pestañas del menú por usuario; los administradores siempre ven todo.         Los entrenadores no ven <strong>Inicio</strong>, <strong>Ejercicios</strong>, <strong>Rutina</strong> ni{' '}
+        <strong>Comida</strong> por defecto (trabajan desde <strong>Profe</strong>).
       </p>
       {listLoading ? (
         <p className="is-size-7 has-text-grey mb-0">Cargando…</p>
