@@ -69,6 +69,27 @@ export async function adminUpdateUserRole(targetUserId, role) {
   return supabase.from('profiles').update({ role }).eq('id', targetUserId)
 }
 
+/** Admin: nombre/apellido en `profiles` (visible en Profe, vinculaciones, etc.). */
+export async function adminUpdateUserFullName(targetUserId, fullName) {
+  if (!supabase || !targetUserId) return { error: new Error('Sin cliente') }
+  const trimmed = String(fullName ?? '').trim()
+  return supabase.from('profiles').update({ full_name: trimmed }).eq('id', targetUserId)
+}
+
+/** Usuario logueado: guarda nombre en `profiles` y en metadata de Auth (para sync al iniciar sesión). */
+export async function updateMyFullName(fullName) {
+  if (!supabase) return { error: new Error('Sin cliente') }
+  const { data: u, error: gu } = await supabase.auth.getUser()
+  const id = u?.user?.id
+  if (!id) return { error: gu || new Error('Sin sesión') }
+  const trimmed = String(fullName ?? '').trim()
+  const { error } = await supabase.from('profiles').update({ full_name: trimmed }).eq('id', id)
+  if (error) return { error }
+  const { error: metaErr } = await supabase.auth.updateUser({ data: { full_name: trimmed } })
+  if (metaErr) return { error: metaErr }
+  return { error: null }
+}
+
 export async function listProfilesForAdmin() {
   if (!supabase) return { data: [], error: new Error('Sin cliente') }
   return supabase

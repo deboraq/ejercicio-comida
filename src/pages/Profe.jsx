@@ -376,16 +376,6 @@ export default function Profe() {
                 {panel === 'supervision' && (
                   <div className="box mb-4 py-3">
                     {bloqueSupervision}
-                    {!adminVistaErr && (
-                      <details className="mt-3 mb-0">
-                        <summary className="is-size-7 has-text-grey" style={{ cursor: 'pointer' }}>
-                          Notas para administradores
-                        </summary>
-                        <p className="is-size-7 has-text-grey mt-2 mb-0">
-                          Listado de perfiles con rol <strong>profe</strong> y vínculos en <code>teacher_students</code>.
-                        </p>
-                      </details>
-                    )}
                   </div>
                 )}
 

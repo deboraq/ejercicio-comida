@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useRoleNav } from '../context/RoleNavContext'
-import { adminUpdateUserRole, adminUpdateUserNavModules } from '../lib/profeDb'
+import { adminUpdateUserRole, adminUpdateUserNavModules, adminUpdateUserFullName } from '../lib/profeDb'
 import {
   BLOCKABLE_NAV_KEYS,
   BLOCKABLE_LABELS,
@@ -56,6 +56,18 @@ export default function AdminUsersRolesSection({ rows = [], loading = false, onR
     await onReload?.()
   }
 
+  const guardarNombre = async (userId, fullName) => {
+    setErr('')
+    setMsg('')
+    const { error } = await adminUpdateUserFullName(userId, fullName)
+    if (error) {
+      setErr(error.message || 'No se pudo guardar el nombre.')
+      return
+    }
+    setMsg('Nombre actualizado.')
+    await onReload?.()
+  }
+
   return (
     <div className="box mb-4 py-3">
       <div className="field mb-3">
@@ -79,7 +91,7 @@ export default function AdminUsersRolesSection({ rows = [], loading = false, onR
             <thead>
               <tr>
                 <th>Correo</th>
-                <th>Nombre</th>
+                <th>Nombre y apellido</th>
                 <th>Rol</th>
                 <th>Ocultar en el menú</th>
               </tr>
@@ -93,6 +105,7 @@ export default function AdminUsersRolesSection({ rows = [], loading = false, onR
                   roleNavMap={roleNavMap}
                   onGuardarRol={guardarRol}
                   onGuardarModulos={guardarModulos}
+                  onGuardarNombre={guardarNombre}
                 />
               ))}
             </tbody>
@@ -105,8 +118,9 @@ export default function AdminUsersRolesSection({ rows = [], loading = false, onR
   )
 }
 
-function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarModulos }) {
+function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarModulos, onGuardarNombre }) {
   const [rol, setRol] = useState(row.role || 'alumno')
+  const [nombre, setNombre] = useState(() => (row.full_name || '').trim())
   const [bloqueados, setBloqueados] = useState(() =>
     adminHiddenCheckboxSet(row.role || 'alumno', row.blocked_modules, row.nav_force_visible, roleNavMap)
   )
@@ -114,14 +128,19 @@ function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarMod
   useEffect(() => {
     const r = row.role || 'alumno'
     setRol(r)
+    setNombre((row.full_name || '').trim())
     setBloqueados(adminHiddenCheckboxSet(r, row.blocked_modules, row.nav_force_visible, roleNavMap))
   }, [
     row.role,
     row.id,
+    row.full_name,
     JSON.stringify(row.blocked_modules || []),
     JSON.stringify(row.nav_force_visible || []),
     JSON.stringify(roleNavMap),
   ])
+
+  const nombreGuardado = (row.full_name || '').trim()
+  const nombreCambio = nombre !== nombreGuardado
 
   const toggleMod = (key) => {
     setBloqueados((prev) => {
@@ -135,7 +154,24 @@ function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarMod
   return (
     <tr>
       <td>{row.email || '—'}</td>
-      <td className="has-text-grey">{(row.full_name || '').trim() || '—'}</td>
+      <td style={{ minWidth: '10rem' }}>
+        <input
+          className="input is-small mb-1"
+          type="text"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          placeholder="Ej. Ana García"
+          autoComplete="off"
+        />
+        <button
+          type="button"
+          className="button is-small is-link is-light"
+          disabled={!nombreCambio}
+          onClick={() => onGuardarNombre(row.id, nombre)}
+        >
+          Guardar nombre
+        </button>
+      </td>
       <td>
         <div className="select is-small">
           <select

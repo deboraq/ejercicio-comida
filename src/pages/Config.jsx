@@ -1,13 +1,42 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useStorage } from '../hooks/useStorage'
 import { useAuth } from '../context/AuthContext'
 import { useMyProfile } from '../hooks/useMyProfile'
+import { updateMyFullName } from '../lib/profeDb'
 import { OBJETIVOS } from '../utils/consejos'
 import { SUPLEMENTOS } from '../utils/suplementos'
 import PesoSeguimiento from '../components/PesoSeguimiento'
 export default function Config() {
   const { user, signOut, isConfigured } = useAuth()
   const { profile, profileError, loading: profileLoading, refresh: refreshProfile } = useMyProfile()
+  const [nombrePerfil, setNombrePerfil] = useState('')
+  const [guardandoNombre, setGuardandoNombre] = useState(false)
+  const [nombrePerfilMsg, setNombrePerfilMsg] = useState(null)
+  const [nombrePerfilErr, setNombrePerfilErr] = useState(null)
+
+  useEffect(() => {
+    setNombrePerfil((profile?.full_name || '').trim())
+    setNombrePerfilMsg(null)
+    setNombrePerfilErr(null)
+  }, [profile?.full_name, user?.id])
+
+  const guardarNombrePerfil = async () => {
+    if (!user?.id || !isConfigured) return
+    setGuardandoNombre(true)
+    setNombrePerfilMsg(null)
+    setNombrePerfilErr(null)
+    const { error } = await updateMyFullName(nombrePerfil)
+    setGuardandoNombre(false)
+    if (error) {
+      setNombrePerfilErr(error.message || 'No se pudo guardar.')
+      return
+    }
+    setNombrePerfilMsg('Nombre guardado.')
+    refreshProfile()
+  }
+
+  const nombreDistintoAlGuardado = nombrePerfil.trim() !== (profile?.full_name || '').trim()
   const [historialPeso, setHistorialPeso] = useStorage('pesoHistorial', [])
   const [config, setConfig] = useStorage('config', {
     objetivo: 'mantener_peso',
@@ -72,7 +101,16 @@ export default function Config() {
           >
             <p className="is-size-7 has-text-grey mb-2">Sesión iniciada</p>
             <div className="is-flex is-flex-wrap-wrap is-align-items-center" style={{ gap: '0.5rem' }}>
-              <span className="is-size-7" style={{ wordBreak: 'break-all' }}>{user.email}</span>
+              <span className="is-size-7" style={{ wordBreak: 'break-all' }}>
+                {(profile?.full_name || '').trim() ? (
+                  <>
+                    <strong>{(profile.full_name || '').trim()}</strong>
+                    <span className="has-text-grey"> · {user.email}</span>
+                  </>
+                ) : (
+                  user.email
+                )}
+              </span>
               {isConfigured && (
                 <>
                   {profileLoading ? (
@@ -100,6 +138,42 @@ export default function Config() {
             </div>
             {isConfigured && profileError && (
               <p className="is-size-7 has-text-warning mt-2 mb-0">{profileError}</p>
+            )}
+            {isConfigured && user && !profileLoading && (
+              <div className="field mt-3 mb-0">
+                <label className="label is-size-7">Nombre y apellido</label>
+                <p className="is-size-7 has-text-grey mb-2">
+                  Así te verá tu entrenador en Profe (junto a tu correo).
+                </p>
+                <div className="control mb-2">
+                  <input
+                    className="input is-small"
+                    type="text"
+                    value={nombrePerfil}
+                    onChange={(e) => {
+                      setNombrePerfil(e.target.value)
+                      setNombrePerfilMsg(null)
+                      setNombrePerfilErr(null)
+                    }}
+                    placeholder="Ej. Juan Pérez"
+                    autoComplete="name"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="button is-link is-small"
+                  disabled={guardandoNombre || !nombreDistintoAlGuardado}
+                  onClick={guardarNombrePerfil}
+                >
+                  {guardandoNombre ? 'Guardando…' : 'Guardar nombre'}
+                </button>
+                {nombrePerfilMsg && (
+                  <p className="is-size-7 has-text-success mt-2 mb-0">{nombrePerfilMsg}</p>
+                )}
+                {nombrePerfilErr && (
+                  <p className="is-size-7 has-text-danger mt-2 mb-0">{nombrePerfilErr}</p>
+                )}
+              </div>
             )}
           </div>
         )}
