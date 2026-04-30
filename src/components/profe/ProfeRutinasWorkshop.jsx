@@ -193,16 +193,6 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
     }
   }
 
-  const quitarPlantilla = () => {
-    if (!plantilla || !window.confirm('¿Borrar esta plantilla?')) return
-    const id = plantilla.id
-    setPlantillas((prev) => (Array.isArray(prev) ? prev.filter((x) => x.id !== id) : []))
-    if (selectedId === id) {
-      setEditorPlantillaAbierto(false)
-      setSelectedId('')
-    }
-  }
-
   const updatePlantilla = useCallback(
     (id, fn) => {
       setPlantillas((prev) =>
@@ -419,25 +409,38 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
               <span className="is-size-7 has-text-grey">Los cambios se guardan automáticamente.</span>
             </div>
 
-            <div className="field mb-3">
-              <label className="label is-size-7">Rutina a editar</label>
-              <div className="control">
-                {plantillasFiltradas.length === 0 && qBusq ? (
-                  <p className="is-size-7 has-text-grey mb-0">Ninguna plantilla coincide con la búsqueda.</p>
-                ) : (
-                  <div className="select is-small is-fullwidth">
-                    <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
-                      {(plantillasFiltradas.length ? plantillasFiltradas : listP).map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.nombre || 'Sin nombre'}
-                          {p.soloStudentId ? ' (solo un alumno)' : ''}
-                        </option>
-                      ))}
-                    </select>
+            {(() => {
+              const opcionesEdicion = plantillasFiltradas.length ? plantillasFiltradas : listP
+              if (opcionesEdicion.length > 1) {
+                return (
+                  <div className="field mb-3">
+                    <label className="label is-size-7">Rutina a editar</label>
+                    <div className="control">
+                      {plantillasFiltradas.length === 0 && qBusq ? (
+                        <p className="is-size-7 has-text-grey mb-0">Ninguna plantilla coincide con la búsqueda.</p>
+                      ) : (
+                        <div className="select is-small is-fullwidth">
+                          <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+                            {opcionesEdicion.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.nombre || 'Sin nombre'}
+                                {p.soloStudentId ? ' (solo un alumno)' : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
+                )
+              }
+              if (plantillasFiltradas.length === 0 && qBusq && listP.length > 0) {
+                return (
+                  <p className="is-size-7 has-text-grey mb-3">Ninguna plantilla coincide con la búsqueda.</p>
+                )
+              }
+              return null
+            })()}
 
                 <div className="field mb-3">
                   <label className="label is-size-7">Nombre de la plantilla</label>
@@ -616,11 +619,6 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
             <button type="button" className="button is-small is-light mb-3" onClick={agregarDia}>
               + Agregar día
             </button>
-            <div>
-              <button type="button" className="button is-small is-danger is-light" onClick={quitarPlantilla}>
-                Borrar esta plantilla
-              </button>
-            </div>
           </>
         )}
       </div>
