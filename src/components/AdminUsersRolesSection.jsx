@@ -151,58 +151,66 @@ function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarMod
     })
   }
 
+  const stackStyle = { display: 'flex', flexDirection: 'column', gap: '0.4rem', maxWidth: '16rem' }
+
   return (
     <tr>
-      <td>{row.email || '—'}</td>
-      <td style={{ minWidth: '10rem' }}>
-        <input
-          className="input is-small mb-1"
-          type="text"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          placeholder="Ej. Ana García"
-          autoComplete="off"
-        />
-        <button
-          type="button"
-          className="button is-small is-link is-light"
-          disabled={!nombreCambio}
-          onClick={() => onGuardarNombre(row.id, nombre)}
-        >
-          Guardar nombre
-        </button>
+      <td style={{ verticalAlign: 'top', wordBreak: 'break-all' }}>{row.email || '—'}</td>
+      <td style={{ verticalAlign: 'top' }}>
+        <div style={stackStyle}>
+          <input
+            className="input is-small"
+            style={{ width: '100%' }}
+            type="text"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder="Ej. Ana García"
+            autoComplete="off"
+          />
+          <button
+            type="button"
+            className="button is-small is-link is-light is-fullwidth"
+            disabled={!nombreCambio}
+            onClick={() => onGuardarNombre(row.id, nombre)}
+          >
+            Guardar nombre
+          </button>
+        </div>
       </td>
-      <td>
-        <div className="select is-small">
-          <select
-            value={rol}
-            onChange={(e) => {
-              const v = e.target.value
-              setRol(v)
-              setBloqueados(adminHiddenCheckboxSet(v, row.blocked_modules, row.nav_force_visible, roleNavMap))
+      <td style={{ verticalAlign: 'top' }}>
+        <div style={stackStyle}>
+          <div className="select is-small" style={{ width: '100%', display: 'block' }}>
+            <select
+              style={{ width: '100%', maxWidth: '100%' }}
+              value={rol}
+              onChange={(e) => {
+                const v = e.target.value
+                setRol(v)
+                setBloqueados(adminHiddenCheckboxSet(v, row.blocked_modules, row.nav_force_visible, roleNavMap))
+              }}
+            >
+              <option value="alumno">alumno</option>
+              <option value="profe">profe</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+          <button
+            type="button"
+            className="button is-small is-link is-light is-fullwidth"
+            disabled={rol === row.role}
+            onClick={() => {
+              if (row.id === actualUserId && row.role === 'admin' && rol !== 'admin') {
+                if (!window.confirm('¿Sacarte el rol admin? Perderás acceso a esta sección.')) return
+              }
+              onGuardarRol(row.id, rol)
             }}
           >
-            <option value="alumno">alumno</option>
-            <option value="profe">profe</option>
-            <option value="admin">admin</option>
-          </select>
+            Guardar rol
+          </button>
         </div>
-        <button
-          type="button"
-          className="button is-small is-link is-light mt-1"
-          disabled={rol === row.role}
-          onClick={() => {
-            if (row.id === actualUserId && row.role === 'admin' && rol !== 'admin') {
-              if (!window.confirm('¿Sacarte el rol admin? Perderás acceso a esta sección.')) return
-            }
-            onGuardarRol(row.id, rol)
-          }}
-        >
-          Guardar rol
-        </button>
       </td>
-      <td>
-        <div className="is-flex is-flex-direction-column" style={{ gap: '0.25rem' }}>
+      <td style={{ verticalAlign: 'top' }}>
+        <div className="is-flex is-flex-direction-column" style={{ gap: '0.35rem', maxWidth: '18rem' }}>
           {BLOCKABLE_NAV_KEYS.map((key) => (
             <label key={key} className="checkbox is-size-7">
               <input
@@ -214,15 +222,15 @@ function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarMod
               {` Ocultar ${BLOCKABLE_LABELS[key] || key}`}
             </label>
           ))}
+          <button
+            type="button"
+            className="button is-small is-light is-fullwidth"
+            disabled={rol === 'admin'}
+            onClick={() => onGuardarModulos(row.id, bloqueados, rol)}
+          >
+            Guardar menú
+          </button>
         </div>
-        <button
-          type="button"
-          className="button is-small is-light mt-1"
-          disabled={rol === 'admin'}
-          onClick={() => onGuardarModulos(row.id, bloqueados, rol)}
-        >
-          Guardar menú
-        </button>
       </td>
     </tr>
   )
