@@ -5,9 +5,9 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { listAssignmentsForStudent, assignmentsToRutinasItems, deleteRoutineAssignment } from '../lib/profeDb'
 import { formatearFecha, fechaToISO, caloriasQuemadasRegistroRutina } from '../utils/calorias'
 import { EJERCICIOS_RUTINA, buscarEjercicios } from '../utils/rutinaEjercicios'
-import { exportarRutinaAJson, rutinaDesdeJsonAsignada } from '../utils/rutinaShare'
+import { exportarRutinaAJson } from '../utils/rutinaShare'
 
-export { exportarRutinaAJson, rutinaDesdeJsonAsignada } from '../utils/rutinaShare'
+export { exportarRutinaAJson } from '../utils/rutinaShare'
 
 function crearDia(num) {
   return { id: `d${Date.now()}_${num}`, nombre: `Día ${num}`, ejercicios: [] }
@@ -1006,21 +1006,6 @@ function VistaRutinasAsignadas({
   onQuitarAsignada,
   onRefreshAssignments,
 }) {
-  const [jsonText, setJsonText] = useState('')
-  const [importError, setImportError] = useState(null)
-
-  const importarDesdeJson = () => {
-    setImportError(null)
-    try {
-      const nueva = rutinaDesdeJsonAsignada(jsonText)
-      setRutinasAsignadas((prev) => [nueva, ...(Array.isArray(prev) ? prev : [])])
-      setJsonText('')
-      window.alert(`Se agregó «${nueva.nombre}» a tus rutinas asignadas.`)
-    } catch (err) {
-      setImportError(err?.message || 'No se pudo leer el JSON.')
-    }
-  }
-
   const copiarAMisRutinas = (r) => {
     const clon = clonarRutinaParaMisRutinas(r)
     setRutinas((list) => [...(list || []), clon])
@@ -1105,33 +1090,6 @@ function VistaRutinasAsignadas({
           ))}
         </ul>
       )}
-
-      <details className="box py-3 mb-4" style={{ background: 'rgba(0,0,0,0.15)' }}>
-        <summary className="is-size-7" style={{ cursor: 'pointer', fontWeight: 600 }}>
-          Opcional: importar JSON a mano
-        </summary>
-        <p className="is-size-7 has-text-grey mt-2 mb-3">
-          Solo si alguien te pasó un archivo o texto JSON (caso raro). Lo normal es que las rutinas lleguen solas desde
-          Profe.
-        </p>
-        <div className="field mb-0">
-          <label className="label is-size-7">JSON (campo opcional &quot;asignadaPor&quot;: nombre del entrenador)</label>
-          <textarea
-            className="textarea is-small"
-            rows={3}
-            value={jsonText}
-            onChange={(e) => {
-              setJsonText(e.target.value)
-              setImportError(null)
-            }}
-            placeholder='{"nombre":"Semana 1","asignadaPor":"Profe Ana","dias":[{"nombre":"Día 1","ejercicios":["Press banca"]}]}'
-          />
-          {importError && <p className="is-size-7 has-text-danger mt-1 mb-0">{importError}</p>}
-          <button type="button" className="button is-link is-small mt-2" onClick={importarDesdeJson}>
-            Añadir a asignadas
-          </button>
-        </div>
-      </details>
     </>
   )
 }
