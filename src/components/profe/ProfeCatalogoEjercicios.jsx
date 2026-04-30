@@ -1,12 +1,22 @@
+import { useMemo } from 'react'
 import { useStorage } from '../../hooks/useStorage'
 
 function nuevoEj() {
   return { id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, nombre: '', notas: '' }
 }
 
-export default function ProfeCatalogoEjercicios() {
+export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
   const [items, setItems] = useStorage('profeCatalogoEjercicios', [])
   const lista = Array.isArray(items) ? items : []
+  const q = (busqueda || '').trim().toLowerCase()
+  const listaFiltrada = useMemo(() => {
+    if (!q) return lista
+    return lista.filter((ex) => {
+      const nom = String(ex.nombre || '').toLowerCase()
+      const notas = String(ex.notas || '').toLowerCase()
+      return nom.includes(q) || notas.includes(q)
+    })
+  }, [lista, q])
 
   const agregar = () => setItems((prev) => [...(Array.isArray(prev) ? prev : []), nuevoEj()])
 
@@ -32,9 +42,11 @@ export default function ProfeCatalogoEjercicios() {
       </button>
       {lista.length === 0 ? (
         <p className="is-size-7 has-text-grey mb-0">Todavía no hay ejercicios. Agregá al menos uno para armar rutinas.</p>
+      ) : listaFiltrada.length === 0 ? (
+        <p className="is-size-7 has-text-grey mb-0">No hay coincidencias con la búsqueda.</p>
       ) : (
         <ul className="mb-0" style={{ listStyle: 'none', padding: 0 }}>
-          {lista.map((ex) => (
+          {listaFiltrada.map((ex) => (
             <li key={ex.id} className="py-3 subtle-divider-b" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="field mb-2">
                 <label className="label is-size-7 mb-1">Nombre</label>

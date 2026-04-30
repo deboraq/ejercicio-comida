@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { listRoutineAssignmentsForTeacher } from '../../lib/profeDb'
 
-export default function ProfeHistorialAsignaciones({ teacherId, students }) {
+export default function ProfeHistorialAsignaciones({ teacherId, students, busqueda = '' }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(null)
@@ -36,6 +36,17 @@ export default function ProfeHistorialAsignaciones({ teacherId, students }) {
     return s ? s.fullName || s.email || studentId : studentId
   }
 
+  const q = (busqueda || '').trim().toLowerCase()
+  const rowsFiltrados = useMemo(() => {
+    if (!q) return rows
+    return rows.filter((r) => {
+      const t = (r.title || '').toLowerCase()
+      const f = String(r.created_at || '').toLowerCase()
+      const alum = nombreAlumno(r.student_id).toLowerCase()
+      return t.includes(q) || f.includes(q) || alum.includes(q)
+    })
+  }, [rows, q, students])
+
   return (
     <div className="box py-3">
       <h2 className="title is-6 mb-2">Historial de envíos</h2>
@@ -48,6 +59,8 @@ export default function ProfeHistorialAsignaciones({ teacherId, students }) {
         <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-0">{err}</p>
       ) : rows.length === 0 ? (
         <p className="is-size-7 has-text-grey mb-0">Todavía no hay envíos registrados.</p>
+      ) : rowsFiltrados.length === 0 ? (
+        <p className="is-size-7 has-text-grey mb-0">No hay coincidencias con la búsqueda.</p>
       ) : (
         <div className="table-container">
           <table className="table is-size-7 is-fullwidth mb-0">
@@ -59,7 +72,7 @@ export default function ProfeHistorialAsignaciones({ teacherId, students }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {rowsFiltrados.map((r) => (
                 <tr key={r.id}>
                   <td>{(r.created_at || '').slice(0, 16).replace('T', ' ')}</td>
                   <td>{nombreAlumno(r.student_id)}</td>

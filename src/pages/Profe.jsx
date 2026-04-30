@@ -46,6 +46,7 @@ export default function Profe() {
   const [adminVistaLoading, setAdminVistaLoading] = useState(false)
   const [adminVistaRows, setAdminVistaRows] = useState([])
   const [adminVistaErr, setAdminVistaErr] = useState(null)
+  const [busquedaProfe, setBusquedaProfe] = useState('')
 
   const esProfe = profile?.role === 'profe'
   const esAdmin = profile?.role === 'admin'
@@ -156,6 +157,53 @@ export default function Profe() {
   const panelActivo = panel != null ? navItems.find((i) => i.id === panel) : null
   const mostrarCabeceraPanel = panel === 'supervision' || panel === 'alumnos'
 
+  useEffect(() => {
+    setBusquedaProfe('')
+  }, [panel])
+
+  const qProfe = busquedaProfe.trim().toLowerCase()
+
+  const adminVistaFiltrada = useMemo(() => {
+    if (!qProfe) return adminVistaRows
+    return adminVistaRows.filter(({ teacher, students }) => {
+      const nomT = (teacher.full_name || '').toLowerCase()
+      const mailT = (teacher.email || '').toLowerCase()
+      const idT = String(teacher.id || '').toLowerCase()
+      if (nomT.includes(qProfe) || mailT.includes(qProfe) || idT.includes(qProfe)) return true
+      return students.some((s) => {
+        const fn = (s.fullName || '').toLowerCase()
+        const em = (s.email || '').toLowerCase()
+        const sid = String(s.studentId || '').toLowerCase()
+        return fn.includes(qProfe) || em.includes(qProfe) || sid.includes(qProfe)
+      })
+    })
+  }, [adminVistaRows, qProfe])
+
+  const studentsFiltrados = useMemo(() => {
+    if (!qProfe) return students
+    return students.filter((s) => {
+      const fn = (s.fullName || '').toLowerCase()
+      const em = (s.email || '').toLowerCase()
+      return fn.includes(qProfe) || em.includes(qProfe)
+    })
+  }, [students, qProfe])
+
+  const placeholderBusqueda =
+    panel === 'supervision'
+      ? 'Nombre, correo o alumno…'
+      : panel === 'alumnos'
+        ? 'Nombre o correo del alumno…'
+        : panel === 'ejercicios'
+          ? 'Nombre o notas del ejercicio…'
+          : panel === 'rutinas'
+            ? 'Nombre de plantilla o alumno…'
+            : panel === 'historial'
+              ? 'Alumno, rutina o fecha…'
+              : 'Buscar…'
+
+  const mostrarBuscadorProfe =
+    panel === 'supervision' || (esProfe && ['alumnos', 'ejercicios', 'rutinas', 'historial'].includes(panel || ''))
+
   const vincularAlumno = async () => {
     if (!user?.id || !esProfe) return
     setErr(null)
@@ -246,11 +294,31 @@ export default function Profe() {
       )}
       {!adminVistaLoading &&
         !adminVistaErr &&
-        adminVistaRows.map(({ teacher, students }) => {
+        adminVistaRows.length > 0 &&
+        adminVistaFiltrada.length === 0 && (
+          <p className="is-size-7 has-text-grey mb-0">No hay coincidencias con la búsqueda.</p>
+        )}
+      {!adminVistaLoading &&
+        !adminVistaErr &&
+        adminVistaFiltrada.map(({ teacher, students }) => {
           const nombre = (teacher.full_name || '').trim()
           const mail = (teacher.email || '').trim()
           const titulo = nombre || mail || teacher.id
           const mostrarMailDebajo = mail && mail !== nombre
+          const nomT = (teacher.full_name || '').toLowerCase()
+          const mailT = (teacher.email || '').toLowerCase()
+          const idT = String(teacher.id || '').toLowerCase()
+          const profeCoincide =
+            !qProfe || nomT.includes(qProfe) || mailT.includes(qProfe) || idT.includes(qProfe)
+          const alumnosMostrar =
+            !qProfe || profeCoincide
+              ? students
+              : students.filter((s) => {
+                  const fn = (s.fullName || '').toLowerCase()
+                  const em = (s.email || '').toLowerCase()
+                  const sid = String(s.studentId || '').toLowerCase()
+                  return fn.includes(qProfe) || em.includes(qProfe) || sid.includes(qProfe)
+                })
           return (
             <div
               key={teacher.id}
@@ -261,9 +329,11 @@ export default function Profe() {
               {mostrarMailDebajo ? <p className="is-size-7 has-text-grey mb-2">{mail}</p> : null}
               {students.length === 0 ? (
                 <p className="is-size-7 has-text-grey mb-0">Sin alumnos vinculados.</p>
+              ) : alumnosMostrar.length === 0 ? (
+                <p className="is-size-7 has-text-grey mb-0">Sin alumnos que coincidan.</p>
               ) : (
                 <ul className="mb-0 pl-4" style={{ listStyle: 'disc' }}>
-                  {students.map((s) => (
+                  {alumnosMostrar.map((s) => (
                     <li key={s.linkId} className="is-size-7 mb-1">
                       <strong>{(s.fullName || '').trim() || s.email}</strong>
                       {s.fullName ? <span className="has-text-grey"> · {s.email}</span> : null}
@@ -366,6 +436,23 @@ export default function Profe() {
                   </div>
                 )}
 
+                {mostrarBuscadorProfe && (
+                  <div className="field mb-3">
+                    <label className="label is-size-7" htmlFor="profe-busqueda">
+                      Buscar
+                    </label>
+                    <input
+                      id="profe-busqueda"
+                      className="input is-small"
+                      type="search"
+                      value={busquedaProfe}
+                      onChange={(e) => setBusquedaProfe(e.target.value)}
+                      placeholder={placeholderBusqueda}
+                      autoComplete="off"
+                    />
+                  </div>
+                )}
+
                 {esAdmin && !esProfe && panel === 'supervision' && (
                   <p className="notification is-info is-light is-size-7 py-2 px-3 mb-3">
                     Roles y menú de cuentas: <Link to="/admin">Administración</Link>. Para usar Alumnos / Ejercicios /
@@ -401,9 +488,11 @@ export default function Profe() {
                       <p className="is-size-7 has-text-grey mb-0">Cargando lista…</p>
                     ) : students.length === 0 ? (
                       <p className="is-size-7 has-text-grey mb-0">Todavía no tenés alumnos vinculados.</p>
+                    ) : studentsFiltrados.length === 0 ? (
+                      <p className="is-size-7 has-text-grey mb-0">No hay coincidencias con la búsqueda.</p>
                     ) : (
                       <ul className="mb-0" style={{ listStyle: 'none', padding: 0 }}>
-                        {students.map((s) => (
+                        {studentsFiltrados.map((s) => (
                           <li
                             key={s.linkId}
                             className="is-flex is-justify-content-space-between is-align-items-center py-2 subtle-divider-b"
@@ -423,19 +512,25 @@ export default function Profe() {
                   </div>
                 )}
 
-                {panel === 'ejercicios' && esProfe && <ProfeCatalogoEjercicios />}
+                {panel === 'ejercicios' && esProfe && <ProfeCatalogoEjercicios busqueda={busquedaProfe} />}
 
                 {panel === 'rutinas' && esProfe && (
                   <ProfeRutinasWorkshop
                     students={students}
                     teacherId={user.id}
+                    busqueda={busquedaProfe}
                     onToast={onToast}
                     onEnviado={() => setHistorialTick((n) => n + 1)}
                   />
                 )}
 
                 {panel === 'historial' && esProfe && (
-                  <ProfeHistorialAsignaciones key={historialTick} teacherId={user.id} students={students} />
+                  <ProfeHistorialAsignaciones
+                    key={historialTick}
+                    teacherId={user.id}
+                    students={students}
+                    busqueda={busquedaProfe}
+                  />
                 )}
 
                 {msg && <p className="notification is-success is-light is-size-7 py-2 px-3 mb-3">{msg}</p>}

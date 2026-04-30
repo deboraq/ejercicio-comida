@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useStorage } from '../../hooks/useStorage'
 import { exportarRutinaAJson } from '../../utils/rutinaShare'
 import { createRoutineAssignment } from '../../lib/profeDb'
@@ -15,7 +15,25 @@ function emptyPlantilla() {
   return { id: newId('pt'), nombre: 'Nueva plantilla', dias: [emptyDia(1)], soloStudentId: null }
 }
 
-export default function ProfeRutinasWorkshop({ students, teacherId, onToast, onEnviado }) {
+function plantillaCoincideBusqueda(p, students, q) {
+  if (!q) return true
+  const n = (p.nombre || '').toLowerCase()
+  if (n.includes(q)) return true
+  if (p.soloStudentId) {
+    const st = students.find((s) => s.studentId === p.soloStudentId)
+    const blob = `${st?.fullName || ''} ${st?.email || ''}`.toLowerCase()
+    if (blob.includes(q)) return true
+  }
+  for (const d of p.dias || []) {
+    if (String(d.nombre || '').toLowerCase().includes(q)) return true
+    for (const ex of d.ejercicios || []) {
+      if (String(ex).toLowerCase().includes(q)) return true
+    }
+  }
+  return false
+}
+
+export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '', onToast, onEnviado }) {
   const [plantillas, setPlantillas] = useStorage('profePlantillasRutina', [])
   const [catalogo] = useStorage('profeCatalogoEjercicios', [])
   const listP = Array.isArray(plantillas) ? plantillas : []
@@ -27,6 +45,12 @@ export default function ProfeRutinasWorkshop({ students, teacherId, onToast, onE
   const [sendPlantillaId, setSendPlantillaId] = useState('')
   const [enviando, setEnviando] = useState(false)
 
+  const qBusq = (busqueda || '').trim().toLowerCase()
+  const plantillasFiltradas = useMemo(
+    () => listP.filter((p) => plantillaCoincideBusqueda(p, students, qBusq)),
+    [listP, students, qBusq]
+  )
+
   const plantilla = listP.find((p) => p.id === selectedId)
   const enviablesParaEnvio = listP.filter((p) => !p.soloStudentId || p.soloStudentId === sendStudentId)
 
@@ -35,8 +59,14 @@ export default function ProfeRutinasWorkshop({ students, teacherId, onToast, onE
       setSelectedId('')
       return
     }
+    if (plantillasFiltradas.length) {
+      if (!plantillasFiltradas.some((p) => p.id === selectedId)) {
+        setSelectedId(plantillasFiltradas[0].id)
+      }
+      return
+    }
     if (!listP.some((p) => p.id === selectedId)) setSelectedId(listP[0].id)
-  }, [listP, selectedId])
+  }, [listP, plantillasFiltradas, selectedId])
 
   useEffect(() => {
     if (students.length && !sendStudentId) setSendStudentId(students[0].studentId)
@@ -160,16 +190,20 @@ export default function ProfeRutinasWorkshop({ students, teacherId, onToast, onE
             <div className="field mb-3">
               <label className="label is-size-7">Editando</label>
               <div className="control">
-                <div className="select is-small is-fullwidth">
-                  <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
-                    {listP.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre || 'Sin nombre'}
-                        {p.soloStudentId ? ' (solo un alumno)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {plantillasFiltradas.length === 0 && qBusq ? (
+                  <p className="is-size-7 has-text-grey mb-0">Ninguna plantilla coincide con la búsqueda.</p>
+                ) : (
+                  <div className="select is-small is-fullwidth">
+                    <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+                      {(plantillasFiltradas.length ? plantillasFiltradas : listP).map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nombre || 'Sin nombre'}
+                          {p.soloStudentId ? ' (solo un alumno)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
 
