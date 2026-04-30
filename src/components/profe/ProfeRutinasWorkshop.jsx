@@ -66,18 +66,59 @@ function normalizarEjerciciosDia(list) {
     .filter(Boolean)
 }
 
+function CatalogoEjercicioSelect({ ejercicios, sinCatalogo, onElegir }) {
+  const [valor, setValor] = useState('')
+  if (sinCatalogo) {
+    return (
+      <p className="is-size-7 has-text-grey mb-2">
+        Cargá ejercicios en la pestaña Ejercicios para poder armar el día.
+      </p>
+    )
+  }
+  return (
+    <div className="field mb-2">
+      <label className="label is-size-7 mb-1">Agregar desde el catálogo</label>
+      <div className="select is-small is-fullwidth">
+        <select
+          value={valor}
+          onChange={(e) => {
+            const id = e.target.value
+            if (!id) return
+            const item = ejercicios.find((x) => x.id === id)
+            if (item) onElegir(item)
+            setValor('')
+          }}
+        >
+          <option value="">Elegí un ejercicio para sumarlo al día…</option>
+          {ejercicios.map((c) => (
+            <option key={c.id} value={c.id}>
+              {String(c.nombre || '').trim() || '(sin nombre)'}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  )
+}
+
 export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '', onToast, onEnviado }) {
   const [plantillas, setPlantillas] = useStorage('profePlantillasRutina', [])
   const [catalogo] = useStorage('profeCatalogoEjercicios', [])
   const listP = Array.isArray(plantillas) ? plantillas : []
   const listC = Array.isArray(catalogo) ? catalogo.filter((c) => String(c.nombre || '').trim()) : []
+  const listCOrdenado = useMemo(
+    () =>
+      [...listC].sort((a, b) =>
+        String(a.nombre || '').localeCompare(String(b.nombre || ''), undefined, { sensitivity: 'base' })
+      ),
+    [listC]
+  )
 
   const [selectedId, setSelectedId] = useState('')
   const [picker, setPicker] = useState(null)
   const [sendStudentId, setSendStudentId] = useState('')
   const [sendPlantillaId, setSendPlantillaId] = useState('')
   const [enviando, setEnviando] = useState(false)
-  const [busqCat, setBusqCat] = useState('')
   const [editorPlantillaAbierto, setEditorPlantillaAbierto] = useState(false)
 
   const qBusq = (busqueda || '').trim().toLowerCase()
@@ -88,17 +129,6 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
 
   const plantilla = listP.find((p) => p.id === selectedId)
   const enviablesParaEnvio = listP.filter((p) => !p.soloStudentId || p.soloStudentId === sendStudentId)
-
-  const catFiltrado = useMemo(() => {
-    const q = busqCat.trim().toLowerCase()
-    if (!q) return listC.slice(0, 16)
-    return listC
-      .filter((c) => {
-        const blob = [c.nombre, c.notas].map((x) => String(x || '').toLowerCase()).join(' ')
-        return blob.includes(q)
-      })
-      .slice(0, 24)
-  }, [listC, busqCat])
 
   useEffect(() => {
     setPlantillas((prev) => {
@@ -151,9 +181,26 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
     setEditorPlantillaAbierto(true)
   }
 
+  const eliminarRutinaPorId = (id) => {
+    const p = listP.find((x) => x.id === id)
+    if (!p || !window.confirm(`¿Eliminar la rutina «${p.nombre || 'Sin nombre'}»? Esta acción no se puede deshacer.`)) {
+      return
+    }
+    setPlantillas((prev) => (Array.isArray(prev) ? prev.filter((x) => x.id !== id) : []))
+    if (selectedId === id) {
+      setEditorPlantillaAbierto(false)
+      setSelectedId('')
+    }
+  }
+
   const quitarPlantilla = () => {
     if (!plantilla || !window.confirm('¿Borrar esta plantilla?')) return
-    setPlantillas((prev) => (Array.isArray(prev) ? prev.filter((p) => p.id !== plantilla.id) : []))
+    const id = plantilla.id
+    setPlantillas((prev) => (Array.isArray(prev) ? prev.filter((x) => x.id !== id) : []))
+    if (selectedId === id) {
+      setEditorPlantillaAbierto(false)
+      setSelectedId('')
+    }
   }
 
   const updatePlantilla = useCallback(
@@ -176,7 +223,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
     const dia = plantilla.dias[dayIndex]
     const actuales = normalizarEjerciciosDia(dia?.ejercicios)
 
-    const agregar = listC
+    const agregar = listCOrdenado
       .filter((c) => picker.selectedIds.has(c.id))
       .map((c) => ({
         nombre: String(c.nombre || '').trim(),
@@ -191,17 +238,6 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
       return { ...p, dias }
     })
     setPicker(null)
-  }
-
-  const agregarLineaVacia = (dayIndex) => {
-    if (!plantilla) return
-    updatePlantilla(plantilla.id, (p) => {
-      const dias = [...p.dias]
-      const d = { ...dias[dayIndex] }
-      d.ejercicios = [...(d.ejercicios || []), { nombre: '', series: '', repeticiones: '' }]
-      dias[dayIndex] = d
-      return { ...p, dias }
-    })
   }
 
   const agregarDesdeCatalogo = (dayIndex, itemCatalogo) => {
@@ -323,7 +359,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                 {listaRutinasListado.map((p) => (
                   <li
                     key={p.id}
-                    className="is-flex is-justify-content-space-between is-align-items-center py-2 px-2 mb-2"
+                    className="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap py-2 px-2 mb-2"
                     style={{
                       borderRadius: 6,
                       border: '1px solid rgba(255,255,255,0.1)',
@@ -331,15 +367,28 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                       gap: '0.5rem',
                     }}
                   >
-                    <span className="is-size-7" style={{ wordBreak: 'break-word' }}>
+                    <span className="is-size-7" style={{ wordBreak: 'break-word', flex: '1 1 12rem', minWidth: 0 }}>
                       <strong>{p.nombre || 'Sin nombre'}</strong>
                       {p.soloStudentId ? (
                         <span className="has-text-grey"> · solo un alumno</span>
                       ) : null}
                     </span>
-                    <button type="button" className="button is-small is-link is-light" onClick={() => abrirEditorPlantilla(p.id)}>
-                      Editar
-                    </button>
+                    <div className="is-flex" style={{ gap: '0.35rem', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        className="button is-small is-link is-light"
+                        onClick={() => abrirEditorPlantilla(p.id)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        className="button is-small is-danger is-light"
+                        onClick={() => eliminarRutinaPorId(p.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -356,20 +405,14 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
               <button
                 type="button"
                 className="button is-small is-light"
-                onClick={() => {
-                  setEditorPlantillaAbierto(false)
-                  setBusqCat('')
-                }}
+                onClick={() => setEditorPlantillaAbierto(false)}
               >
                 ← Volver al listado
               </button>
               <button
                 type="button"
                 className="button is-small is-link"
-                onClick={() => {
-                  setEditorPlantillaAbierto(false)
-                  setBusqCat('')
-                }}
+                onClick={() => setEditorPlantillaAbierto(false)}
               >
                 Guardar y volver
               </button>
@@ -438,39 +481,13 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                           </button>
                         )}
                       </div>
-                      <div className="field mb-2">
-                        <label className="label is-size-7 mb-1">Buscar en tu catálogo</label>
-                        <input
-                          className="input is-small"
-                          value={busqCat}
-                          onChange={(e) => setBusqCat(e.target.value)}
-                          placeholder="Filtrá por nombre…"
-                        />
-                      </div>
-                      {listC.length > 0 ? (
-                        <div className="mb-2" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                          {catFiltrado.map((c) => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              className="button is-small is-light"
-                              onClick={() => agregarDesdeCatalogo(idx, c)}
-                            >
-                              + {c.nombre}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
+                      <CatalogoEjercicioSelect
+                        ejercicios={listCOrdenado}
+                        sinCatalogo={listC.length === 0}
+                        onElegir={(item) => agregarDesdeCatalogo(idx, item)}
+                      />
 
-                      <div className="is-flex is-flex-wrap-wrap mb-2" style={{ gap: '0.5rem' }}>
-                        <button
-                          type="button"
-                          className="button is-small is-link is-light"
-                          title="Agrega una fila para escribir a mano un ejercicio que no está en el catálogo."
-                          onClick={() => agregarLineaVacia(idx)}
-                        >
-                          + Ejercicio a mano
-                        </button>
+                      <div className="mb-3">
                         <button
                           type="button"
                           className="button is-small is-info is-light"
@@ -480,13 +497,6 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                           Añadir varios del catálogo…
                         </button>
                       </div>
-                      <p className="is-size-7 has-text-grey mb-3">
-                        <strong>Ejercicio a mano:</strong> una fila vacía para escribir el nombre vos (útil si no está
-                        en el catálogo). Después completá series y repeticiones si querés.
-                      </p>
-                      {!listC.length ? (
-                        <p className="is-size-7 has-text-grey mb-3">Cargá el catálogo en la pestaña Ejercicios.</p>
-                      ) : null}
 
                       <div className="field mb-3">
                         <label className="label is-size-7 mb-1">Nombre del día</label>
@@ -510,7 +520,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                       </p>
                       {filas.length === 0 ? (
                         <p className="is-size-7 has-text-grey mb-3">
-                          Todavía no hay filas. Empezá por el buscador de arriba o tocá «Ejercicio a mano».
+                          Todavía no hay ejercicios en este día. Elegí uno del desplegable o usá «Añadir varios».
                         </p>
                       ) : (
                         <ul className="mb-3" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -673,7 +683,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                 Marcá los ejercicios que querés sumar al final del día (orden = orden del catálogo). Después podés editar series y repeticiones en la lista.
               </p>
               <ul className="mb-0" style={{ listStyle: 'none', padding: 0 }}>
-                {listC.map((c) => {
+                {listCOrdenado.map((c) => {
                   const n = String(c.nombre).trim()
                   const on = picker.selectedIds.has(c.id)
                   return (
