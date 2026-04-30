@@ -204,16 +204,27 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
       </p>
 
       <div className="columns is-multiline is-variable is-2">
-        <div className="column is-12-mobile is-6-tablet is-4-desktop">
-          <p className="is-size-7 has-text-weight-semibold mb-2">Nombre y apellido</p>
-          <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem' }}>
-            {bloqueCampo}
-          </div>
-        </div>
-        <div className="column is-12-mobile is-6-tablet is-4-desktop">
-          <p className="is-size-7 has-text-weight-semibold mb-2">Rol</p>
-          <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem' }}>
-            {bloqueRol}
+        <div className="column is-12-mobile is-12-tablet is-8-desktop">
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(10.5rem, 1fr))',
+              gap: '0.75rem 1rem',
+              alignItems: 'start',
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <p className="is-size-7 has-text-weight-semibold mb-2">Nombre y apellido</p>
+              <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem' }}>
+                {bloqueCampo}
+              </div>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p className="is-size-7 has-text-weight-semibold mb-2">Rol</p>
+              <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem' }}>
+                {bloqueRol}
+              </div>
+            </div>
           </div>
         </div>
         <div className="column is-12-mobile is-12-tablet is-4-desktop">
