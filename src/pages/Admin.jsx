@@ -132,7 +132,7 @@ export default function Admin() {
           )}
         </div>
 
-        <AdminUsersRolesSection showAdminLink={false} onRowsLoaded={setRows} />
+        <AdminUsersRolesSection onRowsLoaded={setRows} />
 
         {msg && <p className="notification is-success is-light is-size-7 py-2 px-3 mb-2">{msg}</p>}
         {err && <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-0">{err}</p>}

@@ -1,3 +1,6 @@
+/** Módulos que los entrenadores no ven por defecto (enfoque en Profe y alumnos; el admin puede forzar más vía `blocked_modules`). */
+export const COACH_DEFAULT_HIDDEN_NAV = ['ejercicios', 'comida']
+
 /** Claves guardadas en `profiles.blocked_modules` (sin config: siempre visible). */
 export const BLOCKABLE_NAV_KEYS = ['inicio', 'ejercicios', 'rutina', 'comida', 'profe', 'admin']
 
@@ -19,4 +22,10 @@ export function blockedModuleSet(profile) {
 
 export function isNavModuleBlocked(profile, key) {
   return blockedModuleSet(profile).has(key)
+}
+
+/** Rol entrenador: menú distinto al del alumno (sin tocar la base de datos). */
+export function isCoachDefaultHiddenNav(profile, key) {
+  if (!profile || profile.role !== 'profe') return false
+  return COACH_DEFAULT_HIDDEN_NAV.includes(key)
 }

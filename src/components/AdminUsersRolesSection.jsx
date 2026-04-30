@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { listProfilesForAdmin, adminUpdateUserRole, adminUpdateBlockedModules } from '../lib/profeDb'
-import { BLOCKABLE_NAV_KEYS, BLOCKABLE_LABELS } from '../utils/navModules'
+import { BLOCKABLE_NAV_KEYS, BLOCKABLE_LABELS, COACH_DEFAULT_HIDDEN_NAV } from '../utils/navModules'
 
 /** Usuarios, roles y módulos ocultos (solo cuenta admin). */
-export default function AdminUsersRolesSection({ showAdminLink, onRowsLoaded }) {
+export default function AdminUsersRolesSection({ onRowsLoaded }) {
   const { user } = useAuth()
   const [rows, setRows] = useState([])
   const [listLoading, setListLoading] = useState(false)
@@ -60,13 +59,9 @@ export default function AdminUsersRolesSection({ showAdminLink, onRowsLoaded }) 
     <div className="box mb-4 py-3">
       <h2 className="title is-6 mb-2">Usuarios y roles</h2>
       <p className="is-size-7 has-text-grey mb-3">
-        Asigná rol <strong>alumno</strong>, <strong>profe</strong> o <strong>admin</strong>. Podés ocultar pestañas del menú (ej. Comida) por usuario; los administradores siempre ven todo.
+        Asigná rol <strong>alumno</strong>, <strong>profe</strong> o <strong>admin</strong>. Podés ocultar pestañas del menú por usuario; los administradores siempre ven todo. Los entrenadores no ven{' '}
+        <strong>Ejercicios</strong> ni <strong>Comida</strong> por defecto (enfoque en <strong>Profe</strong> y alumnos).
       </p>
-      {showAdminLink && (
-        <p className="is-size-7 mb-3">
-          Para <strong>avisos por mensaje</strong> a entrenadores: <Link to="/admin">panel Admin</Link>.
-        </p>
-      )}
       {listLoading ? (
         <p className="is-size-7 has-text-grey mb-0">Cargando…</p>
       ) : (
@@ -100,13 +95,20 @@ export default function AdminUsersRolesSection({ showAdminLink, onRowsLoaded }) 
   )
 }
 
+function mergeProfeDefaults(role, modules) {
+  const s = new Set(Array.isArray(modules) ? modules : [])
+  if (role === 'profe') COACH_DEFAULT_HIDDEN_NAV.forEach((k) => s.add(k))
+  return s
+}
+
 function FilaUsuario({ row, actualUserId, onGuardarRol, onGuardarModulos }) {
   const [rol, setRol] = useState(row.role || 'alumno')
-  const [bloqueados, setBloqueados] = useState(() => new Set(row.blocked_modules || []))
+  const [bloqueados, setBloqueados] = useState(() => mergeProfeDefaults(row.role || 'alumno', row.blocked_modules))
 
   useEffect(() => {
-    setRol(row.role || 'alumno')
-    setBloqueados(new Set(Array.isArray(row.blocked_modules) ? row.blocked_modules : []))
+    const r = row.role || 'alumno'
+    setRol(r)
+    setBloqueados(mergeProfeDefaults(r, row.blocked_modules))
   }, [row.role, row.id, JSON.stringify(row.blocked_modules || [])])
 
   const toggleMod = (key) => {
@@ -118,7 +120,13 @@ function FilaUsuario({ row, actualUserId, onGuardarRol, onGuardarModulos }) {
     })
   }
 
-  const bloqueadosArr = () => [...bloqueados]
+  const bloqueadosArr = () => {
+    const arr = [...bloqueados]
+    if (rol === 'profe') return [...new Set([...arr, ...COACH_DEFAULT_HIDDEN_NAV])]
+    return arr
+  }
+
+  const modBloqueadoCoach = (key) => rol === 'profe' && COACH_DEFAULT_HIDDEN_NAV.includes(key)
 
   return (
     <tr>
@@ -126,7 +134,14 @@ function FilaUsuario({ row, actualUserId, onGuardarRol, onGuardarModulos }) {
       <td className="has-text-grey">{(row.full_name || '').trim() || '—'}</td>
       <td>
         <div className="select is-small">
-          <select value={rol} onChange={(e) => setRol(e.target.value)}>
+          <select
+            value={rol}
+            onChange={(e) => {
+              const v = e.target.value
+              setRol(v)
+              setBloqueados(mergeProfeDefaults(v, row.blocked_modules))
+            }}
+          >
             <option value="alumno">alumno</option>
             <option value="profe">profe</option>
             <option value="admin">admin</option>
@@ -149,12 +164,12 @@ function FilaUsuario({ row, actualUserId, onGuardarRol, onGuardarModulos }) {
       <td>
         <div className="is-flex is-flex-direction-column" style={{ gap: '0.25rem' }}>
           {BLOCKABLE_NAV_KEYS.map((key) => (
-            <label key={key} className="checkbox is-size-7">
+            <label key={key} className="checkbox is-size-7" title={modBloqueadoCoach(key) ? 'Oculto por defecto para entrenadores' : undefined}>
               <input
                 type="checkbox"
-                checked={bloqueados.has(key)}
+                checked={bloqueados.has(key) || modBloqueadoCoach(key)}
                 onChange={() => toggleMod(key)}
-                disabled={row.role === 'admin'}
+                disabled={rol === 'admin' || modBloqueadoCoach(key)}
               />
               {` ${BLOCKABLE_LABELS[key] || key}`}
             </label>
@@ -163,7 +178,7 @@ function FilaUsuario({ row, actualUserId, onGuardarRol, onGuardarModulos }) {
         <button
           type="button"
           className="button is-small is-light mt-1"
-          disabled={row.role === 'admin'}
+          disabled={rol === 'admin'}
           onClick={() => onGuardarModulos(row.id, bloqueadosArr())}
         >
           Guardar menú

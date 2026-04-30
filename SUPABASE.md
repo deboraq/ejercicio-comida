@@ -181,32 +181,61 @@ grant execute on function public.find_student_id_by_email(text) to authenticated
 
 Orden: si `profiles` o `teacher_students` ya existían de un intento previo, podés borrarlas en un proyecto de prueba y volver a ejecutar, o usar `create table if not exists` y crear solo las políticas que falten.
 
-Flujo: el alumno y el entrenador se registran e inician sesión al menos una vez (la app crea su fila en `profiles`). Un **administrador** (cuenta con `role = admin` en `profiles`, asignado una vez por SQL) marca quiénes son **entrenadores** (`profe`) desde la pantalla **Admin**. Cada entrenador entra a **Profe**, ve los avisos del admin, vincula alumnos por correo y envía rutinas. El alumno abre **Rutina → Asignadas** con la sesión iniciada y verá la rutina nueva.
+Flujo: el alumno y el entrenador se registran e inician sesión al menos una vez (la app crea su fila en `profiles`). Un **administrador** (cuenta con `role = admin` en `profiles` y fila en `admin_accounts`, sincronizado por el SQL del punto 6; el **primer** admin se asigna con el `UPDATE` del final porque en el SQL Editor `auth.uid()` es null) marca quiénes son **entrenadores** (`profe`) desde la pantalla **Admin**. Cada entrenador entra a **Profe**, ve los avisos del admin, vincula alumnos por correo y envía rutinas. El alumno abre **Rutina → Asignadas** con la sesión iniciada y verá la rutina nueva.
 
-6. **Administrador y mensajes a entrenadores** (ejecutá en SQL Editor si ya aplicaste el punto 5):
+6. **Administrador y mensajes a entrenadores** (ejecutá en SQL Editor si ya aplicaste el punto 5). Si ves `infinite recursion detected in policy for relation "profiles"`, re-ejecutá este bloque entero: las políticas de admin ya **no** leen `profiles` dentro de condiciones sobre `profiles`, sino la tabla `admin_accounts`.
 
 ```sql
+-- Si venías de una versión anterior con auth_is_admin(), eliminá la función obsoleta
+drop function if exists public.auth_is_admin();
+
 -- Permitir rol admin en perfiles ya creados
 alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles add constraint profiles_role_check check (role in ('alumno', 'profe', 'admin'));
 
--- Evita recursión infinita en políticas RLS que consultan «profiles» (SECURITY DEFINER + dueño tabla bypass RLS)
-create or replace function public.auth_is_admin()
-returns boolean
-language sql
-stable
+-- Tabla auxiliar: evita recursión RLS (las políticas de «profiles» NO deben hacer sub-SELECT sobre «profiles»)
+create table if not exists public.admin_accounts (
+  user_id uuid primary key references auth.users(id) on delete cascade
+);
+
+alter table public.admin_accounts enable row level security;
+
+drop policy if exists "admin_accounts_read_own" on public.admin_accounts;
+create policy "admin_accounts_read_own"
+  on public.admin_accounts for select
+  using (user_id = auth.uid());
+
+create or replace function public.sync_admin_account()
+returns trigger
+language plpgsql
 security definer
 set search_path = public
-set row_security = off
 as $$
-  select exists (
-    select 1 from public.profiles
-    where id = auth.uid() and role = 'admin'
-  );
+begin
+  if tg_op = 'INSERT' and new.role = 'admin' then
+    insert into public.admin_accounts (user_id) values (new.id) on conflict (user_id) do nothing;
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and new.role is distinct from old.role then
+    if new.role = 'admin' then
+      insert into public.admin_accounts (user_id) values (new.id) on conflict (user_id) do nothing;
+    else
+      delete from public.admin_accounts where user_id = old.id;
+    end if;
+  end if;
+  return new;
+end;
 $$;
 
-revoke all on function public.auth_is_admin() from public;
-grant execute on function public.auth_is_admin() to authenticated;
+drop trigger if exists profiles_sync_admin on public.profiles;
+create trigger profiles_sync_admin
+  after insert or update of role on public.profiles
+  for each row
+  execute function public.sync_admin_account();
+
+insert into public.admin_accounts (user_id)
+select id from public.profiles where role = 'admin'
+on conflict (user_id) do nothing;
 
 -- El perfil solo se crea como alumno; solo un admin puede cambiar roles (y altas con otro rol)
 create or replace function public.enforce_profile_role_rules()
@@ -218,12 +247,11 @@ as $$
 declare
   is_admin boolean;
 begin
-  -- Consola SQL de Supabase: no hay JWT → auth.uid() es null (primer admin, migraciones)
   if auth.uid() is null then
     return new;
   end if;
 
-  is_admin := public.auth_is_admin();
+  select exists (select 1 from public.admin_accounts a where a.user_id = auth.uid()) into is_admin;
 
   if tg_op = 'INSERT' then
     if new.role <> 'alumno' and not is_admin then
@@ -246,17 +274,17 @@ create trigger profiles_role_rules
   for each row
   execute function public.enforce_profile_role_rules();
 
--- Admin: ver y editar todos los perfiles
+-- Admin: ver y editar todos los perfiles (usa admin_accounts, sin tocar profiles en la condición)
 drop policy if exists "profiles_admin_select_all" on public.profiles;
 create policy "profiles_admin_select_all"
   on public.profiles for select
-  using (public.auth_is_admin());
+  using (exists (select 1 from public.admin_accounts a where a.user_id = auth.uid()));
 
 drop policy if exists "profiles_admin_update_any" on public.profiles;
 create policy "profiles_admin_update_any"
   on public.profiles for update
-  using (public.auth_is_admin())
-  with check (public.auth_is_admin());
+  using (exists (select 1 from public.admin_accounts a where a.user_id = auth.uid()))
+  with check (exists (select 1 from public.admin_accounts a where a.user_id = auth.uid()));
 
 -- Mensajes del admin hacia un entrenador (solo destinatarios con rol profe)
 create table if not exists public.admin_messages (
@@ -277,14 +305,14 @@ create policy "am_select_teacher"
 drop policy if exists "am_select_admin" on public.admin_messages;
 create policy "am_select_admin"
   on public.admin_messages for select
-  using (public.auth_is_admin());
+  using (exists (select 1 from public.admin_accounts a where a.user_id = auth.uid()));
 
 drop policy if exists "am_insert_admin" on public.admin_messages;
 create policy "am_insert_admin"
   on public.admin_messages for insert
   with check (
     admin_id = auth.uid()
-    and public.auth_is_admin()
+    and exists (select 1 from public.admin_accounts a where a.user_id = auth.uid())
   );
 
 create or replace function public.validate_admin_message_recipient()
@@ -334,10 +362,10 @@ grant execute on function public.get_my_profile() to authenticated;
 
 La app intenta esta función primero y, si no existe, usa `select` directo sobre `profiles`.
 
-**Primer administrador** (una vez, con tu correo ya registrado en la app):
+**Primer administrador** (una vez, con tu correo ya registrado en la app). En el SQL Editor no hay sesión JWT, así que el trigger de roles permite este `UPDATE` y el trigger `profiles_sync_admin` inserta tu `user_id` en `admin_accounts`. **Cambiar el correo en Auth o en `profiles` no borra** rutinas, comidas ni demás tablas vinculadas al `id` de usuario; solo actualizá el campo coherente en todos lados si lo necesitás.
 
 ```sql
 update public.profiles set role = 'admin' where lower(trim(email)) = lower(trim('tu-correo@ejemplo.com'));
 ```
 
-Reemplazá `tu-correo@ejemplo.com` por el mail con el que iniciás sesión. Esa cuenta verá la pestaña **Admin** en la app.
+Reemplazá `tu-correo@ejemplo.com` por el mail con el que iniciás sesión. Si ya tenías `role = 'admin'` en `profiles` pero la app fallaba, el `insert … select` del punto 6 rellena `admin_accounts`; igual podés forzar: `insert into public.admin_accounts (user_id) select id from public.profiles where lower(trim(email)) = lower(trim('tu-correo@ejemplo.com')) on conflict do nothing;`. Esa cuenta verá la pestaña **Admin** en la app.

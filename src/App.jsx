@@ -11,7 +11,7 @@ import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import { useMyProfile } from './hooks/useMyProfile'
 import ModuleGate from './components/ModuleGate'
-import { isNavModuleBlocked } from './utils/navModules'
+import { isNavModuleBlocked, isCoachDefaultHiddenNav } from './utils/navModules'
 import './App.css'
 
 function NavLink({ to, children, icon }) {
@@ -42,6 +42,7 @@ function AppRoutes() {
     if (!isConfigured || !user) return false
     if (profileLoading) return false
     if (!profile || profile.role === 'admin') return false
+    if (isCoachDefaultHiddenNav(profile, clave)) return true
     return isNavModuleBlocked(profile, clave)
   }
 

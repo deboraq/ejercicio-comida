@@ -5,8 +5,6 @@ import { useMyProfile } from '../hooks/useMyProfile'
 import { OBJETIVOS } from '../utils/consejos'
 import { SUPLEMENTOS } from '../utils/suplementos'
 import PesoSeguimiento from '../components/PesoSeguimiento'
-import AdminUsersRolesSection from '../components/AdminUsersRolesSection'
-
 export default function Config() {
   const { user, signOut, isConfigured } = useAuth()
   const { profile, profileError, loading: profileLoading, refresh: refreshProfile } = useMyProfile()
@@ -101,9 +99,7 @@ export default function Config() {
             <p className="is-size-7 mb-2">
               <strong>¿Sos entrenador?</strong> Un administrador de la plataforma te marca el rol en <strong>Admin</strong>. Después entrá a <Link to="/profe">Profe</Link> para ver avisos del admin, vincular alumnos y enviar rutinas.
             </p>
-            {isConfigured ? (
-              <p className="is-size-7 mb-0">Con Supabase activo ves la pestaña <strong>Profe</strong> abajo; si tu cuenta es admin, también <strong>Admin</strong>.</p>
-            ) : (
+            {!isConfigured && (
               <p className="is-size-7 mb-0">
                 En esta instalación no están cargadas las claves de Supabase (por ejemplo en Vercel: Settings → Environment Variables:
                 <code className="mx-1">VITE_SUPABASE_URL</code> y <code className="mx-1">VITE_SUPABASE_ANON_KEY</code>
@@ -112,16 +108,6 @@ export default function Config() {
             )}
           </div>
         </div>
-
-        {isConfigured && user && profile?.role === 'admin' && !profileLoading && (
-          <div className="mb-4">
-            <h2 className="title is-6 mb-2">Gestión de usuarios</h2>
-            <p className="is-size-7 has-text-grey mb-2">
-              Misma tabla que en <Link to="/admin">Admin</Link>: roles y qué pestañas ve cada cuenta (los administradores siempre ven todo).
-            </p>
-            <AdminUsersRolesSection showAdminLink />
-          </div>
-        )}
 
         <div className="box mb-4 py-3">
           <h2 className="title is-6 mb-2">Tu objetivo</h2>
