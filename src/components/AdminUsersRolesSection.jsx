@@ -156,7 +156,7 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
               display: 'grid',
               gridTemplateColumns: 'minmax(0, 1fr) minmax(9.5rem, 12rem)',
               gap: '0.75rem 1rem',
-              alignItems: 'stretch',
+              alignItems: 'start',
             }}
           >
             <div
@@ -168,10 +168,7 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
               }}
             >
               <p className="is-size-7 has-text-weight-semibold mb-2">Nombre y apellido</p>
-              <div
-                className="is-flex is-flex-direction-column"
-                style={{ flex: 1, gap: '0.5rem', width: '100%', minHeight: 0 }}
-              >
+              <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem', width: '100%' }}>
                 <input
                   className="input is-small"
                   type="text"
@@ -183,7 +180,6 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
                 <button
                   type="button"
                   className="button is-small is-link is-light is-fullwidth"
-                  style={{ marginTop: 'auto' }}
                   disabled={!nombreCambio}
                   onClick={() => onGuardarNombre(row.id, nombre)}
                 >
@@ -200,10 +196,7 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
               }}
             >
               <p className="is-size-7 has-text-weight-semibold mb-2">Rol</p>
-              <div
-                className="is-flex is-flex-direction-column"
-                style={{ flex: 1, gap: '0.5rem', width: '100%', minHeight: 0 }}
-              >
+              <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem', width: '100%' }}>
                 <div className="select is-small" style={{ width: '100%', maxWidth: '100%' }}>
                   <select
                     style={{ width: '100%', maxWidth: '100%' }}
@@ -222,7 +215,6 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
                 <button
                   type="button"
                   className="button is-small is-link is-light is-fullwidth"
-                  style={{ marginTop: 'auto', paddingTop: '0.65rem' }}
                   disabled={rol === row.role}
                   onClick={() => {
                     if (row.id === actualUserId && row.role === 'admin' && rol !== 'admin') {
