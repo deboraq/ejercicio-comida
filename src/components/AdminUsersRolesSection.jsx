@@ -154,7 +154,7 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(10.5rem, 1fr))',
+              gridTemplateColumns: 'minmax(0, 1fr) minmax(9.5rem, 12rem)',
               gap: '0.75rem 1rem',
               alignItems: 'stretch',
             }}
@@ -204,8 +204,9 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
                 className="is-flex is-flex-direction-column"
                 style={{ flex: 1, gap: '0.5rem', width: '100%', minHeight: 0 }}
               >
-                <div className="select is-small is-fullwidth">
+                <div className="select is-small" style={{ width: '100%', maxWidth: '100%' }}>
                   <select
+                    style={{ width: '100%', maxWidth: '100%' }}
                     value={rol}
                     onChange={(e) => {
                       const v = e.target.value
