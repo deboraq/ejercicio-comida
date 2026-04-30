@@ -162,9 +162,8 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
 
   const bloqueRol = (
     <>
-      <div className="select is-small" style={{ width: '100%', display: 'block' }}>
+      <div className="select is-small is-fullwidth">
         <select
-          style={{ width: '100%' }}
           value={rol}
           onChange={(e) => {
             const v = e.target.value
@@ -213,15 +212,15 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
               alignItems: 'start',
             }}
           >
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, width: '100%' }}>
               <p className="is-size-7 has-text-weight-semibold mb-2">Nombre y apellido</p>
-              <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem' }}>
+              <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem', width: '100%' }}>
                 {bloqueCampo}
               </div>
             </div>
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, width: '100%' }}>
               <p className="is-size-7 has-text-weight-semibold mb-2">Rol</p>
-              <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem' }}>
+              <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem', width: '100%' }}>
                 {bloqueRol}
               </div>
             </div>
