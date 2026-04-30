@@ -1,8 +1,8 @@
 /** Valores por defecto si aún no existe la tabla `role_nav_hidden` en Supabase. */
 export const DEFAULT_ROLE_NAV_HIDDEN = {
   alumno: [],
-  /** El entrenador no usa metas, peso corporal ni suplementos del alumno (eso vive en Config). */
-  profe: ['inicio', 'ejercicios', 'rutina', 'comida', 'config'],
+  /** Config sigue visible: el profe ve solo cuenta (nombre / cerrar sesión), no datos del alumno. */
+  profe: ['inicio', 'ejercicios', 'rutina', 'comida'],
   admin: [],
 }
 
@@ -33,10 +33,6 @@ export function normalizeRoleNavMap(raw) {
     if (Array.isArray(raw[role])) {
       out[role] = [...new Set(raw[role].filter(Boolean))]
     }
-  }
-  /* Despliegues viejos en BD sin `config`: el entrenador no debe ver metas/peso/suplementos del alumno. */
-  if (!out.profe.includes('config')) {
-    out.profe = [...out.profe, 'config']
   }
   return out
 }

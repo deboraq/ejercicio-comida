@@ -221,7 +221,7 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
                 <button
                   type="button"
                   className="button is-small is-link is-light is-fullwidth"
-                  style={{ marginTop: 'auto' }}
+                  style={{ marginTop: 'auto', paddingTop: '0.65rem' }}
                   disabled={rol === row.role}
                   onClick={() => {
                     if (row.id === actualUserId && row.role === 'admin' && rol !== 'admin') {

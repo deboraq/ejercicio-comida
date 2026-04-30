@@ -68,6 +68,11 @@ export default function Config() {
 
   const suplementosActivos = config.suplementosActivos ?? SUPLEMENTOS.map((s) => s.id)
 
+  const cargandoPerfilNube = Boolean(user && isConfigured && profileLoading)
+  const esProfe = profile?.role === 'profe'
+  /** Objetivo, peso, suplementos y metas son del alumno; el entrenador solo gestiona su cuenta en la nube. */
+  const mostrarSeccionesAlumno = !user || !isConfigured || (user && !profileLoading && !esProfe)
+
   const etiquetaRol = (role) => {
     if (role === 'admin') return 'Administrador'
     if (role === 'profe') return 'Entrenador'
@@ -86,9 +91,23 @@ export default function Config() {
     <section className="section py-4">
       <div className="container" style={{ maxWidth: '560px' }}>
         <header className="mb-4">
-          <h1 className="title is-5 mb-2">Configuración</h1>
-          <p className="is-size-7 has-text-grey mb-0">Tu objetivo y peso se usan para calorías quemadas y consejos personalizados</p>
+          <h1 className="title is-5 mb-2">{esProfe && !profileLoading ? 'Tu cuenta' : 'Configuración'}</h1>
+          {!esProfe && (
+            <p className="is-size-7 has-text-grey mb-0">
+              Tu objetivo y peso se usan para calorías quemadas y consejos personalizados
+            </p>
+          )}
+          {esProfe && !profileLoading && (
+            <p className="is-size-7 has-text-grey mb-0">
+              Acá solo ajustás cómo te muestra la app y tu sesión. Metas, peso y suplementos son de cada alumno en su
+              propia cuenta.
+            </p>
+          )}
         </header>
+
+        {cargandoPerfilNube && (
+          <p className="is-size-7 has-text-grey mb-4">Cargando tu perfil…</p>
+        )}
 
         {user && (
           <div
@@ -133,7 +152,9 @@ export default function Config() {
               <div className="field mt-3 mb-0">
                 <label className="label is-size-7">Nombre y apellido</label>
                 <p className="is-size-7 has-text-grey mb-2">
-                  Así te verá tu entrenador en Profe (junto a tu correo).
+                  {esProfe
+                    ? 'Así te verán tus alumnos al vincularte (junto a tu correo).'
+                    : 'Así te verá tu entrenador en Profe (junto a tu correo).'}
                 </p>
                 <div className="control mb-2">
                   <input
@@ -168,6 +189,7 @@ export default function Config() {
           </div>
         )}
 
+        {!cargandoPerfilNube && mostrarSeccionesAlumno && (
         <div className="box mb-4 py-3">
           <h2 className="title is-6 mb-2">Cuenta</h2>
           <p className="is-size-7 has-text-grey mb-2">
@@ -194,7 +216,22 @@ export default function Config() {
             )}
           </div>
         </div>
+        )}
 
+        {!cargandoPerfilNube && esProfe && (
+          <div className="box mb-4 py-3">
+            <h2 className="title is-6 mb-2">Panel entrenador</h2>
+            <p className="is-size-7 has-text-grey mb-3">
+              Alumnos, catálogo de ejercicios y rutinas están en la pestaña <strong>Profe</strong>.
+            </p>
+            <Link to="/profe" className="button is-link is-small">
+              Ir a Profe
+            </Link>
+          </div>
+        )}
+
+        {!cargandoPerfilNube && mostrarSeccionesAlumno && (
+        <>
         <div className="box mb-4 py-3">
           <h2 className="title is-6 mb-2">Tu objetivo</h2>
           <div className="buttons are-small is-flex-wrap-wrap">
@@ -261,7 +298,7 @@ export default function Config() {
           onActualizarPesoConfig={(kg) => setConfig((c) => ({ ...c, pesoKg: kg }))}
         />
 
-        <div className="box py-3">
+        <div className="box py-3 mb-0">
           <h2 className="title is-6 mb-2">Suplementos que tomas</h2>
           <p className="is-size-7 has-text-grey mb-2">
             Elige cuáles quieres registrar cada día. En Inicio podrás marcar si los tomaste.
@@ -282,6 +319,8 @@ export default function Config() {
             })}
           </div>
         </div>
+        </>
+        )}
 
       </div>
     </section>

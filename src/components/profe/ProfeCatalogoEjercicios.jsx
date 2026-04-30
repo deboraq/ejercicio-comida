@@ -21,7 +21,7 @@ export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
   const agregar = () => setItems((prev) => [...(Array.isArray(prev) ? prev : []), nuevoEj()])
 
   const eliminar = (id) => {
-    if (!window.confirm('¿Quitar este ejercicio del catálogo?')) return
+    if (!window.confirm('¿Eliminar este ejercicio del catálogo?')) return
     setItems((prev) => (Array.isArray(prev) ? prev.filter((x) => x.id !== id) : []))
   }
 
@@ -35,7 +35,8 @@ export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
     <div className="box py-3">
       <h2 className="title is-6 mb-2">Catálogo de ejercicios</h2>
       <p className="is-size-7 has-text-grey mb-3">
-        Nombres generales que armás acá; después los elegís con casillas al montar cada día de una plantilla. El alumno ve esos nombres en la rutina asignada.
+        Nombres generales que armás acá; después los elegís al montar cada día de una plantilla. El alumno ve esos
+        nombres en la rutina asignada.
       </p>
       <button type="button" className="button is-link is-small mb-3" onClick={agregar}>
         Agregar ejercicio
@@ -47,28 +48,44 @@ export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
       ) : (
         <ul className="mb-0" style={{ listStyle: 'none', padding: 0 }}>
           {listaFiltrada.map((ex) => (
-            <li key={ex.id} className="py-3 subtle-divider-b" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <div className="field mb-2">
-                <label className="label is-size-7 mb-1">Nombre</label>
-                <input
-                  className="input is-small"
-                  value={ex.nombre}
-                  onChange={(e) => patch(ex.id, 'nombre', e.target.value)}
-                  placeholder="Ej: Press banca"
-                />
+            <li
+              key={ex.id}
+              className="py-2 subtle-divider-b"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <div className="is-flex is-align-items-stretch" style={{ gap: '0.5rem' }}>
+                <div className="is-flex-grow-1" style={{ minWidth: 0 }}>
+                  <div className="field mb-2">
+                    <label className="label is-size-7 mb-1">Nombre</label>
+                    <input
+                      className="input is-small"
+                      value={ex.nombre}
+                      onChange={(e) => patch(ex.id, 'nombre', e.target.value)}
+                      placeholder="Ej: Press banca"
+                    />
+                  </div>
+                  <div className="field mb-0">
+                    <label className="label is-size-7 mb-1">Notas (solo vos; opcional)</label>
+                    <input
+                      className="input is-small"
+                      value={ex.notas || ''}
+                      onChange={(e) => patch(ex.id, 'notas', e.target.value)}
+                      placeholder="Series, técnica, link…"
+                    />
+                  </div>
+                </div>
+                <div className="is-flex is-align-items-center" style={{ flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    className="button is-small is-danger is-light"
+                    title="Eliminar del catálogo"
+                    aria-label="Eliminar ejercicio"
+                    onClick={() => eliminar(ex.id)}
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
-              <div className="field mb-2">
-                <label className="label is-size-7 mb-1">Notas (solo vos; opcional)</label>
-                <input
-                  className="input is-small"
-                  value={ex.notas || ''}
-                  onChange={(e) => patch(ex.id, 'notas', e.target.value)}
-                  placeholder="Series, técnica, link…"
-                />
-              </div>
-              <button type="button" className="button is-small is-light" onClick={() => eliminar(ex.id)}>
-                Quitar del catálogo
-              </button>
             </li>
           ))}
         </ul>

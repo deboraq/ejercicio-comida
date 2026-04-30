@@ -78,6 +78,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
   const [sendPlantillaId, setSendPlantillaId] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [busqCat, setBusqCat] = useState('')
+  const [editorPlantillaAbierto, setEditorPlantillaAbierto] = useState(false)
 
   const qBusq = (busqueda || '').trim().toLowerCase()
   const plantillasFiltradas = useMemo(
@@ -109,18 +110,19 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
   }, [setPlantillas])
 
   useEffect(() => {
+    if (!editorPlantillaAbierto) return
     if (!listP.length) {
       setSelectedId('')
+      setEditorPlantillaAbierto(false)
       return
     }
-    if (plantillasFiltradas.length) {
-      if (!plantillasFiltradas.some((p) => p.id === selectedId)) {
-        setSelectedId(plantillasFiltradas[0].id)
-      }
-      return
+    const visibles = plantillasFiltradas.length ? plantillasFiltradas : listP
+    if (selectedId && !visibles.some((p) => p.id === selectedId)) {
+      setSelectedId(visibles[0].id)
+    } else if (!selectedId) {
+      setSelectedId(visibles[0].id)
     }
-    if (!listP.some((p) => p.id === selectedId)) setSelectedId(listP[0].id)
-  }, [listP, plantillasFiltradas, selectedId])
+  }, [editorPlantillaAbierto, listP, plantillasFiltradas, selectedId])
 
   useEffect(() => {
     if (students.length && !sendStudentId) setSendStudentId(students[0].studentId)
@@ -136,6 +138,12 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
     const n = emptyPlantilla()
     setPlantillas((prev) => [...(Array.isArray(prev) ? prev : []), n])
     setSelectedId(n.id)
+    setEditorPlantillaAbierto(true)
+  }
+
+  const abrirEditorPlantilla = (id) => {
+    setSelectedId(id)
+    setEditorPlantillaAbierto(true)
   }
 
   const quitarPlantilla = () => {
@@ -213,17 +221,15 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
     })
   }
 
-  const moverEjercicio = (dayIndex, ei, delta) => {
-    if (!plantilla) return
+  const reordenarEjercicioDia = (dayIndex, desde, hasta) => {
+    if (!plantilla || desde === hasta) return
     updatePlantilla(plantilla.id, (p) => {
       const dias = [...p.dias]
       const d = { ...dias[dayIndex] }
       const ej = [...(d.ejercicios || [])]
-      const j = ei + delta
-      if (j < 0 || j >= ej.length) return p
-      const tmp = ej[ei]
-      ej[ei] = ej[j]
-      ej[j] = tmp
+      if (desde < 0 || hasta < 0 || desde >= ej.length || hasta >= ej.length) return p
+      const [item] = ej.splice(desde, 1)
+      ej.splice(hasta, 0, item)
       d.ejercicios = ej
       dias[dayIndex] = d
       return { ...p, dias }
@@ -286,26 +292,86 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
     setEnviando(false)
   }
 
+  const listaRutinasListado = plantillasFiltradas.length ? plantillasFiltradas : listP
+
   return (
     <>
       <div className="box mb-4 py-3">
         <h2 className="title is-6 mb-2">Plantillas de rutina</h2>
         <p className="is-size-7 has-text-grey mb-3">
-          Armás cada día con filas claras (ejercicio, series y repeticiones). Sumá ítems desde el catálogo o líneas a mano.
-          Podés marcar una plantilla <strong>solo para un alumno</strong> (personalizada); el resto sirven para cualquiera.
+          Armás cada día con filas (ejercicio, series y repeticiones). Podés marcar una plantilla{' '}
+          <strong>solo para un alumno</strong> (personalizada); el resto sirven para cualquiera.
         </p>
-        <div className="is-flex is-flex-wrap-wrap mb-3" style={{ gap: '0.5rem' }}>
-          <button type="button" className="button is-link is-small" onClick={agregarPlantilla}>
-            Nueva plantilla
-          </button>
-        </div>
 
-        {!listP.length ? (
-          <p className="is-size-7 has-text-grey mb-0">Creá una plantilla para poder enviarla.</p>
-        ) : (
+        {!editorPlantillaAbierto && (
           <>
+            <div className="mb-3">
+              <button type="button" className="button is-link is-small" onClick={agregarPlantilla}>
+                Nueva rutina
+              </button>
+            </div>
+            {!listP.length ? (
+              <p className="is-size-7 has-text-grey mb-0">Tocá «Nueva rutina» para crear la primera y editarla.</p>
+            ) : (
+              <ul className="mb-0" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {listaRutinasListado.map((p) => (
+                  <li
+                    key={p.id}
+                    className="is-flex is-justify-content-space-between is-align-items-center py-2 px-2 mb-2"
+                    style={{
+                      borderRadius: 6,
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'rgba(0,0,0,0.2)',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <span className="is-size-7" style={{ wordBreak: 'break-word' }}>
+                      <strong>{p.nombre || 'Sin nombre'}</strong>
+                      {p.soloStudentId ? (
+                        <span className="has-text-grey"> · solo un alumno</span>
+                      ) : null}
+                    </span>
+                    <button type="button" className="button is-small is-link is-light" onClick={() => abrirEditorPlantilla(p.id)}>
+                      Editar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {plantillasFiltradas.length === 0 && qBusq && listP.length > 0 ? (
+              <p className="is-size-7 has-text-grey mt-2 mb-0">Ninguna plantilla coincide con la búsqueda.</p>
+            ) : null}
+          </>
+        )}
+
+        {editorPlantillaAbierto && plantilla && (
+          <>
+            <div className="is-flex is-flex-wrap-wrap is-align-items-center mb-3" style={{ gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="button is-small is-light"
+                onClick={() => {
+                  setEditorPlantillaAbierto(false)
+                  setBusqCat('')
+                }}
+              >
+                ← Volver al listado
+              </button>
+              <button
+                type="button"
+                className="button is-small is-link"
+                onClick={() => {
+                  setEditorPlantillaAbierto(false)
+                  setBusqCat('')
+                }}
+              >
+                Guardar y volver
+              </button>
+              <span className="is-size-7 has-text-grey">Los cambios se guardan automáticamente.</span>
+            </div>
+
             <div className="field mb-3">
-              <label className="label is-size-7">Editando</label>
+              <label className="label is-size-7">Rutina a editar</label>
               <div className="control">
                 {plantillasFiltradas.length === 0 && qBusq ? (
                   <p className="is-size-7 has-text-grey mb-0">Ninguna plantilla coincide con la búsqueda.</p>
@@ -324,8 +390,6 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
               </div>
             </div>
 
-            {plantilla && (
-              <>
                 <div className="field mb-3">
                   <label className="label is-size-7">Nombre de la plantilla</label>
                   <input
@@ -368,6 +432,56 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                           </button>
                         )}
                       </div>
+                      <div className="field mb-2">
+                        <label className="label is-size-7 mb-1">Buscar en tu catálogo</label>
+                        <input
+                          className="input is-small"
+                          value={busqCat}
+                          onChange={(e) => setBusqCat(e.target.value)}
+                          placeholder="Filtrá por nombre…"
+                        />
+                      </div>
+                      {listC.length > 0 ? (
+                        <div className="mb-2" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                          {catFiltrado.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              className="button is-small is-light"
+                              onClick={() => agregarDesdeCatalogo(idx, String(c.nombre || '').trim())}
+                            >
+                              + {c.nombre}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <div className="is-flex is-flex-wrap-wrap mb-2" style={{ gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          className="button is-small is-link is-light"
+                          title="Agrega una fila para escribir a mano un ejercicio que no está en el catálogo."
+                          onClick={() => agregarLineaVacia(idx)}
+                        >
+                          + Ejercicio a mano
+                        </button>
+                        <button
+                          type="button"
+                          className="button is-small is-info is-light"
+                          onClick={() => abrirPicker(idx)}
+                          disabled={!listC.length}
+                        >
+                          Añadir varios del catálogo…
+                        </button>
+                      </div>
+                      <p className="is-size-7 has-text-grey mb-3">
+                        <strong>Ejercicio a mano:</strong> una fila vacía para escribir el nombre vos (útil si no está
+                        en el catálogo). Después completá series y repeticiones si querés.
+                      </p>
+                      {!listC.length ? (
+                        <p className="is-size-7 has-text-grey mb-3">Cargá el catálogo en la pestaña Ejercicios.</p>
+                      ) : null}
+
                       <div className="field mb-3">
                         <label className="label is-size-7 mb-1">Nombre del día</label>
                         <input
@@ -384,69 +498,86 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                       </div>
 
                       <p className="is-size-7 has-text-weight-semibold mb-2">Ejercicios del día</p>
+                      <p className="is-size-7 has-text-grey mb-2">
+                        Arrastrá cada fila desde la rayita y soltá en el lugar que quieras (en la computadora también
+                        podés arrastrar con el mouse).
+                      </p>
                       {filas.length === 0 ? (
                         <p className="is-size-7 has-text-grey mb-3">
-                          Todavía no hay ejercicios. Usá el buscador del catálogo, «Línea vacía» o «Añadir varios».
+                          Todavía no hay filas. Empezá por el buscador de arriba o tocá «Ejercicio a mano».
                         </p>
                       ) : (
                         <ul className="mb-3" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                          {filas.map((row, ei) => (
-                            <li
-                              key={`${d.id || `dia-${idx}`}-ex-${ei}`}
-                              className="box py-2 px-3 mb-2"
-                              style={{ background: 'rgba(255,255,255,0.05)' }}
-                            >
-                              <div className="columns is-mobile is-multiline mb-0">
-                                <div className="column is-12-mobile is-5-tablet pb-1">
-                                  <label className="label is-size-7 mb-1">Ejercicio</label>
-                                  <input
-                                    className="input is-small"
-                                    value={row.nombre}
-                                    onChange={(e) => patchEjercicioCampo(idx, ei, 'nombre', e.target.value)}
-                                    placeholder="Nombre"
-                                  />
-                                </div>
-                                <div className="column is-narrow pb-1">
-                                  <label className="label is-size-7 mb-1">Series</label>
-                                  <input
-                                    className="input is-small"
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={row.series}
-                                    onChange={(e) => patchEjercicioCampo(idx, ei, 'series', e.target.value)}
-                                    placeholder="ej. 4"
-                                    style={{ width: '4.25rem' }}
-                                  />
-                                </div>
-                                <div className="column pb-1">
-                                  <label className="label is-size-7 mb-1">Repeticiones</label>
-                                  <input
-                                    className="input is-small"
-                                    value={row.repeticiones}
-                                    onChange={(e) => patchEjercicioCampo(idx, ei, 'repeticiones', e.target.value)}
-                                    placeholder='ej. 10, 8+8, 30"'
-                                  />
-                                </div>
-                                <div className="column is-narrow is-flex is-align-items-flex-end pb-1">
-                                  <div className="buttons has-addons mb-0">
-                                    <button
-                                      type="button"
-                                      className="button is-small is-light"
-                                      disabled={ei === 0}
-                                      onClick={() => moverEjercicio(idx, ei, -1)}
-                                      aria-label="Subir"
-                                    >
-                                      ↑
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="button is-small is-light"
-                                      disabled={ei === filas.length - 1}
-                                      onClick={() => moverEjercicio(idx, ei, 1)}
-                                      aria-label="Bajar"
-                                    >
-                                      ↓
-                                    </button>
+                          {filas.map((row, ei) => {
+                            const payload = JSON.stringify({ dayIndex: idx, ei })
+                            return (
+                              <li
+                                key={`${d.id || `dia-${idx}`}-ex-${ei}`}
+                                draggable
+                                onDragStart={(e) => {
+                                  e.dataTransfer.setData('application/x-rutina-ej', payload)
+                                  e.dataTransfer.setData('text/plain', payload)
+                                  e.dataTransfer.effectAllowed = 'move'
+                                }}
+                                onDragOver={(e) => {
+                                  e.preventDefault()
+                                  e.dataTransfer.dropEffect = 'move'
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault()
+                                  let data
+                                  try {
+                                    data = JSON.parse(e.dataTransfer.getData('application/x-rutina-ej') || '{}')
+                                  } catch {
+                                    return
+                                  }
+                                  if (data.dayIndex !== idx || typeof data.ei !== 'number') return
+                                  reordenarEjercicioDia(idx, data.ei, ei)
+                                }}
+                                className="box py-2 px-3 mb-2"
+                                style={{ background: 'rgba(255,255,255,0.05)', touchAction: 'none' }}
+                              >
+                                <div className="columns is-mobile is-multiline mb-0 is-vcentered">
+                                  <div
+                                    className="column is-narrow pb-0 pt-0"
+                                    title="Arrastrá desde acá para reordenar"
+                                    style={{ cursor: 'grab', userSelect: 'none', color: 'rgba(255,255,255,0.35)' }}
+                                  >
+                                    <span className="is-size-5" aria-hidden>
+                                      ⠿
+                                    </span>
+                                  </div>
+                                  <div className="column is-12-mobile is-4-tablet pb-1">
+                                    <label className="label is-size-7 mb-1">Ejercicio</label>
+                                    <input
+                                      className="input is-small"
+                                      value={row.nombre}
+                                      onChange={(e) => patchEjercicioCampo(idx, ei, 'nombre', e.target.value)}
+                                      placeholder="Nombre"
+                                    />
+                                  </div>
+                                  <div className="column is-narrow pb-1">
+                                    <label className="label is-size-7 mb-1">Series</label>
+                                    <input
+                                      className="input is-small"
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={row.series}
+                                      onChange={(e) => patchEjercicioCampo(idx, ei, 'series', e.target.value)}
+                                      placeholder="ej. 4"
+                                      style={{ width: '4.25rem' }}
+                                    />
+                                  </div>
+                                  <div className="column pb-1">
+                                    <label className="label is-size-7 mb-1">Repeticiones</label>
+                                    <input
+                                      className="input is-small"
+                                      value={row.repeticiones}
+                                      onChange={(e) => patchEjercicioCampo(idx, ei, 'repeticiones', e.target.value)}
+                                      placeholder='ej. 10, 8+8, 30"'
+                                    />
+                                  </div>
+                                  <div className="column is-narrow is-flex is-align-items-flex-end pb-1">
                                     <button
                                       type="button"
                                       className="button is-small is-danger is-light"
@@ -457,66 +588,23 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                                     </button>
                                   </div>
                                 </div>
-                              </div>
-                            </li>
-                          ))}
+                              </li>
+                            )
+                          })}
                         </ul>
                       )}
-
-                      <div className="field mb-2">
-                        <label className="label is-size-7 mb-1">Buscar en tu catálogo</label>
-                        <input
-                          className="input is-small"
-                          value={busqCat}
-                          onChange={(e) => setBusqCat(e.target.value)}
-                          placeholder="Filtrá por nombre…"
-                        />
-                      </div>
-                      {listC.length > 0 ? (
-                        <div className="mb-3" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                          {catFiltrado.map((c) => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              className="button is-small is-light"
-                              onClick={() => agregarDesdeCatalogo(idx, String(c.nombre || '').trim())}
-                            >
-                              + {c.nombre}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-
-                      <div className="is-flex is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
-                        <button type="button" className="button is-small is-link is-light" onClick={() => agregarLineaVacia(idx)}>
-                          + Línea vacía
-                        </button>
-                        <button
-                          type="button"
-                          className="button is-small is-info is-light"
-                          onClick={() => abrirPicker(idx)}
-                          disabled={!listC.length}
-                        >
-                          Añadir varios del catálogo…
-                        </button>
-                      </div>
-                      {!listC.length ? (
-                        <p className="is-size-7 has-text-grey mt-2 mb-0">Cargá el catálogo en la pestaña Ejercicios.</p>
-                      ) : null}
                     </div>
                   )
                 })}
 
-                <button type="button" className="button is-small is-light mb-3" onClick={agregarDia}>
-                  + Agregar día
-                </button>
-                <div>
-                  <button type="button" className="button is-small is-danger is-light" onClick={quitarPlantilla}>
-                    Borrar esta plantilla
-                  </button>
-                </div>
-              </>
-            )}
+            <button type="button" className="button is-small is-light mb-3" onClick={agregarDia}>
+              + Agregar día
+            </button>
+            <div>
+              <button type="button" className="button is-small is-danger is-light" onClick={quitarPlantilla}>
+                Borrar esta plantilla
+              </button>
+            </div>
           </>
         )}
       </div>
