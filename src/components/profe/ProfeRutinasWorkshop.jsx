@@ -34,6 +34,13 @@ function plantillaCoincideBusqueda(p, students, q) {
   return false
 }
 
+function etiquetaAlumnoOpcionEnvio(s) {
+  const name = String(s.fullName || '').trim()
+  const mail = String(s.email || '').trim()
+  if (name && mail) return `${name} · ${mail}`
+  return name || mail || 'Sin datos'
+}
+
 function plantillasNecesitanMigracion(arr) {
   for (const p of arr || []) {
     for (const d of p.dias || []) {
@@ -120,12 +127,23 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
   const [sendPlantillaId, setSendPlantillaId] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [editorPlantillaAbierto, setEditorPlantillaAbierto] = useState(false)
+  const [qEnvioAlumno, setQEnvioAlumno] = useState('')
 
   const qBusq = (busqueda || '').trim().toLowerCase()
   const plantillasFiltradas = useMemo(
     () => listP.filter((p) => plantillaCoincideBusqueda(p, students, qBusq)),
     [listP, students, qBusq]
   )
+
+  const qEnvioTrim = (qEnvioAlumno || '').trim().toLowerCase()
+  const alumnosEnvioFiltrados = useMemo(() => {
+    if (!qEnvioTrim) return students
+    return students.filter((s) => {
+      const fn = (s.fullName || '').toLowerCase()
+      const em = (s.email || '').toLowerCase()
+      return fn.includes(qEnvioTrim) || em.includes(qEnvioTrim)
+    })
+  }, [students, qEnvioTrim])
 
   const plantilla = listP.find((p) => p.id === selectedId)
   const enviablesParaEnvio = listP.filter((p) => !p.soloStudentId || p.soloStudentId === sendStudentId)
@@ -162,6 +180,13 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
   useEffect(() => {
     if (students.length && !sendStudentId) setSendStudentId(students[0].studentId)
   }, [students, sendStudentId])
+
+  useEffect(() => {
+    if (!alumnosEnvioFiltrados.length) return
+    if (!alumnosEnvioFiltrados.some((s) => s.studentId === sendStudentId)) {
+      setSendStudentId(alumnosEnvioFiltrados[0].studentId)
+    }
+  }, [alumnosEnvioFiltrados, sendStudentId])
 
   useEffect(() => {
     const visibles = listP.filter((p) => !p.soloStudentId || p.soloStudentId === sendStudentId)
@@ -639,15 +664,27 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
           <>
             <div className="field mb-3">
               <label className="label is-size-7">Alumno</label>
-              <div className="select is-small is-fullwidth">
-                <select value={sendStudentId} onChange={(e) => setSendStudentId(e.target.value)}>
-                  {students.map((s) => (
-                    <option key={s.linkId} value={s.studentId}>
-                      {s.fullName || s.email}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <input
+                type="search"
+                className="input is-small mb-2"
+                placeholder="Buscar por nombre o correo…"
+                value={qEnvioAlumno}
+                onChange={(e) => setQEnvioAlumno(e.target.value)}
+                aria-label="Buscar alumno para enviar rutina"
+              />
+              {alumnosEnvioFiltrados.length === 0 ? (
+                <p className="is-size-7 has-text-grey mb-0">Ningún alumno coincide con la búsqueda.</p>
+              ) : (
+                <div className="select is-small is-fullwidth">
+                  <select value={sendStudentId} onChange={(e) => setSendStudentId(e.target.value)}>
+                    {alumnosEnvioFiltrados.map((s) => (
+                      <option key={s.linkId ?? s.studentId} value={s.studentId}>
+                        {etiquetaAlumnoOpcionEnvio(s)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="field mb-3">
               <label className="label is-size-7">Plantilla</label>
@@ -661,7 +698,12 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                 </select>
               </div>
             </div>
-            <button type="button" className="button is-link is-small is-fullwidth" disabled={enviando} onClick={enviar}>
+            <button
+              type="button"
+              className="button is-link is-small is-fullwidth"
+              disabled={enviando || alumnosEnvioFiltrados.length === 0}
+              onClick={enviar}
+            >
               {enviando ? 'Enviando…' : 'Enviar rutina al alumno'}
             </button>
           </>

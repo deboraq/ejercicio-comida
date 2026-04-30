@@ -219,6 +219,15 @@ export default function Rutina() {
     }
   }, [user?.id, setRutinasAsignadas, assignmentsRefreshTick])
 
+  useEffect(() => {
+    if (!syncRutinasNube || !user?.id) return
+    const onVis = () => {
+      if (document.visibilityState === 'visible') setAssignmentsRefreshTick((n) => n + 1)
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [syncRutinasNube, user?.id])
+
   const resultadosBusqueda = busqueda.trim() ? buscarEjercicios(busqueda) : []
 
   const actualizarRutina = (fn) => {

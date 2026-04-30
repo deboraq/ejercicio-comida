@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo } from 'react'
-import { listRoutineAssignmentsForTeacher } from '../../lib/profeDb'
+import { listRoutineAssignmentsForTeacher, deleteRoutineAssignment } from '../../lib/profeDb'
 
-export default function ProfeHistorialAsignaciones({ teacherId, students, busqueda = '' }) {
+export default function ProfeHistorialAsignaciones({ teacherId, students, busqueda = '', onToast }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(null)
+  const [revocandoId, setRevocandoId] = useState(null)
 
   useEffect(() => {
     if (!teacherId) {
@@ -34,6 +35,25 @@ export default function ProfeHistorialAsignaciones({ teacherId, students, busque
   const nombreAlumno = (studentId) => {
     const s = students.find((x) => x.studentId === studentId)
     return s ? s.fullName || s.email || studentId : studentId
+  }
+
+  const revocarEnvio = async (r) => {
+    if (
+      !window.confirm(
+        '¿Quitar esta rutina al alumno? Deja de verla en Rutina → Asignadas (al refrescar o volver a la app).'
+      )
+    ) {
+      return
+    }
+    setRevocandoId(r.id)
+    const { error } = await deleteRoutineAssignment(r.id)
+    setRevocandoId(null)
+    if (error) {
+      onToast?.({ err: error.message || 'No se pudo revocar el envío.' })
+      return
+    }
+    setRows((prev) => prev.filter((x) => x.id !== r.id))
+    onToast?.({ msg: 'Rutina quitada al alumno.' })
   }
 
   const q = (busqueda || '').trim().toLowerCase()
@@ -69,6 +89,7 @@ export default function ProfeHistorialAsignaciones({ teacherId, students, busque
                 <th>Fecha</th>
                 <th>Alumno</th>
                 <th>Rutina</th>
+                <th className="has-text-right">Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -77,6 +98,16 @@ export default function ProfeHistorialAsignaciones({ teacherId, students, busque
                   <td>{(r.created_at || '').slice(0, 16).replace('T', ' ')}</td>
                   <td>{nombreAlumno(r.student_id)}</td>
                   <td>{r.title || '—'}</td>
+                  <td className="has-text-right">
+                    <button
+                      type="button"
+                      className="button is-small is-danger is-light"
+                      disabled={revocandoId === r.id}
+                      onClick={() => revocarEnvio(r)}
+                    >
+                      {revocandoId === r.id ? 'Quitando…' : 'Quitar al alumno'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

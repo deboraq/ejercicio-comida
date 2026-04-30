@@ -530,6 +530,7 @@ export default function Profe() {
                     teacherId={user.id}
                     students={students}
                     busqueda={busquedaProfe}
+                    onToast={onToast}
                   />
                 )}
 
