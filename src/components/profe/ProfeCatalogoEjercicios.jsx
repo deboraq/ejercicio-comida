@@ -2,19 +2,41 @@ import { useMemo } from 'react'
 import { useStorage } from '../../hooks/useStorage'
 
 function nuevoEj() {
-  return { id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, nombre: '', notas: '' }
+  return {
+    id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    nombre: '',
+    series: '',
+    repeticiones: '',
+    notas: '',
+  }
+}
+
+function catalogoItemNormalizado(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    ...raw,
+    nombre: raw.nombre != null ? String(raw.nombre) : '',
+    series: raw.series != null ? String(raw.series) : '',
+    repeticiones: raw.repeticiones != null ? String(raw.repeticiones) : '',
+    notas: raw.notas != null ? String(raw.notas) : '',
+  }
 }
 
 export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
   const [items, setItems] = useStorage('profeCatalogoEjercicios', [])
-  const lista = Array.isArray(items) ? items : []
+  const lista = useMemo(
+    () => (Array.isArray(items) ? items : []).map((x) => catalogoItemNormalizado(x)).filter(Boolean),
+    [items]
+  )
   const q = (busqueda || '').trim().toLowerCase()
   const listaFiltrada = useMemo(() => {
     if (!q) return lista
     return lista.filter((ex) => {
       const nom = String(ex.nombre || '').toLowerCase()
       const notas = String(ex.notas || '').toLowerCase()
-      return nom.includes(q) || notas.includes(q)
+      const ser = String(ex.series || '').toLowerCase()
+      const rep = String(ex.repeticiones || '').toLowerCase()
+      return nom.includes(q) || notas.includes(q) || ser.includes(q) || rep.includes(q)
     })
   }, [lista, q])
 
@@ -35,8 +57,8 @@ export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
     <div className="box py-3">
       <h2 className="title is-6 mb-2">Catálogo de ejercicios</h2>
       <p className="is-size-7 has-text-grey mb-3">
-        Nombres generales que armás acá; después los elegís al montar cada día de una plantilla. El alumno ve esos
-        nombres en la rutina asignada.
+        Armá cada ítem con nombre y, si querés, <strong>series</strong> y <strong>repeticiones</strong> sugeridas (el
+        alumno las verá al registrar; podés cambiarlas en la plantilla). Las notas son solo para vos.
       </p>
       <button type="button" className="button is-link is-small mb-3" onClick={agregar}>
         Agregar ejercicio
@@ -64,13 +86,40 @@ export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
                       placeholder="Ej: Press banca"
                     />
                   </div>
+                  <div className="columns is-mobile is-multiline mb-2">
+                    <div className="column is-narrow pb-0">
+                      <div className="field mb-0">
+                        <label className="label is-size-7 mb-1">Series (opc.)</label>
+                        <input
+                          className="input is-small"
+                          type="text"
+                          inputMode="numeric"
+                          value={ex.series || ''}
+                          onChange={(e) => patch(ex.id, 'series', e.target.value)}
+                          placeholder="ej. 4"
+                          style={{ width: '5rem' }}
+                        />
+                      </div>
+                    </div>
+                    <div className="column pb-0">
+                      <div className="field mb-0">
+                        <label className="label is-size-7 mb-1">Repeticiones (opc.)</label>
+                        <input
+                          className="input is-small"
+                          value={ex.repeticiones || ''}
+                          onChange={(e) => patch(ex.id, 'repeticiones', e.target.value)}
+                          placeholder='ej. 10, 8+8, 30"'
+                        />
+                      </div>
+                    </div>
+                  </div>
                   <div className="field mb-0">
                     <label className="label is-size-7 mb-1">Notas (solo vos; opcional)</label>
                     <input
                       className="input is-small"
                       value={ex.notas || ''}
                       onChange={(e) => patch(ex.id, 'notas', e.target.value)}
-                      placeholder="Series, técnica, link…"
+                      placeholder="Técnica, link, recordatorios…"
                     />
                   </div>
                 </div>
