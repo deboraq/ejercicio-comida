@@ -45,17 +45,6 @@ function plantillasNecesitanMigracion(arr) {
   return false
 }
 
-function ejercicioDesdeItemCatalogo(c) {
-  if (!c || typeof c !== 'object') return null
-  const nombre = String(c.nombre || '').trim()
-  if (!nombre) return null
-  return {
-    nombre,
-    series: c.series != null ? String(c.series) : '',
-    repeticiones: c.repeticiones != null ? String(c.repeticiones) : '',
-  }
-}
-
 function normalizarEjerciciosDia(list) {
   return (list || [])
     .map((e) => {
@@ -105,9 +94,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
     if (!q) return listC.slice(0, 16)
     return listC
       .filter((c) => {
-        const blob = [c.nombre, c.notas, c.series, c.repeticiones]
-          .map((x) => String(x || '').toLowerCase())
-          .join(' ')
+        const blob = [c.nombre, c.notas].map((x) => String(x || '').toLowerCase()).join(' ')
         return blob.includes(q)
       })
       .slice(0, 24)
@@ -191,8 +178,12 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
 
     const agregar = listC
       .filter((c) => picker.selectedIds.has(c.id))
-      .map((c) => ejercicioDesdeItemCatalogo(c))
-      .filter(Boolean)
+      .map((c) => ({
+        nombre: String(c.nombre || '').trim(),
+        series: '',
+        repeticiones: '',
+      }))
+      .filter((x) => x.nombre)
 
     updatePlantilla(plantilla.id, (p) => {
       const dias = [...(p.dias || [])]
@@ -214,12 +205,12 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
   }
 
   const agregarDesdeCatalogo = (dayIndex, itemCatalogo) => {
-    const row = ejercicioDesdeItemCatalogo(itemCatalogo)
-    if (!plantilla || !row) return
+    const nombre = String(itemCatalogo?.nombre || '').trim()
+    if (!plantilla || !nombre) return
     updatePlantilla(plantilla.id, (p) => {
       const dias = [...p.dias]
       const d = { ...dias[dayIndex] }
-      d.ejercicios = [...(d.ejercicios || []), row]
+      d.ejercicios = [...(d.ejercicios || []), { nombre, series: '', repeticiones: '' }]
       dias[dayIndex] = d
       return { ...p, dias }
     })
