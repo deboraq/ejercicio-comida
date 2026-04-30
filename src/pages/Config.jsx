@@ -122,16 +122,6 @@ export default function Config() {
               )}
             </div>
             <div className="is-flex is-flex-wrap-wrap is-align-items-center mt-2" style={{ gap: '0.5rem' }}>
-              {isConfigured && profile?.role === 'admin' && !profileLoading && (
-                <Link to="/admin" className="button is-warning is-small">
-                  Ir al panel Admin
-                </Link>
-              )}
-              {isConfigured && !profileLoading && (
-                <button type="button" className="button is-small is-light" onClick={() => refreshProfile()}>
-                  Actualizar perfil
-                </button>
-              )}
               <button type="button" className="button is-small is-light" onClick={() => signOut()}>
                 Cerrar sesión
               </button>
