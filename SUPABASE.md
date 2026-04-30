@@ -342,6 +342,40 @@ create trigger admin_messages_validate_teacher
 alter table public.profiles add column if not exists blocked_modules text[] not null default '{}';
 ```
 
+**Menú por rol** (qué pestañas oculta cada rol por defecto; lo puede editar un admin en la app). Los usuarios pueden tener además `blocked_modules` como extras. Ejecutá después de tener `admin_accounts` (punto 6) para que las políticas de admin existan:
+
+```sql
+create table if not exists public.role_nav_hidden (
+  role text primary key check (role in ('alumno', 'profe', 'admin')),
+  hidden_keys text[] not null default '{}'
+);
+
+insert into public.role_nav_hidden (role, hidden_keys) values
+  ('alumno', '{}'),
+  ('profe', array['inicio', 'ejercicios', 'rutina', 'comida']::text[]),
+  ('admin', '{}')
+on conflict (role) do nothing;
+
+alter table public.role_nav_hidden enable row level security;
+
+drop policy if exists "role_nav_hidden_select_auth" on public.role_nav_hidden;
+create policy "role_nav_hidden_select_auth"
+  on public.role_nav_hidden for select
+  to authenticated
+  using (true);
+
+drop policy if exists "role_nav_hidden_admin_update" on public.role_nav_hidden;
+create policy "role_nav_hidden_admin_update"
+  on public.role_nav_hidden for update
+  using (exists (select 1 from public.admin_accounts a where a.user_id = auth.uid()))
+  with check (exists (select 1 from public.admin_accounts a where a.user_id = auth.uid()));
+
+drop policy if exists "role_nav_hidden_admin_insert" on public.role_nav_hidden;
+create policy "role_nav_hidden_admin_insert"
+  on public.role_nav_hidden for insert
+  with check (exists (select 1 from public.admin_accounts a where a.user_id = auth.uid()));
+```
+
 **Lectura del perfil en la app** (si en Config ves «Rol: —» pero en SQL sí existe tu fila, ejecutá esto):
 
 ```sql

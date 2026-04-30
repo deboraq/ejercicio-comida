@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useMyProfile } from '../hooks/useMyProfile'
 import { createAdminMessage } from '../lib/profeDb'
 import AdminUsersRolesSection from '../components/AdminUsersRolesSection'
+import AdminRoleMenuSection from '../components/AdminRoleMenuSection'
 
 export default function Admin() {
   const { user, isConfigured } = useAuth()
@@ -131,6 +132,8 @@ export default function Admin() {
             </>
           )}
         </div>
+
+        <AdminRoleMenuSection />
 
         <AdminUsersRolesSection onRowsLoaded={setRows} />
 

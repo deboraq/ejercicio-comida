@@ -1,4 +1,7 @@
 import { supabase } from './supabase'
+import { normalizeRoleNavMap } from '../utils/navModules'
+
+const NAV_ROLES = ['alumno', 'profe', 'admin']
 
 /** Asegura fila en `profiles` (requiere SQL de SUPABASE.md). No pisa `role` si ya existe. */
 export async function ensureMyProfile(user) {
@@ -31,7 +34,28 @@ export async function fetchMyProfile(userId) {
     const row = Array.isArray(rpcData) ? rpcData[0] : rpcData
     if (row?.id) return { data: row, error: null }
   }
-  return supabase.from('profiles').select('id, email, full_name, role').eq('id', userId).maybeSingle()
+  return supabase.from('profiles').select('id, email, full_name, role, blocked_modules').eq('id', userId).maybeSingle()
+}
+
+/** Menú oculto por rol (tabla `role_nav_hidden`). Si la tabla no existe, devuelve defaults normalizados. */
+export async function fetchRoleNavHidden() {
+  if (!supabase) return { data: normalizeRoleNavMap({}), error: new Error('Sin cliente') }
+  const { data, error } = await supabase.from('role_nav_hidden').select('role, hidden_keys')
+  if (error) return { data: normalizeRoleNavMap({}), error } // tabla ausente → defaults en cliente
+  const raw = { alumno: [], profe: [], admin: [] }
+  for (const row of data || []) {
+    if (NAV_ROLES.includes(row.role)) {
+      raw[row.role] = Array.isArray(row.hidden_keys) ? row.hidden_keys.filter(Boolean) : []
+    }
+  }
+  return { data: normalizeRoleNavMap(raw), error: null }
+}
+
+export async function updateRoleNavHidden(role, hiddenKeys) {
+  if (!supabase) return { error: new Error('Sin cliente') }
+  if (!NAV_ROLES.includes(role)) return { error: new Error('Rol inválido') }
+  const arr = Array.isArray(hiddenKeys) ? [...new Set(hiddenKeys.filter(Boolean))] : []
+  return supabase.from('role_nav_hidden').update({ hidden_keys: arr }).eq('role', role)
 }
 
 /** Solo un usuario con rol `admin` en BD puede cambiar roles (RLS + trigger). */

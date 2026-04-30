@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useRoleNav } from '../context/RoleNavContext'
 import { listProfilesForAdmin, adminUpdateUserRole, adminUpdateBlockedModules } from '../lib/profeDb'
-import { BLOCKABLE_NAV_KEYS, BLOCKABLE_LABELS, COACH_DEFAULT_HIDDEN_NAV } from '../utils/navModules'
+import { BLOCKABLE_NAV_KEYS, BLOCKABLE_LABELS, roleHiddenKeys } from '../utils/navModules'
 
-/** Usuarios, roles y módulos ocultos (solo cuenta admin). */
+/** Usuarios, roles y módulos ocultos extra por cuenta (solo admin). */
 export default function AdminUsersRolesSection({ onRowsLoaded }) {
   const { user } = useAuth()
+  const { roleNavMap } = useRoleNav()
   const [rows, setRows] = useState([])
   const [listLoading, setListLoading] = useState(false)
   const [msg, setMsg] = useState('')
@@ -43,10 +45,10 @@ export default function AdminUsersRolesSection({ onRowsLoaded }) {
     await load()
   }
 
-  const guardarModulos = async (userId, bloqueados) => {
+  const guardarModulos = async (userId, bloqueadosExtras) => {
     setErr('')
     setMsg('')
-    const { error } = await adminUpdateBlockedModules(userId, bloqueados)
+    const { error } = await adminUpdateBlockedModules(userId, bloqueadosExtras)
     if (error) {
       setErr(error.message || 'No se pudieron guardar los módulos.')
       return
@@ -59,8 +61,9 @@ export default function AdminUsersRolesSection({ onRowsLoaded }) {
     <div className="box mb-4 py-3">
       <h2 className="title is-6 mb-2">Usuarios y roles</h2>
       <p className="is-size-7 has-text-grey mb-3">
-        Asigná rol <strong>alumno</strong>, <strong>profe</strong> o <strong>admin</strong>. Podés ocultar pestañas del menú por usuario; los administradores siempre ven todo.         Los entrenadores no ven <strong>Inicio</strong>, <strong>Ejercicios</strong>, <strong>Rutina</strong> ni{' '}
-        <strong>Comida</strong> por defecto (trabajan desde <strong>Profe</strong>).
+        Asigná rol <strong>alumno</strong>, <strong>profe</strong> o <strong>admin</strong>. Las casillas ocultan pestañas{' '}
+        <strong>además</strong> de lo definido en <strong>Menú por rol</strong>. Los administradores en la app siempre ven
+        todas las pestañas.
       </p>
       {listLoading ? (
         <p className="is-size-7 has-text-grey mb-0">Cargando…</p>
@@ -72,7 +75,7 @@ export default function AdminUsersRolesSection({ onRowsLoaded }) {
                 <th>Correo</th>
                 <th>Nombre</th>
                 <th>Rol</th>
-                <th>Ocultar en el menú</th>
+                <th>Ocultar en el menú (extra)</th>
               </tr>
             </thead>
             <tbody>
@@ -81,6 +84,7 @@ export default function AdminUsersRolesSection({ onRowsLoaded }) {
                   key={r.id}
                   row={r}
                   actualUserId={user?.id}
+                  roleNavMap={roleNavMap}
                   onGuardarRol={guardarRol}
                   onGuardarModulos={guardarModulos}
                 />
@@ -95,21 +99,26 @@ export default function AdminUsersRolesSection({ onRowsLoaded }) {
   )
 }
 
-function mergeProfeDefaults(role, modules) {
-  const s = new Set(Array.isArray(modules) ? modules : [])
-  if (role === 'profe') COACH_DEFAULT_HIDDEN_NAV.forEach((k) => s.add(k))
-  return s
+function unionRoleAndUserExtras(role, extras, roleNavMap) {
+  return new Set(
+    [...roleHiddenKeys(role, roleNavMap), ...(Array.isArray(extras) ? extras : [])].filter(Boolean)
+  )
 }
 
-function FilaUsuario({ row, actualUserId, onGuardarRol, onGuardarModulos }) {
+function extrasOnlyFromSelection(rol, bloqueadosSet, roleNavMap) {
+  const roleKeys = new Set(roleHiddenKeys(rol, roleNavMap))
+  return [...bloqueadosSet].filter((k) => !roleKeys.has(k))
+}
+
+function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarModulos }) {
   const [rol, setRol] = useState(row.role || 'alumno')
-  const [bloqueados, setBloqueados] = useState(() => mergeProfeDefaults(row.role || 'alumno', row.blocked_modules))
+  const [bloqueados, setBloqueados] = useState(() => unionRoleAndUserExtras(row.role || 'alumno', row.blocked_modules, roleNavMap))
 
   useEffect(() => {
     const r = row.role || 'alumno'
     setRol(r)
-    setBloqueados(mergeProfeDefaults(r, row.blocked_modules))
-  }, [row.role, row.id, JSON.stringify(row.blocked_modules || [])])
+    setBloqueados(unionRoleAndUserExtras(r, row.blocked_modules, roleNavMap))
+  }, [row.role, row.id, JSON.stringify(row.blocked_modules || []), JSON.stringify(roleNavMap)])
 
   const toggleMod = (key) => {
     setBloqueados((prev) => {
@@ -120,13 +129,9 @@ function FilaUsuario({ row, actualUserId, onGuardarRol, onGuardarModulos }) {
     })
   }
 
-  const bloqueadosArr = () => {
-    const arr = [...bloqueados]
-    if (rol === 'profe') return [...new Set([...arr, ...COACH_DEFAULT_HIDDEN_NAV])]
-    return arr
-  }
+  const bloqueadosExtrasParaGuardar = () => extrasOnlyFromSelection(rol, bloqueados, roleNavMap)
 
-  const modBloqueadoCoach = (key) => rol === 'profe' && COACH_DEFAULT_HIDDEN_NAV.includes(key)
+  const modBloqueadoPorRol = (key) => rol !== 'admin' && roleHiddenKeys(rol, roleNavMap).includes(key)
 
   return (
     <tr>
@@ -139,7 +144,7 @@ function FilaUsuario({ row, actualUserId, onGuardarRol, onGuardarModulos }) {
             onChange={(e) => {
               const v = e.target.value
               setRol(v)
-              setBloqueados(mergeProfeDefaults(v, row.blocked_modules))
+              setBloqueados(unionRoleAndUserExtras(v, row.blocked_modules, roleNavMap))
             }}
           >
             <option value="alumno">alumno</option>
@@ -164,12 +169,20 @@ function FilaUsuario({ row, actualUserId, onGuardarRol, onGuardarModulos }) {
       <td>
         <div className="is-flex is-flex-direction-column" style={{ gap: '0.25rem' }}>
           {BLOCKABLE_NAV_KEYS.map((key) => (
-            <label key={key} className="checkbox is-size-7" title={modBloqueadoCoach(key) ? 'Oculto por defecto para entrenadores' : undefined}>
+            <label
+              key={key}
+              className="checkbox is-size-7"
+              title={
+                modBloqueadoPorRol(key)
+                  ? 'Definido por «Menú por rol»; cambialo ahí o desmarcá extras solo para esta cuenta.'
+                  : undefined
+              }
+            >
               <input
                 type="checkbox"
-                checked={bloqueados.has(key) || modBloqueadoCoach(key)}
+                checked={bloqueados.has(key)}
                 onChange={() => toggleMod(key)}
-                disabled={rol === 'admin' || modBloqueadoCoach(key)}
+                disabled={rol === 'admin' || modBloqueadoPorRol(key)}
               />
               {` ${BLOCKABLE_LABELS[key] || key}`}
             </label>
@@ -179,7 +192,7 @@ function FilaUsuario({ row, actualUserId, onGuardarRol, onGuardarModulos }) {
           type="button"
           className="button is-small is-light mt-1"
           disabled={rol === 'admin'}
-          onClick={() => onGuardarModulos(row.id, bloqueadosArr())}
+          onClick={() => onGuardarModulos(row.id, bloqueadosExtrasParaGuardar())}
         >
           Guardar menú
         </button>

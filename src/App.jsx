@@ -1,5 +1,6 @@
 import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { RoleNavProvider, useRoleNav } from './context/RoleNavContext'
 import Inicio from './pages/Inicio'
 import Ejercicios from './pages/Ejercicios'
 import Rutina from './pages/Rutina'
@@ -11,7 +12,7 @@ import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import { useMyProfile } from './hooks/useMyProfile'
 import ModuleGate from './components/ModuleGate'
-import { isNavModuleBlocked, isCoachDefaultHiddenNav } from './utils/navModules'
+import { isNavModuleBlocked } from './utils/navModules'
 import './App.css'
 
 function NavLink({ to, children, icon }) {
@@ -33,6 +34,7 @@ function AppRoutes() {
   const location = useLocation()
   const { user, isConfigured } = useAuth()
   const { profile, loading: profileLoading } = useMyProfile()
+  const { roleNavMap } = useRoleNav()
   const isAuthPage = location.pathname === '/login' || location.pathname === '/reset-password'
   /* Profe: con Supabase alcanza; la pantalla pide login si hace falta */
   const mostrarProfe = Boolean(isConfigured)
@@ -42,21 +44,20 @@ function AppRoutes() {
     if (!isConfigured || !user) return false
     if (profileLoading) return false
     if (!profile || profile.role === 'admin') return false
-    if (isCoachDefaultHiddenNav(profile, clave)) return true
-    return isNavModuleBlocked(profile, clave)
+    return isNavModuleBlocked(profile, clave, roleNavMap)
   }
 
   return (
     <>
       <main className="main-content">
         <Routes>
-          <Route path="/" element={<ModuleGate module="inicio" profile={profile} profileLoading={profileLoading}><Inicio /></ModuleGate>} />
-          <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading}><Ejercicios /></ModuleGate>} />
-          <Route path="/rutina" element={<ModuleGate module="rutina" profile={profile} profileLoading={profileLoading}><Rutina /></ModuleGate>} />
-          <Route path="/comida" element={<ModuleGate module="comida" profile={profile} profileLoading={profileLoading}><Comida /></ModuleGate>} />
+          <Route path="/" element={<ModuleGate module="inicio" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Inicio /></ModuleGate>} />
+          <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Ejercicios /></ModuleGate>} />
+          <Route path="/rutina" element={<ModuleGate module="rutina" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Rutina /></ModuleGate>} />
+          <Route path="/comida" element={<ModuleGate module="comida" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Comida /></ModuleGate>} />
           <Route path="/config" element={<Config />} />
-          <Route path="/profe" element={<ModuleGate module="profe" profile={profile} profileLoading={profileLoading}><Profe /></ModuleGate>} />
-          <Route path="/admin" element={<ModuleGate module="admin" profile={profile} profileLoading={profileLoading}><Admin /></ModuleGate>} />
+          <Route path="/profe" element={<ModuleGate module="profe" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Profe /></ModuleGate>} />
+          <Route path="/admin" element={<ModuleGate module="admin" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Admin /></ModuleGate>} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
@@ -83,9 +84,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <div className="app-layout">
-        <AppRoutes />
-      </div>
+      <RoleNavProvider>
+        <div className="app-layout">
+          <AppRoutes />
+        </div>
+      </RoleNavProvider>
     </AuthProvider>
   )
 }
