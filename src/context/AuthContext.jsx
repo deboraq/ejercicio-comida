@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { ensureMyProfile } from '../lib/profeDb'
 
 const AuthContext = createContext(null)
 
@@ -22,6 +23,11 @@ export function AuthProvider({ children }) {
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !user?.id) return
+    ensureMyProfile(user).catch(() => {})
+  }, [user?.id])
 
   const signUp = async (email, password, metadata = {}) => {
     setAuthError(null)

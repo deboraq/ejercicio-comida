@@ -65,6 +65,20 @@ export default function Config() {
               Configura Supabase (ver README) para usar cuentas.
             </p>
           )}
+          <div className="notification is-light py-3 px-3 mt-3 mb-0" style={{ background: 'rgba(0,0,0,0.2)' }}>
+            <p className="is-size-7 mb-2">
+              <strong>¿Sos entrenador?</strong> Un administrador de la plataforma te marca el rol en <strong>Admin</strong>. Después entrá a <Link to="/profe">Profe</Link> para ver avisos del admin, vincular alumnos y enviar rutinas.
+            </p>
+            {isConfigured ? (
+              <p className="is-size-7 mb-0">Con Supabase activo ves la pestaña <strong>Profe</strong> abajo; si tu cuenta es admin, también <strong>Admin</strong>.</p>
+            ) : (
+              <p className="is-size-7 mb-0">
+                En esta instalación no están cargadas las claves de Supabase (por ejemplo en Vercel: Settings → Environment Variables:
+                <code className="mx-1">VITE_SUPABASE_URL</code> y <code className="mx-1">VITE_SUPABASE_ANON_KEY</code>
+                ). Después de guardarlas, hacé un redeploy. Sin eso la app no muestra Profe en el menú.
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="box mb-4 py-3">
