@@ -28,12 +28,63 @@ function migrarPlantillaAntigua(plantilla) {
   }
 }
 
+/** JSON mínimo para compartir / importar (sin ids de rutina; se regeneran al importar). */
+export function exportarRutinaAJson(rutina) {
+  if (!rutina) return ''
+  return JSON.stringify({
+    nombre: rutina.nombre || 'Rutina',
+    dias: (rutina.dias || []).map((d) => ({
+      nombre: d.nombre || 'Día',
+      ejercicios: [...(d.ejercicios || [])],
+    })),
+  })
+}
+
+export function rutinaDesdeJsonAsignada(texto, asignadaPorDefecto = 'Entrenador') {
+  const obj = JSON.parse(String(texto).trim())
+  if (!obj || typeof obj !== 'object') throw new Error('El contenido no es un objeto JSON.')
+  const nombre = String(obj.nombre || 'Rutina asignada').trim() || 'Rutina asignada'
+  let diasRaw = obj.dias
+  if (!Array.isArray(diasRaw) || diasRaw.length === 0) {
+    diasRaw = [{ nombre: 'Día 1', ejercicios: [] }]
+  }
+  const base = Date.now()
+  const dias = diasRaw.map((d, i) => {
+    const nm = String(d?.nombre || `Día ${i + 1}`).trim() || `Día ${i + 1}`
+    const ej = Array.isArray(d?.ejercicios) ? d.ejercicios.map((e) => String(e).trim()).filter(Boolean) : []
+    return { id: `d_asig_${base}_${i}`, nombre: nm, ejercicios: ej }
+  })
+  const por = String(obj.asignadaPor ?? asignadaPorDefecto).trim() || asignadaPorDefecto
+  return {
+    id: `r_asig_${base}_${Math.random().toString(36).slice(2, 9)}`,
+    nombre,
+    dias,
+    _asignacion: { por, fecha: new Date().toISOString().slice(0, 10) },
+  }
+}
+
+function clonarRutinaParaMisRutinas(orig) {
+  const base = Date.now()
+  const dias = (orig.dias || []).map((d, i) => ({
+    id: `d${base}_${i}_${Math.random().toString(36).slice(2, 7)}`,
+    nombre: d.nombre || `Día ${i + 1}`,
+    ejercicios: [...(d.ejercicios || [])],
+  }))
+  return {
+    id: `r${base}_${Math.random().toString(36).slice(2, 9)}`,
+    nombre: orig.nombre || 'Rutina',
+    dias,
+  }
+}
+
 export default function Rutina() {
   const [rutinas, setRutinas] = useStorage('rutinas', [])
+  const [rutinasAsignadas, setRutinasAsignadas] = useStorage('rutinasAsignadas', [])
   const [rutinaActivaId, setRutinaActivaId] = useStorage('rutinaActivaId', '')
   const [registros, setRegistros] = useStorage('rutinaPesos', [])
   const [config] = useStorage('config', { pesoKg: 70 })
 
+  const [origenRutinas, setOrigenRutinas] = useState('propias')
   const [vista, setVista] = useState('calendario') // 'calendario' | 'registrar' | 'configurar' | 'progreso'
   const [diaEditando, setDiaEditando] = useState('')
   const [busqueda, setBusqueda] = useState('')
@@ -112,6 +163,10 @@ export default function Rutina() {
   useEffect(() => {
     setEditandoRegistro(null)
   }, [vista])
+
+  useEffect(() => {
+    if (origenRutinas === 'asignadas') setVista('calendario')
+  }, [origenRutinas])
 
   const resultadosBusqueda = busqueda.trim() ? buscarEjercicios(busqueda) : []
 
@@ -341,9 +396,44 @@ export default function Rutina() {
       <div className="container" style={{ maxWidth: '560px' }}>
         <header className="mb-4">
           <h1 className="title is-5 mb-2">Rutina de gimnasio</h1>
-          <p className="is-size-7 has-text-grey mb-0">Crea varias rutinas, configura días y registra pesos.</p>
+          <p className="is-size-7 has-text-grey mb-0">
+            En <strong>Mis rutinas</strong> creás y registrás entrenos. En <strong>Asignadas</strong> ves lo que te mandó tu entrenador (JSON o, más adelante, la nube).
+          </p>
         </header>
 
+        <div className="tabs is-toggle is-fullwidth mb-3 rutina-origen-tabs">
+          <ul>
+            <li className={origenRutinas === 'propias' ? 'is-active' : ''}>
+              <a
+                role="tab"
+                aria-selected={origenRutinas === 'propias'}
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  setOrigenRutinas('propias')
+                }}
+              >
+                Mis rutinas
+              </a>
+            </li>
+            <li className={origenRutinas === 'asignadas' ? 'is-active' : ''}>
+              <a
+                role="tab"
+                aria-selected={origenRutinas === 'asignadas'}
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault()
+                  setOrigenRutinas('asignadas')
+                }}
+              >
+                Asignadas
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        {origenRutinas === 'propias' ? (
+        <>
         <div className="box mb-4 py-3">
           <label className="label is-size-7">Rutina activa</label>
           <div className="field has-addons">
@@ -388,6 +478,21 @@ export default function Rutina() {
               </button>
             </div>
           </div>
+          <p className="is-size-7 has-text-grey mb-2 mt-2">Compartir con un alumno o entrenador (copia JSON de la rutina activa):</p>
+          <button
+            type="button"
+            className="button is-light is-small is-fullwidth"
+            onClick={() => {
+              const s = exportarRutinaAJson(rutinaActiva)
+              navigator.clipboard.writeText(s).then(() => {
+                window.alert('JSON copiado. Pegalo en un mensaje o guardalo; quien reciba puede importarlo en Rutina → Asignadas.')
+              }).catch(() => {
+                window.prompt('Copiá manualmente este JSON:', s)
+              })
+            }}
+          >
+            Exportar rutina activa (JSON)
+          </button>
         </div>
 
         <div className="tabs is-boxed mb-4" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -814,8 +919,122 @@ export default function Rutina() {
             )}
           </>
         )}
+        </>
+        ) : (
+          <VistaRutinasAsignadas
+            rutinasAsignadas={Array.isArray(rutinasAsignadas) ? rutinasAsignadas : []}
+            setRutinasAsignadas={setRutinasAsignadas}
+            setRutinas={setRutinas}
+            setRutinaActivaId={setRutinaActivaId}
+            setOrigenRutinas={setOrigenRutinas}
+          />
+        )}
       </div>
     </section>
+  )
+}
+
+function VistaRutinasAsignadas({ rutinasAsignadas, setRutinasAsignadas, setRutinas, setRutinaActivaId, setOrigenRutinas }) {
+  const [jsonText, setJsonText] = useState('')
+  const [importError, setImportError] = useState(null)
+
+  const importarDesdeJson = () => {
+    setImportError(null)
+    try {
+      const nueva = rutinaDesdeJsonAsignada(jsonText)
+      setRutinasAsignadas((prev) => [nueva, ...(Array.isArray(prev) ? prev : [])])
+      setJsonText('')
+      window.alert(`Se agregó «${nueva.nombre}» a tus rutinas asignadas.`)
+    } catch (err) {
+      setImportError(err?.message || 'No se pudo leer el JSON.')
+    }
+  }
+
+  const copiarAMisRutinas = (r) => {
+    const clon = clonarRutinaParaMisRutinas(r)
+    setRutinas((list) => [...(list || []), clon])
+    setRutinaActivaId(clon.id)
+    setOrigenRutinas('propias')
+    window.alert(`«${clon.nombre}» quedó en Mis rutinas y está activa. Ahí podés registrar pesos y editarla.`)
+  }
+
+  const quitarAsignada = (id) => {
+    if (!window.confirm('¿Quitar esta rutina de la lista de asignadas?')) return
+    setRutinasAsignadas((prev) => (Array.isArray(prev) ? prev.filter((x) => x.id !== id) : []))
+  }
+
+  return (
+    <div className="box mb-4 py-3">
+      <h2 className="title is-6 mb-2">Rutinas asignadas</h2>
+      <p className="is-size-7 has-text-grey mb-3">
+        Son referencias: no se registran pesos acá. Usá <strong>Copiar a mis rutinas</strong> para clonarla, activarla y cargar tu entreno en <strong>Mis rutinas → Registrar</strong>.
+        Si tu entrenador te pasa un JSON, pegalo abajo.
+      </p>
+
+      <div className="field mb-4">
+        <label className="label is-size-7">Importar JSON (opcional campo &quot;asignadaPor&quot;: nombre del entrenador)</label>
+        <textarea
+          className="textarea is-small"
+          rows={4}
+          value={jsonText}
+          onChange={(e) => {
+            setJsonText(e.target.value)
+            setImportError(null)
+          }}
+          placeholder='{"nombre":"Semana 1","asignadaPor":"Profe Ana","dias":[{"nombre":"Día 1","ejercicios":["Press banca"]}]}'
+        />
+        {importError && <p className="is-size-7 has-text-danger mt-1 mb-0">{importError}</p>}
+        <button type="button" className="button is-link is-small is-fullwidth mt-2" onClick={importarDesdeJson}>
+          Añadir a asignadas
+        </button>
+      </div>
+
+      {rutinasAsignadas.length === 0 ? (
+        <p className="is-size-7 has-text-grey mb-0">Todavía no tenés rutinas asignadas. Cuando tu entrenador te envíe un JSON, pegalo arriba.</p>
+      ) : (
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {rutinasAsignadas.map((r) => (
+            <li key={r.id} className="box py-3 mb-3 rutina-asignada-card">
+              <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
+                <div>
+                  <h3 className="title is-6 mb-1">{r.nombre}</h3>
+                  {r._asignacion && (
+                    <p className="is-size-7 has-text-grey mb-0">
+                      Asignada por <strong>{r._asignacion.por}</strong>
+                      {r._asignacion.fecha ? ` · ${r._asignacion.fecha}` : ''}
+                    </p>
+                  )}
+                </div>
+                <div className="is-flex is-flex-wrap-wrap" style={{ gap: '0.35rem' }}>
+                  <button type="button" className="button is-link is-small" onClick={() => copiarAMisRutinas(r)}>
+                    Copiar a mis rutinas
+                  </button>
+                  <button type="button" className="button is-small is-light" onClick={() => quitarAsignada(r.id)}>
+                    Quitar
+                  </button>
+                </div>
+              </div>
+              <ul className="mt-3 mb-0 pl-4" style={{ listStyle: 'disc' }}>
+                {(r.dias || []).map((d) => (
+                  <li key={d.id} className="mb-2">
+                    <strong className="is-size-7">{d.nombre}</strong>
+                    {(d.ejercicios || []).length === 0 ? (
+                      <p className="is-size-7 has-text-grey mb-0">Sin ejercicios en la plantilla.</p>
+                    ) : (
+                      <ul className="mt-1 mb-0 pl-3" style={{ listStyle: 'circle' }}>
+                        {(d.ejercicios || []).map((ex) => (
+                          <li key={ex} className="is-size-7">{ex}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
