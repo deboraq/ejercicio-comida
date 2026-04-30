@@ -29,7 +29,7 @@ export default function Admin() {
   const { profile, loading: profileLoading } = useMyProfile()
   const [adminRows, setAdminRows] = useState([])
   const [adminRowsLoading, setAdminRowsLoading] = useState(false)
-  const [seccion, setSeccion] = useState(null)
+  const [seccion, setSeccion] = useState('mensajes')
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
   const [teacherIdMsg, setTeacherIdMsg] = useState('')
@@ -168,81 +168,77 @@ export default function Admin() {
     </div>
   )
 
+  const seccionActiva = SECCIONES.find((s) => s.id === seccion) || SECCIONES[0]
+
+  const cambiarSeccion = (id) => {
+    setSeccion(id)
+    setErr('')
+    setMsg('')
+  }
+
   return (
     <section className="section py-4">
-      <div className="container" style={{ maxWidth: '720px' }}>
+      <div className="container" style={{ maxWidth: '1120px' }}>
         <header className="mb-4">
           <h1 className="title is-5 mb-2">Administración</h1>
           <p className="is-size-7 has-text-grey mb-0">
-            Gestioná mensajes, menú por rol y cuentas desde las secciones de abajo.
+            Elegí una sección en el menú de la izquierda; el contenido se muestra a la derecha.
           </p>
         </header>
 
-        {seccion && (
-          <button
-            type="button"
-            className="button is-small is-light mb-3"
-            onClick={() => {
-              setSeccion(null)
-              setErr('')
-              setMsg('')
-            }}
-          >
-            ← Volver al panel
-          </button>
-        )}
+        <div className="columns is-variable is-2 is-multiline">
+          <div className="column is-12-mobile is-3-tablet">
+            <nav
+              className="box py-3 px-3 mb-0"
+              style={{
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 10,
+                background: 'rgba(0,0,0,0.2)',
+              }}
+              aria-label="Secciones de administración"
+            >
+              <p className="menu-label mb-2 has-text-grey-light">Secciones</p>
+              <ul className="is-flex is-flex-direction-column" style={{ gap: '0.35rem', listStyle: 'none', margin: 0, padding: 0 }}>
+                {SECCIONES.map((s) => {
+                  const activa = seccion === s.id
+                  return (
+                    <li key={s.id}>
+                      <button
+                        type="button"
+                        className={`button is-small is-fullwidth has-text-left ${activa ? 'is-link' : 'is-light'}`}
+                        onClick={() => cambiarSeccion(s.id)}
+                        aria-current={activa ? 'page' : undefined}
+                      >
+                        <span className="is-block">{s.titulo}</span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+              <p className="is-size-7 has-text-grey mt-3 mb-0">
+                <Link to="/profe">Ir a Profe</Link>
+                <br />
+                <Link to="/config">Configuración</Link>
+              </p>
+            </nav>
+          </div>
 
-        {!seccion && (
-          <>
-            <div className="columns is-multiline">
-              {SECCIONES.map((s) => (
-                <div key={s.id} className="column is-12-mobile is-6-tablet">
-                  <button
-                    type="button"
-                    className="box has-text-left is-fullwidth py-4"
-                    onClick={() => {
-                      setSeccion(s.id)
-                      setErr('')
-                      setMsg('')
-                    }}
-                    style={{
-                      cursor: 'pointer',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      borderRadius: 10,
-                      background: 'rgba(0,0,0,0.2)',
-                      minHeight: '100px',
-                    }}
-                  >
-                    <p className="title is-6 mb-2">{s.titulo}</p>
-                    <p className="is-size-7 has-text-grey mb-2">{s.desc}</p>
-                    <span className="is-size-7 has-text-info">Abrir →</span>
-                  </button>
-                </div>
-              ))}
+          <div className="column">
+            <div className="mb-3">
+              <h2 className="title is-6 mb-1">{seccionActiva.titulo}</h2>
+              <p className="is-size-7 has-text-grey mb-0">{seccionActiva.desc}</p>
             </div>
+
             {msg && <p className="notification is-success is-light is-size-7 py-2 px-3 mb-2">{msg}</p>}
-            {err && <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-0">{err}</p>}
-          </>
-        )}
+            {err && <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-2">{err}</p>}
 
-        {seccion === 'mensajes' && bloqueMensajes}
-        {seccion === 'menu-rol' && <AdminRoleMenuSection />}
-        {seccion === 'usuarios' && (
-          <AdminUsersRolesSection rows={adminRows} loading={adminRowsLoading} onReload={refreshAdminRows} />
-        )}
-
-        {seccion && (
-          <>
-            {msg && <p className="notification is-success is-light is-size-7 py-2 px-3 mb-2">{msg}</p>}
-            {err && <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-0">{err}</p>}
-          </>
-        )}
-
-        <p className="is-size-7 has-text-grey mt-4 mb-0">
-          <Link to="/profe">Ir a Profe</Link>
-          {' · '}
-          <Link to="/config">Configuración</Link>
-        </p>
+            {seccion === 'mensajes' && bloqueMensajes}
+            {seccion === 'menu-rol' && <AdminRoleMenuSection />}
+            {seccion === 'usuarios' && (
+              <AdminUsersRolesSection rows={adminRows} loading={adminRowsLoading} onReload={refreshAdminRows} />
+            )}
+          </div>
+        </div>
       </div>
     </section>
   )
