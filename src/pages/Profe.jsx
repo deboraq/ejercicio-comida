@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -14,12 +14,22 @@ import ProfeCatalogoEjercicios from '../components/profe/ProfeCatalogoEjercicios
 import ProfeRutinasWorkshop from '../components/profe/ProfeRutinasWorkshop'
 import ProfeHistorialAsignaciones from '../components/profe/ProfeHistorialAsignaciones'
 
-const TABS_PROFE = [
-  { id: 'alumnos', label: 'Alumnos' },
-  { id: 'ejercicios', label: 'Ejercicios' },
-  { id: 'rutinas', label: 'Rutinas' },
-  { id: 'historial', label: 'Historial' },
-]
+function navItemsForProfile(profile) {
+  if (!profile) return []
+  const items = []
+  if (profile.role === 'admin') {
+    items.push({ id: 'supervision', label: 'Supervisión', desc: 'Entrenadores (rol profe) y alumnos vinculados.' })
+  }
+  if (profile.role === 'profe') {
+    items.push(
+      { id: 'alumnos', label: 'Alumnos', desc: 'Vincular con el correo con el que se registró cada alumno.' },
+      { id: 'ejercicios', label: 'Ejercicios', desc: 'Catálogo para armar rutinas.' },
+      { id: 'rutinas', label: 'Rutinas', desc: 'Plantillas y envío a la cuenta del alumno.' },
+      { id: 'historial', label: 'Historial', desc: 'Rutinas ya enviadas.' },
+    )
+  }
+  return items
+}
 
 export default function Profe() {
   const { user, isConfigured } = useAuth()
@@ -31,13 +41,14 @@ export default function Profe() {
   const [emailAlumno, setEmailAlumno] = useState('')
   const [msg, setMsg] = useState(null)
   const [err, setErr] = useState(null)
-  const [tab, setTab] = useState('alumnos')
+  const [panel, setPanel] = useState(null)
   const [historialTick, setHistorialTick] = useState(0)
   const [adminVistaLoading, setAdminVistaLoading] = useState(false)
   const [adminVistaRows, setAdminVistaRows] = useState([])
   const [adminVistaErr, setAdminVistaErr] = useState(null)
 
   const esProfe = profile?.role === 'profe'
+  const esAdmin = profile?.role === 'admin'
 
   const onToast = useCallback(({ msg: m, err: e }) => {
     if (m) {
@@ -130,6 +141,21 @@ export default function Profe() {
     }
   }, [isConfigured, user?.id, profileLoading, profile?.role])
 
+  const navItems = useMemo(() => navItemsForProfile(profile), [profile?.role])
+
+  useLayoutEffect(() => {
+    if (profileLoading) return
+    const ids = navItems.map((i) => i.id)
+    if (!ids.length) {
+      setPanel(null)
+      return
+    }
+    setPanel((cur) => (cur && ids.includes(cur) ? cur : ids[0]))
+  }, [profileLoading, navItems])
+
+  const panelActivo = panel != null ? navItems.find((i) => i.id === panel) : null
+  const mostrarCabeceraPanel = panel === 'supervision' || panel === 'alumnos'
+
   const vincularAlumno = async () => {
     if (!user?.id || !esProfe) return
     setErr(null)
@@ -198,65 +224,89 @@ export default function Profe() {
     )
   }
 
+  const bloqueSupervision = (
+    <>
+      {adminVistaLoading && <p className="is-size-7 has-text-grey mb-3">Cargando…</p>}
+      {adminVistaErr && (
+        <>
+          <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-3">{adminVistaErr}</p>
+          <details className="mb-0">
+            <summary className="is-size-7 has-text-grey" style={{ cursor: 'pointer' }}>
+              Si es error de permisos en Supabase
+            </summary>
+            <p className="is-size-7 has-text-grey mt-2 mb-0">
+              En el SQL Editor ejecutá la política <code>ts_select_admin</code> sobre <code>teacher_students</code> (bloque
+              en <code>SUPABASE.md</code> del repo).
+            </p>
+          </details>
+        </>
+      )}
+      {!adminVistaLoading && !adminVistaErr && adminVistaRows.length === 0 && (
+        <p className="is-size-7 has-text-grey mb-0">No hay cuentas con rol profe todavía.</p>
+      )}
+      {!adminVistaLoading &&
+        !adminVistaErr &&
+        adminVistaRows.map(({ teacher, students }) => {
+          const nombre = (teacher.full_name || '').trim()
+          const mail = (teacher.email || '').trim()
+          const titulo = nombre || mail || teacher.id
+          const mostrarMailDebajo = mail && mail !== nombre
+          return (
+            <div
+              key={teacher.id}
+              className="mb-3 pb-3"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              <p className={`is-size-7 has-text-weight-semibold ${mostrarMailDebajo ? 'mb-1' : 'mb-2'}`}>{titulo}</p>
+              {mostrarMailDebajo ? <p className="is-size-7 has-text-grey mb-2">{mail}</p> : null}
+              {students.length === 0 ? (
+                <p className="is-size-7 has-text-grey mb-0">Sin alumnos vinculados.</p>
+              ) : (
+                <ul className="mb-0 pl-4" style={{ listStyle: 'disc' }}>
+                  {students.map((s) => (
+                    <li key={s.linkId} className="is-size-7 mb-1">
+                      <strong>{(s.fullName || '').trim() || s.email}</strong>
+                      {s.fullName ? <span className="has-text-grey"> · {s.email}</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )
+        })}
+    </>
+  )
+
   return (
     <section className="section py-4">
-      <div className="container" style={{ maxWidth: '640px' }}>
+      <div className="container" style={{ maxWidth: '1120px' }}>
         <header className="mb-4">
           <h1 className="title is-5 mb-2">Entrenador</h1>
           <p className="is-size-7 has-text-grey mb-0">
-            Desde acá vinculás alumnos, armás tu catálogo de ejercicios, plantillas de rutina y envíos. El alumno sigue
-            usando <strong>Rutina</strong> en su cuenta para ver asignadas y registrar entrenos.
+            El alumno ve lo que envías en la pestaña <strong>Rutina</strong> de su cuenta.
           </p>
         </header>
 
         {profileLoading ? (
           <p className="is-size-7 has-text-grey">Cargando perfil…</p>
+        ) : navItems.length === 0 ? (
+          <div className="box py-4 px-4" style={{ maxWidth: '520px' }}>
+            <h2 className="title is-6 mb-2">Modo entrenador</h2>
+            <p className="is-size-7 has-text-grey mb-3">
+              {esAdmin ? (
+                <>
+                  Con rol <strong>admin</strong> podés usar <Link to="/admin">Administración</Link>. Para alumnos,
+                  ejercicios y rutinas desde acá necesitás también rol <strong>profe</strong> en tu cuenta.
+                </>
+              ) : (
+                <>
+                  Pedí rol <strong>profe</strong> a quien administre la app (<Link to="/admin">Administración</Link>).
+                </>
+              )}
+            </p>
+          </div>
         ) : (
           <>
-            {profile?.role === 'admin' && (
-              <div className="box mb-4 py-3">
-                <h2 className="title is-6 mb-2">Supervisión de entrenadores</h2>
-                <p className="is-size-7 has-text-grey mb-3">
-                  Cuentas con rol <strong>profe</strong> y alumnos que vincularon por correo. Para asignar roles o menús
-                  usá <Link to="/admin">Administración</Link>. Si ves error de permisos, ejecutá en Supabase la política{' '}
-                  <code>ts_select_admin</code> del archivo <code>SUPABASE.md</code>.
-                </p>
-                {adminVistaLoading && <p className="is-size-7 has-text-grey mb-0">Cargando…</p>}
-                {adminVistaErr && (
-                  <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-0">{adminVistaErr}</p>
-                )}
-                {!adminVistaLoading && !adminVistaErr && adminVistaRows.length === 0 && (
-                  <p className="is-size-7 has-text-grey mb-0">Todavía no hay entrenadores con rol profe.</p>
-                )}
-                {!adminVistaLoading &&
-                  !adminVistaErr &&
-                  adminVistaRows.map(({ teacher, students }) => (
-                    <div
-                      key={teacher.id}
-                      className="mb-3 pb-3"
-                      style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
-                    >
-                      <p className="is-size-7 has-text-weight-semibold mb-1">
-                        {(teacher.full_name || '').trim() || teacher.email || teacher.id}
-                      </p>
-                      <p className="is-size-7 has-text-grey mb-2">{teacher.email || '—'}</p>
-                      {students.length === 0 ? (
-                        <p className="is-size-7 has-text-grey mb-0">Sin alumnos vinculados.</p>
-                      ) : (
-                        <ul className="mb-0 pl-4" style={{ listStyle: 'disc' }}>
-                          {students.map((s) => (
-                            <li key={s.linkId} className="is-size-7 mb-1">
-                              <strong>{(s.fullName || '').trim() || s.email}</strong>
-                              {s.fullName ? <span className="has-text-grey"> · {s.email}</span> : null}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
-              </div>
-            )}
-
             {esProfe && avisosAdmin.length > 0 && (
               <div className="notification is-info is-light py-3 px-3 mb-4">
                 <h2 className="title is-6 mb-2">Avisos del administrador</h2>
@@ -273,41 +323,80 @@ export default function Profe() {
               </div>
             )}
 
-            {!esProfe && (
-              <div className="box mb-4 py-3">
-                <h2 className="title is-6 mb-2">Modo entrenador</h2>
-                <p className="is-size-7 has-text-grey mb-0">
-                  El rol <strong>entrenador</strong> lo asigna un administrador en <Link to="/admin">Administración</Link>.
-                  Cuando te lo habiliten, vas a ver acá las pestañas para alumnos, ejercicios y rutinas.
-                </p>
+            <div className="columns is-variable is-2 is-multiline">
+              <div className="column is-12-mobile is-3-tablet">
+                <nav
+                  className="box py-3 px-3 mb-0"
+                  style={{
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 10,
+                    background: 'rgba(0,0,0,0.2)',
+                  }}
+                  aria-label="Secciones entrenador"
+                >
+                  <p className="menu-label mb-2 has-text-grey-light">Menú</p>
+                  <ul
+                    className="is-flex is-flex-direction-column"
+                    style={{ gap: '0.35rem', listStyle: 'none', margin: 0, padding: 0 }}
+                  >
+                    {navItems.map((item) => {
+                      const activa = panel === item.id
+                      return (
+                        <li key={item.id}>
+                          <button
+                            type="button"
+                            className={`button is-small is-fullwidth has-text-left ${activa ? 'is-link' : 'is-light'}`}
+                            onClick={() => setPanel(item.id)}
+                            aria-current={activa ? 'page' : undefined}
+                          >
+                            <span className="is-block">{item.label}</span>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </nav>
               </div>
-            )}
 
-            {esProfe && (
-              <>
-                <div className="buttons mb-4 are-small is-flex-wrap-wrap" style={{ gap: '0.35rem' }}>
-                  {TABS_PROFE.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      className={`button ${tab === t.id ? 'is-link' : 'is-light'}`}
-                      onClick={() => setTab(t.id)}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="column">
+                {mostrarCabeceraPanel && panelActivo && (
+                  <div className="mb-3">
+                    <h2 className="title is-6 mb-1">{panelActivo.label}</h2>
+                    <p className="is-size-7 has-text-grey mb-0">{panelActivo.desc}</p>
+                  </div>
+                )}
 
-                {tab === 'alumnos' && (
+                {esAdmin && !esProfe && panel === 'supervision' && (
+                  <p className="notification is-info is-light is-size-7 py-2 px-3 mb-3">
+                    Roles y menú de cuentas: <Link to="/admin">Administración</Link>. Para usar Alumnos / Ejercicios /
+                    Rutinas con esta misma cuenta, sumá rol <strong>profe</strong> ahí.
+                  </p>
+                )}
+
+                {panel === 'supervision' && (
                   <div className="box mb-4 py-3">
-                    <h2 className="title is-6 mb-2">Alumnos</h2>
-                    <p className="is-size-7 has-text-grey mb-3">Correo con el que el alumno se registró en la app.</p>
+                    {bloqueSupervision}
+                    {!adminVistaErr && (
+                      <details className="mt-3 mb-0">
+                        <summary className="is-size-7 has-text-grey" style={{ cursor: 'pointer' }}>
+                          Notas para administradores
+                        </summary>
+                        <p className="is-size-7 has-text-grey mt-2 mb-0">
+                          Listado de perfiles con rol <strong>profe</strong> y vínculos en <code>teacher_students</code>.
+                        </p>
+                      </details>
+                    )}
+                  </div>
+                )}
+
+                {panel === 'alumnos' && esProfe && (
+                  <div className="box mb-4 py-3">
                     <div className="field has-addons mb-3">
                       <div className="control is-expanded">
                         <input
                           className="input is-small"
                           type="email"
-                          placeholder="alumno@correo.com"
+                          placeholder="Correo del alumno (cuenta registrada)"
                           value={emailAlumno}
                           onChange={(e) => setEmailAlumno(e.target.value)}
                         />
@@ -344,9 +433,9 @@ export default function Profe() {
                   </div>
                 )}
 
-                {tab === 'ejercicios' && <ProfeCatalogoEjercicios />}
+                {panel === 'ejercicios' && esProfe && <ProfeCatalogoEjercicios />}
 
-                {tab === 'rutinas' && (
+                {panel === 'rutinas' && esProfe && (
                   <ProfeRutinasWorkshop
                     students={students}
                     teacherId={user.id}
@@ -355,14 +444,14 @@ export default function Profe() {
                   />
                 )}
 
-                {tab === 'historial' && (
+                {panel === 'historial' && esProfe && (
                   <ProfeHistorialAsignaciones key={historialTick} teacherId={user.id} students={students} />
                 )}
-              </>
-            )}
 
-            {msg && <p className="notification is-success is-light is-size-7 py-2 px-3 mb-3">{msg}</p>}
-            {err && <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-0">{err}</p>}
+                {msg && <p className="notification is-success is-light is-size-7 py-2 px-3 mb-3">{msg}</p>}
+                {err && <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-0">{err}</p>}
+              </div>
+            </div>
           </>
         )}
       </div>
