@@ -199,6 +199,11 @@ as $$
 declare
   is_admin boolean;
 begin
+  -- SQL Editor de Supabase (sesión postgres): permite primer admin y migraciones sin JWT
+  if session_user in ('postgres', 'supabase_admin') then
+    return new;
+  end if;
+
   select exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin') into is_admin;
 
   if tg_op = 'INSERT' then
