@@ -86,30 +86,18 @@ export default function AdminUsersRolesSection({ rows = [], loading = false, onR
       ) : filas.length === 0 ? (
         <p className="is-size-7 has-text-grey mb-0">{q ? 'No hay coincidencias.' : 'No hay usuarios.'}</p>
       ) : (
-        <div className="table-container">
-          <table className="table is-size-7 is-fullwidth">
-            <thead>
-              <tr>
-                <th>Correo</th>
-                <th>Nombre y apellido</th>
-                <th>Rol</th>
-                <th>Ocultar en el menú</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filas.map((r) => (
-                <FilaUsuario
-                  key={r.id}
-                  row={r}
-                  actualUserId={user?.id}
-                  roleNavMap={roleNavMap}
-                  onGuardarRol={guardarRol}
-                  onGuardarModulos={guardarModulos}
-                  onGuardarNombre={guardarNombre}
-                />
-              ))}
-            </tbody>
-          </table>
+        <div className="is-flex is-flex-direction-column" style={{ gap: '0.75rem' }}>
+          {filas.map((r) => (
+            <TarjetaUsuario
+              key={r.id}
+              row={r}
+              actualUserId={user?.id}
+              roleNavMap={roleNavMap}
+              onGuardarRol={guardarRol}
+              onGuardarModulos={guardarModulos}
+              onGuardarNombre={guardarNombre}
+            />
+          ))}
         </div>
       )}
       {msg && <p className="notification is-success is-light is-size-7 py-2 px-3 mt-2 mb-0">{msg}</p>}
@@ -118,7 +106,7 @@ export default function AdminUsersRolesSection({ rows = [], loading = false, onR
   )
 }
 
-function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarModulos, onGuardarNombre }) {
+function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarModulos, onGuardarNombre }) {
   const [rol, setRol] = useState(row.role || 'alumno')
   const [nombre, setNombre] = useState(() => (row.full_name || '').trim())
   const [bloqueados, setBloqueados] = useState(() =>
@@ -151,95 +139,92 @@ function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarMod
     })
   }
 
-  /** Rellena la altura de la celda (igual que la fila) y deja el botón abajo alineado con las otras columnas. */
-  const cellFill = (children, maxW = '16rem') => (
-    <td
-      style={{
-        position: 'relative',
-        verticalAlign: 'top',
-        padding: '0.65rem 0.75rem',
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          left: '0.75rem',
-          right: '0.75rem',
-          top: '0.65rem',
-          bottom: '0.65rem',
-          maxWidth: maxW,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          gap: '0.5rem',
+  const bloqueCampo = (
+    <>
+      <input
+        className="input is-small"
+        type="text"
+        value={nombre}
+        onChange={(e) => setNombre(e.target.value)}
+        placeholder="Ej. Ana García"
+        autoComplete="off"
+      />
+      <button
+        type="button"
+        className="button is-small is-link is-light is-fullwidth"
+        disabled={!nombreCambio}
+        onClick={() => onGuardarNombre(row.id, nombre)}
+      >
+        Guardar nombre
+      </button>
+    </>
+  )
+
+  const bloqueRol = (
+    <>
+      <div className="select is-small" style={{ width: '100%', display: 'block' }}>
+        <select
+          style={{ width: '100%' }}
+          value={rol}
+          onChange={(e) => {
+            const v = e.target.value
+            setRol(v)
+            setBloqueados(adminHiddenCheckboxSet(v, row.blocked_modules, row.nav_force_visible, roleNavMap))
+          }}
+        >
+          <option value="alumno">alumno</option>
+          <option value="profe">profe</option>
+          <option value="admin">admin</option>
+        </select>
+      </div>
+      <button
+        type="button"
+        className="button is-small is-link is-light is-fullwidth"
+        disabled={rol === row.role}
+        onClick={() => {
+          if (row.id === actualUserId && row.role === 'admin' && rol !== 'admin') {
+            if (!window.confirm('¿Sacarte el rol admin? Perderás acceso a esta sección.')) return
+          }
+          onGuardarRol(row.id, rol)
         }}
       >
-        {children}
-      </div>
-    </td>
+        Guardar rol
+      </button>
+    </>
   )
 
   return (
-    <tr>
-      <td style={{ verticalAlign: 'top', wordBreak: 'break-all', padding: '0.65rem 0.75rem' }}>{row.email || '—'}</td>
-      {cellFill(
-        <>
-          <input
-            className="input is-small"
-            style={{ width: '100%' }}
-            type="text"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            placeholder="Ej. Ana García"
-            autoComplete="off"
-          />
-          <button
-            type="button"
-            className="button is-small is-link is-light is-fullwidth"
-            disabled={!nombreCambio}
-            onClick={() => onGuardarNombre(row.id, nombre)}
-          >
-            Guardar nombre
-          </button>
-        </>
-      )}
-      {cellFill(
-        <>
-          <div className="select is-small" style={{ width: '100%', display: 'block' }}>
-            <select
-              style={{ width: '100%', maxWidth: '100%' }}
-              value={rol}
-              onChange={(e) => {
-                const v = e.target.value
-                setRol(v)
-                setBloqueados(adminHiddenCheckboxSet(v, row.blocked_modules, row.nav_force_visible, roleNavMap))
-              }}
-            >
-              <option value="alumno">alumno</option>
-              <option value="profe">profe</option>
-              <option value="admin">admin</option>
-            </select>
+    <article
+      className="box py-3 px-3 mb-0"
+      style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, background: 'rgba(0,0,0,0.15)' }}
+    >
+      <p className="is-size-7 has-text-weight-semibold mb-1">Correo</p>
+      <p className="is-size-7 mb-3" style={{ wordBreak: 'break-all' }}>
+        {row.email || '—'}
+      </p>
+
+      <div className="columns is-multiline is-variable is-2">
+        <div className="column is-12-mobile is-6-tablet is-4-desktop">
+          <p className="is-size-7 has-text-weight-semibold mb-2">Nombre y apellido</p>
+          <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem' }}>
+            {bloqueCampo}
           </div>
-          <button
-            type="button"
-            className="button is-small is-link is-light is-fullwidth"
-            disabled={rol === row.role}
-            onClick={() => {
-              if (row.id === actualUserId && row.role === 'admin' && rol !== 'admin') {
-                if (!window.confirm('¿Sacarte el rol admin? Perderás acceso a esta sección.')) return
-              }
-              onGuardarRol(row.id, rol)
-            }}
-          >
-            Guardar rol
-          </button>
-        </>
-      )}
-      {cellFill(
-        <>
-          <div className="is-flex is-flex-direction-column" style={{ gap: '0.25rem', flexShrink: 0 }}>
+        </div>
+        <div className="column is-12-mobile is-6-tablet is-4-desktop">
+          <p className="is-size-7 has-text-weight-semibold mb-2">Rol</p>
+          <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem' }}>
+            {bloqueRol}
+          </div>
+        </div>
+        <div className="column is-12-mobile is-12-tablet is-4-desktop">
+          <p className="is-size-7 has-text-weight-semibold mb-2">Ocultar en el menú</p>
+          <div className="is-flex is-flex-direction-column mb-2" style={{ gap: '0.15rem' }}>
             {BLOCKABLE_NAV_KEYS.map((key) => (
-              <label key={key} className="checkbox is-size-7">
+              <label
+                key={key}
+                className="checkbox is-size-7"
+                style={{ display: 'block', padding: '0.2rem 0', lineHeight: 1.4 }}
+              >
                 <input
                   type="checkbox"
                   checked={bloqueados.has(key)}
@@ -258,9 +243,8 @@ function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarMod
           >
             Guardar menú
           </button>
-        </>,
-        '18rem'
-      )}
-    </tr>
+        </div>
+      </div>
+    </article>
   )
 }
