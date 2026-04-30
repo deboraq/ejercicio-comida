@@ -34,7 +34,11 @@ export async function fetchMyProfile(userId) {
     const row = Array.isArray(rpcData) ? rpcData[0] : rpcData
     if (row?.id) return { data: row, error: null }
   }
-  return supabase.from('profiles').select('id, email, full_name, role, blocked_modules').eq('id', userId).maybeSingle()
+  return supabase
+    .from('profiles')
+    .select('id, email, full_name, role, blocked_modules, nav_force_visible')
+    .eq('id', userId)
+    .maybeSingle()
 }
 
 /** Menú oculto por rol (tabla `role_nav_hidden`). Si la tabla no existe, devuelve defaults normalizados. */
@@ -69,7 +73,7 @@ export async function listProfilesForAdmin() {
   if (!supabase) return { data: [], error: new Error('Sin cliente') }
   return supabase
     .from('profiles')
-    .select('id, email, full_name, role, blocked_modules, created_at')
+    .select('id, email, full_name, role, blocked_modules, nav_force_visible, created_at')
     .order('created_at', { ascending: false })
 }
 
@@ -77,6 +81,13 @@ export async function adminUpdateBlockedModules(targetUserId, blockedModules) {
   if (!supabase || !targetUserId) return { error: new Error('Sin cliente') }
   const arr = Array.isArray(blockedModules) ? blockedModules.filter(Boolean) : []
   return supabase.from('profiles').update({ blocked_modules: arr }).eq('id', targetUserId)
+}
+
+export async function adminUpdateUserNavModules(targetUserId, blockedModules, navForceVisible) {
+  if (!supabase || !targetUserId) return { error: new Error('Sin cliente') }
+  const arr = Array.isArray(blockedModules) ? [...new Set(blockedModules.filter(Boolean))] : []
+  const fv = Array.isArray(navForceVisible) ? [...new Set(navForceVisible.filter(Boolean))] : []
+  return supabase.from('profiles').update({ blocked_modules: arr, nav_force_visible: fv }).eq('id', targetUserId)
 }
 
 export async function listAdminMessagesForTeacher(teacherId) {
@@ -139,6 +150,68 @@ export async function listTeacherStudents(teacherId) {
 export async function removeTeacherStudent(linkId) {
   if (!supabase) return { error: new Error('Sin cliente') }
   return supabase.from('teacher_students').delete().eq('id', linkId)
+}
+
+/**
+ * Admin: todos los entrenadores (rol profe) y alumnos vinculados por teacher_students.
+ * Requiere política RLS `ts_select_admin` en `teacher_students` (SUPABASE.md).
+ */
+export async function listTeachersWithStudentsForAdmin() {
+  if (!supabase) return { data: [], error: new Error('Sin cliente') }
+  const { data: allProfe, error: e0 } = await supabase
+    .from('profiles')
+    .select('id, email, full_name, role')
+    .eq('role', 'profe')
+    .order('email', { ascending: true })
+  if (e0) return { data: [], error: e0 }
+
+  const { data: links, error } = await supabase
+    .from('teacher_students')
+    .select('id, teacher_id, student_id, created_at')
+    .order('created_at', { ascending: false })
+  if (error) return { data: [], error }
+
+  const linkRows = links || []
+  const idSet = new Set()
+  for (const l of linkRows) {
+    idSet.add(l.teacher_id)
+    idSet.add(l.student_id)
+  }
+  const ids = [...idSet]
+  let profMap = Object.fromEntries((allProfe || []).map((p) => [p.id, p]))
+  if (ids.length) {
+    const { data: extraProfs, error: e2 } = await supabase.from('profiles').select('id, email, full_name, role').in('id', ids)
+    if (e2) return { data: [], error: e2 }
+    for (const p of extraProfs || []) profMap[p.id] = p
+  }
+
+  const byTeacher = {}
+  for (const p of allProfe || []) {
+    byTeacher[p.id] = { teacher: p, students: [] }
+  }
+  for (const l of linkRows) {
+    const tid = l.teacher_id
+    if (!byTeacher[tid]) {
+      const t = profMap[tid]
+      if (t) byTeacher[tid] = { teacher: t, students: [] }
+    }
+    if (!byTeacher[tid]) continue
+    const sp = profMap[l.student_id]
+    byTeacher[tid].students.push({
+      linkId: l.id,
+      studentId: l.student_id,
+      email: sp?.email || l.student_id,
+      fullName: sp?.full_name || '',
+      createdAt: l.created_at,
+    })
+  }
+
+  const out = Object.values(byTeacher).sort((a, b) => {
+    const ea = (a.teacher?.email || '').toLowerCase()
+    const eb = (b.teacher?.email || '').toLowerCase()
+    return ea.localeCompare(eb)
+  })
+  return { data: out, error: null }
 }
 
 export async function createRoutineAssignment(teacherId, studentId, title, payload) {

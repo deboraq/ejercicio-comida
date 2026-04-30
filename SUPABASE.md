@@ -45,6 +45,7 @@ create table if not exists public.profiles (
   full_name text default '',
   role text not null default 'alumno' check (role in ('alumno', 'profe', 'admin')),
   blocked_modules text[] not null default '{}',
+  nav_force_visible text[] not null default '{}',
   created_at timestamptz default now()
 );
 
@@ -95,6 +96,11 @@ create policy "ts_insert_teacher"
 create policy "ts_delete_teacher"
   on public.teacher_students for delete
   using (teacher_id = auth.uid());
+
+drop policy if exists "ts_select_admin" on public.teacher_students;
+create policy "ts_select_admin"
+  on public.teacher_students for select
+  using (exists (select 1 from public.admin_accounts a where a.user_id = auth.uid()));
 
 -- Rutinas enviadas por el entrenador (payload.dias = misma forma que el JSON de la app)
 create table if not exists public.routine_assignments (
@@ -340,7 +346,10 @@ create trigger admin_messages_validate_teacher
 
 ```sql
 alter table public.profiles add column if not exists blocked_modules text[] not null default '{}';
+alter table public.profiles add column if not exists nav_force_visible text[] not null default '{}';
 ```
+
+`nav_force_visible`: claves del menú que **sí** debe ver el usuario aunque el rol las oculte por defecto (el admin las desmarca en «Usuarios y roles»). Las ocultaciones extra siguen en `blocked_modules`.
 
 **Menú por rol** (qué pestañas oculta cada rol por defecto; lo puede editar un admin en la app). Los usuarios pueden tener además `blocked_modules` como extras. Ejecutá después de tener `admin_accounts` (punto 6) para que las políticas de admin existan:
 

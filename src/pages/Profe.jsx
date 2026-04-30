@@ -8,6 +8,7 @@ import {
   listTeacherStudents,
   removeTeacherStudent,
   listAdminMessagesForTeacher,
+  listTeachersWithStudentsForAdmin,
 } from '../lib/profeDb'
 import ProfeCatalogoEjercicios from '../components/profe/ProfeCatalogoEjercicios'
 import ProfeRutinasWorkshop from '../components/profe/ProfeRutinasWorkshop'
@@ -32,6 +33,9 @@ export default function Profe() {
   const [err, setErr] = useState(null)
   const [tab, setTab] = useState('alumnos')
   const [historialTick, setHistorialTick] = useState(0)
+  const [adminVistaLoading, setAdminVistaLoading] = useState(false)
+  const [adminVistaRows, setAdminVistaRows] = useState([])
+  const [adminVistaErr, setAdminVistaErr] = useState(null)
 
   const esProfe = profile?.role === 'profe'
 
@@ -97,6 +101,34 @@ export default function Profe() {
   useEffect(() => {
     cargarAlumnos()
   }, [cargarAlumnos])
+
+  useEffect(() => {
+    if (!isConfigured || !user) return
+    if (profileLoading) return
+    if (profile?.role !== 'admin') {
+      setAdminVistaRows([])
+      setAdminVistaErr(null)
+      setAdminVistaLoading(false)
+      return
+    }
+    let cancel = false
+    setAdminVistaLoading(true)
+    setAdminVistaErr(null)
+    listTeachersWithStudentsForAdmin().then(({ data, error }) => {
+      if (cancel) return
+      setAdminVistaLoading(false)
+      if (error) {
+        setAdminVistaErr(error.message || 'No se pudo cargar la supervisión.')
+        setAdminVistaRows([])
+      } else {
+        setAdminVistaRows(data || [])
+        setAdminVistaErr(null)
+      }
+    })
+    return () => {
+      cancel = true
+    }
+  }, [isConfigured, user?.id, profileLoading, profile?.role])
 
   const vincularAlumno = async () => {
     if (!user?.id || !esProfe) return
@@ -182,9 +214,47 @@ export default function Profe() {
         ) : (
           <>
             {profile?.role === 'admin' && (
-              <p className="is-size-7 mb-3">
-                <Link to="/admin">Ir a administración</Link>
-              </p>
+              <div className="box mb-4 py-3">
+                <h2 className="title is-6 mb-2">Supervisión de entrenadores</h2>
+                <p className="is-size-7 has-text-grey mb-3">
+                  Cuentas con rol <strong>profe</strong> y alumnos que vincularon por correo. Para asignar roles o menús
+                  usá <Link to="/admin">Administración</Link>. Si ves error de permisos, ejecutá en Supabase la política{' '}
+                  <code>ts_select_admin</code> del archivo <code>SUPABASE.md</code>.
+                </p>
+                {adminVistaLoading && <p className="is-size-7 has-text-grey mb-0">Cargando…</p>}
+                {adminVistaErr && (
+                  <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-0">{adminVistaErr}</p>
+                )}
+                {!adminVistaLoading && !adminVistaErr && adminVistaRows.length === 0 && (
+                  <p className="is-size-7 has-text-grey mb-0">Todavía no hay entrenadores con rol profe.</p>
+                )}
+                {!adminVistaLoading &&
+                  !adminVistaErr &&
+                  adminVistaRows.map(({ teacher, students }) => (
+                    <div
+                      key={teacher.id}
+                      className="mb-3 pb-3"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
+                    >
+                      <p className="is-size-7 has-text-weight-semibold mb-1">
+                        {(teacher.full_name || '').trim() || teacher.email || teacher.id}
+                      </p>
+                      <p className="is-size-7 has-text-grey mb-2">{teacher.email || '—'}</p>
+                      {students.length === 0 ? (
+                        <p className="is-size-7 has-text-grey mb-0">Sin alumnos vinculados.</p>
+                      ) : (
+                        <ul className="mb-0 pl-4" style={{ listStyle: 'disc' }}>
+                          {students.map((s) => (
+                            <li key={s.linkId} className="is-size-7 mb-1">
+                              <strong>{(s.fullName || '').trim() || s.email}</strong>
+                              {s.fullName ? <span className="has-text-grey"> · {s.email}</span> : null}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+              </div>
             )}
 
             {esProfe && avisosAdmin.length > 0 && (
@@ -207,10 +277,8 @@ export default function Profe() {
               <div className="box mb-4 py-3">
                 <h2 className="title is-6 mb-2">Modo entrenador</h2>
                 <p className="is-size-7 has-text-grey mb-0">
-                  El rol <strong>entrenador</strong> lo asigna un <strong>administrador</strong> de la plataforma (no podés
-                  activarlo vos). Cuando te lo habiliten, vas a ver acá las pestañas de trabajo.
-                  {' '}
-                  Si administrás la app, usá <Link to="/admin">Admin</Link> (requiere rol admin en tu cuenta).
+                  El rol <strong>entrenador</strong> lo asigna un administrador en <Link to="/admin">Administración</Link>.
+                  Cuando te lo habiliten, vas a ver acá las pestañas para alumnos, ejercicios y rutinas.
                 </p>
               </div>
             )}
