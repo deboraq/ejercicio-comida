@@ -58,6 +58,7 @@ export default function Rutina() {
   const [config] = useStorage('config', { pesoKg: 70 })
 
   const [origenRutinas, setOrigenRutinas] = useState('propias')
+  const [assignmentsRefreshTick, setAssignmentsRefreshTick] = useState(0)
   const [vista, setVista] = useState('calendario') // 'calendario' | 'registrar' | 'configurar' | 'progreso'
   const [diaEditando, setDiaEditando] = useState('')
   const [busqueda, setBusqueda] = useState('')
@@ -194,7 +195,7 @@ export default function Rutina() {
     return () => {
       cancelled = true
     }
-  }, [user?.id, setRutinasAsignadas])
+  }, [user?.id, setRutinasAsignadas, assignmentsRefreshTick])
 
   const resultadosBusqueda = busqueda.trim() ? buscarEjercicios(busqueda) : []
 
@@ -425,7 +426,7 @@ export default function Rutina() {
         <header className="mb-4">
           <h1 className="title is-5 mb-2">Rutina de gimnasio</h1>
           <p className="is-size-7 has-text-grey mb-0">
-            En <strong>Mis rutinas</strong> creás y registrás entrenos. En <strong>Asignadas</strong> ves lo que te mandó tu entrenador (JSON o, más adelante, la nube).
+            En <strong>Mis rutinas</strong> creás y registrás entrenos. En <strong>Asignadas</strong> ves lo que te mandó tu entrenador desde Profe (por la nube).
           </p>
         </header>
 
@@ -987,6 +988,7 @@ export default function Rutina() {
             setOrigenRutinas={setOrigenRutinas}
             syncRutinasNube={syncRutinasNube}
             onQuitarAsignada={quitarAsignadaHandler}
+            onRefreshAssignments={() => setAssignmentsRefreshTick((n) => n + 1)}
           />
         )}
       </div>
@@ -1002,6 +1004,7 @@ function VistaRutinasAsignadas({
   setOrigenRutinas,
   syncRutinasNube,
   onQuitarAsignada,
+  onRefreshAssignments,
 }) {
   const [jsonText, setJsonText] = useState('')
   const [importError, setImportError] = useState(null)
@@ -1027,41 +1030,35 @@ function VistaRutinasAsignadas({
   }
 
   return (
-    <div className="box mb-4 py-3">
-      <h2 className="title is-6 mb-2">Rutinas asignadas</h2>
-      <p className="is-size-7 has-text-grey mb-3">
-        Son referencias: no se registran pesos acá. Usá <strong>Copiar a mis rutinas</strong> para clonarla, activarla y cargar tu entreno en <strong>Mis rutinas → Registrar</strong>.
+    <>
+      <div className="box mb-4 py-3">
+        <h2 className="title is-6 mb-2">Rutinas que te mandó tu entrenador</h2>
+        <p className="is-size-7 has-text-grey mb-3">
+          Acá solo ves <strong>plantillas</strong> que te envió tu entrenador desde <strong>Profe</strong> (con tu cuenta
+          iniciada). Para anotar pesos y entrenos, usá <strong>Copiar a mis rutinas</strong> y después andá a{' '}
+          <strong>Mis rutinas → Registrar</strong>.
+        </p>
         {syncRutinasNube && (
-          <> Con la cuenta iniciada, las rutinas que te envíe tu entrenador desde <strong>Profe</strong> aparecen acá automáticamente. </>
+          <button type="button" className="button is-light is-small mb-0" onClick={() => onRefreshAssignments?.()}>
+            Actualizar desde la nube
+          </button>
         )}
-        Si tu entrenador te pasa un JSON, pegalo abajo.
-      </p>
-
-      <div className="field mb-4">
-        <label className="label is-size-7">Importar JSON (opcional campo &quot;asignadaPor&quot;: nombre del entrenador)</label>
-        <textarea
-          className="textarea is-small"
-          rows={4}
-          value={jsonText}
-          onChange={(e) => {
-            setJsonText(e.target.value)
-            setImportError(null)
-          }}
-          placeholder='{"nombre":"Semana 1","asignadaPor":"Profe Ana","dias":[{"nombre":"Día 1","ejercicios":["Press banca"]}]}'
-        />
-        {importError && <p className="is-size-7 has-text-danger mt-1 mb-0">{importError}</p>}
-        <button type="button" className="button is-link is-small is-fullwidth mt-2" onClick={importarDesdeJson}>
-          Añadir a asignadas
-        </button>
       </div>
 
       {rutinasAsignadas.length === 0 ? (
-        <p className="is-size-7 has-text-grey mb-0">
-          Todavía no tenés rutinas asignadas.
-          {syncRutinasNube ? ' Si tu entrenador te vinculó y te envió una rutina, recargá la página o esperá unos segundos.' : ''} También podés pegar un JSON arriba.
-        </p>
+        <div className="box py-4 mb-4 has-text-centered">
+          <p className="is-size-7 has-text-grey mb-2">
+            Todavía no hay rutinas acá.
+            {syncRutinasNube
+              ? ' Tu entrenador tiene que tenerte vinculado por correo y enviarte una rutina desde su pestaña Profe.'
+              : ' Iniciá sesión para sincronizar con la nube.'}
+          </p>
+          {syncRutinasNube && (
+            <p className="is-size-7 has-text-grey mb-0">Podés tocar «Actualizar desde la nube» arriba si acaban de enviarte una.</p>
+          )}
+        </div>
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        <ul className="mb-4" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {rutinasAsignadas.map((r) => (
             <li key={r.id} className="box py-3 mb-3 rutina-asignada-card">
               <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
@@ -1072,6 +1069,9 @@ function VistaRutinasAsignadas({
                       Asignada por <strong>{r._asignacion.por}</strong>
                       {r._asignacion.fecha ? ` · ${r._asignacion.fecha}` : ''}
                     </p>
+                  )}
+                  {!r._asignacion && (
+                    <p className="is-size-7 has-text-grey mb-0">Importada a mano (no viene del servidor).</p>
                   )}
                 </div>
                 <div className="is-flex is-flex-wrap-wrap" style={{ gap: '0.35rem' }}>
@@ -1092,7 +1092,9 @@ function VistaRutinasAsignadas({
                     ) : (
                       <ul className="mt-1 mb-0 pl-3" style={{ listStyle: 'circle' }}>
                         {(d.ejercicios || []).map((ex) => (
-                          <li key={ex} className="is-size-7">{ex}</li>
+                          <li key={ex} className="is-size-7">
+                            {ex}
+                          </li>
                         ))}
                       </ul>
                     )}
@@ -1103,7 +1105,34 @@ function VistaRutinasAsignadas({
           ))}
         </ul>
       )}
-    </div>
+
+      <details className="box py-3 mb-4" style={{ background: 'rgba(0,0,0,0.15)' }}>
+        <summary className="is-size-7" style={{ cursor: 'pointer', fontWeight: 600 }}>
+          Opcional: importar JSON a mano
+        </summary>
+        <p className="is-size-7 has-text-grey mt-2 mb-3">
+          Solo si alguien te pasó un archivo o texto JSON (caso raro). Lo normal es que las rutinas lleguen solas desde
+          Profe.
+        </p>
+        <div className="field mb-0">
+          <label className="label is-size-7">JSON (campo opcional &quot;asignadaPor&quot;: nombre del entrenador)</label>
+          <textarea
+            className="textarea is-small"
+            rows={3}
+            value={jsonText}
+            onChange={(e) => {
+              setJsonText(e.target.value)
+              setImportError(null)
+            }}
+            placeholder='{"nombre":"Semana 1","asignadaPor":"Profe Ana","dias":[{"nombre":"Día 1","ejercicios":["Press banca"]}]}'
+          />
+          {importError && <p className="is-size-7 has-text-danger mt-1 mb-0">{importError}</p>}
+          <button type="button" className="button is-link is-small mt-2" onClick={importarDesdeJson}>
+            Añadir a asignadas
+          </button>
+        </div>
+      </details>
+    </>
   )
 }
 
