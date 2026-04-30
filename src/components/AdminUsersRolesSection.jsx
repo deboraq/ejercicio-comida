@@ -151,13 +151,39 @@ function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarMod
     })
   }
 
-  const stackStyle = { display: 'flex', flexDirection: 'column', gap: '0.4rem', maxWidth: '16rem' }
+  /** Rellena la altura de la celda (igual que la fila) y deja el botón abajo alineado con las otras columnas. */
+  const cellFill = (children, maxW = '16rem') => (
+    <td
+      style={{
+        position: 'relative',
+        verticalAlign: 'top',
+        padding: '0.65rem 0.75rem',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          left: '0.75rem',
+          right: '0.75rem',
+          top: '0.65rem',
+          bottom: '0.65rem',
+          maxWidth: maxW,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          gap: '0.5rem',
+        }}
+      >
+        {children}
+      </div>
+    </td>
+  )
 
   return (
     <tr>
-      <td style={{ verticalAlign: 'top', wordBreak: 'break-all' }}>{row.email || '—'}</td>
-      <td style={{ verticalAlign: 'top' }}>
-        <div style={stackStyle}>
+      <td style={{ verticalAlign: 'top', wordBreak: 'break-all', padding: '0.65rem 0.75rem' }}>{row.email || '—'}</td>
+      {cellFill(
+        <>
           <input
             className="input is-small"
             style={{ width: '100%' }}
@@ -175,10 +201,10 @@ function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarMod
           >
             Guardar nombre
           </button>
-        </div>
-      </td>
-      <td style={{ verticalAlign: 'top' }}>
-        <div style={stackStyle}>
+        </>
+      )}
+      {cellFill(
+        <>
           <div className="select is-small" style={{ width: '100%', display: 'block' }}>
             <select
               style={{ width: '100%', maxWidth: '100%' }}
@@ -207,31 +233,34 @@ function FilaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardarMod
           >
             Guardar rol
           </button>
-        </div>
-      </td>
-      <td style={{ verticalAlign: 'top' }}>
-        <div className="is-flex is-flex-direction-column" style={{ gap: '0.35rem', maxWidth: '18rem' }}>
-          {BLOCKABLE_NAV_KEYS.map((key) => (
-            <label key={key} className="checkbox is-size-7">
-              <input
-                type="checkbox"
-                checked={bloqueados.has(key)}
-                onChange={() => toggleMod(key)}
-                disabled={rol === 'admin'}
-              />
-              {` Ocultar ${BLOCKABLE_LABELS[key] || key}`}
-            </label>
-          ))}
+        </>
+      )}
+      {cellFill(
+        <>
+          <div className="is-flex is-flex-direction-column" style={{ gap: '0.25rem', flexShrink: 0 }}>
+            {BLOCKABLE_NAV_KEYS.map((key) => (
+              <label key={key} className="checkbox is-size-7">
+                <input
+                  type="checkbox"
+                  checked={bloqueados.has(key)}
+                  onChange={() => toggleMod(key)}
+                  disabled={rol === 'admin'}
+                />
+                {` Ocultar ${BLOCKABLE_LABELS[key] || key}`}
+              </label>
+            ))}
+          </div>
           <button
             type="button"
-            className="button is-small is-light is-fullwidth"
+            className="button is-small is-link is-light is-fullwidth"
             disabled={rol === 'admin'}
             onClick={() => onGuardarModulos(row.id, bloqueados, rol)}
           >
             Guardar menú
           </button>
-        </div>
-      </td>
+        </>,
+        '18rem'
+      )}
     </tr>
   )
 }
