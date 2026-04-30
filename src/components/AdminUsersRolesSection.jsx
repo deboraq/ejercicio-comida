@@ -58,13 +58,6 @@ export default function AdminUsersRolesSection({ rows = [], loading = false, onR
 
   return (
     <div className="box mb-4 py-3">
-      <h2 className="title is-6 mb-2">Usuarios y roles</h2>
-      <p className="is-size-7 has-text-grey mb-3">
-        Asigná rol <strong>alumno</strong>, <strong>profe</strong> o <strong>admin</strong>. Las casillas <strong>Ocultar</strong>{' '}
-        combinan el menú del rol con ajustes por cuenta: podés desmarcar una pestaña que el rol oculta por defecto (se
-        guarda en la nube). Si falla el guardado, ejecutá en Supabase el <code>ALTER</code> de <code>nav_force_visible</code> en{' '}
-        <code>SUPABASE.md</code>. Los administradores en la app siempre ven todas las pestañas.
-      </p>
       <div className="field mb-3">
         <label className="label is-size-7">Buscar usuario</label>
         <input

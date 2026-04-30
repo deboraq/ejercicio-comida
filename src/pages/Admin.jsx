@@ -215,11 +215,6 @@ export default function Admin() {
                   )
                 })}
               </ul>
-              <p className="is-size-7 has-text-grey mt-3 mb-0">
-                <Link to="/profe">Ir a Profe</Link>
-                <br />
-                <Link to="/config">Configuración</Link>
-              </p>
             </nav>
           </div>
 
