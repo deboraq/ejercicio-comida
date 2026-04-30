@@ -430,6 +430,55 @@
   }
 }
 
+/* Peso corporal (Config): gráfico de barras e historial */
+.peso-graf-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+.peso-graf-barras {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  min-height: 72px;
+  padding-bottom: 2px;
+}
+.peso-graf-col {
+  flex: 1 1 0;
+  min-width: 1.75rem;
+  max-width: 3.25rem;
+}
+.peso-graf-bar-area {
+  height: 62px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+.peso-graf-bar {
+  width: 100%;
+  max-width: 28px;
+  min-height: 4px;
+  border-radius: 3px 3px 0 0;
+  transition: height 0.35s ease;
+}
+.peso-graf-eje {
+  display: block;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.peso-historial-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.peso-historial-fila {
+  border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+}
+.peso-historial-fila:last-child {
+  border-bottom: none;
+}
+
 /* Detalle día (panel blanco del gráfico): título siempre oscuro */
 .inicio-detalle-dia-titulo.title.is-6 {
   color: #111 !important;

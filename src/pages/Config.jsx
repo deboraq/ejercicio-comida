@@ -3,9 +3,11 @@ import { useStorage } from '../hooks/useStorage'
 import { useAuth } from '../context/AuthContext'
 import { OBJETIVOS } from '../utils/consejos'
 import { SUPLEMENTOS } from '../utils/suplementos'
+import PesoSeguimiento from '../components/PesoSeguimiento'
 
 export default function Config() {
   const { user, signOut, isConfigured } = useAuth()
+  const [historialPeso, setHistorialPeso] = useStorage('pesoHistorial', [])
   const [config, setConfig] = useStorage('config', {
     objetivo: 'mantener_peso',
     pesoKg: 70,
@@ -124,6 +126,12 @@ export default function Config() {
             </div>
           </div>
         </div>
+
+        <PesoSeguimiento
+          historial={historialPeso}
+          setHistorial={setHistorialPeso}
+          onActualizarPesoConfig={(kg) => setConfig((c) => ({ ...c, pesoKg: kg }))}
+        />
 
         <div className="box py-3">
           <h2 className="title is-6 mb-2">Suplementos que tomas</h2>

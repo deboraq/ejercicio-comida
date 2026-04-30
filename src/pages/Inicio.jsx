@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useStorage } from '../hooks/useStorage'
@@ -23,6 +23,7 @@ export default function Inicio() {
   const [comida] = useStorage('comida', [])
   const [suplementos, setSuplementos] = useStorage('suplementos', [])
   const [registrosRutina] = useStorage('rutinaPesos', [])
+  const [historialPeso] = useStorage('pesoHistorial', [])
   const [config] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
 
   const hoy = fechaToISO(new Date())
@@ -79,6 +80,16 @@ export default function Inicio() {
   }
 
   const pesoCfg = config?.pesoKg || 70
+
+  const resumenPesoCorporal = useMemo(() => {
+    const h = historialPeso
+    if (!Array.isArray(h) || h.length === 0) return null
+    const o = [...h].sort((a, b) => fechaSoloDia(b.fecha).localeCompare(fechaSoloDia(a.fecha)))
+    const ult = o[0]
+    const pen = o[1]
+    const delta = pen != null ? Math.round((Number(ult.pesoKg) - Number(pen.pesoKg)) * 10) / 10 : null
+    return { ult, pen, delta }
+  }, [historialPeso])
   const minutosEjercicioDia = ejerciciosDelDia.reduce((s, e) => s + e.duracion, 0)
   const minutosRutinaEstDia = minutosRutinaDia(registrosRutina, diaEnVista)
   const minutosDia = minutosEjercicioDia + minutosRutinaEstDia
@@ -372,6 +383,29 @@ export default function Inicio() {
           <div className="box mb-4">
             <p className="is-size-7 has-text-grey mb-1">Racha</p>
             <p className="title is-5 mb-0">🔥 {racha} día{racha !== 1 ? 's' : ''} seguido{racha !== 1 ? 's' : ''} registrando</p>
+          </div>
+        )}
+
+        {resumenPesoCorporal && (
+          <div className="box mb-4">
+            <h2 className="title is-6 mb-2">Peso corporal</h2>
+            <p className="mb-1">
+              Última medición:{' '}
+              <strong className="has-text-link">{resumenPesoCorporal.ult.pesoKg} kg</strong>
+              <span className="is-size-7 has-text-grey ml-2">{formatearFecha(resumenPesoCorporal.ult.fecha)}</span>
+            </p>
+            {resumenPesoCorporal.pen != null && resumenPesoCorporal.delta != null && (
+              <p className="is-size-7 has-text-grey mb-2">
+                vs. medición anterior ({resumenPesoCorporal.pen.pesoKg} kg, {formatearFecha(resumenPesoCorporal.pen.fecha)}):{' '}
+                <strong className={resumenPesoCorporal.delta <= 0 ? 'has-text-success' : 'has-text-warning'}>
+                  {resumenPesoCorporal.delta > 0 ? '+' : ''}
+                  {resumenPesoCorporal.delta} kg
+                </strong>
+              </p>
+            )}
+            <Link to="/config#peso-seguimiento" className="is-size-7">
+              Registrar medición o ver historial →
+            </Link>
           </div>
         )}
 
