@@ -3,6 +3,18 @@ import { updateRoleNavHidden } from '../lib/profeDb'
 import { BLOCKABLE_NAV_KEYS, BLOCKABLE_LABELS, normalizeRoleNavMap } from '../utils/navModules'
 import { useRoleNav } from '../context/RoleNavContext'
 
+function mensajeErrorRoleNav(m) {
+  const t = String(m || '')
+  if (
+    t.includes('role_nav_hidden') ||
+    t.includes('schema cache') ||
+    /relation.*does not exist|no existe la relación/i.test(t)
+  ) {
+    return 'Falta crear la tabla en Supabase: abrí el SQL Editor de tu proyecto, pegá y ejecutá el bloque «Menú por rol» (tabla public.role_nav_hidden) del archivo SUPABASE.md en el repositorio. Luego recargá esta página.'
+  }
+  return t || 'No se pudo guardar. Revisá Supabase y SUPABASE.md.'
+}
+
 const ROLES_META = [
   { id: 'alumno', label: 'Alumno', help: 'Cuentas que usan rutina, ejercicios, comida, etc.' },
   { id: 'profe', label: 'Entrenador', help: 'Por defecto suelen trabajar solo desde Profe.' },
@@ -47,7 +59,7 @@ export default function AdminRoleMenuSection() {
       setMsg('Menú por rol guardado.')
       await refresh()
     } catch (e) {
-      setErr(e?.message || 'No se pudo guardar. Ejecutá el SQL de la tabla role_nav_hidden en Supabase (SUPABASE.md).')
+      setErr(mensajeErrorRoleNav(e?.message))
     }
     setSaving(false)
   }
@@ -57,7 +69,8 @@ export default function AdminRoleMenuSection() {
       <h2 className="title is-6 mb-2">Menú por rol</h2>
       <p className="is-size-7 has-text-grey mb-3">
         Elegí qué pestañas del menú inferior están <strong>ocultas</strong> para cada rol. En <strong>Usuarios y roles</strong> podés
-        sumar ocultaciones <strong>extra por cuenta</strong> (se unen con las del rol).
+        sumar ocultaciones <strong>extra por cuenta</strong> (se unen con las del rol). Si al guardar ves error de tabla
+        inexistente, ejecutá primero el SQL «Menú por rol» en Supabase (<code>SUPABASE.md</code> del proyecto).
       </p>
       <div className="columns is-multiline">
         {ROLES_META.map(({ id, label, help }) => (
