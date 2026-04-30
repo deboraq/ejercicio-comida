@@ -29,5 +29,13 @@ export function useMyProfile() {
 
   const refresh = useCallback(() => setTick((t) => t + 1), [])
 
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible' && user?.id && isConfigured) refresh()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [user?.id, isConfigured, refresh])
+
   return { profile, loading, refresh }
 }

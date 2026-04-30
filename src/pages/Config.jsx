@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom'
 import { useStorage } from '../hooks/useStorage'
 import { useAuth } from '../context/AuthContext'
+import { useMyProfile } from '../hooks/useMyProfile'
 import { OBJETIVOS } from '../utils/consejos'
 import { SUPLEMENTOS } from '../utils/suplementos'
 import PesoSeguimiento from '../components/PesoSeguimiento'
 
 export default function Config() {
   const { user, signOut, isConfigured } = useAuth()
+  const { profile, loading: profileLoading, refresh: refreshProfile } = useMyProfile()
   const [historialPeso, setHistorialPeso] = useStorage('pesoHistorial', [])
   const [config, setConfig] = useStorage('config', {
     objetivo: 'mantener_peso',
@@ -52,11 +54,37 @@ export default function Config() {
             Con una cuenta tu progreso se guarda en la nube y podrás recuperarlo en otro dispositivo.
           </p>
           {user ? (
-            <div className="is-flex is-align-items-center is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
-              <span className="is-size-7">{user.email}</span>
-              <button type="button" className="button is-small is-light" onClick={() => signOut()}>
-                Cerrar sesión
-              </button>
+            <div>
+              <div className="is-flex is-align-items-center is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
+                <span className="is-size-7">{user.email}</span>
+                <button type="button" className="button is-small is-light" onClick={() => signOut()}>
+                  Cerrar sesión
+                </button>
+              </div>
+              {isConfigured && (
+                <p className="is-size-7 mt-2 mb-0 has-text-grey">
+                  Rol en la plataforma:{' '}
+                  {profileLoading ? (
+                    '…'
+                  ) : (
+                    <strong>{profile?.role || '—'}</strong>
+                  )}
+                  {profile?.role === 'admin' && (
+                    <>
+                      {' · '}
+                      <Link to="/admin">Panel Admin</Link>
+                    </>
+                  )}
+                  {!profileLoading && (
+                    <>
+                      {' '}
+                      <button type="button" className="button is-small is-text p-0 ml-1" onClick={() => refreshProfile()}>
+                        Actualizar
+                      </button>
+                    </>
+                  )}
+                </p>
+              )}
             </div>
           ) : isConfigured ? (
             <Link to="/login" className="button is-link is-small">Iniciar sesión o crear cuenta</Link>
