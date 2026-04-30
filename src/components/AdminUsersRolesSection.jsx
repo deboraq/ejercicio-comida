@@ -9,6 +9,9 @@ import {
   toNavStorageFromHiddenSet,
 } from '../utils/navModules'
 
+/** Misma altura que `.input.is-small` para alinear select y botones en la grilla de admin. */
+const ALTURA_CONTROL_ADMIN_SM = '2.25rem'
+
 /**
  * @param {Array} rows — filas desde el padre (Admin)
  * @param {boolean} loading
@@ -176,6 +179,7 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
                   onChange={(e) => setNombre(e.target.value)}
                   placeholder="Ej. Ana García"
                   autoComplete="off"
+                  style={{ height: ALTURA_CONTROL_ADMIN_SM, boxSizing: 'border-box' }}
                 />
                 <button
                   type="button"
@@ -197,9 +201,25 @@ function TarjetaUsuario({ row, actualUserId, roleNavMap, onGuardarRol, onGuardar
             >
               <p className="is-size-7 has-text-weight-semibold mb-2">Rol</p>
               <div className="is-flex is-flex-direction-column" style={{ gap: '0.5rem', width: '100%' }}>
-                <div className="select is-small" style={{ width: '100%', maxWidth: '100%' }}>
+                <div
+                  className="select is-small"
+                  style={{
+                    width: '100%',
+                    maxWidth: '100%',
+                    height: ALTURA_CONTROL_ADMIN_SM,
+                    display: 'flex',
+                    alignItems: 'stretch',
+                  }}
+                >
                   <select
-                    style={{ width: '100%', maxWidth: '100%' }}
+                    style={{
+                      width: '100%',
+                      flex: 1,
+                      minHeight: 0,
+                      height: '100%',
+                      boxSizing: 'border-box',
+                      lineHeight: 1.25,
+                    }}
                     value={rol}
                     onChange={(e) => {
                       const v = e.target.value
