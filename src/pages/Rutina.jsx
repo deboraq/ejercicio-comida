@@ -5,15 +5,13 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { listAssignmentsForStudent, assignmentsToRutinasItems, deleteRoutineAssignment } from '../lib/profeDb'
 import { formatearFecha, fechaToISO, caloriasQuemadasRegistroRutina } from '../utils/calorias'
 import { EJERCICIOS_RUTINA, buscarEjercicios } from '../utils/rutinaEjercicios'
-import { exportarRutinaAJson } from '../utils/rutinaShare'
+import { descargarRutinaPdf } from '../utils/rutinaPdf'
 import {
   nombreDeEjercicioDiaItem,
   itemEjercicioDiaNormalizado,
   etiquetaPlanEjercicio,
   nombresEjerciciosDia,
 } from '../utils/rutinaEjercicioDia'
-
-export { exportarRutinaAJson } from '../utils/rutinaShare'
 
 function crearDia(num) {
   return { id: `d${Date.now()}_${num}`, nombre: `Día ${num}`, ejercicios: [] }
@@ -544,20 +542,21 @@ export default function Rutina() {
               </button>
             </div>
           </div>
-          <p className="is-size-7 has-text-grey mb-2 mt-2">Compartir con un alumno o entrenador (copia JSON de la rutina activa):</p>
+          <p className="is-size-7 has-text-grey mb-2 mt-2">
+            Descargá la rutina que elegiste arriba como PDF para imprimirla o compartirla.
+          </p>
           <button
             type="button"
             className="button is-light is-small is-fullwidth"
             onClick={() => {
-              const s = exportarRutinaAJson(rutinaActiva)
-              navigator.clipboard.writeText(s).then(() => {
-                window.alert('JSON copiado. Pegalo en un mensaje o guardalo; quien reciba puede importarlo en Rutina → Asignadas.')
-              }).catch(() => {
-                window.prompt('Copiá manualmente este JSON:', s)
-              })
+              try {
+                descargarRutinaPdf(rutinaActiva)
+              } catch (e) {
+                window.alert(e?.message || 'No se pudo generar el PDF.')
+              }
             }}
           >
-            Exportar rutina activa (JSON)
+            Exportar rutina
           </button>
         </div>
 
