@@ -164,6 +164,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
   const [modalEnviar, setModalEnviar] = useState(null)
   const [qModalEnviar, setQModalEnviar] = useState('')
   const [enviandoModal, setEnviandoModal] = useState(false)
+  const [editorDirty, setEditorDirty] = useState(false)
 
   const qBusq = (busqueda || '').trim().toLowerCase()
   const plantillasFiltradas = useMemo(
@@ -221,6 +222,10 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
     if (selectedId !== idBorradorNuevaRef.current) setModoEditor('editar')
   }, [selectedId, editorPlantillaAbierto])
 
+  useEffect(() => {
+    if (!editorPlantillaAbierto) setEditorDirty(false)
+  }, [editorPlantillaAbierto])
+
   const agregarPlantilla = () => {
     const n = emptyPlantilla()
     idBorradorNuevaRef.current = n.id
@@ -267,9 +272,25 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
       setPlantillas((prev) =>
         (Array.isArray(prev) ? prev : []).map((p) => (p.id === id ? fn({ ...p }) : p))
       )
+      if (editorPlantillaAbierto) setEditorDirty(true)
     },
-    [setPlantillas]
+    [setPlantillas, editorPlantillaAbierto]
   )
+
+  const guardarEditor = useCallback(() => {
+    if (!editorDirty) return
+    setPlantillas((prev) => {
+      try {
+        return JSON.parse(JSON.stringify(Array.isArray(prev) ? prev : []))
+      } catch {
+        return Array.isArray(prev) ? [...prev] : []
+      }
+    })
+    setEditorDirty(false)
+    onToast?.({
+      msg: 'Rutina guardada en este dispositivo y en tu cuenta (si iniciaste sesión).',
+    })
+  }, [editorDirty, setPlantillas, onToast])
 
   const abrirPicker = (dayIndex) => {
     if (!plantilla) return
@@ -536,20 +557,59 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
               {modoEditor === 'nueva' ? (
                 <>
                   Si todavía no sumaste ejercicios ni cambiaste el nombre ni el día, al volver{' '}
-                  <strong>descartamos</strong> esta plantilla vacía. Cuando empezás a armarla, cada cambio queda en este
-                  dispositivo al instante.
+                  <strong>descartamos</strong> esta plantilla vacía. Cada cambio se va guardando en el dispositivo; tocá{' '}
+                  <strong>Guardar</strong> para confirmar y sincronizar otra vez con tu cuenta (si hay sesión).
                 </>
               ) : (
                 <>
-                  Los cambios quedan en este dispositivo en el momento. <strong>Volver al listado</strong> solo cierra
+                  Los cambios se van guardando mientras editás. Tocá <strong>Guardar</strong> cuando quieras dejar
+                  constancia o forzar la sincronización con tu cuenta. <strong>Volver al listado</strong> solo cierra
                   el editor (no perdés lo ya cargado).
                 </>
               )}
             </p>
-            <div className="is-flex is-flex-wrap-wrap is-align-items-center mb-4" style={{ gap: '0.5rem' }}>
-              <button type="button" className="button is-small is-link" onClick={cerrarEditorPlantilla}>
-                ← Volver al listado
-              </button>
+            <div className="mb-4">
+              <div
+                className="is-flex is-flex-wrap-wrap is-align-items-center mb-2"
+                style={{ gap: '0.5rem', justifyContent: 'space-between' }}
+              >
+                <button type="button" className="button is-small is-link" onClick={cerrarEditorPlantilla}>
+                  ← Volver al listado
+                </button>
+                <div className="is-flex is-flex-wrap-wrap is-align-items-center" style={{ gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    className={`button is-small ${editorDirty ? 'is-primary' : 'is-light'}`}
+                    disabled={!editorDirty}
+                    onClick={guardarEditor}
+                    title={
+                      editorDirty
+                        ? 'Confirmar y volver a guardar la rutina'
+                        : 'No hay cambios nuevos desde el último Guardar'
+                    }
+                  >
+                    Guardar
+                  </button>
+                  {!editorDirty ? (
+                    <span className="is-size-7 has-text-grey">Sin cambios nuevos</span>
+                  ) : null}
+                </div>
+              </div>
+              {editorDirty ? (
+                <div
+                  className="py-2 px-3"
+                  style={{
+                    borderRadius: 8,
+                    border: '1px solid rgba(255, 183, 77, 0.45)',
+                    background: 'rgba(255, 183, 77, 0.12)',
+                  }}
+                >
+                  <p className="is-size-7 mb-0" style={{ lineHeight: 1.45 }}>
+                    <strong>Cambios nuevos.</strong> Tocá <strong>Guardar</strong> arriba para confirmarlos y volver a
+                    sincronizar con tu cuenta.
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             {(() => {
