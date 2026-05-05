@@ -131,18 +131,15 @@ export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
               ? `Eliminar «${nombreParaAria}» del catálogo`
               : `Eliminar ejercicio ${index + 1} del catálogo`
             return (
-              <li key={ex.id} style={{ ...cardEjercicio, padding: '1rem 1.125rem' }}>
-                <div className="columns is-variable is-2 is-multiline mb-0" style={{ rowGap: '0.75rem' }}>
-                  <div className="column is-12-mobile is-6-tablet">
-                    <div className="field mb-0">
-                      <div
-                        className="is-flex is-justify-content-space-between is-align-items-center mb-1"
-                        style={{ gap: '0.5rem' }}
-                      >
+              <li key={ex.id} style={{ ...cardEjercicio, position: 'relative', padding: '1rem 1.125rem' }}>
+                <div style={{ paddingRight: '2.85rem' }}>
+                  <div className="columns is-variable is-2 is-multiline mb-0" style={{ rowGap: '0.75rem' }}>
+                    <div className="column is-12-mobile is-6-tablet">
+                      <div className="field mb-0">
                         <label
-                          className="label is-size-7 mb-0 is-flex is-align-items-center"
+                          className="label is-size-7 mb-1 is-flex is-align-items-center"
                           htmlFor={`ex-nombre-${ex.id}`}
-                          style={{ gap: '0.5rem', minWidth: 0, flex: '1 1 auto' }}
+                          style={{ gap: '0.5rem' }}
                         >
                           <span
                             className="is-flex is-align-items-center is-justify-content-center has-text-weight-bold is-size-7"
@@ -160,52 +157,56 @@ export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
                           </span>
                           Nombre
                         </label>
-                        <button
-                          type="button"
-                          className="button is-small is-text has-text-grey-light profe-catalogo-quitar"
-                          title="Quitar del catálogo"
-                          aria-label={ariaEliminar}
-                          onClick={() => eliminar(ex.id)}
-                          style={{
-                            flexShrink: 0,
-                            minWidth: '2rem',
-                            height: '2rem',
-                            padding: 0,
-                            lineHeight: 1,
-                            borderRadius: 6,
-                          }}
-                        >
-                          <span aria-hidden="true" style={{ fontSize: '1.25rem', fontWeight: 600 }}>
-                            ×
-                          </span>
-                        </button>
+                        <input
+                          id={`ex-nombre-${ex.id}`}
+                          className="input is-small"
+                          value={ex.nombre}
+                          onChange={(e) => patch(ex.id, 'nombre', e.target.value)}
+                          placeholder="Ej. Press banca"
+                          autoComplete="off"
+                        />
                       </div>
-                      <input
-                        id={`ex-nombre-${ex.id}`}
-                        className="input is-small"
-                        value={ex.nombre}
-                        onChange={(e) => patch(ex.id, 'nombre', e.target.value)}
-                        placeholder="Ej. Press banca"
-                        autoComplete="off"
-                      />
                     </div>
-                  </div>
-                  <div className="column is-12-mobile is-6-tablet">
-                    <div className="field mb-0">
-                      <label className="label is-size-7 mb-1" htmlFor={`ex-notas-${ex.id}`}>
-                        Notas <span className="has-text-grey">(opcional, solo vos)</span>
-                      </label>
-                      <input
-                        id={`ex-notas-${ex.id}`}
-                        className="input is-small"
-                        value={ex.notas || ''}
-                        onChange={(e) => patch(ex.id, 'notas', e.target.value)}
-                        placeholder="Técnica, series sugeridas, link…"
-                        autoComplete="off"
-                      />
+                    <div className="column is-12-mobile is-6-tablet">
+                      <div className="field mb-0">
+                        <label className="label is-size-7 mb-1" htmlFor={`ex-notas-${ex.id}`}>
+                          Notas <span className="has-text-grey">(opcional, solo vos)</span>
+                        </label>
+                        <input
+                          id={`ex-notas-${ex.id}`}
+                          className="input is-small"
+                          value={ex.notas || ''}
+                          onChange={(e) => patch(ex.id, 'notas', e.target.value)}
+                          placeholder="Técnica, series sugeridas, link…"
+                          autoComplete="off"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  className="button is-small is-text has-text-grey-light profe-catalogo-quitar"
+                  title="Quitar del catálogo"
+                  aria-label={ariaEliminar}
+                  onClick={() => eliminar(ex.id)}
+                  style={{
+                    position: 'absolute',
+                    right: '0.65rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 1,
+                    minWidth: '2.25rem',
+                    height: '2.25rem',
+                    padding: 0,
+                    lineHeight: 1,
+                    borderRadius: 6,
+                  }}
+                >
+                  <span aria-hidden="true" style={{ fontSize: '1.35rem', fontWeight: 600 }}>
+                    ×
+                  </span>
+                </button>
               </li>
             )
           })}
