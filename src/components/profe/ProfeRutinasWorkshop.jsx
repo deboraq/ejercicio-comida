@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useStorage } from '../../hooks/useStorage'
 import { exportarRutinaAJson } from '../../utils/rutinaShare'
 import { createRoutineAssignment } from '../../lib/profeDb'
@@ -86,6 +86,20 @@ function normalizarEjerciciosDia(list) {
     .filter(Boolean)
 }
 
+/** Plantilla recién creada sin contenido útil: se puede descartar al cerrar el editor. */
+function plantillaEsBorradorVacio(p) {
+  if (!p) return false
+  const nom = String(p.nombre || '').trim()
+  if (nom !== '' && nom !== 'Nueva plantilla') return false
+  if (p.soloStudentId) return false
+  const dias = Array.isArray(p.dias) ? p.dias : []
+  if (dias.length !== 1) return false
+  const d0 = dias[0]
+  if (String(d0?.nombre || '').trim() !== 'Día 1') return false
+  const ej = normalizarEjerciciosDia(d0?.ejercicios || [])
+  return ej.length === 0
+}
+
 function CatalogoEjercicioSelect({ ejercicios, sinCatalogo, onElegir }) {
   const [valor, setValor] = useState('')
   if (sinCatalogo) {
@@ -140,6 +154,8 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
   const [sendPlantillaId, setSendPlantillaId] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [editorPlantillaAbierto, setEditorPlantillaAbierto] = useState(false)
+  const [modoEditor, setModoEditor] = useState('editar')
+  const idBorradorNuevaRef = useRef(null)
   const [qEnvioAlumno, setQEnvioAlumno] = useState('')
 
   const qBusq = (busqueda || '').trim().toLowerCase()
@@ -178,6 +194,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
   useEffect(() => {
     if (!editorPlantillaAbierto) return
     if (!listP.length) {
+      idBorradorNuevaRef.current = null
       setSelectedId('')
       setEditorPlantillaAbierto(false)
       return
@@ -207,16 +224,37 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
     if (!visibles.length) setSendPlantillaId('')
   }, [listP, sendStudentId, sendPlantillaId])
 
+  useEffect(() => {
+    if (!editorPlantillaAbierto || !idBorradorNuevaRef.current) return
+    if (selectedId !== idBorradorNuevaRef.current) setModoEditor('editar')
+  }, [selectedId, editorPlantillaAbierto])
+
   const agregarPlantilla = () => {
     const n = emptyPlantilla()
+    idBorradorNuevaRef.current = n.id
+    setModoEditor('nueva')
     setPlantillas((prev) => [...(Array.isArray(prev) ? prev : []), n])
     setSelectedId(n.id)
     setEditorPlantillaAbierto(true)
   }
 
   const abrirEditorPlantilla = (id) => {
+    idBorradorNuevaRef.current = null
+    setModoEditor('editar')
     setSelectedId(id)
     setEditorPlantillaAbierto(true)
+  }
+
+  const cerrarEditorPlantilla = () => {
+    const cur = listP.find((x) => x.id === selectedId)
+    if (cur && plantillaEsBorradorVacio(cur)) {
+      const next = listP.filter((x) => x.id !== selectedId)
+      setPlantillas(next)
+      setSelectedId(next[0]?.id ?? '')
+      onToast?.({ msg: 'Borrador vacío descartado.' })
+    }
+    idBorradorNuevaRef.current = null
+    setEditorPlantillaAbierto(false)
   }
 
   const eliminarRutinaPorId = (id) => {
@@ -226,6 +264,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
     }
     setPlantillas((prev) => (Array.isArray(prev) ? prev.filter((x) => x.id !== id) : []))
     if (selectedId === id) {
+      if (idBorradorNuevaRef.current === id) idBorradorNuevaRef.current = null
       setEditorPlantillaAbierto(false)
       setSelectedId('')
     }
@@ -427,22 +466,25 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
 
         {editorPlantillaAbierto && plantilla && (
           <>
-            <div className="is-flex is-flex-wrap-wrap is-align-items-center mb-3" style={{ gap: '0.5rem' }}>
-              <button
-                type="button"
-                className="button is-small is-light"
-                onClick={() => setEditorPlantillaAbierto(false)}
-              >
+            <p className="title is-6 mb-1">{modoEditor === 'nueva' ? 'Nueva plantilla' : 'Editar plantilla'}</p>
+            <p className="is-size-7 has-text-grey mb-3" style={{ lineHeight: 1.45 }}>
+              {modoEditor === 'nueva' ? (
+                <>
+                  Si todavía no sumaste ejercicios ni cambiaste el nombre ni el día, al volver{' '}
+                  <strong>descartamos</strong> esta plantilla vacía. Cuando empezás a armarla, cada cambio queda en este
+                  dispositivo al instante.
+                </>
+              ) : (
+                <>
+                  Los cambios quedan en este dispositivo en el momento. <strong>Volver al listado</strong> solo cierra
+                  el editor (no perdés lo ya cargado).
+                </>
+              )}
+            </p>
+            <div className="is-flex is-flex-wrap-wrap is-align-items-center mb-4" style={{ gap: '0.5rem' }}>
+              <button type="button" className="button is-small is-link" onClick={cerrarEditorPlantilla}>
                 ← Volver al listado
               </button>
-              <button
-                type="button"
-                className="button is-small is-link"
-                onClick={() => setEditorPlantillaAbierto(false)}
-              >
-                Guardar y volver
-              </button>
-              <span className="is-size-7 has-text-grey">Los cambios se guardan automáticamente.</span>
             </div>
 
             {(() => {
