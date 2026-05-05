@@ -41,6 +41,11 @@ function etiquetaAlumnoOpcionEnvio(s) {
   return name || mail || 'Sin datos'
 }
 
+function puedeRecibirPlantilla(plantilla, studentId) {
+  if (!plantilla?.soloStudentId) return true
+  return plantilla.soloStudentId === studentId
+}
+
 function plantillasNecesitanMigracion(arr) {
   for (const p of arr || []) {
     for (const d of p.dias || []) {
@@ -150,13 +155,12 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
 
   const [selectedId, setSelectedId] = useState('')
   const [picker, setPicker] = useState(null)
-  const [sendStudentId, setSendStudentId] = useState('')
-  const [sendPlantillaId, setSendPlantillaId] = useState('')
-  const [enviando, setEnviando] = useState(false)
   const [editorPlantillaAbierto, setEditorPlantillaAbierto] = useState(false)
   const [modoEditor, setModoEditor] = useState('editar')
   const idBorradorNuevaRef = useRef(null)
-  const [qEnvioAlumno, setQEnvioAlumno] = useState('')
+  const [modalEnviar, setModalEnviar] = useState(null)
+  const [qModalEnviar, setQModalEnviar] = useState('')
+  const [enviandoModal, setEnviandoModal] = useState(false)
 
   const qBusq = (busqueda || '').trim().toLowerCase()
   const plantillasFiltradas = useMemo(
@@ -164,18 +168,20 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
     [listP, students, qBusq]
   )
 
-  const qEnvioTrim = (qEnvioAlumno || '').trim().toLowerCase()
-  const alumnosEnvioFiltrados = useMemo(() => {
-    if (!qEnvioTrim) return students
-    return students.filter((s) => {
+  const qModalTrim = (qModalEnviar || '').trim().toLowerCase()
+  const alumnosModalFiltrados = useMemo(() => {
+    if (!modalEnviar) return []
+    const p = listP.find((x) => x.id === modalEnviar.plantillaId)
+    const base = students.filter((s) => p && puedeRecibirPlantilla(p, s.studentId))
+    if (!qModalTrim) return base
+    return base.filter((s) => {
       const fn = (s.fullName || '').toLowerCase()
       const em = (s.email || '').toLowerCase()
-      return fn.includes(qEnvioTrim) || em.includes(qEnvioTrim)
+      return fn.includes(qModalTrim) || em.includes(qModalTrim)
     })
-  }, [students, qEnvioTrim])
+  }, [modalEnviar, students, listP, qModalTrim])
 
   const plantilla = listP.find((p) => p.id === selectedId)
-  const enviablesParaEnvio = listP.filter((p) => !p.soloStudentId || p.soloStudentId === sendStudentId)
 
   useEffect(() => {
     setPlantillas((prev) => {
@@ -206,23 +212,6 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
       setSelectedId(visibles[0].id)
     }
   }, [editorPlantillaAbierto, listP, plantillasFiltradas, selectedId])
-
-  useEffect(() => {
-    if (students.length && !sendStudentId) setSendStudentId(students[0].studentId)
-  }, [students, sendStudentId])
-
-  useEffect(() => {
-    if (!alumnosEnvioFiltrados.length) return
-    if (!alumnosEnvioFiltrados.some((s) => s.studentId === sendStudentId)) {
-      setSendStudentId(alumnosEnvioFiltrados[0].studentId)
-    }
-  }, [alumnosEnvioFiltrados, sendStudentId])
-
-  useEffect(() => {
-    const visibles = listP.filter((p) => !p.soloStudentId || p.soloStudentId === sendStudentId)
-    if (visibles.length && !visibles.some((p) => p.id === sendPlantillaId)) setSendPlantillaId(visibles[0].id)
-    if (!visibles.length) setSendPlantillaId('')
-  }, [listP, sendStudentId, sendPlantillaId])
 
   useEffect(() => {
     if (!editorPlantillaAbierto || !idBorradorNuevaRef.current) return
@@ -375,33 +364,98 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
     }))
   }
 
-  const enviar = async () => {
-    const p = listP.find((x) => x.id === sendPlantillaId)
-    if (!teacherId || !sendStudentId || !p) {
-      onToast({ err: 'Elegí alumno y plantilla.' })
+  const abrirModalEnviar = (plantillaId) => {
+    if (!teacherId) {
+      onToast({ err: 'No hay sesión de entrenador.' })
       return
     }
-    if (p.soloStudentId && p.soloStudentId !== sendStudentId) {
-      onToast({ err: 'Esa plantilla es solo para otro alumno.' })
+    const p = listP.find((x) => x.id === plantillaId)
+    if (!p) return
+    if (!students.length) {
+      onToast({ err: 'Vinculá alumnos en la pestaña Alumnos.' })
       return
     }
-    setEnviando(true)
+    const compatibles = students.filter((s) => puedeRecibirPlantilla(p, s.studentId))
+    if (!compatibles.length) {
+      onToast({
+        err: 'Ningún alumno vinculado puede recibir esta plantilla (está marcada solo para otro alumno).',
+      })
+      return
+    }
+    setQModalEnviar('')
+    setModalEnviar({
+      plantillaId,
+      seleccion: new Set(compatibles.map((s) => s.studentId)),
+    })
+  }
+
+  const toggleSeleccionModal = (studentId) => {
+    setModalEnviar((prev) => {
+      if (!prev) return prev
+      const p = listP.find((x) => x.id === prev.plantillaId)
+      if (!p || !puedeRecibirPlantilla(p, studentId)) return prev
+      const s = new Set(prev.seleccion)
+      if (s.has(studentId)) s.delete(studentId)
+      else s.add(studentId)
+      return { ...prev, seleccion: s }
+    })
+  }
+
+  const confirmarEnviarModal = async () => {
+    if (!modalEnviar || !teacherId) return
+    const p = listP.find((x) => x.id === modalEnviar.plantillaId)
+    if (!p) {
+      setModalEnviar(null)
+      return
+    }
+    const ids = [...modalEnviar.seleccion].filter((sid) => puedeRecibirPlantilla(p, sid))
+    if (!ids.length) {
+      onToast({ err: 'Elegí al menos un alumno.' })
+      return
+    }
+    setEnviandoModal(true)
+    let ok = 0
+    let fail = 0
+    let lastErr = ''
     try {
       const obj = JSON.parse(exportarRutinaAJson({ nombre: p.nombre, dias: p.dias }))
       const dias = Array.isArray(obj.dias) ? obj.dias : []
-      const { error } = await createRoutineAssignment(teacherId, sendStudentId, p.nombre || 'Rutina', { dias })
-      if (error) onToast({ err: error.message || 'No se pudo enviar.' })
-      else {
-        onToast({ msg: `Rutina «${p.nombre}» enviada. El alumno la ve en Rutina → Asignadas.` })
-        onEnviado?.()
+      for (const studentId of ids) {
+        const { error } = await createRoutineAssignment(teacherId, studentId, p.nombre || 'Rutina', { dias })
+        if (error) {
+          fail += 1
+          lastErr = error.message || ''
+        } else ok += 1
       }
     } catch (e) {
       onToast({ err: e?.message || 'Error al preparar la rutina.' })
+      setEnviandoModal(false)
+      return
     }
-    setEnviando(false)
+    setEnviandoModal(false)
+    setModalEnviar(null)
+    if (ok && !fail) {
+      onToast({
+        msg:
+          ok === 1
+            ? `Rutina «${p.nombre}» enviada. El alumno la ve en Rutina → Asignadas.`
+            : `Rutina «${p.nombre}» enviada a ${ok} alumnos. La ven en Rutina → Asignadas.`,
+      })
+      onEnviado?.()
+    } else if (ok && fail) {
+      onToast({
+        msg: `Enviada a ${ok} alumno${ok === 1 ? '' : 's'}.`,
+        err: `Falló ${fail} envío${fail === 1 ? '' : 's'}${lastErr ? `: ${lastErr}` : '.'}`,
+      })
+      onEnviado?.()
+    } else {
+      onToast({ err: lastErr || 'No se pudo enviar.' })
+    }
   }
 
   const listaRutinasListado = plantillasFiltradas.length ? plantillasFiltradas : listP
+  const plantillaModal = modalEnviar ? listP.find((x) => x.id === modalEnviar.plantillaId) : null
+  const nSeleccionModal = modalEnviar?.seleccion?.size ?? 0
 
   return (
     <>
@@ -409,7 +463,8 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
         <h2 className="title is-6 mb-2">Plantillas de rutina</h2>
         <p className="is-size-7 has-text-grey mb-4" style={{ lineHeight: 1.5 }}>
           Armás cada día con filas (ejercicio, series y repeticiones). Podés marcar una plantilla{' '}
-          <strong>solo para un alumno</strong> (personalizada); el resto sirven para cualquiera.
+          <strong>solo para un alumno</strong> (personalizada); el resto sirven para cualquiera. Desde el listado usá{' '}
+          <strong>Enviar</strong> para mandarla a uno o varios alumnos a la vez.
         </p>
 
         {!editorPlantillaAbierto && (
@@ -445,6 +500,13 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                         onClick={() => abrirEditorPlantilla(p.id)}
                       >
                         Editar
+                      </button>
+                      <button
+                        type="button"
+                        className="button is-small is-info is-light"
+                        onClick={() => abrirModalEnviar(p.id)}
+                      >
+                        Enviar
                       </button>
                       <button
                         type="button"
@@ -701,75 +763,6 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
         )}
       </div>
 
-      <div className="box py-4 px-4 mb-0" style={rutWorkshopCaja}>
-        <h2 className="title is-6 mb-2">Enviar al alumno</h2>
-        <p className="is-size-7 has-text-grey mb-4" style={{ lineHeight: 1.5 }}>
-          Se guarda en la nube; el alumno la abre en <strong>Rutina → Asignadas</strong>.
-        </p>
-        {students.length === 0 ? (
-          <p className="is-size-7 has-text-grey mb-0">Vinculá alumnos en la pestaña Alumnos.</p>
-        ) : !listP.length ? (
-          <p className="is-size-7 has-text-grey mb-0">Creá al menos una plantilla arriba.</p>
-        ) : !enviablesParaEnvio.length ? (
-          <p className="is-size-7 has-text-grey mb-0">
-            No hay plantillas para este alumno (si solo tenés plantillas “personalizadas”, elegí al alumno correcto o
-            creá una plantilla para cualquier alumno).
-          </p>
-        ) : (
-          <>
-            <div className="field mb-3">
-              <label className="label is-size-7 mb-1" htmlFor="rut-envio-buscar-alumno">
-                Alumno
-              </label>
-              <input
-                id="rut-envio-buscar-alumno"
-                type="search"
-                className="input is-small mb-2"
-                placeholder="Buscar por nombre o correo…"
-                value={qEnvioAlumno}
-                onChange={(e) => setQEnvioAlumno(e.target.value)}
-                aria-label="Buscar alumno para enviar rutina"
-              />
-              {alumnosEnvioFiltrados.length === 0 ? (
-                <p className="is-size-7 has-text-grey mb-0">Ningún alumno coincide con la búsqueda.</p>
-              ) : (
-                <div className="select is-small is-fullwidth">
-                  <select value={sendStudentId} onChange={(e) => setSendStudentId(e.target.value)}>
-                    {alumnosEnvioFiltrados.map((s) => (
-                      <option key={s.linkId ?? s.studentId} value={s.studentId}>
-                        {etiquetaAlumnoOpcionEnvio(s)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-            <div className="field mb-3">
-              <label className="label is-size-7 mb-1" htmlFor="rut-envio-plantilla">
-                Plantilla
-              </label>
-              <div className="select is-small is-fullwidth">
-                <select id="rut-envio-plantilla" value={sendPlantillaId} onChange={(e) => setSendPlantillaId(e.target.value)}>
-                  {enviablesParaEnvio.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre || 'Sin nombre'}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="button is-link is-small is-fullwidth"
-              disabled={enviando || alumnosEnvioFiltrados.length === 0}
-              onClick={enviar}
-            >
-              {enviando ? 'Enviando…' : 'Enviar rutina al alumno'}
-            </button>
-          </>
-        )}
-      </div>
-
       {picker && (
         <div className="modal is-active">
           <button type="button" className="modal-background" aria-label="Cerrar" onClick={() => setPicker(null)} />
@@ -815,6 +808,109 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
               <button type="button" className="button is-small is-link" onClick={aplicarPicker}>
                 Aplicar
               </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {modalEnviar && (
+        <div className="modal is-active">
+          <button
+            type="button"
+            className="modal-background"
+            aria-label="Cerrar"
+            disabled={enviandoModal}
+            onClick={() => !enviandoModal && setModalEnviar(null)}
+          />
+          <div className="modal-card" style={{ maxWidth: '440px' }}>
+            <header className="modal-card-head py-3">
+              <p className="modal-card-title is-size-6">Enviar plantilla</p>
+              <button
+                type="button"
+                className="delete"
+                aria-label="Cerrar"
+                disabled={enviandoModal}
+                onClick={() => setModalEnviar(null)}
+              />
+            </header>
+            <section className="modal-card-body py-3">
+              {!plantillaModal ? (
+                <p className="is-size-7 has-text-grey mb-0">Esta plantilla ya no existe. Cerrá y elegí otra del listado.</p>
+              ) : (
+                <>
+                  <p className="is-size-7 has-text-grey mb-3" style={{ lineHeight: 1.45 }}>
+                    <strong>{plantillaModal.nombre || 'Sin nombre'}</strong>. Se guarda en la nube; cada alumno marcado la
+                    abre en <strong>Rutina → Asignadas</strong>.
+                  </p>
+                  <div className="field mb-3">
+                    <label className="label is-size-7 mb-1" htmlFor="rut-modal-envio-buscar">
+                      Buscar alumno
+                    </label>
+                    <input
+                      id="rut-modal-envio-buscar"
+                      type="search"
+                      className="input is-small"
+                      placeholder="Nombre o correo…"
+                      value={qModalEnviar}
+                      onChange={(e) => setQModalEnviar(e.target.value)}
+                    />
+                  </div>
+                  {alumnosModalFiltrados.length === 0 ? (
+                    <p className="is-size-7 has-text-grey mb-0">Ningún alumno coincide con la búsqueda.</p>
+                  ) : (
+                    <ul
+                      className="mb-0"
+                      style={{
+                        listStyle: 'none',
+                        padding: 0,
+                        maxHeight: 'min(50vh, 320px)',
+                        overflowY: 'auto',
+                      }}
+                    >
+                      {alumnosModalFiltrados.map((s) => {
+                        const on = modalEnviar.seleccion.has(s.studentId)
+                        return (
+                          <li key={s.linkId ?? s.studentId} className="mb-2">
+                            <label className="checkbox is-size-7">
+                              <input
+                                type="checkbox"
+                                checked={on}
+                                disabled={enviandoModal}
+                                onChange={() => toggleSeleccionModal(s.studentId)}
+                              />
+                              {` ${etiquetaAlumnoOpcionEnvio(s)}`}
+                            </label>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </>
+              )}
+            </section>
+            <footer className="modal-card-foot py-3" style={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="button is-small is-light"
+                disabled={enviandoModal}
+                onClick={() => setModalEnviar(null)}
+              >
+                Cancelar
+              </button>
+              {plantillaModal ? (
+                <button
+                  type="button"
+                  className="button is-small is-link"
+                  disabled={enviandoModal || nSeleccionModal === 0}
+                  onClick={confirmarEnviarModal}
+                >
+                  {enviandoModal
+                    ? 'Enviando…'
+                    : nSeleccionModal > 0
+                      ? `Enviar a ${nSeleccionModal} alumno${nSeleccionModal === 1 ? '' : 's'}`
+                      : 'Enviar'}
+                </button>
+              ) : null}
             </footer>
           </div>
         </div>
