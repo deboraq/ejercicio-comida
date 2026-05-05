@@ -547,14 +547,16 @@ export default function Profe() {
           </div>
         ) : (
           <>
-            <div className="columns is-variable is-2 is-multiline">
-              <div className="column is-12-mobile is-3-tablet">
+            <div className="columns is-variable is-1 is-multiline is-align-items-flex-start">
+              <div className="column is-12-mobile is-3-tablet" style={{ alignSelf: 'flex-start' }}>
                 <nav
                   className="box py-3 px-3 mb-0"
                   style={{
                     border: '1px solid rgba(255,255,255,0.12)',
                     borderRadius: 10,
                     background: 'rgba(0,0,0,0.2)',
+                    position: 'sticky',
+                    top: '0.75rem',
                   }}
                   aria-label="Secciones entrenador"
                 >
@@ -582,7 +584,7 @@ export default function Profe() {
                 </nav>
               </div>
 
-              <div className="column">
+              <div className="column" style={{ minWidth: 0 }}>
                 {mostrarCabeceraPanel && panelActivo && (
                   <div className="mb-3">
                     <h2 className="title is-6 mb-1">{panelActivo.label}</h2>
@@ -591,8 +593,10 @@ export default function Profe() {
                 )}
 
                 {mostrarBuscadorProfe && (
-                  <div className="field mb-3">
-                    <label className="label is-size-7" htmlFor="profe-busqueda">
+                  <div
+                    className={`field ${panel === 'rutinas' || panel === 'ejercicios' || panel === 'historial' ? 'mb-2' : 'mb-3'}`}
+                  >
+                    <label className="label is-size-7 mb-1" htmlFor="profe-busqueda">
                       Buscar
                     </label>
                     <input

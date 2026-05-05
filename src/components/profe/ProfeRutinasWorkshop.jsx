@@ -52,6 +52,19 @@ function plantillasNecesitanMigracion(arr) {
   return false
 }
 
+const rutWorkshopCaja = {
+  borderRadius: 12,
+  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(0,0,0,0.14)',
+}
+
+const rutListadoFila = {
+  borderRadius: 10,
+  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(0,0,0,0.2)',
+  padding: '0.85rem 1rem',
+}
+
 function normalizarEjerciciosDia(list) {
   return (list || [])
     .map((e) => {
@@ -353,33 +366,31 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
 
   return (
     <>
-      <div className="box mb-4 py-3">
+      <div className="box mb-4 py-4 px-4" style={rutWorkshopCaja}>
         <h2 className="title is-6 mb-2">Plantillas de rutina</h2>
-        <p className="is-size-7 has-text-grey mb-3">
+        <p className="is-size-7 has-text-grey mb-4" style={{ lineHeight: 1.5 }}>
           Armás cada día con filas (ejercicio, series y repeticiones). Podés marcar una plantilla{' '}
           <strong>solo para un alumno</strong> (personalizada); el resto sirven para cualquiera.
         </p>
 
         {!editorPlantillaAbierto && (
           <>
-            <div className="mb-3">
+            <div className="is-flex is-flex-wrap-wrap is-justify-content-flex-start is-align-items-center mb-3" style={{ gap: '0.5rem' }}>
               <button type="button" className="button is-link is-small" onClick={agregarPlantilla}>
-                Nueva rutina
+                + Nueva rutina
               </button>
             </div>
             {!listP.length ? (
               <p className="is-size-7 has-text-grey mb-0">Tocá «Nueva rutina» para crear la primera y editarla.</p>
             ) : (
-              <ul className="mb-0" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              <ul className="mb-0" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                 {listaRutinasListado.map((p) => (
                   <li
                     key={p.id}
-                    className="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap py-2 px-2 mb-2"
+                    className="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap"
                     style={{
-                      borderRadius: 6,
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      background: 'rgba(0,0,0,0.2)',
-                      gap: '0.5rem',
+                      ...rutListadoFila,
+                      gap: '0.65rem',
                     }}
                   >
                     <span className="is-size-7" style={{ wordBreak: 'break-word', flex: '1 1 12rem', minWidth: 0 }}>
@@ -388,7 +399,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                         <span className="has-text-grey"> · solo un alumno</span>
                       ) : null}
                     </span>
-                    <div className="is-flex" style={{ gap: '0.35rem', flexShrink: 0 }}>
+                    <div className="is-flex is-align-items-center" style={{ gap: '0.4rem', flexShrink: 0 }}>
                       <button
                         type="button"
                         className="button is-small is-link is-light"
@@ -439,7 +450,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
               if (opcionesEdicion.length > 1) {
                 return (
                   <div className="field mb-3">
-                    <label className="label is-size-7">Rutina a editar</label>
+                    <label className="label is-size-7 mb-1">Rutina a editar</label>
                     <div className="control">
                       {plantillasFiltradas.length === 0 && qBusq ? (
                         <p className="is-size-7 has-text-grey mb-0">Ninguna plantilla coincide con la búsqueda.</p>
@@ -468,7 +479,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
             })()}
 
                 <div className="field mb-3">
-                  <label className="label is-size-7">Nombre de la plantilla</label>
+                  <label className="label is-size-7 mb-1">Nombre de la plantilla</label>
                   <input
                     className="input is-small"
                     value={plantilla.nombre}
@@ -476,7 +487,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                   />
                 </div>
                 <div className="field mb-3">
-                  <label className="label is-size-7">Solo para alumno (opcional)</label>
+                  <label className="label is-size-7 mb-1">Solo para alumno (opcional)</label>
                   <div className="select is-small is-fullwidth">
                     <select
                       value={plantilla.soloStudentId || ''}
@@ -648,9 +659,11 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
         )}
       </div>
 
-      <div className="box py-3">
+      <div className="box py-4 px-4 mb-0" style={rutWorkshopCaja}>
         <h2 className="title is-6 mb-2">Enviar al alumno</h2>
-        <p className="is-size-7 has-text-grey mb-3">Se guarda en la nube; el alumno la abre en <strong>Rutina → Asignadas</strong>.</p>
+        <p className="is-size-7 has-text-grey mb-4" style={{ lineHeight: 1.5 }}>
+          Se guarda en la nube; el alumno la abre en <strong>Rutina → Asignadas</strong>.
+        </p>
         {students.length === 0 ? (
           <p className="is-size-7 has-text-grey mb-0">Vinculá alumnos en la pestaña Alumnos.</p>
         ) : !listP.length ? (
@@ -663,8 +676,11 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
         ) : (
           <>
             <div className="field mb-3">
-              <label className="label is-size-7">Alumno</label>
+              <label className="label is-size-7 mb-1" htmlFor="rut-envio-buscar-alumno">
+                Alumno
+              </label>
               <input
+                id="rut-envio-buscar-alumno"
                 type="search"
                 className="input is-small mb-2"
                 placeholder="Buscar por nombre o correo…"
@@ -687,9 +703,11 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
               )}
             </div>
             <div className="field mb-3">
-              <label className="label is-size-7">Plantilla</label>
+              <label className="label is-size-7 mb-1" htmlFor="rut-envio-plantilla">
+                Plantilla
+              </label>
               <div className="select is-small is-fullwidth">
-                <select value={sendPlantillaId} onChange={(e) => setSendPlantillaId(e.target.value)}>
+                <select id="rut-envio-plantilla" value={sendPlantillaId} onChange={(e) => setSendPlantillaId(e.target.value)}>
                   {enviablesParaEnvio.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.nombre || 'Sin nombre'}
