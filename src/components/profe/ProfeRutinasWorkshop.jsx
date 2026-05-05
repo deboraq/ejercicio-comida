@@ -110,13 +110,16 @@ function CatalogoEjercicioSelect({ ejercicios, sinCatalogo, onElegir }) {
   if (sinCatalogo) {
     return (
       <p className="is-size-7 has-text-grey mb-2">
-        Cargá ejercicios en la pestaña Ejercicios para poder armar el día.
+        Cargá ejercicios en la pestaña <strong>Ejercicios</strong> para poder armar el día.
       </p>
     )
   }
   return (
-    <div className="field mb-2">
-      <label className="label is-size-7 mb-1">Agregar desde el catálogo</label>
+    <div className="field mb-0">
+      <label className="label is-size-7 mb-1">Sumar uno del catálogo</label>
+      <p className="is-size-7 has-text-grey mb-2" style={{ lineHeight: 1.4 }}>
+        Elegí un nombre: se agrega al final de la lista de este día.
+      </p>
       <div className="select is-small is-fullwidth">
         <select
           value={valor}
@@ -128,7 +131,7 @@ function CatalogoEjercicioSelect({ ejercicios, sinCatalogo, onElegir }) {
             setValor('')
           }}
         >
-          <option value="">Elegí un ejercicio para sumarlo al día…</option>
+          <option value="">Elegí un ejercicio…</option>
           {ejercicios.map((c) => (
             <option key={c.id} value={c.id}>
               {String(c.nombre || '').trim() || '(sin nombre)'}
@@ -550,6 +553,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
             </div>
 
             {(() => {
+              if (modoEditor === 'nueva') return null
               const opcionesEdicion = plantillasFiltradas.length ? plantillasFiltradas : listP
               if (opcionesEdicion.length > 1) {
                 return (
@@ -582,67 +586,106 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
               return null
             })()}
 
-                <div className="field mb-3">
-                  <label className="label is-size-7 mb-1">Nombre de la plantilla</label>
-                  <input
-                    className="input is-small"
-                    value={plantilla.nombre}
-                    onChange={(e) => updatePlantilla(plantilla.id, (p) => ({ ...p, nombre: e.target.value }))}
-                  />
+                <div
+                  className="mb-4 p-3"
+                  style={{
+                    borderRadius: 10,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    background: 'rgba(0,0,0,0.18)',
+                  }}
+                >
+                  <p className="is-size-7 has-text-weight-semibold mb-3">1 · Datos de la plantilla</p>
+                  <div className="field mb-3">
+                    <label className="label is-size-7 mb-1">Nombre de la rutina</label>
+                    <input
+                      className="input is-small"
+                      value={plantilla.nombre}
+                      onChange={(e) => updatePlantilla(plantilla.id, (p) => ({ ...p, nombre: e.target.value }))}
+                      placeholder="Ej. Fuerza 3 días, Full body casa"
+                    />
+                  </div>
+                  <div className="field mb-0">
+                    <label className="label is-size-7 mb-1">¿Solo para un alumno? (opcional)</label>
+                    <div className="select is-small is-fullwidth">
+                      <select
+                        value={plantilla.soloStudentId || ''}
+                        onChange={(e) =>
+                          updatePlantilla(plantilla.id, (p) => ({
+                            ...p,
+                            soloStudentId: e.target.value || null,
+                          }))
+                        }
+                      >
+                        <option value="">No — cualquier alumno vinculado</option>
+                        {students.map((s) => (
+                          <option key={s.studentId} value={s.studentId}>
+                            Sí — {s.fullName || s.email}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                <div className="field mb-3">
-                  <label className="label is-size-7 mb-1">Solo para alumno (opcional)</label>
-                  <div className="select is-small is-fullwidth">
-                    <select
-                      value={plantilla.soloStudentId || ''}
-                      onChange={(e) =>
-                        updatePlantilla(plantilla.id, (p) => ({
-                          ...p,
-                          soloStudentId: e.target.value || null,
-                        }))
-                      }
+
+                <div
+                  className="mb-4 p-3"
+                  style={{
+                    borderRadius: 10,
+                    border: '1px solid rgba(72, 199, 142, 0.35)',
+                    background: 'rgba(72, 199, 142, 0.06)',
+                  }}
+                >
+                  <div
+                    className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap"
+                    style={{ gap: '0.75rem' }}
+                  >
+                    <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
+                      <p className="is-size-7 has-text-weight-semibold mb-1">2 · Días de entrenamiento</p>
+                      <p className="is-size-7 has-text-grey mb-0" style={{ lineHeight: 1.45 }}>
+                        Cada bloque abajo es un día. Sumá ejercicios dentro del día; si necesitás otro día de la
+                        semana, tocá <strong>Agregar día</strong>.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="button is-small is-success"
+                      onClick={agregarDia}
+                      style={{ flexShrink: 0 }}
                     >
-                      <option value="">Cualquier alumno vinculado</option>
-                      {students.map((s) => (
-                        <option key={s.studentId} value={s.studentId}>
-                          {s.fullName || s.email}
-                        </option>
-                      ))}
-                    </select>
+                      + Agregar día
+                    </button>
                   </div>
                 </div>
 
                 {(plantilla.dias || []).map((d, idx) => {
                   const filas = normalizarEjerciciosDia(d.ejercicios)
+                  const nDias = (plantilla.dias || []).length
                   return (
-                    <div key={d.id || idx} className="mb-4 p-3" style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 6 }}>
-                      <div className="is-flex is-justify-content-space-between is-align-items-center mb-2">
-                        <span className="is-size-7 has-text-weight-semibold">Día {idx + 1}</span>
-                        {(plantilla.dias || []).length > 1 && (
+                    <div
+                      key={d.id || idx}
+                      className="mb-4 p-4"
+                      style={{
+                        borderRadius: 12,
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        background: 'rgba(0,0,0,0.24)',
+                      }}
+                    >
+                      <div
+                        className="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap mb-3"
+                        style={{ gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.75rem' }}
+                      >
+                        <span className="tag is-info is-light is-size-7 mb-0">
+                          Día {idx + 1} de {nDias}
+                        </span>
+                        {nDias > 1 ? (
                           <button type="button" className="button is-small is-light" onClick={() => quitarDia(idx)}>
-                            Quitar día
+                            Quitar este día
                           </button>
-                        )}
-                      </div>
-                      <CatalogoEjercicioSelect
-                        ejercicios={listCOrdenado}
-                        sinCatalogo={listC.length === 0}
-                        onElegir={(item) => agregarDesdeCatalogo(idx, item)}
-                      />
-
-                      <div className="mb-3">
-                        <button
-                          type="button"
-                          className="button is-small is-info is-light"
-                          onClick={() => abrirPicker(idx)}
-                          disabled={!listC.length}
-                        >
-                          Añadir varios del catálogo…
-                        </button>
+                        ) : null}
                       </div>
 
                       <div className="field mb-3">
-                        <label className="label is-size-7 mb-1">Nombre del día</label>
+                        <label className="label is-size-7 mb-1">Nombre de este día</label>
                         <input
                           className="input is-small"
                           value={d.nombre}
@@ -653,17 +696,51 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                               return { ...p, dias }
                             })
                           }
+                          placeholder="Ej. Tren superior, Piernas y glúteos, Cardio"
                         />
                       </div>
 
-                      <p className="is-size-7 has-text-weight-semibold mb-2">Ejercicios del día</p>
-                      <p className="is-size-7 has-text-grey mb-2">
-                        Arrastrá cada fila desde la rayita y soltá en el lugar que quieras (en la computadora también
-                        podés arrastrar con el mouse).
+                      <div
+                        className="p-3 mb-3"
+                        style={{
+                          borderRadius: 8,
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          background: 'rgba(255,255,255,0.04)',
+                        }}
+                      >
+                        <p className="is-size-7 has-text-weight-semibold mb-2">Sumar ejercicios a este día</p>
+                        <div className="columns is-mobile is-multiline mb-0" style={{ marginBottom: 0 }}>
+                          <div className="column is-12-mobile is-7-tablet pb-2 pt-0">
+                            <CatalogoEjercicioSelect
+                              ejercicios={listCOrdenado}
+                              sinCatalogo={listC.length === 0}
+                              onElegir={(item) => agregarDesdeCatalogo(idx, item)}
+                            />
+                          </div>
+                          <div className="column is-12-mobile is-5-tablet is-flex is-align-items-flex-end pb-2 pt-0">
+                            <button
+                              type="button"
+                              className="button is-small is-info is-light is-fullwidth"
+                              onClick={() => abrirPicker(idx)}
+                              disabled={!listC.length}
+                              title="Abrí una lista con tilde para sumar muchos de una vez"
+                            >
+                              Varios del catálogo…
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="is-size-7 has-text-weight-semibold mb-1">
+                        Lista de ejercicios ({filas.length})
+                      </p>
+                      <p className="is-size-7 has-text-grey mb-2" style={{ lineHeight: 1.45 }}>
+                        Reordená las filas arrastrando el icono ⋮⋮ a la izquierda de cada ejercicio.
                       </p>
                       {filas.length === 0 ? (
-                        <p className="is-size-7 has-text-grey mb-3">
-                          Todavía no hay ejercicios en este día. Elegí uno del desplegable o usá «Añadir varios».
+                        <p className="is-size-7 has-text-grey mb-0">
+                          Todavía no hay filas. Usá el desplegable de arriba o <strong>Varios del catálogo</strong> para
+                          cargar el día más rápido.
                         </p>
                       ) : (
                         <ul className="mb-3" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -756,9 +833,9 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                   )
                 })}
 
-            <button type="button" className="button is-small is-light mb-3" onClick={agregarDia}>
-              + Agregar día
-            </button>
+            <p className="is-size-7 has-text-grey mb-0 mt-2" style={{ lineHeight: 1.45 }}>
+              ¿Falta un día más en la rutina? Usá <strong>+ Agregar día</strong> en el recuadro verde de arriba.
+            </p>
           </>
         )}
       </div>
@@ -768,12 +845,13 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
           <button type="button" className="modal-background" aria-label="Cerrar" onClick={() => setPicker(null)} />
           <div className="modal-card" style={{ maxWidth: '420px' }}>
             <header className="modal-card-head py-3">
-              <p className="modal-card-title is-size-6">Añadir del catálogo</p>
+              <p className="modal-card-title is-size-6">Varios del catálogo</p>
               <button type="button" className="delete" aria-label="Cerrar" onClick={() => setPicker(null)} />
             </header>
             <section className="modal-card-body py-3">
               <p className="is-size-7 has-text-grey mb-3">
-                Marcá los ejercicios que querés sumar al final del día (orden = orden del catálogo). Después podés editar series y repeticiones en la lista.
+                Marcá los que querés sumar: se agregan al <strong>final</strong> del día, en el mismo orden que en tu
+                catálogo. Después podés editar series y repeticiones en la lista.
               </p>
               <ul className="mb-0" style={{ listStyle: 'none', padding: 0 }}>
                 {listCOrdenado.map((c) => {
@@ -806,7 +884,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                 Cancelar
               </button>
               <button type="button" className="button is-small is-link" onClick={aplicarPicker}>
-                Aplicar
+                Sumar al día
               </button>
             </footer>
           </div>
