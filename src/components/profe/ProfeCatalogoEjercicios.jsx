@@ -131,49 +131,55 @@ export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
               ? `Eliminar «${nombreParaAria}» del catálogo`
               : `Eliminar ejercicio ${index + 1} del catálogo`
             return (
-              <li key={ex.id} style={{ ...cardEjercicio, position: 'relative', padding: '1rem 2.75rem 1rem 1.125rem' }}>
-                <button
-                  type="button"
-                  className="button is-small is-danger is-light"
-                  title="Eliminar del catálogo"
-                  aria-label={ariaEliminar}
-                  onClick={() => eliminar(ex.id)}
-                  style={{
-                    position: 'absolute',
-                    top: '0.75rem',
-                    right: '0.75rem',
-                    zIndex: 1,
-                    borderRadius: 8,
-                    minWidth: '2.25rem',
-                  }}
-                >
-                  ×
-                </button>
-
+              <li key={ex.id} style={{ ...cardEjercicio, padding: '1rem 1.125rem' }}>
                 <div className="columns is-variable is-2 is-multiline mb-0" style={{ rowGap: '0.75rem' }}>
                   <div className="column is-12-mobile is-6-tablet">
                     <div className="field mb-0">
-                      <label
-                        className="label is-size-7 mb-1 is-flex is-align-items-center"
-                        htmlFor={`ex-nombre-${ex.id}`}
+                      <div
+                        className="is-flex is-justify-content-space-between is-align-items-center mb-1"
                         style={{ gap: '0.5rem' }}
                       >
-                        <span
-                          className="is-flex is-align-items-center is-justify-content-center has-text-weight-bold is-size-7"
-                          style={{
-                            width: 26,
-                            height: 26,
-                            borderRadius: 8,
-                            flexShrink: 0,
-                            background: 'rgba(72, 95, 199, 0.35)',
-                            color: 'rgba(255,255,255,0.95)',
-                          }}
-                          aria-hidden="true"
+                        <label
+                          className="label is-size-7 mb-0 is-flex is-align-items-center"
+                          htmlFor={`ex-nombre-${ex.id}`}
+                          style={{ gap: '0.5rem', minWidth: 0, flex: '1 1 auto' }}
                         >
-                          {index + 1}
-                        </span>
-                        Nombre
-                      </label>
+                          <span
+                            className="is-flex is-align-items-center is-justify-content-center has-text-weight-bold is-size-7"
+                            style={{
+                              width: 26,
+                              height: 26,
+                              borderRadius: 8,
+                              flexShrink: 0,
+                              background: 'rgba(72, 95, 199, 0.35)',
+                              color: 'rgba(255,255,255,0.95)',
+                            }}
+                            aria-hidden="true"
+                          >
+                            {index + 1}
+                          </span>
+                          Nombre
+                        </label>
+                        <button
+                          type="button"
+                          className="button is-small is-text has-text-grey-light profe-catalogo-quitar"
+                          title="Quitar del catálogo"
+                          aria-label={ariaEliminar}
+                          onClick={() => eliminar(ex.id)}
+                          style={{
+                            flexShrink: 0,
+                            minWidth: '2rem',
+                            height: '2rem',
+                            padding: 0,
+                            lineHeight: 1,
+                            borderRadius: 6,
+                          }}
+                        >
+                          <span aria-hidden="true" style={{ fontSize: '1.25rem', fontWeight: 600 }}>
+                            ×
+                          </span>
+                        </button>
+                      </div>
                       <input
                         id={`ex-nombre-${ex.id}`}
                         className="input is-small"

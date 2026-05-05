@@ -13,3 +13,9 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Quitar ejercicio: visible al pasar el mouse, sin bloque rosa permanente */
+.profe-catalogo-quitar.is-text:hover {
+  color: #f14668 !important;
+  background: rgba(241, 70, 104, 0.12) !important;
+}
