@@ -1,5 +1,6 @@
 import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { AppNotificationsProvider, AppNotificacionesCampana } from './context/AppNotificationsContext'
 import { RoleNavProvider, useRoleNav } from './context/RoleNavContext'
 import Inicio from './pages/Inicio'
 import Ejercicios from './pages/Ejercicios'
@@ -50,6 +51,19 @@ function AppRoutes() {
   return (
     <>
       <main className="main-content">
+        {!isAuthPage && (
+          <div
+            className="app-campana-fija"
+            style={{
+              position: 'fixed',
+              top: 'max(0.5rem, env(safe-area-inset-top, 0px))',
+              right: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+              zIndex: 100,
+            }}
+          >
+            <AppNotificacionesCampana />
+          </div>
+        )}
         <Routes>
           <Route path="/" element={<ModuleGate module="inicio" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Inicio /></ModuleGate>} />
           <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Ejercicios /></ModuleGate>} />
@@ -91,11 +105,13 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <RoleNavProvider>
-        <div className="app-layout">
-          <AppRoutes />
-        </div>
-      </RoleNavProvider>
+      <AppNotificationsProvider>
+        <RoleNavProvider>
+          <div className="app-layout">
+            <AppRoutes />
+          </div>
+        </RoleNavProvider>
+      </AppNotificationsProvider>
     </AuthProvider>
   )
 }

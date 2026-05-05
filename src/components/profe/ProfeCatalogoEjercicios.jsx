@@ -71,13 +71,29 @@ export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
     )
   }
 
+  const puedeReordenar = !q
+
+  const reordenarItems = (idDesde, idHasta) => {
+    if (!idDesde || !idHasta || idDesde === idHasta) return
+    setItems((prev) => {
+      const arr = [...(Array.isArray(prev) ? prev : [])]
+      const i = arr.findIndex((x) => x && x.id === idDesde)
+      const j = arr.findIndex((x) => x && x.id === idHasta)
+      if (i < 0 || j < 0) return prev
+      const [row] = arr.splice(i, 1)
+      arr.splice(j, 0, row)
+      return arr
+    })
+  }
+
   return (
     <div className="box py-4 px-4" style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}>
       <div className="mb-4">
         <h2 className="title is-6 mb-2">Catálogo de ejercicios</h2>
         <p className="is-size-7 has-text-grey mb-0" style={{ maxWidth: '42rem', lineHeight: 1.5 }}>
           Nombres generales que armás acá; después los elegís al montar cada día de una plantilla. Las notas son solo
-          para vos. Series y repeticiones las definís en <strong>Rutinas</strong> al armar el día.
+          para vos. Series y repeticiones las definís en <strong>Rutinas</strong> al armar el día. Con la búsqueda
+          vacía podés <strong>reordenar</strong> filas arrastrando la rayita ⋮⋮ como en las rutinas.
         </p>
       </div>
 
@@ -130,9 +146,61 @@ export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
             const ariaEliminar = nombreParaAria
               ? `Eliminar «${nombreParaAria}» del catálogo`
               : `Eliminar ejercicio ${index + 1} del catálogo`
+            const payloadDrag = JSON.stringify({ id: ex.id })
             return (
-              <li key={ex.id} style={{ ...cardEjercicio, padding: '1rem 1.125rem' }}>
+              <li
+                key={ex.id}
+                style={{ ...cardEjercicio, padding: '1rem 1.125rem', touchAction: puedeReordenar ? 'none' : undefined }}
+                onDragOver={
+                  puedeReordenar
+                    ? (e) => {
+                        e.preventDefault()
+                        e.dataTransfer.dropEffect = 'move'
+                      }
+                    : undefined
+                }
+                onDrop={
+                  puedeReordenar
+                    ? (e) => {
+                        e.preventDefault()
+                        let data
+                        try {
+                          data = JSON.parse(e.dataTransfer.getData('application/x-profe-cat') || '{}')
+                        } catch {
+                          return
+                        }
+                        if (data.id) reordenarItems(data.id, ex.id)
+                      }
+                    : undefined
+                }
+              >
                 <div className="columns is-variable is-2 is-multiline is-align-items-stretch mb-0" style={{ rowGap: '0.75rem' }}>
+                  {puedeReordenar ? (
+                    <div
+                      className="column is-narrow pb-0 pt-0 is-flex is-align-items-center"
+                      title="Arrastrá para reordenar"
+                    >
+                      <span
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('application/x-profe-cat', payloadDrag)
+                          e.dataTransfer.setData('text/plain', payloadDrag)
+                          e.dataTransfer.effectAllowed = 'move'
+                        }}
+                        style={{
+                          cursor: 'grab',
+                          userSelect: 'none',
+                          color: 'rgba(255,255,255,0.35)',
+                          fontSize: '1.25rem',
+                          lineHeight: 1,
+                          padding: '0.25rem',
+                        }}
+                        aria-hidden
+                      >
+                        ⠿
+                      </span>
+                    </div>
+                  ) : null}
                   <div className="column is-12-mobile is-5-tablet">
                     <div className="field mb-0">
                       <label

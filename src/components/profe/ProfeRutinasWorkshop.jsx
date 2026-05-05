@@ -16,6 +16,30 @@ function emptyPlantilla() {
   return { id: newId('pt'), nombre: 'Nueva plantilla', dias: [emptyDia(1)], soloStudentId: null }
 }
 
+function clonarEjercicioParaPlantilla(e) {
+  const it = itemEjercicioDiaNormalizado(e)
+  if (!it) return null
+  if (!it.series.trim() && !it.repeticiones.trim()) return it.nombre
+  const o = { nombre: it.nombre }
+  if (it.series.trim()) o.series = it.series.trim()
+  if (it.repeticiones.trim()) o.repeticiones = it.repeticiones.trim()
+  return o
+}
+
+function duplicarPlantillaDesde(p) {
+  const base = String(p.nombre || 'Sin nombre').trim() || 'Sin nombre'
+  const dias = (p.dias || []).map((d, i) => {
+    const ejercicios = (d.ejercicios || []).map(clonarEjercicioParaPlantilla).filter((x) => x != null)
+    return { id: newId('pd'), nombre: d.nombre || `Día ${i + 1}`, ejercicios }
+  })
+  return {
+    id: newId('pt'),
+    nombre: `Copia de ${base}`,
+    dias: dias.length ? dias : [emptyDia(1)],
+    soloStudentId: p.soloStudentId || null,
+  }
+}
+
 function plantillaCoincideBusqueda(p, students, q) {
   if (!q) return true
   const n = (p.nombre || '').toLowerCase()
@@ -265,6 +289,14 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
       setEditorPlantillaAbierto(false)
       setSelectedId('')
     }
+  }
+
+  const duplicarPlantillaPorId = (id) => {
+    const p = listP.find((x) => x.id === id)
+    if (!p) return
+    const n = duplicarPlantillaDesde(p)
+    setPlantillas((prev) => [...(Array.isArray(prev) ? prev : []), n])
+    onToast?.({ msg: `Plantilla duplicada: «${n.nombre}».` })
   }
 
   const updatePlantilla = useCallback(
@@ -531,6 +563,13 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                         onClick={() => abrirModalEnviar(p.id)}
                       >
                         Enviar
+                      </button>
+                      <button
+                        type="button"
+                        className="button is-small is-light"
+                        onClick={() => duplicarPlantillaPorId(p.id)}
+                      >
+                        Duplicar
                       </button>
                       <button
                         type="button"

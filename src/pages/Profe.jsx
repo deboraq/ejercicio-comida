@@ -1,6 +1,7 @@
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useAppNotifications } from '../context/AppNotificationsContext'
 import {
   fetchMyProfile,
   findStudentIdByEmail,
@@ -31,150 +32,14 @@ function navItemsForProfile(profile) {
   return items
 }
 
-function idNotificacionCampana() {
-  return `av_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
-}
-
-function ProfeAvisosCampana({ avisosAdmin, notificaciones, badgeCount, onAbrirPanel }) {
-  const [abierta, setAbierta] = useState(false)
-  const ref = useRef(null)
-
-  useEffect(() => {
-    if (!abierta) return
-    const cerrar = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setAbierta(false)
-    }
-    document.addEventListener('mousedown', cerrar)
-    return () => document.removeEventListener('mousedown', cerrar)
-  }, [abierta])
-
-  const toggle = () => {
-    setAbierta((prev) => {
-      if (!prev) onAbrirPanel()
-      return !prev
-    })
-  }
-
-  const vacia = (!avisosAdmin || avisosAdmin.length === 0) && (!notificaciones || notificaciones.length === 0)
-
-  return (
-    <div className="is-relative" ref={ref} style={{ flexShrink: 0 }}>
-      <button
-        type="button"
-        className="button is-small is-light"
-        onClick={toggle}
-        aria-expanded={abierta}
-        aria-label="Avisos"
-        style={{ position: 'relative', minWidth: '2.5rem' }}
-      >
-        <span aria-hidden="true">🔔</span>
-        {badgeCount > 0 ? (
-          <span
-            className="tag is-danger is-rounded"
-            style={{
-              position: 'absolute',
-              top: '-0.35rem',
-              right: '-0.35rem',
-              fontSize: '0.65rem',
-              minWidth: '1.1rem',
-              height: '1.1rem',
-              padding: '0 0.25rem',
-              lineHeight: '1.1rem',
-            }}
-          >
-            {badgeCount > 9 ? '9+' : badgeCount}
-          </span>
-        ) : null}
-      </button>
-      {abierta ? (
-        <div
-          className="box py-3 px-3"
-          style={{
-            position: 'absolute',
-            right: 0,
-            top: 'calc(100% + 6px)',
-            width: 'min(100vw - 2rem, 360px)',
-            maxHeight: '70vh',
-            overflowY: 'auto',
-            zIndex: 40,
-            border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: 10,
-            background: 'rgba(22,22,26,0.98)',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
-          }}
-        >
-          <p className="is-size-7 has-text-weight-semibold mb-2">Avisos</p>
-          {vacia ? (
-            <p className="is-size-7 has-text-grey mb-0">No hay avisos todavía.</p>
-          ) : (
-            <>
-              {avisosAdmin && avisosAdmin.length > 0 ? (
-                <div className="mb-3">
-                  <p className="is-size-7 has-text-grey mb-2">Del administrador</p>
-                  <ul className="mb-0 pl-4" style={{ listStyle: 'disc' }}>
-                    {avisosAdmin.map((a) => (
-                      <li key={a.id} className="mb-2">
-                        <p className="is-size-7 mb-1" style={{ whiteSpace: 'pre-wrap' }}>
-                          {a.body}
-                        </p>
-                        <span className="is-size-7 has-text-grey">{(a.created_at || '').slice(0, 16).replace('T', ' ')}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {notificaciones && notificaciones.length > 0 ? (
-                <div>
-                  {avisosAdmin && avisosAdmin.length > 0 ? (
-                    <p className="is-size-7 has-text-grey mb-2 mt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.75rem' }}>
-                      Actividad
-                    </p>
-                  ) : (
-                    <p className="is-size-7 has-text-grey mb-2">Actividad</p>
-                  )}
-                  <ul className="mb-0" style={{ listStyle: 'none', padding: 0 }}>
-                    {notificaciones.map((n) => (
-                      <li
-                        key={n.id}
-                        className="py-2 is-size-7"
-                        style={{
-                          borderBottom: '1px solid rgba(255,255,255,0.06)',
-                          opacity: n.read ? 0.75 : 1,
-                        }}
-                      >
-                        <span
-                          className={`${n.kind === 'danger' ? 'has-text-danger' : n.kind === 'success' ? 'has-text-success' : 'has-text-info'}`}
-                          style={{ fontWeight: n.read ? 400 : 600 }}
-                        >
-                          {n.kind === 'danger' ? 'Error · ' : n.kind === 'success' ? 'Listo · ' : ''}
-                        </span>
-                        <span style={{ whiteSpace: 'pre-wrap' }}>{n.text}</span>
-                        <span className="is-block has-text-grey mt-1" style={{ fontSize: '0.65rem' }}>
-                          {new Date(n.ts).toLocaleString()}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
 export default function Profe() {
   const { user, isConfigured } = useAuth()
+  const { onToast, setAvisosAdmin } = useAppNotifications()
   const [profile, setProfile] = useState(null)
   const [profileLoading, setProfileLoading] = useState(true)
-  const [avisosAdmin, setAvisosAdmin] = useState([])
   const [students, setStudents] = useState([])
   const [studentsLoading, setStudentsLoading] = useState(false)
   const [emailAlumno, setEmailAlumno] = useState('')
-  const [notificacionesCampana, setNotificacionesCampana] = useState([])
-  const [adminAvisosLeidosIds, setAdminAvisosLeidosIds] = useState(() => new Set())
   const [panel, setPanel] = useState(null)
   const [historialTick, setHistorialTick] = useState(0)
   const [adminVistaLoading, setAdminVistaLoading] = useState(false)
@@ -184,41 +49,6 @@ export default function Profe() {
 
   const esProfe = profile?.role === 'profe'
   const esAdmin = profile?.role === 'admin'
-
-  const addNotificacionCampana = useCallback((kind, text) => {
-    const t = String(text || '').trim()
-    if (!t) return
-    setNotificacionesCampana((prev) =>
-      [{ id: idNotificacionCampana(), kind, text: t, read: false, ts: Date.now() }, ...prev].slice(0, 80)
-    )
-  }, [])
-
-  const onToast = useCallback(
-    ({ msg: m, err: e }) => {
-      if (m) addNotificacionCampana('success', m)
-      if (e) addNotificacionCampana('danger', e)
-    },
-    [addNotificacionCampana]
-  )
-
-  const alAbrirPanelCampana = useCallback(() => {
-    setNotificacionesCampana((prev) => prev.map((n) => ({ ...n, read: true })))
-    setAdminAvisosLeidosIds((prev) => {
-      const next = new Set(prev)
-      avisosAdmin.forEach((a) => next.add(a.id))
-      return next
-    })
-  }, [avisosAdmin])
-
-  const unreadToastCampana = useMemo(
-    () => notificacionesCampana.filter((n) => !n.read).length,
-    [notificacionesCampana]
-  )
-  const unreadAdminCampana = useMemo(
-    () => avisosAdmin.filter((a) => !adminAvisosLeidosIds.has(a.id)).length,
-    [avisosAdmin, adminAvisosLeidosIds]
-  )
-  const badgeCampana = unreadToastCampana + unreadAdminCampana
 
   const cargarPerfil = useCallback(async () => {
     if (!user?.id) {
@@ -241,7 +71,7 @@ export default function Profe() {
     const { data, error } = await listAdminMessagesForTeacher(user.id)
     if (!error && data) setAvisosAdmin(data)
     else setAvisosAdmin([])
-  }, [user?.id, esProfe])
+  }, [user?.id, esProfe, setAvisosAdmin])
 
   const cargarAlumnos = useCallback(async () => {
     if (!user?.id || !esProfe) {
@@ -251,13 +81,13 @@ export default function Profe() {
     setStudentsLoading(true)
     const { students: list, error } = await listTeacherStudents(user.id)
     if (error) {
-      addNotificacionCampana('danger', error.message || 'No se pudieron cargar los alumnos.')
+      onToast({ err: error.message || 'No se pudieron cargar los alumnos.' })
       setStudents([])
     } else {
       setStudents(list)
     }
     setStudentsLoading(false)
-  }, [user?.id, esProfe, addNotificacionCampana])
+  }, [user?.id, esProfe, onToast])
 
   useEffect(() => {
     cargarPerfil()
@@ -365,36 +195,35 @@ export default function Profe() {
     if (!user?.id || !esProfe) return
     const { studentId, error: e1 } = await findStudentIdByEmail(emailAlumno)
     if (e1) {
-      addNotificacionCampana('danger', e1.message || 'No se pudo buscar el alumno.')
+      onToast({ err: e1.message || 'No se pudo buscar el alumno.' })
       return
     }
     if (!studentId) {
-      addNotificacionCampana(
-        'danger',
-        'No encontramos una cuenta con ese correo. El alumno tiene que registrarse antes.'
-      )
+      onToast({
+        err: 'No encontramos una cuenta con ese correo. El alumno tiene que registrarse antes.',
+      })
       return
     }
     const { error: e2 } = await addTeacherStudent(user.id, studentId)
     if (e2) {
       if (String(e2.message || '').includes('duplicate') || e2.code === '23505') {
-        addNotificacionCampana('danger', 'Ese alumno ya está en tu lista.')
+        onToast({ err: 'Ese alumno ya está en tu lista.' })
       } else {
-        addNotificacionCampana('danger', e2.message || 'No se pudo vincular.')
+        onToast({ err: e2.message || 'No se pudo vincular.' })
       }
       return
     }
     setEmailAlumno('')
-    addNotificacionCampana('success', 'Alumno vinculado. Ya podés armar rutinas y enviárselas.')
+    onToast({ msg: 'Alumno vinculado. Ya podés armar rutinas y enviárselas.' })
     await cargarAlumnos()
   }
 
   const quitarAlumno = async (linkId) => {
     if (!window.confirm('¿Quitar este alumno de tu lista?')) return
     const { error } = await removeTeacherStudent(linkId)
-    if (error) addNotificacionCampana('danger', error.message || 'No se pudo quitar.')
+    if (error) onToast({ err: error.message || 'No se pudo quitar.' })
     else {
-      addNotificacionCampana('success', 'Alumno quitado de la lista.')
+      onToast({ msg: 'Alumno quitado de la lista.' })
       await cargarAlumnos()
     }
   }
@@ -507,24 +336,11 @@ export default function Profe() {
   return (
     <section className="section py-4">
       <div className="container" style={{ maxWidth: '1120px' }}>
-        <header
-          className="mb-4 is-flex is-flex-wrap-wrap is-justify-content-space-between is-align-items-flex-start"
-          style={{ gap: '0.75rem' }}
-        >
-          <div style={{ flex: '1 1 220px' }}>
-            <h1 className="title is-5 mb-2">Entrenador</h1>
-            <p className="is-size-7 has-text-grey mb-0">
-              El alumno ve lo que envías en la pestaña <strong>Rutina</strong> de su cuenta.
-            </p>
-          </div>
-          {navItems.length > 0 ? (
-            <ProfeAvisosCampana
-              avisosAdmin={esProfe ? avisosAdmin : []}
-              notificaciones={notificacionesCampana}
-              badgeCount={badgeCampana}
-              onAbrirPanel={alAbrirPanelCampana}
-            />
-          ) : null}
+        <header className="mb-4">
+          <h1 className="title is-5 mb-2">Entrenador</h1>
+          <p className="is-size-7 has-text-grey mb-0">
+            El alumno ve lo que envías en la pestaña <strong>Rutina</strong> de su cuenta.
+          </p>
         </header>
 
         {profileLoading ? (
