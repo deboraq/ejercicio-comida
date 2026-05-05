@@ -18,34 +18,14 @@ function navItemsForProfile(profile) {
   if (!profile) return []
   const items = []
   if (profile.role === 'admin') {
-    items.push({
-      id: 'supervision',
-      label: 'Supervisión',
-      desc: 'Quiénes son entrenadores y qué alumnos tienen vinculados.',
-    })
+    items.push({ id: 'supervision', label: 'Supervisión', desc: 'Entrenadores (rol profe) y alumnos vinculados.' })
   }
   if (profile.role === 'profe') {
     items.push(
-      {
-        id: 'alumnos',
-        label: 'Alumnos',
-        desc: 'Primero: agregá el email con el que cada alumno creó su cuenta acá.',
-      },
-      {
-        id: 'ejercicios',
-        label: 'Ejercicios',
-        desc: 'Después: cargá nombres (y notas) para usarlos al armar días de rutina.',
-      },
-      {
-        id: 'rutinas',
-        label: 'Rutinas',
-        desc: 'Armá plantillas por días y envialas; el alumno las abre en Rutina → Asignadas.',
-      },
-      {
-        id: 'historial',
-        label: 'Historial',
-        desc: 'Último: revisá envíos y, si hace falta, quitá una rutina al alumno.',
-      },
+      { id: 'alumnos', label: 'Alumnos', desc: 'Vincular con el correo con el que se registró cada alumno.' },
+      { id: 'ejercicios', label: 'Ejercicios', desc: 'Catálogo para armar rutinas.' },
+      { id: 'rutinas', label: 'Rutinas', desc: 'Plantillas y envío a la cuenta del alumno.' },
+      { id: 'historial', label: 'Historial', desc: 'Rutinas ya enviadas.' },
     )
   }
   return items
@@ -81,14 +61,13 @@ function ProfeAvisosCampana({ avisosAdmin, notificaciones, badgeCount, onAbrirPa
     <div className="is-relative" ref={ref} style={{ flexShrink: 0 }}>
       <button
         type="button"
-        className="button is-small is-light is-flex is-align-items-center"
+        className="button is-small is-light"
         onClick={toggle}
         aria-expanded={abierta}
         aria-label="Avisos"
-        style={{ position: 'relative', gap: '0.35rem' }}
+        style={{ position: 'relative', minWidth: '2.5rem' }}
       >
         <span aria-hidden="true">🔔</span>
-        <span className="is-hidden-mobile">Avisos</span>
         {badgeCount > 0 ? (
           <span
             className="tag is-danger is-rounded"
@@ -333,8 +312,7 @@ export default function Profe() {
   }, [profileLoading, navItems])
 
   const panelActivo = panel != null ? navItems.find((i) => i.id === panel) : null
-  const mostrarCabeceraPanel = Boolean(panelActivo)
-  const cabeceraPanelCompacta = panel === 'ejercicios' || panel === 'rutinas' || panel === 'historial'
+  const mostrarCabeceraPanel = panel === 'supervision' || panel === 'alumnos'
 
   useEffect(() => {
     setBusquedaProfe('')
@@ -534,50 +512,10 @@ export default function Profe() {
           style={{ gap: '0.75rem' }}
         >
           <div style={{ flex: '1 1 220px' }}>
-            <h1 className="title is-5 mb-2">Panel del entrenador</h1>
-            {profileLoading ? (
-              <p className="is-size-7 has-text-grey mb-0">Cargando tu perfil…</p>
-            ) : (
-              <>
-                {profile ? (
-                  <p className="is-size-7 has-text-weight-medium mb-2" style={{ opacity: 0.92 }}>
-                    {(profile.full_name || '').trim() || 'Tu cuenta'}
-                    {profile.email ? (
-                      <span className="has-text-grey has-text-weight-normal"> · {profile.email}</span>
-                    ) : null}
-                    {profile.role ? (
-                      <span className="tag is-light is-rounded ml-2 is-size-7" style={{ verticalAlign: 'middle' }}>
-                        {profile.role === 'profe' && esAdmin ? 'admin + profe' : profile.role}
-                      </span>
-                    ) : null}
-                  </p>
-                ) : null}
-                {esProfe ? (
-                  <>
-                    <p className="is-size-7 has-text-grey mb-1">
-                      Orden recomendado: <strong>Alumnos</strong> → <strong>Ejercicios</strong> → <strong>Rutinas</strong>{' '}
-                      → <strong>Historial</strong>.
-                    </p>
-                    <p className="is-size-7 has-text-grey mb-0">
-                      Lo que enviás llega a la pestaña <strong>Rutina</strong> del alumno (apartado Asignadas). Mensajes
-                      del administrador y avisos de acciones: botón <strong className="has-text-grey-light">Avisos</strong>{' '}
-                      🔔.
-                    </p>
-                  </>
-                ) : esAdmin && !esProfe ? (
-                  <p className="is-size-7 has-text-grey mb-0">
-                    Desde <strong>Supervisión</strong> ves entrenadores y vínculos. Para usar Alumnos, Ejercicios o Rutinas
-                    necesitás también rol <strong>profe</strong> en Administración.
-                  </p>
-                ) : profile ? (
-                  <p className="is-size-7 has-text-grey mb-0">
-                    Gestioná alumnos, catálogo y rutinas desde el menú de la izquierda cuando tengas rol entrenador.
-                  </p>
-                ) : (
-                  <p className="is-size-7 has-text-grey mb-0">No se pudo cargar el perfil. Probá recargar o revisá la sesión.</p>
-                )}
-              </>
-            )}
+            <h1 className="title is-5 mb-2">Entrenador</h1>
+            <p className="is-size-7 has-text-grey mb-0">
+              El alumno ve lo que envías en la pestaña <strong>Rutina</strong> de su cuenta.
+            </p>
           </div>
           {navItems.length > 0 ? (
             <ProfeAvisosCampana
@@ -627,11 +565,6 @@ export default function Profe() {
                   >
                     {navItems.map((item) => {
                       const activa = panel === item.id
-                      const idxItem = navItems.findIndex((x) => x.id === item.id)
-                      const pasoProfe =
-                        esProfe && item.id !== 'supervision'
-                          ? navItems.filter((x, i) => i <= idxItem && x.id !== 'supervision').length
-                          : null
                       return (
                         <li key={item.id}>
                           <button
@@ -639,28 +572,8 @@ export default function Profe() {
                             className={`button is-small is-fullwidth has-text-left ${activa ? 'is-link' : 'is-light'}`}
                             onClick={() => setPanel(item.id)}
                             aria-current={activa ? 'page' : undefined}
-                            style={{ height: 'auto', minHeight: '2.25rem', paddingTop: '0.5rem', paddingBottom: '0.5rem' }}
                           >
-                            <span className="is-flex is-align-items-flex-start" style={{ gap: '0.45rem' }}>
-                              {pasoProfe != null ? (
-                                <span
-                                  className="is-size-7 has-text-weight-bold"
-                                  style={{ opacity: activa ? 1 : 0.65, minWidth: '1.1rem' }}
-                                  aria-hidden="true"
-                                >
-                                  {pasoProfe}
-                                </span>
-                              ) : null}
-                              <span style={{ minWidth: 0 }}>
-                                <span className="is-block has-text-weight-semibold">{item.label}</span>
-                                <span
-                                  className={`is-block is-size-7 mt-1 ${activa ? '' : 'has-text-grey'}`}
-                                  style={{ lineHeight: 1.35, fontWeight: 400 }}
-                                >
-                                  {item.desc}
-                                </span>
-                              </span>
-                            </span>
+                            <span className="is-block">{item.label}</span>
                           </button>
                         </li>
                       )
@@ -672,33 +585,15 @@ export default function Profe() {
               <div className="column">
                 {mostrarCabeceraPanel && panelActivo && (
                   <div className="mb-3">
-                    {cabeceraPanelCompacta ? (
-                      <div
-                        className="px-3 py-2"
-                        style={{
-                          borderLeft: '3px solid #485fc7',
-                          background: 'rgba(0,0,0,0.18)',
-                          borderRadius: '0 6px 6px 0',
-                        }}
-                      >
-                        <p className="is-size-7 mb-0">
-                          <span className="has-text-weight-semibold">{panelActivo.label}</span>
-                          <span className="has-text-grey"> — {panelActivo.desc}</span>
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <h2 className="title is-6 mb-1">{panelActivo.label}</h2>
-                        <p className="is-size-7 has-text-grey mb-0">{panelActivo.desc}</p>
-                      </>
-                    )}
+                    <h2 className="title is-6 mb-1">{panelActivo.label}</h2>
+                    <p className="is-size-7 has-text-grey mb-0">{panelActivo.desc}</p>
                   </div>
                 )}
 
                 {mostrarBuscadorProfe && (
                   <div className="field mb-3">
                     <label className="label is-size-7" htmlFor="profe-busqueda">
-                      Buscar en esta sección
+                      Buscar
                     </label>
                     <input
                       id="profe-busqueda"
@@ -727,42 +622,26 @@ export default function Profe() {
 
                 {panel === 'alumnos' && esProfe && (
                   <div className="box mb-4 py-3">
-                    <h3 className="title is-6 mb-2">Vincular un alumno</h3>
-                    <p className="is-size-7 has-text-grey mb-3">
-                      Escribí el <strong>mismo correo</strong> con el que la persona se registró en esta app. Si aún no
-                      tiene cuenta, tiene que crearla antes (pestaña Config o registro).
-                    </p>
-                    <div className="field mb-4">
-                      <label className="label is-size-7 mb-1" htmlFor="profe-email-alumno">
-                        Correo del alumno
-                      </label>
-                      <div className="field has-addons mb-0">
-                        <div className="control is-expanded">
-                          <input
-                            id="profe-email-alumno"
-                            className="input is-small"
-                            type="email"
-                            placeholder="ej. maria@gmail.com"
-                            value={emailAlumno}
-                            onChange={(e) => setEmailAlumno(e.target.value)}
-                            autoComplete="email"
-                          />
-                        </div>
-                        <div className="control">
-                          <button type="button" className="button is-link is-small" onClick={vincularAlumno}>
-                            Vincular
-                          </button>
-                        </div>
+                    <div className="field has-addons mb-3">
+                      <div className="control is-expanded">
+                        <input
+                          className="input is-small"
+                          type="email"
+                          placeholder="Correo del alumno (cuenta registrada)"
+                          value={emailAlumno}
+                          onChange={(e) => setEmailAlumno(e.target.value)}
+                        />
+                      </div>
+                      <div className="control">
+                        <button type="button" className="button is-link is-small" onClick={vincularAlumno}>
+                          Vincular
+                        </button>
                       </div>
                     </div>
-                    <h3 className="title is-6 mb-2">Tus alumnos</h3>
                     {studentsLoading ? (
                       <p className="is-size-7 has-text-grey mb-0">Cargando lista…</p>
                     ) : students.length === 0 ? (
-                      <p className="is-size-7 has-text-grey mb-0">
-                        Todavía no hay nadie en tu lista. Cuando vincules al menos uno, podés seguir en{' '}
-                        <strong>Ejercicios</strong> y <strong>Rutinas</strong>.
-                      </p>
+                      <p className="is-size-7 has-text-grey mb-0">Todavía no tenés alumnos vinculados.</p>
                     ) : studentsFiltrados.length === 0 ? (
                       <p className="is-size-7 has-text-grey mb-0">No hay coincidencias con la búsqueda.</p>
                     ) : (
