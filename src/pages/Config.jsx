@@ -221,12 +221,9 @@ export default function Config() {
         {!cargandoPerfilNube && esProfe && (
           <div className="box mb-4 py-3">
             <h2 className="title is-6 mb-2">Panel entrenador</h2>
-            <p className="is-size-7 has-text-grey mb-3">
-              Alumnos, catálogo de ejercicios y rutinas están en la pestaña <strong>Profe</strong>.
+            <p className="is-size-7 has-text-grey mb-0">
+              Alumnos, catálogo de ejercicios y rutinas están en la pestaña <strong>Profe</strong> del menú inferior.
             </p>
-            <Link to="/profe" className="button is-link is-small">
-              Ir a Profe
-            </Link>
           </div>
         )}
 
