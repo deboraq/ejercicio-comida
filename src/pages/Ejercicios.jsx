@@ -521,13 +521,13 @@ export default function Ejercicios() {
                         <li key={e.id} className="box py-2 px-3 mb-2 ejercicio-historial-fila">
                           <div className="is-flex is-justify-content-space-between is-align-items-flex-start">
                             <div className="is-flex-wrap-wrap is-flex is-align-items-center" style={{ gap: '0.5rem' }}>
-                              <strong>{e.nombre}</strong>
+                              <strong className="ej-hist-nombre">{e.nombre}</strong>
                               <span className="tag is-link is-light">{etiquetaTipo(e.tipo)}</span>
-                              <span className="is-size-7 ej-hist-duracion">
+                              <span className="ej-hist-chip ej-hist-duracion">
                                 {e.distanciaKm != null && Number(e.distanciaKm) > 0 ? `${e.distanciaKm} km · ` : ''}
                                 {e.duracion} min
                               </span>
-                              <span className="tag is-success is-light">
+                              <span className="ej-hist-chip ej-hist-kcal">
                                 ~{caloriasEjercicioRegistro(e, pesoKg)} kcal
                                 {e.caloriasManual != null && Number(e.caloriasManual) > 0 ? ' (manual)' : ''}
                               </span>

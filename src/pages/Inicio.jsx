@@ -315,13 +315,16 @@ export default function Inicio() {
                     {rutinaDelDiaCalendario.map((r) => (
                       <li key={r.id} className="box py-2 px-3 mb-2 inicio-actividad-card">
                         <strong className="inicio-actividad-card-titulo">{r.ejercicio}</strong>
-                        <span className="is-size-7 ml-2 inicio-actividad-card-meta">
+                        <span className="inicio-actividad-chip inicio-actividad-chip-plan ml-2">
                           {r.series}×{r.repeticiones}
-                          {r.pesoKg != null && r.pesoKg > 0 && ` · ${r.pesoKg} kg`}
-                          {' '}
-                          <span className="has-text-success">~{caloriasQuemadasRegistroRutina(r, pesoCfg)} kcal</span>
+                        </span>
+                        {r.pesoKg != null && r.pesoKg > 0 && (
+                          <span className="inicio-actividad-chip inicio-actividad-chip-peso ml-1">{r.pesoKg} kg</span>
+                        )}
+                        <span className="inicio-actividad-chip inicio-actividad-chip-kcal ml-1">
+                          ~{caloriasQuemadasRegistroRutina(r, pesoCfg)} kcal
                           {r.kcalManual != null && Number(r.kcalManual) > 0 && (
-                            <span className="is-size-7 has-text-grey"> (manual)</span>
+                            <span> (manual)</span>
                           )}
                         </span>
                         {r.notas && <p className="is-size-7 mt-1 mb-0 inicio-actividad-card-notas">— {r.notas}</p>}
@@ -338,11 +341,11 @@ export default function Inicio() {
                       <li key={e.id} className="box py-2 px-3 mb-2 inicio-actividad-card">
                         <strong className="inicio-actividad-card-titulo">{e.nombre}</strong>
                         <span className="tag is-link is-light is-size-7 ml-2">{etiquetaTipo(e.tipo)}</span>
-                        <span className="is-size-7 ml-2 inicio-actividad-card-meta">
+                        <span className="inicio-actividad-chip inicio-actividad-chip-plan ml-1">
                           {e.distanciaKm != null && Number(e.distanciaKm) > 0 ? `${e.distanciaKm} km · ` : ''}
                           {e.duracion} min
                         </span>
-                        <span className="is-size-7 has-text-success ml-1 inicio-actividad-card-kcal">
+                        <span className="inicio-actividad-chip inicio-actividad-chip-kcal ml-1">
                           ~{caloriasEjercicioRegistro(e, pesoCfg)} kcal
                         </span>
                         {e.notas && <p className="is-size-7 mt-1 mb-0 inicio-actividad-card-notas">— {e.notas}</p>}

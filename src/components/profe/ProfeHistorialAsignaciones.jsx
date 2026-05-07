@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { listRoutineAssignmentsForTeacher, deleteRoutineAssignment } from '../../lib/profeDb'
+import { formatearFechaHoraLocal } from '../../utils/calorias'
 
 export default function ProfeHistorialAsignaciones({ teacherId, students, busqueda = '', onToast }) {
   const [rows, setRows] = useState([])
@@ -95,7 +96,7 @@ export default function ProfeHistorialAsignaciones({ teacherId, students, busque
             <tbody>
               {rowsFiltrados.map((r) => (
                 <tr key={r.id}>
-                  <td>{(r.created_at || '').slice(0, 16).replace('T', ' ')}</td>
+                  <td>{formatearFechaHoraLocal(r.created_at)}</td>
                   <td>{nombreAlumno(r.student_id)}</td>
                   <td>{r.title || '—'}</td>
                   <td className="has-text-right">

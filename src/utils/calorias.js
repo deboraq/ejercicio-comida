@@ -232,6 +232,20 @@ export function fechaSoloDia(valor) {
   return m ? m[1] : s.slice(0, 10)
 }
 
+/**
+ * Timestamps ISO de Supabase (UTC) en hora local del dispositivo: YYYY-MM-DD HH:mm.
+ * Evita mostrar la hora “cruda” del string que suele ser UTC y confunde al entrenador.
+ */
+export function formatearFechaHoraLocal(valor) {
+  if (valor == null || valor === '') return '—'
+  const d = new Date(valor)
+  if (Number.isNaN(d.getTime())) {
+    return String(valor).replace('T', ' ').slice(0, 16)
+  }
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export function caloriasQuemadasRutinaDia(registros, fechaIsoDia, pesoKg = PESO_DEFAULT_KG) {
   if (!registros?.length) return 0
   return registros

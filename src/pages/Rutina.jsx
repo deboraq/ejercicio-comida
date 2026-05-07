@@ -874,7 +874,7 @@ export default function Rutina() {
                     key={`${nombreDeEjercicioDiaItem(ex)}-${idx}`}
                     className="is-flex is-justify-content-space-between is-align-items-center py-2 subtle-divider-b"
                   >
-                    <span>{etiquetaPlanEjercicio(ex)}</span>
+                    <span className="rutina-plan-ejercicio">{etiquetaPlanEjercicio(ex)}</span>
                     <button
                       type="button"
                       className="button is-small is-text has-text-grey"
@@ -1170,13 +1170,14 @@ function FilaRegistroRutinaEditable({
         <li className="py-2 subtle-divider-b">
           <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
             <span>
-              <strong>{registro.ejercicio}</strong> — {registro.series}×{registro.repeticiones}
-              {registro.pesoKg != null && registro.pesoKg > 0 && <span className="has-text-grey"> · {registro.pesoKg} kg</span>}
-              <span className="has-text-success"> · ~{caloriasQuemadasRegistroRutina(registro, pesoCfg)} kcal</span>
+              <strong className="rutina-registro-nombre">{registro.ejercicio}</strong>
+              <span className="rutina-chip rutina-chip-plan ml-2">{registro.series}×{registro.repeticiones}</span>
+              {registro.pesoKg != null && registro.pesoKg > 0 && <span className="rutina-chip rutina-chip-peso ml-1">{registro.pesoKg} kg</span>}
+              <span className="rutina-chip rutina-chip-kcal ml-1">~{caloriasQuemadasRegistroRutina(registro, pesoCfg)} kcal</span>
               {registro.kcalManual != null && Number(registro.kcalManual) > 0 && (
                 <span className="has-text-grey is-size-7"> (manual)</span>
               )}
-              {registro.notas && <span className="has-text-grey"> — {registro.notas}</span>}
+              {registro.notas && <span className="rutina-registro-notas"> — {registro.notas}</span>}
             </span>
             {botonesAccion}
           </div>
@@ -1187,16 +1188,16 @@ function FilaRegistroRutinaEditable({
       <li className="box py-2 px-3 mb-2">
         <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
           <div>
-            <strong>{registro.ejercicio}</strong>
+            <strong className="rutina-registro-nombre">{registro.ejercicio}</strong>
             <p className="is-size-7 mt-1 mb-0">
-              {registro.series}×{registro.repeticiones}
-              {registro.pesoKg != null && registro.pesoKg > 0 && <span> · <strong>{registro.pesoKg} kg</strong></span>}
-              <span className="has-text-success"> · ~{caloriasQuemadasRegistroRutina(registro, pesoCfg)} kcal</span>
+              <span className="rutina-chip rutina-chip-plan">{registro.series}×{registro.repeticiones}</span>
+              {registro.pesoKg != null && registro.pesoKg > 0 && <span className="rutina-chip rutina-chip-peso ml-1">{registro.pesoKg} kg</span>}
+              <span className="rutina-chip rutina-chip-kcal ml-1">~{caloriasQuemadasRegistroRutina(registro, pesoCfg)} kcal</span>
               {registro.kcalManual != null && Number(registro.kcalManual) > 0 && (
                 <span className="has-text-grey"> (manual)</span>
               )}
             </p>
-            {registro.notas && <p className="is-size-7 has-text-grey mt-1 mb-0">— {registro.notas}</p>}
+            {registro.notas && <p className="is-size-7 rutina-registro-notas mt-1 mb-0">— {registro.notas}</p>}
           </div>
           {botonesAccion}
         </div>
@@ -1381,23 +1382,26 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
           const sugSer = it.series?.trim()
           const sugRep = it.repeticiones?.trim()
           return (
-            <li key={ex} className="mb-4 pb-3 subtle-divider-b">
-              <p className="is-size-7 has-text-weight-semibold mb-1">{ex}</p>
+            <li key={ex} className="mb-4 pb-3 subtle-divider-b rutina-plan-card">
+              <p className="is-size-7 has-text-weight-semibold mb-1 rutina-registro-nombre">{ex}</p>
               {(sugSer || sugRep) && (
                 <p className="is-size-7 has-text-grey mb-2">
                   Sugerido por tu plan:
-                  {sugSer && sugRep ? ` ${sugSer} × ${sugRep}` : sugSer ? ` ${sugSer} series` : ` ${sugRep} reps`}
+                  <span className="rutina-chip rutina-chip-plan ml-1">
+                    {sugSer && sugRep ? `${sugSer} × ${sugRep}` : sugSer ? `${sugSer} series` : `${sugRep} reps`}
+                  </span>
                 </p>
               )}
               {ya.length > 0 && (
                 <div className="mb-2">
                   {ya.map((r) => (
-                    <div key={r.id} className="is-flex is-justify-content-space-between is-align-items-center is-size-7 has-text-success mb-1">
+                    <div key={r.id} className="is-flex is-justify-content-space-between is-align-items-center is-size-7 mb-1">
                       <span>
-                        ✓ {r.series}×{r.repeticiones}
-                        {r.pesoKg != null && r.pesoKg > 0 && <span className="has-text-grey"> · {r.pesoKg} kg</span>}
-                        <span className="has-text-success"> · ~{caloriasQuemadasRegistroRutina(r, pesoCfg)} kcal</span>
-                        {r.notas && <span className="has-text-grey"> — {r.notas}</span>}
+                        <span className="rutina-check">✓</span>
+                        <span className="rutina-chip rutina-chip-plan ml-1">{r.series}×{r.repeticiones}</span>
+                        {r.pesoKg != null && r.pesoKg > 0 && <span className="rutina-chip rutina-chip-peso ml-1">{r.pesoKg} kg</span>}
+                        <span className="rutina-chip rutina-chip-kcal ml-1">~{caloriasQuemadasRegistroRutina(r, pesoCfg)} kcal</span>
+                        {r.notas && <span className="rutina-registro-notas"> — {r.notas}</span>}
                       </span>
                       <button type="button" className="button is-small is-text has-text-grey" onClick={() => onEliminarRegistro(r.id)} aria-label="Quitar registro">
                         ×

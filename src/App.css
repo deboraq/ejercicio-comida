@@ -4,6 +4,35 @@
   --app-fs-title: 1.0625rem; /* ~17px secciones h2/h3 */
   --app-fs-page: 1.25rem; /* ~20px título principal */
   --app-lh: 1.45;
+  --app-bg: #090d18;
+  --app-bg-2: #0f172a;
+  --app-surface: rgba(15, 23, 42, 0.86);
+  --app-surface-2: rgba(17, 24, 39, 0.94);
+  --app-border: rgba(148, 163, 184, 0.18);
+  --app-border-strong: rgba(148, 163, 184, 0.3);
+  --app-text: #f8fafc;
+  --app-muted: #94a3b8;
+  --app-muted-2: #64748b;
+  --app-primary: #6366f1;
+  --app-primary-2: #818cf8;
+  --app-primary-soft: rgba(99, 102, 241, 0.18);
+  --app-success: #22c55e;
+  --app-success-soft: rgba(34, 197, 94, 0.16);
+  --app-danger: #fb7185;
+  --app-danger-soft: rgba(251, 113, 133, 0.15);
+  --app-warning: #fbbf24;
+  --app-warning-soft: rgba(251, 191, 36, 0.15);
+  --app-shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  --app-shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.22);
+}
+
+html,
+body {
+  background:
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.18), transparent 34rem),
+    radial-gradient(circle at 92% 12%, rgba(34, 197, 94, 0.1), transparent 28rem),
+    linear-gradient(180deg, var(--app-bg) 0%, #070a12 100%);
+  color: var(--app-text);
 }
 
 .app-layout {
@@ -14,6 +43,8 @@
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: var(--app-fs-body);
   line-height: var(--app-lh);
+  color: var(--app-text);
+  background: transparent;
 }
 
 /* Cuerpo: mismo tamaño en labels, ayudas, listas, tags, checkboxes */
@@ -43,6 +74,211 @@
 
 .app-layout .button.is-small {
   font-size: var(--app-fs-body) !important;
+}
+
+/* Tema visual global: oscuro premium, con contraste y componentes menos "Bulma default". */
+.app-layout .section {
+  color: var(--app-text);
+}
+
+.app-layout .title,
+.app-layout .label,
+.app-layout strong {
+  color: var(--app-text);
+}
+
+.app-layout .has-text-grey,
+.app-layout .has-text-grey-light {
+  color: var(--app-muted) !important;
+}
+
+.app-layout .box:not(.has-background-light),
+.app-layout .notification:not(.is-light) {
+  color: var(--app-text);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.01) 100%),
+    var(--app-surface) !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--app-shadow-soft);
+}
+
+.app-layout .box:not(.has-background-light) .box:not(.has-background-light) {
+  background: rgba(8, 13, 25, 0.42) !important;
+  box-shadow: none;
+}
+
+.app-layout .input,
+.app-layout .textarea,
+.app-layout .select select {
+  color: var(--app-text) !important;
+  background-color: rgba(2, 6, 23, 0.42) !important;
+  border-color: var(--app-border) !important;
+  border-radius: 10px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.app-layout .input::placeholder,
+.app-layout .textarea::placeholder {
+  color: rgba(148, 163, 184, 0.68) !important;
+}
+
+.app-layout .input:focus,
+.app-layout .textarea:focus,
+.app-layout .select select:focus {
+  border-color: rgba(129, 140, 248, 0.85) !important;
+  box-shadow: 0 0 0 0.16rem rgba(99, 102, 241, 0.22) !important;
+}
+
+.app-layout .button {
+  border-radius: 10px;
+  font-weight: 650;
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.app-layout .button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.app-layout .button.is-link,
+.app-layout .button.is-primary {
+  background: linear-gradient(135deg, var(--app-primary) 0%, #4f46e5 100%) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: 0 10px 22px rgba(99, 102, 241, 0.22);
+}
+
+.app-layout .button.is-link:hover,
+.app-layout .button.is-primary:hover {
+  background: linear-gradient(135deg, var(--app-primary-2) 0%, var(--app-primary) 100%) !important;
+  box-shadow: 0 12px 26px rgba(99, 102, 241, 0.32);
+}
+
+.app-layout .button.is-light,
+.app-layout .button.is-info.is-light {
+  background: rgba(148, 163, 184, 0.12) !important;
+  border-color: var(--app-border) !important;
+  color: var(--app-text) !important;
+}
+
+.app-layout .button.is-light:hover,
+.app-layout .button.is-info.is-light:hover {
+  background: rgba(148, 163, 184, 0.2) !important;
+}
+
+.app-layout .button.is-success,
+.app-layout .button.is-success.is-light {
+  background: var(--app-success-soft) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+  color: #bbf7d0 !important;
+}
+
+.app-layout .button.is-danger,
+.app-layout .button.is-danger.is-light {
+  background: var(--app-danger-soft) !important;
+  border-color: rgba(251, 113, 133, 0.3) !important;
+  color: #fecdd3 !important;
+}
+
+.app-layout .button.is-warning,
+.app-layout .button.is-warning.is-light {
+  background: var(--app-warning-soft) !important;
+  border-color: rgba(251, 191, 36, 0.35) !important;
+  color: #fde68a !important;
+}
+
+.app-layout .tabs ul {
+  border-bottom-color: var(--app-border);
+}
+
+.app-layout .tabs.is-boxed ul {
+  background: rgba(2, 6, 23, 0.36);
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  padding: 0.25rem;
+}
+
+.app-layout .tabs.is-boxed li a,
+.app-layout .tabs li a {
+  color: var(--app-muted);
+  border-color: transparent !important;
+  border-radius: 10px !important;
+  text-decoration: none;
+}
+
+.app-layout .tabs li.is-active a {
+  color: #fff !important;
+  background: var(--app-primary-soft) !important;
+  border-color: rgba(129, 140, 248, 0.35) !important;
+}
+
+.app-layout .table {
+  color: var(--app-text);
+  background: transparent;
+}
+
+.app-layout .table thead th {
+  color: var(--app-muted);
+  border-color: var(--app-border-strong);
+}
+
+.app-layout .table td,
+.app-layout .table th {
+  border-color: rgba(148, 163, 184, 0.12);
+}
+
+.app-layout .table tbody tr:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.app-layout .tag.is-dark {
+  background: rgba(15, 23, 42, 0.86) !important;
+  color: var(--app-text) !important;
+}
+
+.app-layout .tag.is-light {
+  background: rgba(148, 163, 184, 0.14) !important;
+  color: var(--app-text) !important;
+}
+
+.app-layout .tag.is-info,
+.app-layout .tag.is-info.is-light,
+.app-layout .tag.is-link,
+.app-layout .tag.is-link.is-light {
+  background: var(--app-primary-soft) !important;
+  color: #c7d2fe !important;
+}
+
+.app-layout .modal-card-head,
+.app-layout .modal-card-body,
+.app-layout .modal-card-foot {
+  background: var(--app-surface-2) !important;
+  color: var(--app-text);
+  border-color: var(--app-border) !important;
+}
+
+.app-layout .modal-card {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--app-shadow);
+}
+
+.app-layout .modal-card-title {
+  color: var(--app-text);
+}
+
+.app-layout .modal-background {
+  background: rgba(2, 6, 23, 0.78);
+  backdrop-filter: blur(5px);
+}
+
+.app-campana-fija .button {
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
 }
 
 /* Título principal de página (h1) */
@@ -148,25 +384,42 @@
 }
 
 .navbar.is-fixed-bottom {
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  padding: 0.35rem 0.35rem max(0.55rem, env(safe-area-inset-bottom));
+  background: rgba(8, 13, 25, 0.84) !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 -14px 35px rgba(0, 0, 0, 0.3);
+}
+
+.navbar.is-fixed-bottom .navbar-menu,
+.navbar.is-fixed-bottom .navbar-start {
+  background: transparent !important;
 }
 
 .navbar.is-fixed-bottom .navbar-item {
   flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.5rem 1rem;
-  color: #7a7a7a;
+  gap: 0.18rem;
+  padding: 0.45rem 0.85rem;
+  color: var(--app-muted);
+  border-radius: 14px;
   text-decoration: none;
+  min-width: 4.45rem;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .navbar.is-fixed-bottom .navbar-item:hover {
-  color: #3273dc;
-  background-color: #f5f5f5;
+  color: var(--app-text);
+  background: rgba(148, 163, 184, 0.1);
+  transform: translateY(-1px);
 }
 
 .navbar.is-fixed-bottom .navbar-item.is-active {
-  color: #3273dc;
-  background-color: #eff1fa;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.34), rgba(129, 140, 248, 0.18));
+  box-shadow: inset 0 0 0 1px rgba(129, 140, 248, 0.34);
 }
 
 .navbar.is-fixed-bottom .navbar-item .icon {
@@ -174,7 +427,8 @@
 }
 
 .navbar.is-fixed-bottom .navbar-item .navbar-emoji {
-  font-size: 1.25rem;
+  font-size: 1.18rem;
+  line-height: 1;
 }
 
 .navbar.is-fixed-bottom .navbar-start {
@@ -847,24 +1101,114 @@
   color: #d1d5db !important;
 }
 
-/* Calendario Inicio — “Lo que hiciste”: tarjetas siempre legibles (tema oscuro / auto-dark no debe aclarar el título) */
+/* Calendario Inicio — “Lo que hiciste”: tarjetas legibles dentro del tema oscuro */
 .app-layout .inicio-actividad-card.box {
-  color-scheme: light;
-  background-color: #f0f0f0 !important;
-  color: #1a1a1a !important;
-  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color-scheme: dark;
+  background:
+    linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(15, 23, 42, 0.62)),
+    rgba(2, 6, 23, 0.58) !important;
+  color: #e5e7eb !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  box-shadow: none !important;
 }
 .app-layout .inicio-actividad-card-titulo {
-  color: #0a0a0a !important;
+  color: #f8fafc !important;
   font-weight: 700 !important;
 }
 .app-layout .inicio-actividad-card-meta {
-  color: #2d3748 !important;
+  color: #cbd5e1 !important;
 }
 .app-layout .inicio-actividad-card-notas {
-  color: #4a5568 !important;
+  color: #94a3b8 !important;
 }
-.app-layout .inicio-actividad-card-kcal {
-  color: #1e5f24 !important;
+.app-layout .inicio-actividad-card-kcal,
+.app-layout .inicio-actividad-card .has-text-success {
+  color: #86efac !important;
+  font-weight: 700;
+}
+
+/* Jerarquía visual: rutinas, ejercicios y "Lo que hiciste" */
+.app-layout .inicio-actividad-card {
+  line-height: 1.35;
+}
+
+.app-layout .inicio-actividad-card-titulo,
+.app-layout .rutina-registro-nombre,
+.app-layout .ej-hist-nombre,
+.app-layout .rutina-plan-ejercicio {
+  color: #f8fafc !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.005em;
+}
+
+.app-layout .inicio-actividad-card-titulo,
+.app-layout .rutina-registro-nombre,
+.app-layout .ej-hist-nombre {
+  font-size: 1.02rem;
+}
+
+.app-layout .rutina-plan-ejercicio {
+  font-size: 0.98rem;
+}
+
+.app-layout .inicio-actividad-chip,
+.app-layout .rutina-chip,
+.app-layout .ej-hist-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 1.45rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.2;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.app-layout .inicio-actividad-chip-plan,
+.app-layout .rutina-chip-plan,
+.app-layout .ej-hist-duracion {
+  color: #dbeafe !important;
+  background: rgba(59, 130, 246, 0.17);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+}
+
+.app-layout .inicio-actividad-chip-peso,
+.app-layout .rutina-chip-peso {
+  color: #fde68a !important;
+  background: rgba(251, 191, 36, 0.16);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.app-layout .inicio-actividad-chip-kcal,
+.app-layout .rutina-chip-kcal,
+.app-layout .ej-hist-kcal {
+  color: #bbf7d0 !important;
+  background: rgba(34, 197, 94, 0.16);
+  border: 1px solid rgba(34, 197, 94, 0.28);
+}
+
+.app-layout .rutina-check {
+  color: #86efac;
+  font-weight: 900;
+}
+
+.app-layout .rutina-registro-notas,
+.app-layout .inicio-actividad-card-notas,
+.app-layout .ej-hist-notas {
+  color: #94a3b8 !important;
+  font-style: italic;
+}
+
+.app-layout .rutina-plan-card {
+  padding: 0.65rem 0.25rem 0.85rem;
+}
+
+.app-layout .ejercicio-historial-fila.box,
+.app-layout .inicio-actividad-card.box {
+  padding-top: 0.72rem !important;
+  padding-bottom: 0.72rem !important;
 }
 
