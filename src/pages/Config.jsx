@@ -90,7 +90,8 @@ export default function Config() {
   return (
     <section className="section py-4">
       <div className="container" style={{ maxWidth: '560px' }}>
-        <header className="mb-4">
+        <header className="app-page-hero mb-4">
+          <div className="app-page-hero-icon" aria-hidden="true">⚙️</div>
           <h1 className="title is-5 mb-2">{esProfe && !profileLoading ? 'Tu cuenta' : 'Configuración'}</h1>
           {!esProfe && (
             <p className="is-size-7 has-text-grey mb-0">

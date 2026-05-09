@@ -336,11 +336,18 @@ export default function Profe() {
   return (
     <section className="section py-4">
       <div className="container" style={{ maxWidth: '1120px' }}>
-        <header className="mb-4">
+        <header className="app-page-hero mb-4">
+          <div className="app-page-hero-icon" aria-hidden="true">🧑‍🏫</div>
           <h1 className="title is-5 mb-2">Entrenador</h1>
           <p className="is-size-7 has-text-grey mb-0">
             El alumno ve lo que envías en la pestaña <strong>Rutina</strong> de su cuenta.
           </p>
+          {esProfe ? (
+            <div className="app-hero-metrics">
+              <span><strong>{students.length}</strong> alumnos</span>
+              <span><strong>{navItems.length}</strong> secciones</span>
+            </div>
+          ) : null}
         </header>
 
         {profileLoading ? (

@@ -1212,3 +1212,264 @@ body {
   padding-bottom: 0.72rem !important;
 }
 
+/* Segunda capa estética: headers, CTAs, calendario y estados vacíos */
+.app-layout .app-page-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 20px;
+  padding: 1.05rem 1.05rem 1rem;
+  background:
+    radial-gradient(circle at top right, rgba(129, 140, 248, 0.18), transparent 14rem),
+    radial-gradient(circle at bottom left, rgba(34, 197, 94, 0.08), transparent 12rem),
+    rgba(15, 23, 42, 0.62);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.app-layout .app-page-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.06), transparent 35%);
+}
+
+.app-layout .app-page-hero > * {
+  position: relative;
+}
+
+.app-layout .app-page-hero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  margin-bottom: 0.55rem;
+  border-radius: 14px;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(129, 140, 248, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.app-layout .app-page-hero.has-text-centered .app-page-hero-icon {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.app-layout .app-page-hero .title {
+  margin-bottom: 0.35rem !important;
+}
+
+.app-layout .app-page-hero .subtitle,
+.app-layout .app-page-hero p {
+  max-width: 38rem;
+}
+
+.app-layout .app-page-hero.has-text-centered .subtitle,
+.app-layout .app-page-hero.has-text-centered p {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.app-layout .app-hero-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.app-layout .has-text-centered .app-hero-metrics {
+  justify-content: center;
+}
+
+.app-layout .app-hero-metrics span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.55rem;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  color: #cbd5e1;
+  background: rgba(2, 6, 23, 0.34);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  font-size: 0.78rem;
+}
+
+.app-layout .app-hero-metrics strong {
+  color: #fff !important;
+  margin-right: 0.25rem;
+}
+
+.app-layout .app-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.app-layout .app-section-title::before {
+  content: '';
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--app-primary-2);
+  box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.12);
+}
+
+.app-layout .app-summary-card,
+.app-layout .app-stat-tile,
+.comida-page .comida-stat-tile {
+  position: relative;
+  overflow: hidden;
+}
+
+.app-layout .app-stat-tile {
+  min-height: 7.25rem;
+  padding: 0.95rem !important;
+}
+
+.app-layout .app-stat-tile::after,
+.comida-page .comida-stat-tile::after {
+  content: '';
+  position: absolute;
+  right: -1.5rem;
+  top: -1.5rem;
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.app-layout .app-stat-icon {
+  display: inline-flex;
+  width: 1.85rem;
+  height: 1.85rem;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.45rem;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.app-layout .app-stat-tile .title,
+.app-layout .app-summary-number,
+.comida-page .comida-stat-value {
+  letter-spacing: -0.03em;
+  text-shadow: 0 0 22px rgba(129, 140, 248, 0.12);
+}
+
+.app-layout .app-stat-kcal-in .title,
+.comida-page .comida-stat-kcal .comida-stat-value {
+  color: #93c5fd !important;
+}
+
+.app-layout .app-stat-kcal-out .title {
+  color: #86efac !important;
+}
+
+.app-layout .app-stat-protein .title,
+.comida-page .comida-stat-pro .comida-stat-value {
+  color: #86efac !important;
+}
+
+.app-layout .app-stat-carbs .title,
+.comida-page .comida-stat-car .comida-stat-value {
+  color: #fde68a !important;
+}
+
+.app-layout .button.is-fullwidth.is-link,
+.app-layout .button.is-fullwidth.is-primary {
+  min-height: 2.5rem;
+  box-shadow: 0 12px 28px rgba(99, 102, 241, 0.25);
+}
+
+.app-layout .app-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.app-layout .app-calendar-weekday {
+  width: auto !important;
+  min-width: 0 !important;
+  padding-bottom: 0.2rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app-layout .app-calendar-empty {
+  min-height: 2.35rem;
+}
+
+.app-layout .app-calendar-day.button {
+  position: relative;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 2.45rem;
+  padding: 0 !important;
+  color: var(--app-text) !important;
+  background: rgba(148, 163, 184, 0.11) !important;
+  border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+.app-layout .app-calendar-day.has-activity {
+  background: rgba(15, 23, 42, 0.86) !important;
+  border-color: rgba(129, 140, 248, 0.24) !important;
+}
+
+.app-layout .app-calendar-day.is-selected {
+  background: linear-gradient(135deg, var(--app-primary), #4f46e5) !important;
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.32);
+}
+
+.app-layout .app-calendar-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 0.22rem;
+  display: flex;
+  gap: 0.12rem;
+  transform: translateX(-50%);
+}
+
+.app-layout .app-calendar-dots i {
+  width: 0.28rem;
+  height: 0.28rem;
+  border-radius: 999px;
+  display: block;
+}
+
+.app-layout .dot-food {
+  background: #facc15;
+}
+
+.app-layout .dot-ex {
+  background: #60a5fa;
+}
+
+.app-layout .dot-rut {
+  background: #86efac;
+}
+
+.app-layout .calendario-card .mt-4.pt-4,
+.app-layout .box > .mt-4.pt-4 {
+  border-top-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+.app-layout .box.has-text-centered.has-text-grey,
+.app-layout .box.has-text-grey {
+  border-style: dashed !important;
+  color: var(--app-muted) !important;
+  background: rgba(15, 23, 42, 0.46) !important;
+}
+
+.app-layout .message.is-info.is-light {
+  background: rgba(59, 130, 246, 0.12) !important;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  color: #dbeafe !important;
+  border-radius: 14px;
+}
+
+.app-layout .message.is-info.is-light .message-body {
+  color: #dbeafe !important;
+  border-color: rgba(96, 165, 250, 0.24);
+}
+

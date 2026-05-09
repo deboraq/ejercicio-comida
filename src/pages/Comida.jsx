@@ -37,6 +37,21 @@ function textoPorcionDesdeRef(porcionRef, n) {
   return n > 1 ? `${n} × (${t})` : t
 }
 
+function numeroFlexible(valor) {
+  if (valor == null || valor === '') return null
+  const n = Number(String(valor).trim().replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
+
+function numeroFlexibleO(valor, fallback = 0) {
+  const n = numeroFlexible(valor)
+  return n == null ? fallback : n
+}
+
+function redondear1(n) {
+  return Math.round(n * 10) / 10
+}
+
 /** Última cantidad válida usada para escalar macros si el campo quedó vacío un momento. */
 function cantidadBaseParaEscala(it) {
   if (it.cantidad !== '' && it.cantidad != null && Number(it.cantidad) > 0) return Number(it.cantidad)
@@ -64,9 +79,9 @@ function itemConCantidadAplicada(it, newQ) {
     ...it,
     cantidad: q,
     _cantidadPrev: q,
-    calorias: it.calorias !== '' ? String(Math.round((Number(it.calorias) || 0) * r)) : '',
-    proteinas: it.proteinas !== '' ? String(Math.round((Number(it.proteinas) || 0) * r * 10) / 10) : '',
-    carbohidratos: it.carbohidratos !== '' ? String(Math.round((Number(it.carbohidratos) || 0) * r * 10) / 10) : '',
+    calorias: it.calorias !== '' ? String(Math.round(numeroFlexibleO(it.calorias) * r)) : '',
+    proteinas: it.proteinas !== '' ? String(redondear1(numeroFlexibleO(it.proteinas) * r)) : '',
+    carbohidratos: it.carbohidratos !== '' ? String(redondear1(numeroFlexibleO(it.carbohidratos) * r)) : '',
   }
 }
 
@@ -75,7 +90,7 @@ function ListaComidaAgrupada({ bloques, onEliminar }) {
   return (
     <>
       {bloques.map(({ tipo, items: itemsGrupo }) => {
-        const calGrupo = itemsGrupo.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
+        const calGrupo = itemsGrupo.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
         return (
           <div key={tipo} className="comida-grupo-bloque">
             <p className="comida-grupo-titulo mb-0">
@@ -189,7 +204,7 @@ export default function Comida() {
           return { ...it, [field]: '', _macrosPorUnidad: undefined, _porcionRef: undefined }
         }
         const q = cantidadBaseParaEscala(it)
-        const num = Number(value)
+        const num = numeroFlexible(value)
         if (!Number.isFinite(num)) {
           return { ...it, [field]: value }
         }
@@ -202,8 +217,8 @@ export default function Comida() {
             ...it,
             _macrosPorUnidad: m,
             calorias: String(Math.round(m.cal * q)),
-            proteinas: String(Math.round(m.pro * q * 10) / 10),
-            carbohidratos: String(Math.round(m.car * q * 10) / 10),
+            proteinas: String(redondear1(m.pro * q)),
+            carbohidratos: String(redondear1(m.car * q)),
           }
         }
         return { ...it, [field]: value, _macrosPorUnidad: undefined, _porcionRef: undefined }
@@ -237,9 +252,9 @@ export default function Comida() {
 
   const totalesItems = items.reduce(
     (acc, it) => ({
-      cal: acc.cal + (Number(it.calorias) || 0),
-      pro: acc.pro + (Number(it.proteinas) || 0),
-      car: acc.car + (Number(it.carbohidratos) || 0),
+      cal: acc.cal + numeroFlexibleO(it.calorias),
+      pro: redondear1(acc.pro + numeroFlexibleO(it.proteinas)),
+      car: redondear1(acc.car + numeroFlexibleO(it.carbohidratos)),
     }),
     { cal: 0, pro: 0, car: 0 }
   )
@@ -255,9 +270,9 @@ export default function Comida() {
       id: crypto.randomUUID(),
       comida,
       descripcion: it.descripcion.trim(),
-      calorias: it.calorias ? Number(it.calorias) : undefined,
-      proteinas: it.proteinas ? Number(it.proteinas) : undefined,
-      carbohidratos: it.carbohidratos ? Number(it.carbohidratos) : undefined,
+      calorias: numeroFlexible(it.calorias) ?? undefined,
+      proteinas: numeroFlexible(it.proteinas) ?? undefined,
+      carbohidratos: numeroFlexible(it.carbohidratos) ?? undefined,
       porciones: it.porciones?.trim() || undefined,
       notas: notas.trim(),
       fecha,
@@ -273,9 +288,9 @@ export default function Comida() {
   }
 
   const hoyRegistros = registros.filter((r) => fechaSoloDia(r.fecha) === hoy)
-  const caloriasHoy = hoyRegistros.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
-  const proteinasHoy = hoyRegistros.reduce((s, r) => s + (Number(r.proteinas) || 0), 0)
-  const carbosHoy = hoyRegistros.reduce((s, r) => s + (Number(r.carbohidratos) || 0), 0)
+  const caloriasHoy = hoyRegistros.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
+  const proteinasHoy = redondear1(hoyRegistros.reduce((s, r) => s + numeroFlexibleO(r.proteinas), 0))
+  const carbosHoy = redondear1(hoyRegistros.reduce((s, r) => s + numeroFlexibleO(r.carbohidratos), 0))
 
   const ejerciciosHoy = ejercicios.filter((ex) => fechaSoloDia(ex.fecha) === hoy)
   const ejerciciosPorTipo = ejerciciosHoy.reduce((acc, ex) => {
@@ -302,9 +317,15 @@ export default function Comida() {
   return (
     <section className="section py-4 comida-page">
       <div className="container" style={{ maxWidth: '560px' }}>
-        <header className="mb-4">
+        <header className="app-page-hero mb-4">
+          <div className="app-page-hero-icon" aria-hidden="true">🥗</div>
           <h1 className="title is-5 mb-2">Comida</h1>
           <p className="subtitle has-text-grey mb-0">Resumen del día, registro rápido e historial.</p>
+          <div className="app-hero-metrics">
+            <span><strong>{caloriasHoy || 0}</strong> kcal</span>
+            <span><strong>{proteinasHoy || 0}</strong> g proteína</span>
+            <span><strong>{hoyRegistros.length}</strong> registros</span>
+          </div>
         </header>
 
         {consejos.length > 0 && (
@@ -543,8 +564,8 @@ export default function Comida() {
                       <input
                         id={`comida-prot-${it.id}`}
                         className="input is-small"
-                        type="number"
-                        min="0"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="0"
                         value={it.proteinas}
                         onChange={(e) => actualizarItem(it.id, 'proteinas', e.target.value)}
@@ -557,8 +578,8 @@ export default function Comida() {
                       <input
                         id={`comida-carb-${it.id}`}
                         className="input is-small"
-                        type="number"
-                        min="0"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="0"
                         value={it.carbohidratos}
                         onChange={(e) => actualizarItem(it.id, 'carbohidratos', e.target.value)}
@@ -654,9 +675,9 @@ export default function Comida() {
             {Object.entries(porFechaEnRango)
               .sort(([a], [b]) => b.localeCompare(a))
               .map(([fecha, lista]) => {
-                const cal = lista.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
-                const pro = lista.reduce((s, r) => s + (Number(r.proteinas) || 0), 0)
-                const car = lista.reduce((s, r) => s + (Number(r.carbohidratos) || 0), 0)
+                const cal = lista.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
+                const pro = redondear1(lista.reduce((s, r) => s + numeroFlexibleO(r.proteinas), 0))
+                const car = redondear1(lista.reduce((s, r) => s + numeroFlexibleO(r.carbohidratos), 0))
                 return (
                   <li key={fecha} className="comida-hist-dia">
                     <div className="is-flex is-justify-content-space-between is-align-items-center comida-hist-dia-cabecera is-flex-wrap-wrap">

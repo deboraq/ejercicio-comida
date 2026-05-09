@@ -201,20 +201,26 @@ export default function Ejercicios() {
   return (
     <section className="section py-4">
       <div className="container" style={{ maxWidth: '560px' }}>
-        <header className="mb-4">
+        <header className="app-page-hero mb-4">
+          <div className="app-page-hero-icon" aria-hidden="true">🏃</div>
           <h1 className="title is-5 mb-2">Ejercicios</h1>
           <p className="is-size-7 has-text-grey mb-0">Registra por día. Calorías quemadas son aproximadas según tipo y duración.</p>
+          <div className="app-hero-metrics">
+            <span><strong>{minutosHoy}</strong> min hoy</span>
+            <span><strong>{caloriasHoy}</strong> kcal</span>
+            <span><strong>{ejercicios.length}</strong> registros</span>
+          </div>
         </header>
 
-        <div className="box py-3 mb-4">
+        <div className="box py-3 mb-4 app-summary-card">
           <div className="columns is-mobile mb-0">
             <div className="column">
               <p className="is-size-7 has-text-grey mb-1">Hoy ({hoyIso})</p>
               <p className="mb-0">
-                <span className="title is-5 has-text-link">{minutosHoy}</span>
+                <span className="title is-5 has-text-link app-summary-number">{minutosHoy}</span>
                 <span className="is-size-7 has-text-grey ml-1">min</span>
                 <span className="ml-2">
-                  <span className="title is-5 has-text-success">{caloriasHoy}</span>
+                  <span className="title is-5 has-text-success app-summary-number">{caloriasHoy}</span>
                   <span className="is-size-7 has-text-grey ml-1">kcal aprox.</span>
                 </span>
               </p>
@@ -222,10 +228,10 @@ export default function Ejercicios() {
             <div className="column">
               <p className="is-size-7 has-text-grey mb-1">Últimos 7 días</p>
               <p className="mb-0">
-                <span className="title is-5 has-text-link">{minutosUltimos7}</span>
+                <span className="title is-5 has-text-link app-summary-number">{minutosUltimos7}</span>
                 <span className="is-size-7 has-text-grey ml-1">min</span>
                 <span className="ml-2">
-                  <span className="title is-5 has-text-success">{caloriasUltimos7}</span>
+                  <span className="title is-5 has-text-success app-summary-number">{caloriasUltimos7}</span>
                   <span className="is-size-7 has-text-grey ml-1">kcal aprox.</span>
                 </span>
               </p>

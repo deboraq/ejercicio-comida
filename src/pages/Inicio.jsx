@@ -220,16 +220,26 @@ export default function Inicio() {
   const fechasConActividad = new Set([
     ...ejercicios.map((e) => fechaSoloDia(e.fecha)),
     ...registrosRutina.map((r) => fechaSoloDia(r.fecha)),
+    ...comida.map((c) => fechaSoloDia(c.fecha)),
   ])
+  const fechasConComida = new Set(comida.map((c) => fechaSoloDia(c.fecha)))
+  const fechasConEjercicio = new Set(ejercicios.map((e) => fechaSoloDia(e.fecha)))
+  const fechasConRutina = new Set(registrosRutina.map((r) => fechaSoloDia(r.fecha)))
   const rutinaDelDiaCalendario = registrosRutina.filter((r) => fechaSoloDia(r.fecha) === diaEnVista)
   const ejerciciosDelDiaCalendario = ejercicios.filter((e) => fechaSoloDia(e.fecha) === diaEnVista)
 
   return (
     <section className="section" style={{ paddingBottom: '2rem' }}>
       <div className="container" style={{ maxWidth: '560px', paddingBottom: '1.5rem' }}>
-        <header className="has-text-centered mb-5">
+        <header className="app-page-hero has-text-centered mb-5">
+          <div className="app-page-hero-icon" aria-hidden="true">💎</div>
           <h1 className="title is-4">Mi rutina</h1>
           <p className="subtitle is-6 has-text-grey">Resumen por día y consejos según tu objetivo</p>
+          <div className="app-hero-metrics">
+            <span><strong>{caloriasConsumidasDia || 0}</strong> kcal</span>
+            <span><strong>{minutosDia}</strong> min</span>
+            <span><strong>{racha}</strong> racha</span>
+          </div>
         </header>
 
         {isConfigured && !user && (
@@ -243,7 +253,7 @@ export default function Inicio() {
           </div>
         )}
 
-        <div className="box mb-4">
+        <div className="box mb-4 calendario-card">
           <h2 className="title is-6 mb-2">Calendario</h2>
           <p className="is-size-7 has-text-grey mb-2">Toca un día para ver ese día. Vuelve a tocar el mismo día para quitar la selección.</p>
           {fechaCalendarioSeleccionada && (
@@ -281,15 +291,15 @@ export default function Inicio() {
               Siguiente →
             </button>
           </div>
-          <div className="is-flex is-flex-wrap-wrap" style={{ gap: '2px' }}>
+          <div className="app-calendar-grid">
             {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((d) => (
-              <div key={d} className="has-text-centered has-text-grey is-size-7" style={{ width: 'calc(14.28% - 2px)', minWidth: '32px' }}>
+              <div key={d} className="app-calendar-weekday has-text-centered has-text-grey is-size-7">
                 {d}
               </div>
             ))}
             {diasDelMes.map((celda, idx) => {
               if (celda.vacio) {
-                return <div key={`v-${idx}`} style={{ width: 'calc(14.28% - 2px)', minWidth: '32px', height: '36px' }} />
+                return <div key={`v-${idx}`} className="app-calendar-empty" />
               }
               const tieneActividad = fechasConActividad.has(celda.fecha)
               const seleccionado = fechaCalendarioSeleccionada === celda.fecha
@@ -297,11 +307,17 @@ export default function Inicio() {
                 <button
                   key={celda.fecha}
                   type="button"
-                  className={`button is-small has-text-weight-semibold ${seleccionado ? 'is-link' : `has-text-dark ${tieneActividad ? 'has-background-success-light' : 'is-light'}`}`}
-                  style={{ width: 'calc(14.28% - 2px)', minWidth: '32px', height: '36px', padding: 0 }}
+                  className={`button is-small has-text-weight-semibold app-calendar-day ${seleccionado ? 'is-link is-selected' : tieneActividad ? 'has-activity' : 'is-light'}`}
                   onClick={() => setFechaCalendarioSeleccionada(celda.fecha === fechaCalendarioSeleccionada ? null : celda.fecha)}
                 >
-                  {celda.dia}
+                  <span>{celda.dia}</span>
+                  {tieneActividad && (
+                    <span className="app-calendar-dots" aria-hidden="true">
+                      {fechasConComida.has(celda.fecha) && <i className="dot-food" />}
+                      {fechasConEjercicio.has(celda.fecha) && <i className="dot-ex" />}
+                      {fechasConRutina.has(celda.fecha) && <i className="dot-rut" />}
+                    </span>
+                  )}
                 </button>
               )
             })}
@@ -435,16 +451,18 @@ export default function Inicio() {
           <p className="title is-6">{objetivoLabel}</p>
         </div>
 
-        <h2 className="title is-6 mb-3">Resumen del día</h2>
+        <h2 className="title is-6 mb-3 app-section-title">Resumen del día</h2>
         <div className="columns is-mobile is-multiline mb-4 resumen-dia">
           <div className="column is-half">
-            <div className="box">
+            <div className="box app-stat-tile app-stat-kcal-in">
+              <span className="app-stat-icon" aria-hidden="true">🥗</span>
               <p className="is-size-7 has-text-grey">Calorías consumidas</p>
               <p className="title is-5">{caloriasConsumidasDia || '—'}</p>
             </div>
           </div>
           <div className="column is-half">
-            <div className="box">
+            <div className="box app-stat-tile app-stat-kcal-out">
+              <span className="app-stat-icon" aria-hidden="true">🔥</span>
               <p className="is-size-7 has-text-grey">Calorías quemadas (total aprox.)</p>
               <p className="title is-5 has-text-success">{caloriasQuemadasDia || '—'}</p>
               <p className="is-size-7 has-text-grey mb-0 mt-2">
@@ -455,31 +473,36 @@ export default function Inicio() {
             </div>
           </div>
           <div className="column is-half">
-            <div className="box">
+            <div className="box app-stat-tile app-stat-protein">
+              <span className="app-stat-icon" aria-hidden="true">💪</span>
               <p className="is-size-7 has-text-grey">Proteínas (g)</p>
               <p className="title is-5">{proteinasDia || '—'}</p>
             </div>
           </div>
           <div className="column is-half">
-            <div className="box">
+            <div className="box app-stat-tile app-stat-carbs">
+              <span className="app-stat-icon" aria-hidden="true">⚡</span>
               <p className="is-size-7 has-text-grey">Carbohidratos (g)</p>
               <p className="title is-5">{carbosDia || '—'}</p>
             </div>
           </div>
           <div className="column is-half">
-            <div className="box">
+            <div className="box app-stat-tile">
+              <span className="app-stat-icon" aria-hidden="true">⏱</span>
               <p className="is-size-7 has-text-grey">Minutos (ejercicio + rutina estim.)</p>
               <p className="title is-5">{minutosDia}</p>
             </div>
           </div>
           <div className="column is-half">
-            <div className="box">
+            <div className="box app-stat-tile">
+              <span className="app-stat-icon" aria-hidden="true">🍽</span>
               <p className="is-size-7 has-text-grey">Comidas registradas</p>
               <p className="title is-5">{comidasDelDia.length}</p>
             </div>
           </div>
           <div className="column is-half">
-            <div className="box">
+            <div className="box app-stat-tile">
+              <span className="app-stat-icon" aria-hidden="true">💊</span>
               <p className="is-size-7 has-text-grey">Suplementos tomados</p>
               <p className="title is-5" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                 {suplementosDelDia.length === 0

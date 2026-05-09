@@ -458,11 +458,17 @@ export default function Rutina() {
   return (
     <section className="section py-4">
       <div className="container" style={{ maxWidth: '560px' }}>
-        <header className="mb-4">
+        <header className="app-page-hero mb-4">
+          <div className="app-page-hero-icon" aria-hidden="true">🏋️</div>
           <h1 className="title is-5 mb-2">Rutina de gimnasio</h1>
           <p className="is-size-7 has-text-grey mb-0">
             En <strong>Mis rutinas</strong> creás y registrás entrenos. En <strong>Asignadas</strong> ves lo que te mandó tu entrenador desde Profe (por la nube).
           </p>
+          <div className="app-hero-metrics">
+            <span><strong>{listaRutinas.length}</strong> rutinas</span>
+            <span><strong>{registrosRutina.length}</strong> registros</span>
+            <span><strong>{rutinasAsignadas.length}</strong> asignadas</span>
+          </div>
         </header>
 
         <div className="tabs is-toggle is-fullwidth mb-3 rutina-origen-tabs">
@@ -498,7 +504,7 @@ export default function Rutina() {
 
         {origenRutinas === 'propias' ? (
         <>
-        <div className="box mb-4 py-3">
+              <div className="box mb-4 py-3 calendario-card">
           <label className="label is-size-7">Rutina activa</label>
           <div className="field has-addons">
             <div className="control is-expanded">
@@ -611,15 +617,15 @@ export default function Rutina() {
                 Siguiente →
               </button>
             </div>
-            <div className="is-flex is-flex-wrap-wrap" style={{ gap: '2px' }}>
+            <div className="app-calendar-grid">
               {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((d) => (
-                <div key={d} className="has-text-centered has-text-grey is-size-7" style={{ width: 'calc(14.28% - 2px)', minWidth: '32px' }}>
+                <div key={d} className="app-calendar-weekday has-text-centered has-text-grey is-size-7">
                   {d}
                 </div>
               ))}
               {diasDelMes.map((celda, idx) => {
                 if (celda.vacio) {
-                  return <div key={`v-${idx}`} style={{ width: 'calc(14.28% - 2px)', minWidth: '32px', height: '36px' }} />
+                  return <div key={`v-${idx}`} className="app-calendar-empty" />
                 }
                 const tieneEntreno = fechasConEntreno.has(celda.fecha)
                 const seleccionado = fechaCalendarioSeleccionada === celda.fecha
@@ -627,11 +633,15 @@ export default function Rutina() {
                   <button
                     key={celda.fecha}
                     type="button"
-                    className={`button is-small has-text-weight-semibold ${seleccionado ? 'is-link' : `has-text-dark ${tieneEntreno ? 'has-background-success-light' : 'is-light'}`}`}
-                    style={{ width: 'calc(14.28% - 2px)', minWidth: '32px', height: '36px', padding: 0 }}
+                    className={`button is-small has-text-weight-semibold app-calendar-day ${seleccionado ? 'is-link is-selected' : tieneEntreno ? 'has-activity' : 'is-light'}`}
                     onClick={() => setFechaCalendarioSeleccionada(celda.fecha)}
                   >
-                    {celda.dia}
+                    <span>{celda.dia}</span>
+                    {tieneEntreno && (
+                      <span className="app-calendar-dots" aria-hidden="true">
+                        <i className="dot-rut" />
+                      </span>
+                    )}
                   </button>
                 )
               })}
