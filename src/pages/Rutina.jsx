@@ -3,7 +3,8 @@ import { useStorage } from '../hooks/useStorage'
 import { useAuth } from '../context/AuthContext'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { listAssignmentsForStudent, assignmentsToRutinasItems, deleteRoutineAssignment } from '../lib/profeDb'
-import { formatearFecha, fechaToISO, caloriasQuemadasRegistroRutina } from '../utils/calorias'
+import { formatearFecha, fechaToISO, fechaSoloDia, caloriasQuemadasRegistroRutina } from '../utils/calorias'
+import { getRangoPorPeriodo } from '../utils/estadisticas'
 import { EJERCICIOS_RUTINA, buscarEjercicios } from '../utils/rutinaEjercicios'
 import { descargarRutinaPdf } from '../utils/rutinaPdf'
 import {
@@ -85,7 +86,11 @@ export default function Rutina() {
   })
   const [fechaCalendarioSeleccionada, setFechaCalendarioSeleccionada] = useState(null)
   const [periodProgreso, setPeriodProgreso] = useState('mes')
-  const [desdeProgresoCustom, setDesdeProgresoCustom] = useState('')
+  const [desdeProgresoCustom, setDesdeProgresoCustom] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return fechaToISO(d)
+  })
   const [hastaProgresoCustom, setHastaProgresoCustom] = useState(() => fechaToISO(new Date()))
   /** Edición de un registro de pesos: { id, ejercicio, series, repeticiones, pesoKg, notas } */
   const [editandoRegistro, setEditandoRegistro] = useState(null)
@@ -411,21 +416,16 @@ export default function Rutina() {
     .filter((p) => p.ultima)
     .sort((a, b) => (b.ultima?.fecha || '').localeCompare(a.ultima?.fecha || ''))
 
-  const getDesdeHastaProgreso = () => {
-    if (periodProgreso === 'semana') {
-      const d = new Date()
-      d.setDate(d.getDate() - 6)
-      return { desde: fechaToISO(d), hasta: hoy }
-    }
-    if (periodProgreso === 'mes') {
-      const d = new Date()
-      d.setDate(d.getDate() - 30)
-      return { desde: fechaToISO(d), hasta: hoy }
-    }
-    return { desde: desdeProgresoCustom || hoy, hasta: hastaProgresoCustom || hoy }
-  }
-  const { desde: desdeProgreso, hasta: hastaProgreso } = getDesdeHastaProgreso()
-  const registrosEnPeriodo = registrosRutina.filter((r) => r.fecha >= desdeProgreso && r.fecha <= hastaProgreso)
+  const periodoProgresoMap = periodProgreso === 'personalizado' ? 'personalizado' : periodProgreso === 'semana' ? 'semana' : 'mes'
+  const { desde: desdeProgreso, hasta: hastaProgreso } = getRangoPorPeriodo(
+    periodoProgresoMap,
+    desdeProgresoCustom,
+    hastaProgresoCustom
+  )
+  const registrosEnPeriodo = registrosRutina.filter((r) => {
+    const f = fechaSoloDia(r.fecha)
+    return f >= desdeProgreso && f <= hastaProgreso
+  })
   const sesionesEnPeriodo = new Set(registrosEnPeriodo.map((r) => r.fecha)).size
   const totalRegistrosPeriodo = registrosEnPeriodo.length
   const ejerciciosEnPeriodo = new Set(registrosEnPeriodo.map((r) => r.ejercicio)).size
@@ -690,7 +690,18 @@ export default function Rutina() {
             <h2 className="title is-6 mb-2">Tu avance</h2>
             <label className="label is-size-7 mb-2">Período</label>
             <div className="select is-fullwidth is-small mb-2">
-              <select value={periodProgreso} onChange={(e) => setPeriodProgreso(e.target.value)}>
+              <select
+                value={periodProgreso}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setPeriodProgreso(value)
+                  if (value === 'personalizado' && !desdeProgresoCustom) {
+                    const d = new Date((hastaProgresoCustom || hoy) + 'T12:00:00')
+                    d.setDate(d.getDate() - 30)
+                    setDesdeProgresoCustom(fechaToISO(d))
+                  }
+                }}
+              >
                 <option value="semana">Última semana (7 días)</option>
                 <option value="mes">Último mes (30 días)</option>
                 <option value="personalizado">Personalizado</option>
