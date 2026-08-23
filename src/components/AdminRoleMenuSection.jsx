@@ -61,7 +61,7 @@ export default function AdminRoleMenuSection() {
   }
 
   return (
-    <div className="box mb-4 py-3">
+    <div className="box module-panel-card mb-0">
       <div className="columns is-multiline">
         {ROLES_META.map(({ id, label }) => (
           <div key={id} className="column is-12-tablet is-4-desktop">

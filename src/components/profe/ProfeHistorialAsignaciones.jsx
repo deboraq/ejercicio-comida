@@ -69,7 +69,7 @@ export default function ProfeHistorialAsignaciones({ teacherId, students, busque
   }, [rows, q, students])
 
   return (
-    <div className="box py-3">
+    <div className="box module-panel-card mb-0">
       <h2 className="title is-6 mb-2">Historial de envíos</h2>
       <p className="is-size-7 has-text-grey mb-3">
         Listado de rutinas que enviaste (desde esta pantalla o versiones anteriores de la app).

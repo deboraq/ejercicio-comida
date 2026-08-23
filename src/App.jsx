@@ -1,4 +1,5 @@
-import { Routes, Route, Link, useLocation } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AppNotificationsProvider, AppNotificacionesCampana } from './context/AppNotificationsContext'
 import { RoleNavProvider, useRoleNav } from './context/RoleNavContext'
@@ -13,22 +14,19 @@ import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import { useMyProfile } from './hooks/useMyProfile'
 import ModuleGate from './components/ModuleGate'
+import AppSidebar from './components/AppSidebar'
+import AppNavMenu from './components/AppNavMenu'
 import { isNavModuleBlocked } from './utils/navModules'
 import './App.css'
 
-function NavLink({ to, children, icon }) {
-  const location = useLocation()
-  const active = location.pathname === to
-  return (
-    <Link
-      to={to}
-      className={`navbar-item is-flex is-flex-direction-column has-text-centered ${active ? 'is-active' : ''}`}
-      aria-current={active ? 'page' : undefined}
-    >
-      <span className="navbar-emoji">{icon}</span>
-      <span className="is-size-7">{children}</span>
-    </Link>
-  )
+const SIDEBAR_COLLAPSED_KEY = 'app-sidebar-collapsed'
+
+function readSidebarCollapsed() {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1'
+  } catch {
+    return false
+  }
 }
 
 function AppRoutes() {
@@ -36,8 +34,9 @@ function AppRoutes() {
   const { user, isConfigured } = useAuth()
   const { profile, loading: profileLoading } = useMyProfile()
   const { roleNavMap } = useRoleNav()
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed)
   const isAuthPage = location.pathname === '/login' || location.pathname === '/reset-password'
-  /* Profe: con Supabase alcanza; la pantalla pide login si hace falta */
   const mostrarProfe = Boolean(isConfigured)
   const mostrarAdmin = Boolean(isConfigured && profile?.role === 'admin')
 
@@ -48,57 +47,102 @@ function AppRoutes() {
     return isNavModuleBlocked(profile, clave, roleNavMap)
   }
 
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }, [])
+
+  const navProps = {
+    ocultarNav,
+    mostrarProfe,
+    mostrarAdmin,
+    onNavigate: () => setMobileNavOpen(false),
+  }
+
+  useEffect(() => {
+    setMobileNavOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    document.body.style.overflow = mobileNavOpen ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileNavOpen])
+
   return (
-    <>
-      <main className="main-content">
-        {!isAuthPage && (
-          <div
-            className="app-campana-fija"
-            style={{
-              position: 'fixed',
-              top: 'max(0.5rem, env(safe-area-inset-top, 0px))',
-              right: 'max(0.75rem, env(safe-area-inset-right, 0px))',
-              zIndex: 100,
-            }}
-          >
-            <AppNotificacionesCampana />
-          </div>
-        )}
-        <Routes>
-          <Route path="/" element={<ModuleGate module="inicio" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Inicio /></ModuleGate>} />
-          <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Ejercicios /></ModuleGate>} />
-          <Route path="/rutina" element={<ModuleGate module="rutina" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Rutina /></ModuleGate>} />
-          <Route path="/comida" element={<ModuleGate module="comida" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Comida /></ModuleGate>} />
-          <Route
-            path="/config"
-            element={
-              <ModuleGate module="config" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}>
-                <Config />
-              </ModuleGate>
-            }
-          />
-          <Route path="/profe" element={<ModuleGate module="profe" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Profe /></ModuleGate>} />
-          <Route path="/admin" element={<ModuleGate module="admin" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Admin /></ModuleGate>} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-        </Routes>
-      </main>
+    <div
+      className={`app-shell${isAuthPage ? ' app-shell--auth' : ''}${sidebarCollapsed ? ' app-shell--sidebar-collapsed' : ''}`}
+    >
       {!isAuthPage && (
-        <nav className="navbar is-fixed-bottom has-shadow" role="navigation" aria-label="Principal">
-          <div className="navbar-menu is-active">
-            <div className="navbar-start" style={{ flexGrow: 1, justifyContent: 'center', gap: 0, flexWrap: 'wrap' }}>
-              {!ocultarNav('inicio') && <NavLink to="/" icon="🏠">Inicio</NavLink>}
-              {!ocultarNav('ejercicios') && <NavLink to="/ejercicios" icon="🏃">Ejercicios</NavLink>}
-              {!ocultarNav('rutina') && <NavLink to="/rutina" icon="🏋️">Rutina</NavLink>}
-              {!ocultarNav('comida') && <NavLink to="/comida" icon="🥗">Comida</NavLink>}
-              {mostrarProfe && !ocultarNav('profe') && <NavLink to="/profe" icon="🧑‍🏫">Profe</NavLink>}
-              {mostrarAdmin && !ocultarNav('admin') && <NavLink to="/admin" icon="🛡️">Admin</NavLink>}
-              {!ocultarNav('config') && <NavLink to="/config" icon="⚙️">Config</NavLink>}
-            </div>
-          </div>
-        </nav>
+        <AppSidebar
+          {...navProps}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={toggleSidebarCollapsed}
+        />
       )}
-    </>
+      {!isAuthPage && (
+        <div className={`app-nav-drawer${mobileNavOpen ? ' is-open' : ''}`} aria-hidden={!mobileNavOpen}>
+          <button
+            type="button"
+            className="app-nav-overlay"
+            aria-label="Cerrar menú"
+            onClick={() => setMobileNavOpen(false)}
+          />
+          <aside className="app-sidebar app-sidebar--drawer" aria-label="Menú de navegación">
+            <AppNavMenu
+              {...navProps}
+              showClose
+              onClose={() => setMobileNavOpen(false)}
+            />
+          </aside>
+        </div>
+      )}
+      <div className="app-shell-main">
+        {!isAuthPage && (
+          <header className="app-topbar">
+            <button
+              type="button"
+              className="app-menu-toggle"
+              aria-label="Abrir menú"
+              aria-expanded={mobileNavOpen}
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <span /><span /><span />
+            </button>
+            <div className="app-topbar-spacer" />
+            <AppNotificacionesCampana />
+          </header>
+        )}
+        <main className="main-content">
+          <Routes>
+            <Route path="/" element={<ModuleGate module="inicio" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Inicio /></ModuleGate>} />
+            <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Ejercicios /></ModuleGate>} />
+            <Route path="/rutina" element={<ModuleGate module="rutina" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Rutina /></ModuleGate>} />
+            <Route path="/comida" element={<ModuleGate module="comida" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Comida /></ModuleGate>} />
+            <Route
+              path="/config"
+              element={
+                <ModuleGate module="config" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}>
+                  <Config />
+                </ModuleGate>
+              }
+            />
+            <Route path="/profe" element={<ModuleGate module="profe" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Profe /></ModuleGate>} />
+            <Route path="/admin" element={<ModuleGate module="admin" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Admin /></ModuleGate>} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+          </Routes>
+        </main>
+      </div>
+    </div>
   )
 }
 

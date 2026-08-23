@@ -16,6 +16,7 @@ import {
 import { getConsejosDelDia, OBJETIVOS } from '../utils/consejos'
 import { getRachaDias, PERIODOS, getRangoPorPeriodo, getFechasEnRango, getUltimosNDias } from '../utils/estadisticas'
 import { SUPLEMENTOS, getSuplementoLabel } from '../utils/suplementos'
+import StatMiniCard from '../components/StatMiniCard'
 
 export default function Inicio() {
   const { user, isConfigured } = useAuth()
@@ -33,13 +34,15 @@ export default function Inicio() {
   })
   const [fechaCalendarioSeleccionada, setFechaCalendarioSeleccionada] = useState(null)
   const [periodo, setPeriodo] = useState('semana')
-  const [desdeCustom, setDesdeCustom] = useState('')
+  const [desdeCustom, setDesdeCustom] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return fechaToISO(d)
+  })
   const [hastaCustom, setHastaCustom] = useState(hoy)
-  const [tooltipDia, setTooltipDia] = useState(null)
-  const [detalleFijado, setDetalleFijado] = useState(false)
+  const [diaGraficoSeleccionado, setDiaGraficoSeleccionado] = useState(null)
   const refZonaGrafico = useRef(null)
   const refCuadroDetalle = useRef(null)
-  const refFijado = useRef(false) // ref para no depender del estado en mouseLeave (evita que se cierre al alejar el ratón tras el clic)
   const [barrasAnimadas, setBarrasAnimadas] = useState(false)
   useEffect(() => {
     setBarrasAnimadas(false)
@@ -48,17 +51,28 @@ export default function Inicio() {
   }, [periodo, desdeCustom, hastaCustom])
 
   useEffect(() => {
-    if (!tooltipDia || !detalleFijado) return
+    setDiaGraficoSeleccionado(null)
+  }, [periodo, desdeCustom, hastaCustom])
+
+  useEffect(() => {
+    if (!diaGraficoSeleccionado) return
     const handleClickOutside = (e) => {
       if (refCuadroDetalle.current?.contains(e.target)) return
       if (refZonaGrafico.current?.contains(e.target)) return
-      refFijado.current = false
-      setTooltipDia(null)
-      setDetalleFijado(false)
+      setDiaGraficoSeleccionado(null)
     }
-    document.addEventListener('click', handleClickOutside)
-    return () => document.removeEventListener('click', handleClickOutside)
-  }, [tooltipDia, detalleFijado])
+    document.addEventListener('pointerdown', handleClickOutside)
+    return () => document.removeEventListener('pointerdown', handleClickOutside)
+  }, [diaGraficoSeleccionado])
+
+  const handlePeriodoChange = (value) => {
+    setPeriodo(value)
+    if (value === 'personalizado' && !desdeCustom) {
+      const d = new Date((hastaCustom || hoy) + 'T12:00:00')
+      d.setDate(d.getDate() - 30)
+      setDesdeCustom(fechaToISO(d))
+    }
+  }
 
   const diaEnVista = fechaCalendarioSeleccionada || hoy
   const ejerciciosDelDia = ejercicios.filter((e) => fechaSoloDia(e.fecha) === diaEnVista)
@@ -139,7 +153,7 @@ export default function Inicio() {
 
   const { desde, hasta } = getRangoPorPeriodo(periodo, desdeCustom, hastaCustom)
   const fechasEnPeriodo = getFechasEnRango(desde, hasta)
-  const caloriasPorDiaEnPeriodo = fechasEnPeriodo.slice(-31).map((f) => ({
+  const caloriasPorDiaEnPeriodo = fechasEnPeriodo.map((f) => ({
     fecha: f,
     cal: comida.filter((c) => fechaSoloDia(c.fecha) === f).reduce((s, r) => s + (Number(r.calorias) || 0), 0),
     quemadas:
@@ -151,9 +165,12 @@ export default function Inicio() {
   const totalQuemadasPeriodo = caloriasPorDiaEnPeriodo.reduce((s, d) => s + d.quemadas, 0)
   const diasConEjercicioPeriodo = caloriasPorDiaEnPeriodo.filter((d) => d.quemadas > 0).length
   const diasConComidaPeriodo = caloriasPorDiaEnPeriodo.filter((d) => d.cal > 0).length
-  const maxCalDiaPeriodo = Math.max(1, ...caloriasPorDiaEnPeriodo.map((d) => d.cal))
-  const maxQuemadasPeriodo = Math.max(1, ...caloriasPorDiaEnPeriodo.map((d) => d.quemadas))
+  const maxGrafico = Math.max(
+    1,
+    ...caloriasPorDiaEnPeriodo.flatMap((d) => [d.cal, d.quemadas])
+  )
   const numDiasPeriodo = caloriasPorDiaEnPeriodo.length
+  const graficoAnchoCompleto = numDiasPeriodo > 0 && numDiasPeriodo <= 15
 
   const diasConSuplementosPeriodo = caloriasPorDiaEnPeriodo.filter((d) => {
     const items = suplementos.find((s) => fechaSoloDia(s.fecha) === d.fecha)?.items ?? []
@@ -230,9 +247,9 @@ export default function Inicio() {
 
   return (
     <section className="section" style={{ paddingBottom: '2rem' }}>
-      <div className="container" style={{ maxWidth: '560px', paddingBottom: '1.5rem' }}>
-        <header className="app-page-hero has-text-centered mb-5">
-          <div className="app-page-hero-icon" aria-hidden="true">💎</div>
+      <div className="container app-page-container" style={{ paddingBottom: '1.5rem' }}>
+        <header className="app-page-hero inicio-hero has-text-centered mb-4">
+          <div className="app-page-hero-icon inicio-hero-diamond" aria-hidden="true">💎</div>
           <h1 className="title is-4">Mi rutina</h1>
           <p className="subtitle is-6 has-text-grey">Resumen por día y consejos según tu objetivo</p>
           <div className="app-hero-metrics">
@@ -253,7 +270,26 @@ export default function Inicio() {
           </div>
         )}
 
-        <div className="box mb-4 calendario-card">
+        <div className="inicio-stats-row mb-4">
+          <StatMiniCard icon="🥗" iconTone="green" label="Calorías consumidas" value={caloriasConsumidasDia || '—'} />
+          <StatMiniCard icon="🔥" iconTone="orange" label="Calorías quemadas" value={caloriasQuemadasDia || '—'} />
+          <StatMiniCard icon="💪" iconTone="green" label="Proteínas (g)" value={proteinasDia || '—'} />
+          <StatMiniCard icon="⚡" iconTone="purple" label="Carbohidratos (g)" value={carbosDia || '—'} />
+        </div>
+
+        {consejos.length > 0 && (
+          <div className="mb-4">
+            {consejos.slice(0, 1).map((c, i) => (
+              <article key={i} className="ti-tip-bar">
+                <span className="ti-tip-icon" aria-hidden="true">💡</span>
+                <p className="mb-0">{c.texto}</p>
+              </article>
+            ))}
+          </div>
+        )}
+
+        <div className="inicio-dashboard-grid mb-4">
+        <div className="box mb-0 calendario-card">
           <h2 className="title is-6 mb-2">Calendario</h2>
           <p className="is-size-7 has-text-grey mb-2">Toca un día para ver ese día. Vuelve a tocar el mismo día para quitar la selección.</p>
           {fechaCalendarioSeleccionada && (
@@ -376,6 +412,31 @@ export default function Inicio() {
             </div>
         </div>
 
+        <div className="inicio-quick-stack">
+          <Link to="/ejercicios" className="box inicio-quick-card mb-3">
+            <div className="inicio-quick-icon inicio-quick-icon--blue" aria-hidden="true">🏃</div>
+            <div>
+              <h3 className="inicio-quick-title">Ejercicios</h3>
+              <p className="inicio-quick-desc">Registra actividad y calorías quemadas.</p>
+              <p className="inicio-quick-stat mb-0">
+                Hoy: <strong>{minutosDia}</strong> min | <strong className="has-text-success">{caloriasQuemadasDia}</strong> kcal
+              </p>
+            </div>
+          </Link>
+          <Link to="/comida" className="box inicio-quick-card mb-0">
+            <div className="inicio-quick-icon inicio-quick-icon--green" aria-hidden="true">🥗</div>
+            <div>
+              <h3 className="inicio-quick-title">Comida</h3>
+              <p className="inicio-quick-desc">Calorías, proteínas, carbos, porciones.</p>
+              <p className="inicio-quick-stat mb-0">
+                Hoy: <strong className="has-text-info">{caloriasConsumidasDia || '—'}</strong> kcal | <strong className="has-text-success">{comidasDelDia.length}</strong> comidas
+              </p>
+            </div>
+          </Link>
+        </div>
+        </div>
+
+        <div className="inicio-more-section">
         {listaParaMarcar.length > 0 && (
           <div className="box mb-4">
             <h2 className="title is-6 mb-3">Suplementos del {diaEnVista === hoy ? 'día' : formatearFecha(diaEnVista)}</h2>
@@ -451,73 +512,11 @@ export default function Inicio() {
           <p className="title is-6">{objetivoLabel}</p>
         </div>
 
-        <h2 className="title is-6 mb-3 app-section-title">Resumen del día</h2>
-        <div className="columns is-mobile is-multiline mb-4 resumen-dia">
-          <div className="column is-half">
-            <div className="box app-stat-tile app-stat-kcal-in">
-              <span className="app-stat-icon" aria-hidden="true">🥗</span>
-              <p className="is-size-7 has-text-grey">Calorías consumidas</p>
-              <p className="title is-5">{caloriasConsumidasDia || '—'}</p>
-            </div>
-          </div>
-          <div className="column is-half">
-            <div className="box app-stat-tile app-stat-kcal-out">
-              <span className="app-stat-icon" aria-hidden="true">🔥</span>
-              <p className="is-size-7 has-text-grey">Calorías quemadas (total aprox.)</p>
-              <p className="title is-5 has-text-success">{caloriasQuemadasDia || '—'}</p>
-              <p className="is-size-7 has-text-grey mb-0 mt-2">
-                Ejercicios (cardio, etc.): <strong className="has-text-dark">{calQuemEjercicioDia || 0}</strong> kcal
-                <br />
-                Gimnasio (rutina): <strong className="has-text-dark">{calQuemRutinaDia || 0}</strong> kcal
-              </p>
-            </div>
-          </div>
-          <div className="column is-half">
-            <div className="box app-stat-tile app-stat-protein">
-              <span className="app-stat-icon" aria-hidden="true">💪</span>
-              <p className="is-size-7 has-text-grey">Proteínas (g)</p>
-              <p className="title is-5">{proteinasDia || '—'}</p>
-            </div>
-          </div>
-          <div className="column is-half">
-            <div className="box app-stat-tile app-stat-carbs">
-              <span className="app-stat-icon" aria-hidden="true">⚡</span>
-              <p className="is-size-7 has-text-grey">Carbohidratos (g)</p>
-              <p className="title is-5">{carbosDia || '—'}</p>
-            </div>
-          </div>
-          <div className="column is-half">
-            <div className="box app-stat-tile">
-              <span className="app-stat-icon" aria-hidden="true">⏱</span>
-              <p className="is-size-7 has-text-grey">Minutos (ejercicio + rutina estim.)</p>
-              <p className="title is-5">{minutosDia}</p>
-            </div>
-          </div>
-          <div className="column is-half">
-            <div className="box app-stat-tile">
-              <span className="app-stat-icon" aria-hidden="true">🍽</span>
-              <p className="is-size-7 has-text-grey">Comidas registradas</p>
-              <p className="title is-5">{comidasDelDia.length}</p>
-            </div>
-          </div>
-          <div className="column is-half">
-            <div className="box app-stat-tile">
-              <span className="app-stat-icon" aria-hidden="true">💊</span>
-              <p className="is-size-7 has-text-grey">Suplementos tomados</p>
-              <p className="title is-5" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                {suplementosDelDia.length === 0
-                  ? 'Ninguno'
-                  : suplementosDelDia.map(getSuplementoLabel).join(', ')}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <h2 className="title is-6 mb-3">Resumen (semana o mes)</h2>
+        <h2 className="title is-6 mb-3 app-section-title">Más detalles</h2>
         <div className="box mb-3">
           <label className="label is-size-7">Elige el período</label>
           <div className="select is-fullwidth mb-2">
-            <select value={periodo} onChange={(e) => setPeriodo(e.target.value)}>
+            <select value={periodo} onChange={(e) => handlePeriodoChange(e.target.value)}>
               {PERIODOS.map((p) => (
                 <option key={p.value} value={p.value}>{p.label}</option>
               ))}
@@ -535,7 +534,12 @@ export default function Inicio() {
               </div>
             </div>
           )}
-          <p className="is-size-7 has-text-grey mt-2 mb-0">Del {desde} al {hasta}</p>
+          <p className="is-size-7 has-text-grey mt-2 mb-0">
+            Del {desde} al {hasta}
+            {numDiasPeriodo > 0 && (
+              <span className="graf-cal-rango-dias"> · {numDiasPeriodo} día{numDiasPeriodo !== 1 ? 's' : ''}</span>
+            )}
+          </p>
         </div>
         <div className="box mb-4" style={{ overflow: 'visible' }}>
           <div className="columns is-mobile is-multiline">
@@ -576,308 +580,163 @@ export default function Inicio() {
             </div>
             </>
           )}
-          <p className="is-size-7 graf-cal-ayuda mt-3 mb-2">Calorías por día</p>
-          <p className="is-size-7 graf-cal-ayuda mb-2">
-            Cada columna es un día del rango (orden cronológico). Debajo: día de la semana en español.
-          </p>
-          <p className="is-size-7 graf-cal-ayuda mb-2">
-            <strong className="graf-cal-ayuda-strong">Quemadas</strong>: suma <strong className="graf-cal-ayuda-strong">Ejercicios</strong> (lo que cargás en minutos) y{' '}
-            <strong className="graf-cal-ayuda-strong">Rutina</strong> (gimnasio, kcal aprox. por series con MET de musculación).
-          </p>
-          <p className="is-size-7 graf-cal-ayuda mb-2">
-            Referencia: máx. consumidas <strong className="graf-cal-ayuda-strong">{maxCalDiaPeriodo}</strong> kcal · máx. quemadas{' '}
-            <strong className="graf-cal-ayuda-strong">{maxQuemadasPeriodo}</strong> kcal
-          </p>
-          <div
-            ref={refZonaGrafico}
-            onMouseLeave={() => { if (!refFijado.current) setTooltipDia(null) }}
-            style={{ overflow: 'visible' }}
-          >
-          <div className="graf-cal-chart-wrap">
+          <div className="graf-cal-section mt-3">
+            <div className="graf-cal-header mb-3">
+              <h3 className="graf-cal-title mb-1">Calorías por día</h3>
+              <p className="graf-cal-subtitle mb-0">
+                Comparación diaria de consumidas (azul) y quemadas (verde). Tocá un día para ver el detalle.
+              </p>
+            </div>
+          <div ref={refZonaGrafico}>
+          {numDiasPeriodo > 14 && (
+            <p className="graf-cal-scroll-hint mb-2">Deslizá horizontalmente para ver todos los días del período.</p>
+          )}
+          <div className={`graf-cal-chart-wrap${graficoAnchoCompleto ? ' graf-cal-chart-wrap--fluid' : ''}`}>
             <div
-              className="graf-cal-grid"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(${numDiasPeriodo}, minmax(2.35rem, 1fr))`,
-                gap: '4px',
-                alignItems: 'end',
-                minWidth: `${Math.max(numDiasPeriodo * 40, 260)}px`,
-              }}
+              className={`graf-cal-grid${graficoAnchoCompleto ? ' graf-cal-grid--fluid' : ''}`}
+              style={
+                graficoAnchoCompleto
+                  ? { gridTemplateColumns: `repeat(${numDiasPeriodo}, minmax(0, 1fr))` }
+                  : {
+                      gridTemplateColumns: `repeat(${numDiasPeriodo}, 2.85rem)`,
+                      minWidth: `${Math.max(numDiasPeriodo * 46, 280)}px`,
+                    }
+              }
             >
             {caloriasPorDiaEnPeriodo.map((d) => {
-              const altCalPx = Math.max(4, (d.cal / maxCalDiaPeriodo) * 78)
-              const altQuemPx = Math.max(4, (d.quemadas / maxQuemadasPeriodo) * 78)
+              const pctCal = maxGrafico > 0 ? Math.round((d.cal / maxGrafico) * 100) : 0
+              const pctQuem = maxGrafico > 0 ? Math.round((d.quemadas / maxGrafico) * 100) : 0
               const diaSem = new Date(`${d.fecha}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short' })
               const txtCal = d.cal >= 1000 ? `${(d.cal / 1000).toFixed(1)}k` : String(d.cal)
               const txtQuem = d.quemadas >= 1000 ? `${(d.quemadas / 1000).toFixed(1)}k` : String(d.quemadas)
+              const selected = diaGraficoSeleccionado === d.fecha
+              const toggleDiaGrafico = () => {
+                setDiaGraficoSeleccionado((prev) => (prev === d.fecha ? null : d.fecha))
+              }
               return (
                 <div
                   key={d.fecha}
-                  className={`graf-cal-col ${tooltipDia === d.fecha ? 'has-background-light' : ''}`}
-                  style={{
-                    cursor: 'pointer',
-                    borderRadius: '6px',
-                    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                    transform: tooltipDia === d.fecha ? 'scale(1.04)' : 'scale(1)',
-                    transformOrigin: 'bottom',
-                    boxShadow: tooltipDia === d.fecha ? '0 0 0 2px #3273dc' : 'none',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'stretch',
-                    minWidth: 0,
-                  }}
-                  onMouseEnter={() => setTooltipDia(d.fecha)}
-                  onMouseLeave={() => { if (!refFijado.current) setTooltipDia(null) }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (tooltipDia === d.fecha) {
-                      refFijado.current = false
-                      setTooltipDia(null)
-                      setDetalleFijado(false)
-                    } else {
-                      refFijado.current = true
-                      setTooltipDia(d.fecha)
-                      setDetalleFijado(true)
-                    }
-                  }}
+                  className={`graf-cal-col${selected ? ' is-selected' : ''}`}
+                  onClick={toggleDiaGrafico}
                   role="button"
                   tabIndex={0}
+                  aria-pressed={selected}
+                  aria-label={`${d.fecha}: ${d.cal} consumidas, ${d.quemadas} quemadas`}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
-                      if (tooltipDia === d.fecha) {
-                        refFijado.current = false
-                        setTooltipDia(null)
-                        setDetalleFijado(false)
-                      } else {
-                        refFijado.current = true
-                        setTooltipDia(d.fecha)
-                        setDetalleFijado(true)
-                      }
+                      toggleDiaGrafico()
                     }
                   }}
                 >
-                  <div
-                    className="graf-cal-barras"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'flex-end',
-                      height: '160px',
-                    }}
-                  >
-                    <div
-                      className="has-background-info"
-                      style={{
-                        height: barrasAnimadas ? `${altCalPx}px` : '0px',
-                        borderRadius: '4px 4px 0 0',
-                        transition: 'height 0.6s ease-out',
-                      }}
-                    />
-                    <div
-                      className="has-background-success"
-                      style={{
-                        height: barrasAnimadas ? `${altQuemPx}px` : '0px',
-                        borderRadius: '2px 2px 0 0',
-                        marginTop: '2px',
-                        opacity: 0.85,
-                        transition: 'height 0.6s ease-out',
-                      }}
-                    />
+                  <div className="graf-cal-plot" aria-hidden="true">
+                    <div className="graf-cal-bar-pair">
+                      <div
+                        className="graf-cal-bar graf-cal-bar--consumed"
+                        style={{ height: barrasAnimadas && pctCal > 0 ? `${Math.max(pctCal, 4)}%` : '0%' }}
+                        title={`Consumidas: ${d.cal} kcal`}
+                      />
+                      <div
+                        className="graf-cal-bar graf-cal-bar--burned"
+                        style={{ height: barrasAnimadas && pctQuem > 0 ? `${Math.max(pctQuem, 4)}%` : '0%' }}
+                        title={`Quemadas: ${d.quemadas} kcal`}
+                      />
+                    </div>
                   </div>
-                  <div
-                    className="graf-cal-ejes has-text-centered"
-                    style={{ fontSize: '0.65rem', lineHeight: 1.2, marginTop: '6px', wordBreak: 'break-word' }}
-                  >
-                    <span className="is-block">{d.fecha.slice(8)}/{d.fecha.slice(5, 7)}</span>
-                    <span className="is-block" style={{ fontSize: '0.58rem', opacity: 0.9 }}>
-                      {diaSem}
-                    </span>
-                  </div>
-                  <div className="graf-cal-valores has-text-centered" style={{ marginTop: '4px', lineHeight: 1.25 }}>
-                    <span className="graf-cal-num-consumidas is-block" title={`Consumidas: ${d.cal} kcal`}>
-                      {txtCal}
-                    </span>
-                    <span className="graf-cal-num-quemadas is-block" title={`Quemadas: ${d.quemadas} kcal`}>
-                      {txtQuem}
-                    </span>
+                  <div className="graf-cal-meta">
+                    <span className="graf-cal-fecha">{d.fecha.slice(8)}/{d.fecha.slice(5, 7)}</span>
+                    <span className="graf-cal-dia">{diaSem}</span>
+                    <span className="graf-cal-num graf-cal-num-consumidas">{txtCal}</span>
+                    <span className="graf-cal-num graf-cal-num-quemadas">{txtQuem}</span>
                   </div>
                 </div>
               )
             })}
             </div>
           </div>
-          <p className="is-size-7 graf-cal-leyenda mt-1 mb-0">
-            <span className="has-background-info" style={{ padding: '0 6px', marginRight: '8px' }} /> Consumidas
-            <span className="ml-3 has-background-success" style={{ padding: '0 6px', marginRight: '4px', opacity: 0.85 }} /> Quemadas
+          <p className="graf-cal-leyenda mt-2 mb-0">
+            <span className="graf-cal-leyenda-swatch graf-cal-bar--consumed" /> Consumidas
+            <span className="graf-cal-leyenda-swatch graf-cal-bar--burned ml-3" /> Quemadas
+            <span className="graf-cal-leyenda-hint"> · Máx. del período: {maxGrafico} kcal</span>
           </p>
-          <p className="is-size-7 graf-cal-ayuda mt-0 mb-0">
-            Cada columna: arriba <span className="graf-cal-num-consumidas">consumidas</span>, abajo <span className="graf-cal-num-quemadas">quemadas</span> (kcal). Si hay muchos días, deslizá horizontalmente.
-          </p>
-          {tooltipDia && (() => {
-            const det = getDetalleDia(tooltipDia)
+          {diaGraficoSeleccionado && (() => {
+            const det = getDetalleDia(diaGraficoSeleccionado)
             return (
               <div
                 ref={refCuadroDetalle}
-                className="box mt-3"
-                style={{
-                  border: '2px solid #3273dc',
-                  position: 'relative',
-                  zIndex: 10,
-                  minHeight: 'auto',
-                  maxHeight: 'min(65vh, 420px)',
-                  overflowY: 'auto',
-                  overflowX: 'hidden',
-                  wordBreak: 'break-word',
-                  marginBottom: '1rem',
-                  WebkitOverflowScrolling: 'touch',
-                  backgroundColor: '#fff',
-                  color: '#363636',
-                }}
+                className="box inicio-detalle-dia mt-3 is-pinned"
                 role="region"
-                aria-label={`Detalle del día ${tooltipDia}`}
+                aria-label={`Detalle del día ${diaGraficoSeleccionado}`}
               >
-                <div className="is-flex is-justify-content-space-between is-align-items-center mb-2">
-                  <p className="title is-6 mb-0 has-text-weight-semibold inicio-detalle-dia-titulo">{formatearFecha(det.fecha)}</p>
+                <div className="inicio-detalle-dia-head">
+                  <p className="inicio-detalle-dia-titulo mb-0">{formatearFecha(det.fecha)}</p>
                   <button
                     type="button"
                     className="button is-small is-light"
-                    onClick={() => { refFijado.current = false; setTooltipDia(null); setDetalleFijado(false) }}
+                    onClick={() => setDiaGraficoSeleccionado(null)}
                     aria-label="Cerrar detalle"
                   >
                     Cerrar
                   </button>
                 </div>
-                <div className="columns is-mobile is-multiline">
-                  <div className="column is-half">
-                    <span style={{ color: '#4a4a4a' }}>Calorías consumidas:</span>{' '}
-                    <strong style={{ color: '#3273dc' }}>{det.cal}</strong> kcal
+                <div className="inicio-detalle-dia-grid">
+                  <div className="inicio-detalle-stat">
+                    <span className="inicio-detalle-label">Calorías consumidas</span>
+                    <strong className="inicio-detalle-val inicio-detalle-val--blue">{det.cal} kcal</strong>
                   </div>
-                  <div className="column is-half">
-                    <span style={{ color: '#4a4a4a' }}>Calorías quemadas:</span>{' '}
-                    <strong style={{ color: '#257a2a' }}>{det.quemadas}</strong> kcal
+                  <div className="inicio-detalle-stat">
+                    <span className="inicio-detalle-label">Calorías quemadas</span>
+                    <strong className="inicio-detalle-val inicio-detalle-val--green">{det.quemadas} kcal</strong>
                     {(det.quemadasEj > 0 || det.quemadasRut > 0) && (
-                      <p className="is-size-7 mb-0 mt-1" style={{ color: '#5c5c5c' }}>
-                        Ejercicios ~{det.quemadasEj} · Rutina ~{det.quemadasRut}
-                      </p>
+                      <span className="inicio-detalle-sub">Ejercicios ~{det.quemadasEj} · Rutina ~{det.quemadasRut}</span>
                     )}
                   </div>
-                  <div className="column is-half">
-                    <span style={{ color: '#4a4a4a' }}>Proteínas:</span> <strong style={{ color: '#363636' }}>{det.pro}</strong> g
+                  <div className="inicio-detalle-stat">
+                    <span className="inicio-detalle-label">Proteínas</span>
+                    <strong className="inicio-detalle-val">{det.pro} g</strong>
                   </div>
-                  <div className="column is-half">
-                    <span style={{ color: '#4a4a4a' }}>Carbohidratos:</span> <strong style={{ color: '#363636' }}>{det.carbos}</strong> g
+                  <div className="inicio-detalle-stat">
+                    <span className="inicio-detalle-label">Carbohidratos</span>
+                    <strong className="inicio-detalle-val">{det.carbos} g</strong>
                   </div>
-                  <div className="column is-half">
-                    <span style={{ color: '#4a4a4a' }}>Comidas registradas:</span> <strong style={{ color: '#363636' }}>{det.numComidas}</strong>
+                  <div className="inicio-detalle-stat">
+                    <span className="inicio-detalle-label">Comidas registradas</span>
+                    <strong className="inicio-detalle-val">{det.numComidas}</strong>
                   </div>
-                  <div className="column is-half">
-                    <span style={{ color: '#4a4a4a' }}>Minutos (aprox.):</span> <strong style={{ color: '#363636' }}>{det.minutos}</strong>
+                  <div className="inicio-detalle-stat">
+                    <span className="inicio-detalle-label">Minutos (aprox.)</span>
+                    <strong className="inicio-detalle-val">{det.minutos}</strong>
                     {(det.minutosEj > 0 || det.minutosRut > 0) && (
-                      <p className="is-size-7 mb-0 mt-1" style={{ color: '#5c5c5c' }}>
-                        Ejercicio {det.minutosEj} · Rutina estim. {det.minutosRut}
-                      </p>
+                      <span className="inicio-detalle-sub">Ejercicio {det.minutosEj} · Rutina estim. {det.minutosRut}</span>
                     )}
                   </div>
                   {det.suplementos.length > 0 && (
-                    <div className="column is-full">
-                      <span style={{ color: '#4a4a4a' }}>Suplementos:</span>{' '}
-                      <span style={{ color: '#363636' }}>{det.suplementos.map(getSuplementoLabel).join(', ')}</span>
+                    <div className="inicio-detalle-stat inicio-detalle-stat--full">
+                      <span className="inicio-detalle-label">Suplementos</span>
+                      <span className="inicio-detalle-val">{det.suplementos.map(getSuplementoLabel).join(', ')}</span>
                     </div>
                   )}
                   {det.itemsComida && det.itemsComida.length > 0 && (
-                    <div className="column is-full mt-2 pt-2" style={{ borderTop: '1px solid #eee' }}>
-                      <span style={{ color: '#4a4a4a' }}>Comidas:</span>
-                      <ul className="mt-1 mb-0 pl-4 is-size-7 has-text-grey" style={{ listStyle: 'disc' }}>
+                    <div className="inicio-detalle-stat inicio-detalle-stat--full inicio-detalle-comidas">
+                      <span className="inicio-detalle-label">Comidas</span>
+                      <ul className="inicio-detalle-comidas-list">
                         {det.itemsComida.map((it, i) => (
                           <li key={i}>
-                            <strong style={{ color: '#363636' }}>{it.tipo}</strong>
-                            <span style={{ color: '#363636' }}> — {it.descripcion}</span>
-                            {it.kcal != null && <span style={{ color: '#4a4a4a' }}> ({it.kcal} kcal)</span>}
+                            <strong>{it.tipo}</strong>
+                            {it.descripcion ? ` — ${it.descripcion}` : ''}
+                            {it.kcal != null ? ` (${it.kcal} kcal)` : ''}
                           </li>
                         ))}
                       </ul>
                     </div>
                   )}
                 </div>
-                </div>
+              </div>
             )
           })()}
           </div>
+          </div>
         </div>
-
-        {consejos.length > 0 && (
-          <>
-            <h2 className="title is-6 mb-3">Consejos para ti</h2>
-            <div className="mb-5">
-              {consejos.map((c, i) => (
-                <article key={i} className="message is-info is-light mb-3">
-                  <div className="message-body">{c.texto}</div>
-                </article>
-              ))}
-            </div>
-          </>
-        )}
-
-        <div className="columns is-mobile is-multiline">
-          <div className="column is-half">
-            <Link to="/ejercicios" className="card is-block has-text-dark" style={{ height: '100%' }}>
-              <div className="card-content">
-                <p className="mb-2">🏃</p>
-                <p className="title is-5">Ejercicios</p>
-                <p className="subtitle has-text-grey">Registra actividad y calorías quemadas</p>
-                <p className="is-size-7 has-text-grey mt-2 mb-1">
-                  {diaEnVista === hoy ? 'Hoy' : formatearFecha(diaEnVista)} (día en calendario)
-                </p>
-                <p className="mb-2">
-                  <strong className="has-text-link">{minutosDia}</strong>
-                  <span className="is-size-7 has-text-grey ml-1">min</span>
-                  <span className="ml-2">
-                    <strong className="has-text-success">{caloriasQuemadasDia}</strong>
-                    <span className="is-size-7 has-text-grey ml-1">kcal</span>
-                  </span>
-                </p>
-                <p className="is-size-7 has-text-grey mb-1">Últimos 7 días (todos tus registros)</p>
-                <p className="mb-0">
-                  <strong className="has-text-link">{minutosUltimos7}</strong>
-                  <span className="is-size-7 has-text-grey ml-1">min</span>
-                  <span className="ml-2">
-                    <strong className="has-text-success">{calQuemUltimos7}</strong>
-                    <span className="is-size-7 has-text-grey ml-1">kcal</span>
-                  </span>
-                </p>
-              </div>
-            </Link>
-          </div>
-          <div className="column is-half">
-            <Link to="/comida" className="card is-block has-text-dark" style={{ height: '100%' }}>
-              <div className="card-content">
-                <p className="mb-2">🥗</p>
-                <p className="title is-5">Comida</p>
-                <p className="subtitle has-text-grey">Calorías, proteínas, carbos, porciones</p>
-                <p className="is-size-7 has-text-grey mt-2 mb-1">
-                  {diaEnVista === hoy ? 'Hoy' : formatearFecha(diaEnVista)} (día en calendario)
-                </p>
-                <p className="mb-2">
-                  <strong className="has-text-info">{caloriasConsumidasDia || '—'}</strong>
-                  <span className="is-size-7 has-text-grey ml-1">kcal</span>
-                  <span className="ml-2">
-                    <strong>{comidasDelDia.length}</strong>
-                    <span className="is-size-7 has-text-grey ml-1">comidas</span>
-                  </span>
-                </p>
-                <p className="is-size-7 has-text-grey mb-1">Últimos 7 días</p>
-                <p className="mb-0">
-                  <strong className="has-text-info">{calConsumidasUltimos7 || '—'}</strong>
-                  <span className="is-size-7 has-text-grey ml-1">kcal</span>
-                  <span className="ml-2">
-                    <strong>{comidasUltimos7.length}</strong>
-                    <span className="is-size-7 has-text-grey ml-1">comidas</span>
-                  </span>
-                </p>
-              </div>
-            </Link>
-          </div>
         </div>
 
         <p className="has-text-centered has-text-grey is-size-7 mt-4">

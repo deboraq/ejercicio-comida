@@ -515,7 +515,7 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
 
   return (
     <>
-      <div className="box mb-4 py-4 px-4" style={rutWorkshopCaja}>
+      <div className="box module-panel-card mb-0">
         <h2 className="title is-6 mb-2">Plantillas de rutina</h2>
         <p className="is-size-7 has-text-grey mb-4" style={{ lineHeight: 1.5 }}>
           Armás cada día con filas (ejercicio, series y repeticiones). Podés marcar una plantilla{' '}

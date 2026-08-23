@@ -75,9 +75,21 @@ export function getRangoPorPeriodo(periodo, desdeCustom, hastaCustom) {
       desde = fechaToISO(d)
       break
     }
-    case 'personalizado':
-      desde = desdeCustom || hasta
-      return { desde, hasta: hastaCustom || hasta }
+    case 'personalizado': {
+      let fin = hastaCustom || hasta
+      let inicio = desdeCustom
+      if (!inicio) {
+        const d = new Date(fin + 'T12:00:00')
+        d.setDate(d.getDate() - 30)
+        inicio = fechaToISO(d)
+      }
+      if (inicio > fin) {
+        const tmp = inicio
+        inicio = fin
+        fin = tmp
+      }
+      return { desde: inicio, hasta: fin }
+    }
     default:
       desde = hasta
   }

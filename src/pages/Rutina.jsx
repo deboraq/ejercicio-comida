@@ -457,17 +457,21 @@ export default function Rutina() {
 
   return (
     <section className="section py-4">
-      <div className="container" style={{ maxWidth: '560px' }}>
-        <header className="app-page-hero mb-4">
-          <div className="app-page-hero-icon" aria-hidden="true">🏋️</div>
-          <h1 className="title is-5 mb-2">Rutina de gimnasio</h1>
-          <p className="is-size-7 has-text-grey mb-0">
-            En <strong>Mis rutinas</strong> creás y registrás entrenos. En <strong>Asignadas</strong> ves lo que te mandó tu entrenador desde Profe (por la nube).
-          </p>
-          <div className="app-hero-metrics">
-            <span><strong>{listaRutinas.length}</strong> rutinas</span>
-            <span><strong>{registrosRutina.length}</strong> registros</span>
-            <span><strong>{rutinasAsignadas.length}</strong> asignadas</span>
+      <div className="container app-page-container">
+        <header className="app-page-hero mb-4 rutina-page-hero">
+          <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.75rem' }}>
+            <div>
+              <div className="app-page-hero-icon" aria-hidden="true">🏋️</div>
+              <h1 className="title is-5 mb-2">Rutina de gimnasio</h1>
+              <p className="is-size-7 has-text-grey mb-0">
+                En <strong>Mis rutinas</strong> creás y registrás entrenos. En <strong>Asignadas</strong> ves lo que te mandó tu entrenador desde Profe (por la nube).
+              </p>
+            </div>
+            <div className="rutina-hero-badges">
+              <span className="rutina-hero-badge rutina-hero-badge--blue"><i />{listaRutinas.length} rutinas</span>
+              <span className="rutina-hero-badge rutina-hero-badge--green"><i />{registrosRutina.length} registros</span>
+              <span className="rutina-hero-badge rutina-hero-badge--muted"><i />{rutinasAsignadas.length} asignadas</span>
+            </div>
           </div>
         </header>
 
@@ -504,7 +508,8 @@ export default function Rutina() {
 
         {origenRutinas === 'propias' ? (
         <>
-              <div className="box mb-4 py-3 calendario-card">
+        <div className="rutina-toolbar mb-4">
+              <div className="box py-3 calendario-card rutina-toolbar-active">
           <label className="label is-size-7">Rutina activa</label>
           <div className="field has-addons">
             <div className="control is-expanded">
@@ -548,22 +553,26 @@ export default function Rutina() {
               </button>
             </div>
           </div>
-          <p className="is-size-7 has-text-grey mb-2 mt-2">
-            Descargá la rutina que elegiste arriba como PDF para imprimirla o compartirla.
-          </p>
-          <button
-            type="button"
-            className="button is-light is-small is-fullwidth"
-            onClick={() => {
-              try {
-                descargarRutinaPdf(rutinaActiva)
-              } catch (e) {
-                window.alert(e?.message || 'No se pudo generar el PDF.')
-              }
-            }}
-          >
-            Exportar rutina
-          </button>
+          </div>
+          <div className="box py-3 rutina-toolbar-export">
+            <h2 className="title is-6 mb-2">Exportar</h2>
+            <p className="is-size-7 has-text-grey mb-3">
+              Descargá la rutina activa como PDF para imprimirla o compartirla.
+            </p>
+            <button
+              type="button"
+              className="button is-link is-fullwidth"
+              onClick={() => {
+                try {
+                  descargarRutinaPdf(rutinaActiva)
+                } catch (e) {
+                  window.alert(e?.message || 'No se pudo generar el PDF.')
+                }
+              }}
+            >
+              Exportar PDF
+            </button>
+          </div>
         </div>
 
         <div className="tabs is-boxed mb-4" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>

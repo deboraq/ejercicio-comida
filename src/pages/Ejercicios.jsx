@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import { useStorage } from '../hooks/useStorage'
 import {
   caloriasEjercicioRegistro,
-  formatearFecha,
   fechaToISO,
   fechaSoloDia,
   minutosDesdeKm,
@@ -10,11 +9,21 @@ import {
   tipoAdmiteKilometros,
   TIPOS_EJERCICIO_AGRUPADOS,
   etiquetaTipo,
+  getCategoriaTipo,
 } from '../utils/calorias'
+import PageHeader from '../components/PageHeader'
 import { getUltimosNDias } from '../utils/estadisticas'
+import { getIconoActividad } from '../utils/iconosActividad'
 
 const TIPO_DEFAULT = TIPOS_EJERCICIO_AGRUPADOS[0].opciones[0].value
 const TIPOS_FLAT = TIPOS_EJERCICIO_AGRUPADOS.flatMap((g) => g.opciones)
+
+function tituloDiaHistorial(fecha) {
+  const d = new Date(`${fecha}T12:00:00`)
+  return d
+    .toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+    .toUpperCase()
+}
 
 export default function Ejercicios() {
   const [ejercicios, setEjercicios] = useStorage('ejercicios', [])
@@ -31,24 +40,10 @@ export default function Ejercicios() {
   const [filtroTipo, setFiltroTipo] = useState('')
   const [filtroDesde, setFiltroDesde] = useState('')
   const [filtroHasta, setFiltroHasta] = useState('')
-  const [busquedaTipo, setBusquedaTipo] = useState('')
-  const [mostrarDropdownTipo, setMostrarDropdownTipo] = useState(false)
+  const [filtrosOpen, setFiltrosOpen] = useState(false)
   const [editandoId, setEditandoId] = useState(null)
-  const refTipoDropdown = useRef(null)
+  const [histLimit, setHistLimit] = useState(12)
   const refPanelFormulario = useRef(null)
-
-  const tipoSeleccionadoLabel = TIPOS_FLAT.find((o) => o.value === tipo)?.label ?? ''
-  const tiposFiltrados = busquedaTipo.trim()
-    ? TIPOS_FLAT.filter((o) => sinAcentos(o.label).includes(sinAcentos(busquedaTipo)))
-    : TIPOS_FLAT
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (refTipoDropdown.current && !refTipoDropdown.current.contains(e.target)) setMostrarDropdownTipo(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   useEffect(() => {
     if (!editandoId) return
@@ -73,8 +68,6 @@ export default function Ejercicios() {
     setNotas('')
     setFechaInput(fechaToISO(new Date()))
     setEditandoId(null)
-    setBusquedaTipo('')
-    setMostrarDropdownTipo(false)
   }
 
   const parseManualCal = () => {
@@ -125,10 +118,7 @@ export default function Ejercicios() {
         })
       )
     } else {
-      const nuevo = {
-        id: crypto.randomUUID(),
-        ...camposBase,
-      }
+      const nuevo = { id: crypto.randomUUID(), ...camposBase }
       if (!kmOk) delete nuevo.distanciaKm
       setEjercicios((prev) => [nuevo, ...prev])
     }
@@ -152,8 +142,7 @@ export default function Ejercicios() {
     setCaloriasManual(item.caloriasManual != null && Number(item.caloriasManual) > 0 ? String(item.caloriasManual) : '')
     setNotas(item.notas || '')
     setFechaInput(fechaSoloDia(item.fecha) || fechaToISO(new Date()))
-    setBusquedaTipo('')
-    setMostrarDropdownTipo(false)
+    refPanelFormulario.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const eliminar = (id) => {
@@ -183,9 +172,12 @@ export default function Ejercicios() {
     return acc
   }, {})
 
+  const fechasOrdenadas = Object.keys(porFecha).sort((a, b) => b.localeCompare(a))
+  const fechasVisibles = fechasOrdenadas.slice(0, histLimit)
+  const hayMasHistorial = fechasOrdenadas.length > histLimit
+
   const hoyIso = fechaToISO(new Date())
   const minutosHoy = ejercicios.filter((e) => fechaSoloDia(e.fecha) === hoyIso).reduce((s, e) => s + e.duracion, 0)
-
   const caloriasHoy = ejercicios
     .filter((e) => fechaSoloDia(e.fecha) === hoyIso)
     .reduce((s, e) => s + caloriasEjercicioRegistro(e, pesoKg), 0)
@@ -199,376 +191,323 @@ export default function Ejercicios() {
     .reduce((s, e) => s + caloriasEjercicioRegistro(e, pesoKg), 0)
 
   return (
-    <section className="section py-4">
-      <div className="container" style={{ maxWidth: '560px' }}>
-        <header className="app-page-hero mb-4">
-          <div className="app-page-hero-icon" aria-hidden="true">🏃</div>
-          <h1 className="title is-5 mb-2">Ejercicios</h1>
-          <p className="is-size-7 has-text-grey mb-0">Registra por día. Calorías quemadas son aproximadas según tipo y duración.</p>
-          <div className="app-hero-metrics">
-            <span><strong>{minutosHoy}</strong> min hoy</span>
-            <span><strong>{caloriasHoy}</strong> kcal</span>
-            <span><strong>{ejercicios.length}</strong> registros</span>
-          </div>
-        </header>
+    <section className="section py-4 ejercicios-page">
+      <div className="container app-page-container">
+        <PageHeader
+          title="Ejercicios"
+          subtitle="Registra y monitorea tu actividad física."
+          action={(
+            <button
+              type="button"
+              className="button is-light ti-page-action-btn ej-nuevo-btn"
+              onClick={() => refPanelFormulario.current?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              + Nuevo ejercicio
+            </button>
+          )}
+        />
 
-        <div className="box py-3 mb-4 app-summary-card">
-          <div className="columns is-mobile mb-0">
-            <div className="column">
-              <p className="is-size-7 has-text-grey mb-1">Hoy ({hoyIso})</p>
-              <p className="mb-0">
-                <span className="title is-5 has-text-link app-summary-number">{minutosHoy}</span>
-                <span className="is-size-7 has-text-grey ml-1">min</span>
-                <span className="ml-2">
-                  <span className="title is-5 has-text-success app-summary-number">{caloriasHoy}</span>
-                  <span className="is-size-7 has-text-grey ml-1">kcal aprox.</span>
-                </span>
+        <div className="ejercicios-layout">
+          <div className="ejercicios-metric-slot ejercicios-metric--hoy">
+            <div className="box py-3 app-summary-card ejercicios-metric-card mb-0">
+              <p className="ejercicios-metric-title mb-2">Hoy</p>
+              <p className="ejercicios-metric-row mb-1">
+                <span className="ejercicios-metric-label">Tiempo activo</span>
+                <span className="ejercicios-metric-value">{minutosHoy} min</span>
               </p>
-            </div>
-            <div className="column">
-              <p className="is-size-7 has-text-grey mb-1">Últimos 7 días</p>
-              <p className="mb-0">
-                <span className="title is-5 has-text-link app-summary-number">{minutosUltimos7}</span>
-                <span className="is-size-7 has-text-grey ml-1">min</span>
-                <span className="ml-2">
-                  <span className="title is-5 has-text-success app-summary-number">{caloriasUltimos7}</span>
-                  <span className="is-size-7 has-text-grey ml-1">kcal aprox.</span>
-                </span>
+              <p className="ejercicios-metric-row mb-0">
+                <span className="ejercicios-metric-label">Calorías</span>
+                <span className="ejercicios-metric-value ejercicios-metric-kcal">{caloriasHoy} kcal</span>
               </p>
+              <p className={`ejercicios-metric-empty mb-0${minutosHoy === 0 ? '' : ' is-invisible'}`}>No hay actividad aún</p>
             </div>
           </div>
-          <p className="is-size-7 has-text-grey mb-0 mt-2">
-            Si hoy no registraste nada pero sí otros días, los totales de la semana muestran tu actividad reciente.
-          </p>
-        </div>
 
-        <div ref={refPanelFormulario} className="box mb-4 py-3" style={{ scrollMarginTop: '0.75rem' }}>
-          <h2 className="title is-6 mb-2">{editandoId ? 'Editar ejercicio' : 'Nuevo ejercicio'}</h2>
-          <form onSubmit={agregar}>
-            <div className="field">
-              <label className="label is-size-7">Fecha</label>
-              <div className="control">
-                <input
-                  className="input is-small"
-                  type="date"
-                  value={fechaInput}
-                  onChange={(e) => setFechaInput(e.target.value)}
-                />
-              </div>
+          <div className="ejercicios-metric-slot ejercicios-metric--week">
+            <div className="box py-3 app-summary-card ejercicios-metric-card mb-0">
+              <p className="ejercicios-metric-title mb-2">Últimos 7 días</p>
+              <p className="ejercicios-metric-row mb-1">
+                <span className="ejercicios-metric-label">Total tiempo</span>
+                <span className="ejercicios-metric-value">{minutosUltimos7} min</span>
+              </p>
+              <p className="ejercicios-metric-row mb-0">
+                <span className="ejercicios-metric-label">Total calorías</span>
+                <span className="ejercicios-metric-value ejercicios-metric-kcal ejercicios-metric-kcal--week">
+                  {caloriasUltimos7.toLocaleString('es-AR')} kcal
+                </span>
+              </p>
+              <p className="ejercicios-metric-empty mb-0 is-invisible" aria-hidden="true">—</p>
             </div>
-            <div className="field">
-              <label className="label is-size-7">Nombre</label>
-              <div className="control">
-                <input
-                  className="input is-small"
-                  type="text"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  placeholder="Ej: Correr, Yoga, Pesas..."
-                  autoComplete="off"
-                />
-              </div>
-            </div>
-            <div className="columns">
-              <div className="column">
-                <div className="field" ref={refTipoDropdown} style={{ position: 'relative' }}>
-                  <label className="label is-size-7">Tipo de actividad</label>
+          </div>
+
+          <div className="ejercicios-layout-main">
+            <div ref={refPanelFormulario} className="box ejercicios-form-card mb-0">
+              <h2 className="ej-form-title mb-4">{editandoId ? 'Editar ejercicio' : '+ Nuevo ejercicio'}</h2>
+              <form onSubmit={agregar} className="ej-form">
+                <div className="field">
+                  <label className="ej-form-label" htmlFor="ej-fecha">Fecha</label>
                   <div className="control">
                     <input
-                      className="input is-small"
-                      type="text"
-                      value={mostrarDropdownTipo || busquedaTipo ? busquedaTipo : tipoSeleccionadoLabel}
-                      onChange={(e) => {
-                        setBusquedaTipo(e.target.value)
-                        setMostrarDropdownTipo(true)
-                      }}
-                      onFocus={() => setMostrarDropdownTipo(true)}
-                      placeholder="Buscar tipo (ej. correr, yoga, pesas...)"
-                      autoComplete="off"
+                      id="ej-fecha"
+                      className="input"
+                      type="date"
+                      value={fechaInput}
+                      onChange={(e) => setFechaInput(e.target.value)}
                     />
-                    {mostrarDropdownTipo && (
-                      <div className="box p-2 mt-1 dropdown-panel" style={{ maxHeight: '220px', overflowY: 'auto', position: 'absolute', left: 0, right: 0, zIndex: 30, minWidth: '200px' }}>
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                          {tiposFiltrados.length === 0 ? (
-                            <li className="is-size-7 has-text-grey">Sin resultados</li>
-                          ) : (
-                            tiposFiltrados.map((op) => (
-                              <li key={op.value}>
-                                <button
-                                  type="button"
-                                  className="button is-fullwidth is-small is-light has-text-left"
-                                  onClick={() => {
-                                    setTipo(op.value)
-                                    if (!tipoAdmiteKilometros(op.value)) setModoMedida('minutos')
-                                    setBusquedaTipo('')
-                                    setMostrarDropdownTipo(false)
-                                  }}
-                                >
-                                  {op.label}
-                                </button>
-                              </li>
-                            ))
-                          )}
-                        </ul>
-                      </div>
-                    )}
                   </div>
                 </div>
-              </div>
-              <div className="column">
-                {tipoAdmiteKilometros(tipo) ? (
-                  <div className="field">
-                    <label className="label is-size-7">Medida</label>
-                    <div className="control">
-                      <div className="buttons has-addons are-small">
-                        <button
-                          type="button"
-                          className={`button is-small ${modoMedida === 'minutos' ? 'is-link' : ''}`}
-                          onClick={() => setModoMedida('minutos')}
-                        >
-                          Minutos
-                        </button>
-                        <button
-                          type="button"
-                          className={`button is-small ${modoMedida === 'km' ? 'is-link' : ''}`}
-                          onClick={() => setModoMedida('km')}
-                        >
-                          Kilómetros
-                        </button>
-                      </div>
+
+                <div className="field">
+                  <label className="ej-form-label" htmlFor="ej-nombre">Nombre del ejercicio</label>
+                  <div className="control">
+                    <input
+                      id="ej-nombre"
+                      className="input"
+                      type="text"
+                      value={nombre}
+                      onChange={(e) => setNombre(e.target.value)}
+                      placeholder="Ej: Padel, Correr, Pesas..."
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label className="ej-form-label" htmlFor="ej-tipo">Tipo de actividad</label>
+                  <div className="control">
+                    <div className="select is-fullwidth">
+                      <select
+                        id="ej-tipo"
+                        value={tipo}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setTipo(v)
+                          if (!tipoAdmiteKilometros(v)) setModoMedida('minutos')
+                        }}
+                      >
+                        {TIPOS_EJERCICIO_AGRUPADOS.map((g) => (
+                          <optgroup key={g.categoria} label={g.categoria}>
+                            {g.opciones.map((op) => (
+                              <option key={op.value} value={op.value}>{op.label}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                ) : (
+                </div>
+
+                {tipoAdmiteKilometros(tipo) ? (
                   <div className="field">
-                    <label className="label is-size-7">Duración (min)</label>
-                    <div className="control">
+                    <label className="ej-form-label">Medida</label>
+                    <div className="ti-segmented">
+                      <button
+                        type="button"
+                        className={modoMedida === 'minutos' ? 'is-active' : ''}
+                        onClick={() => setModoMedida('minutos')}
+                      >
+                        Minutos
+                      </button>
+                      <button
+                        type="button"
+                        className={modoMedida === 'km' ? 'is-active' : ''}
+                        onClick={() => setModoMedida('km')}
+                      >
+                        Kilómetros
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="field">
+                  <label className="ej-form-label" htmlFor="ej-duracion">
+                    {tipoAdmiteKilometros(tipo) && modoMedida === 'km' ? 'Distancia (km)' : 'Duración (min)'}
+                  </label>
+                  <div className="control">
+                    {tipoAdmiteKilometros(tipo) && modoMedida === 'km' ? (
                       <input
-                        className="input is-small"
+                        id="ej-duracion"
+                        className="input"
+                        type="number"
+                        min="0.1"
+                        step="0.1"
+                        value={distanciaKm}
+                        onChange={(e) => setDistanciaKm(e.target.value)}
+                        placeholder="Ej: 5"
+                      />
+                    ) : (
+                      <input
+                        id="ej-duracion"
+                        className="input"
                         type="number"
                         min="1"
                         value={duracion}
                         onChange={(e) => setDuracion(e.target.value)}
                         placeholder="30"
                       />
-                    </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-            {tipoAdmiteKilometros(tipo) && (
-              <div className="field">
-                <label className="label is-size-7">{modoMedida === 'km' ? 'Distancia (km)' : 'Duración (min)'}</label>
-                <div className="control">
-                  {modoMedida === 'km' ? (
+                </div>
+
+                <div className="field">
+                  <label className="ej-form-label" htmlFor="ej-kcal">Kcal manual (opcional)</label>
+                  <div className="control">
                     <input
-                      className="input is-small"
-                      type="number"
-                      min="0.1"
-                      step="0.1"
-                      value={distanciaKm}
-                      onChange={(e) => setDistanciaKm(e.target.value)}
-                      placeholder="Ej: 5"
-                    />
-                  ) : (
-                    <input
-                      className="input is-small"
+                      id="ej-kcal"
+                      className="input"
                       type="number"
                       min="1"
-                      value={duracion}
-                      onChange={(e) => setDuracion(e.target.value)}
-                      placeholder="30"
+                      step="1"
+                      value={caloriasManual}
+                      onChange={(e) => setCaloriasManual(e.target.value)}
+                      placeholder="Reemplaza el cálculo automático"
                     />
-                  )}
+                  </div>
                 </div>
-                <p className="is-size-7 has-text-grey mt-1 mb-0">
-                  Los km usan la velocidad típica del tipo (ej. correr 10 km/h) para estimar minutos y kcal.
-                </p>
-              </div>
-            )}
-            <div className="field">
-              <label className="label is-size-7">Kcal manual (opcional)</label>
-              <div className="control">
-                <input
-                  className="input is-small"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={caloriasManual}
-                  onChange={(e) => setCaloriasManual(e.target.value)}
-                  placeholder="Si lo completás, reemplaza el cálculo automático"
-                />
-              </div>
-            </div>
-            {(() => {
-              const m = parseManualCal()
-              const kmP = modoMedida === 'km' && tipoAdmiteKilometros(tipo) && Number(distanciaKm) > 0
-              const minP = modoMedida === 'minutos' && Number(duracion) > 0
-              if (!tipo || (!m && !kmP && !minP)) return null
-              const durEst = kmP ? minutosDesdeKm(tipo, Number(distanciaKm)) : Number(duracion) || 0
-              return (
-                <p className="is-size-7 has-text-grey mb-2">
-                  Aprox.{' '}
-                  <strong>{caloriasEjercicioRegistro({ tipo, duracion: durEst, caloriasManual: m || undefined }, pesoKg)}</strong> kcal
-                  {m ? ' (valor manual)' : ' según tu peso en Config'}.
-                </p>
-              )
-            })()}
-            <div className="field">
-              <label className="label is-size-7">Notas (opcional)</label>
-              <div className="control">
-                <input
-                  className="input is-small"
-                  type="text"
-                  value={notas}
-                  onChange={(e) => setNotas(e.target.value)}
-                  placeholder="Intensidad, cómo te sentiste..."
-                />
-              </div>
-            </div>
-            <div className="field">
-              <div className="control">
-                <button type="submit" className="button is-link is-fullwidth is-small">
+
+                {(() => {
+                  const m = parseManualCal()
+                  const kmP = modoMedida === 'km' && tipoAdmiteKilometros(tipo) && Number(distanciaKm) > 0
+                  const minP = modoMedida === 'minutos' && Number(duracion) > 0
+                  if (!tipo || (!m && !kmP && !minP)) return null
+                  const durEst = kmP ? minutosDesdeKm(tipo, Number(distanciaKm)) : Number(duracion) || 0
+                  return (
+                    <p className="ej-form-hint mb-3">
+                      Aprox. <strong>{caloriasEjercicioRegistro({ tipo, duracion: durEst, caloriasManual: m || undefined }, pesoKg)}</strong> kcal
+                      {m ? ' (manual)' : ' según tu peso en Config'}.
+                    </p>
+                  )
+                })()}
+
+                <div className="field">
+                  <label className="ej-form-label" htmlFor="ej-notas">Notas (opcional)</label>
+                  <div className="control">
+                    <input
+                      id="ej-notas"
+                      className="input"
+                      type="text"
+                      value={notas}
+                      onChange={(e) => setNotas(e.target.value)}
+                      placeholder="Intensidad, cómo te sentiste..."
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="button is-link is-fullwidth ej-form-submit">
                   {editandoId ? 'Guardar cambios' : 'Guardar ejercicio'}
                 </button>
-              </div>
+                {editandoId && (
+                  <button type="button" className="button is-light is-fullwidth mt-2" onClick={limpiarFormulario}>
+                    Cancelar edición
+                  </button>
+                )}
+              </form>
             </div>
-            {editandoId && (
-              <div className="field mb-0">
-                <button type="button" className="button is-light is-fullwidth is-small" onClick={limpiarFormulario}>
-                  Cancelar edición
+          </div>
+
+          <aside className="ejercicios-layout-aside">
+            <div className="ejercicios-hist-panel">
+            <div className="ej-hist-toolbar mb-3">
+              <div className="ej-hist-search">
+                <span className="ej-hist-search-icon" aria-hidden>🔍</span>
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, actividad..."
+                  value={filtroTexto}
+                  onChange={(e) => setFiltroTexto(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                className={`ej-hist-filtros-btn${filtrosOpen ? ' is-active' : ''}`}
+                onClick={() => setFiltrosOpen((v) => !v)}
+              >
+                ☰ Filtros
+              </button>
+            </div>
+
+            {filtrosOpen && (
+              <div className="box ej-hist-filtros-panel mb-3 py-3">
+                <div className="field mb-2">
+                  <label className="ej-form-label">Tipo</label>
+                  <div className="select is-fullwidth is-small">
+                    <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
+                      <option value="">Todos los tipos</option>
+                      {TIPOS_FLAT.map((op) => (
+                        <option key={op.value} value={op.value}>{op.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="columns is-mobile mb-2">
+                  <div className="column">
+                    <label className="ej-form-label">Desde</label>
+                    <input className="input is-small" type="date" value={filtroDesde} onChange={(e) => setFiltroDesde(e.target.value)} />
+                  </div>
+                  <div className="column">
+                    <label className="ej-form-label">Hasta</label>
+                    <input className="input is-small" type="date" value={filtroHasta} onChange={(e) => setFiltroHasta(e.target.value)} />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="button is-small is-light"
+                  onClick={() => { setFiltroTexto(''); setFiltroTipo(''); setFiltroDesde(''); setFiltroHasta('') }}
+                >
+                  Limpiar filtros
                 </button>
               </div>
             )}
-          </form>
-        </div>
 
-        <h2 className="title is-6 mb-2">Historial por día</h2>
-        <div className="box mb-4 py-3">
-          <p className="is-size-7 has-text-grey mb-2">Filtrar historial</p>
-          <div className="columns is-mobile is-multiline is-variable is-1">
-            <div className="column is-full">
-              <input
-                className="input is-small"
-                type="text"
-                placeholder="Buscar por nombre, notas o tipo..."
-                value={filtroTexto}
-                onChange={(e) => setFiltroTexto(e.target.value)}
-              />
-            </div>
-            <div className="column is-half">
-              <div className="select is-small is-fullwidth">
-                <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
-                  <option value="">Todos los tipos</option>
-                  {TIPOS_FLAT.map((op) => (
-                    <option key={op.value} value={op.value}>{op.label}</option>
-                  ))}
-                </select>
+            {fechasVisibles.length === 0 ? (
+              <div className="box ej-hist-empty has-text-centered py-5">
+                <p className="mb-0">Aún no hay ejercicios registrados.</p>
               </div>
-            </div>
-            <div className="column is-half">
-              <input
-                className="input is-small"
-                type="date"
-                placeholder="Desde"
-                value={filtroDesde}
-                onChange={(e) => setFiltroDesde(e.target.value)}
-                title="Desde fecha"
-              />
-            </div>
-            <div className="column is-half">
-              <input
-                className="input is-small"
-                type="date"
-                placeholder="Hasta"
-                value={filtroHasta}
-                onChange={(e) => setFiltroHasta(e.target.value)}
-                title="Hasta fecha"
-              />
-            </div>
-            <div className="column is-half is-flex is-align-items-center">
-              <button
-                type="button"
-                className="button is-small is-light"
-                onClick={() => { setFiltroTexto(''); setFiltroTipo(''); setFiltroDesde(''); setFiltroHasta('') }}
-              >
-                Limpiar filtros
-              </button>
-            </div>
-          </div>
-          {(filtroTexto || filtroTipo || filtroDesde || filtroHasta) && (
-            <p className="is-size-7 has-text-grey mt-2 mb-0">
-              {ejerciciosFiltrados.length} resultado{ejerciciosFiltrados.length !== 1 ? 's' : ''}
-            </p>
-          )}
-        </div>
-        {Object.keys(porFecha).length === 0 ? (
-          <div className="box has-text-centered has-text-grey is-size-7 py-3">
-            Aún no hay ejercicios registrados.
-          </div>
-        ) : (
-          <ul className="mb-0" style={{ listStyle: 'none', padding: 0 }}>
-            {Object.entries(porFecha)
-              .sort(([a], [b]) => b.localeCompare(a))
-              .map(([fecha, lista]) => {
-                const totalCal = lista.reduce((s, e) => s + caloriasEjercicioRegistro(e, pesoKg), 0)
-                const totalMin = lista.reduce((s, e) => s + e.duracion, 0)
-                return (
-                  <li key={fecha} className="mb-4">
-                    <div className="is-flex is-justify-content-space-between is-align-items-center mb-2">
-                      <p className="is-size-7 has-text-grey mb-0" style={{ textTransform: 'capitalize' }}>
-                        {formatearFecha(fecha)}
-                      </p>
-                      <span className="tag is-success is-light is-size-7">
-                        {totalCal} kcal · {totalMin} min
-                      </span>
-                    </div>
-                    <ul style={{ listStyle: 'none', padding: 0 }}>
-                      {lista.map((e) => (
-                        <li key={e.id} className="box py-2 px-3 mb-2 ejercicio-historial-fila">
-                          <div className="is-flex is-justify-content-space-between is-align-items-flex-start">
-                            <div className="is-flex-wrap-wrap is-flex is-align-items-center" style={{ gap: '0.5rem' }}>
+            ) : (
+              <div className="ej-hist-list">
+                {fechasVisibles.map((fecha) => (
+                  <section key={fecha} className="ej-hist-dia">
+                    <h3 className="ej-hist-dia-titulo">{tituloDiaHistorial(fecha)}</h3>
+                    <ul className="ej-hist-items">
+                      {porFecha[fecha].map((e) => {
+                        const ui = getIconoActividad(e.tipo, e.nombre)
+                        const kcal = caloriasEjercicioRegistro(e, pesoKg)
+                        return (
+                          <li key={e.id} className="ej-hist-item">
+                            <span className={`ej-hist-icon ej-hist-icon--${ui.tone}`} aria-hidden>{ui.icon}</span>
+                            <div className="ej-hist-body">
                               <strong className="ej-hist-nombre">{e.nombre}</strong>
-                              <span className="tag is-link is-light">{etiquetaTipo(e.tipo)}</span>
-                              <span className="ej-hist-chip ej-hist-duracion">
-                                {e.distanciaKm != null && Number(e.distanciaKm) > 0 ? `${e.distanciaKm} km · ` : ''}
-                                {e.duracion} min
-                              </span>
-                              <span className="ej-hist-chip ej-hist-kcal">
-                                ~{caloriasEjercicioRegistro(e, pesoKg)} kcal
-                                {e.caloriasManual != null && Number(e.caloriasManual) > 0 ? ' (manual)' : ''}
-                              </span>
-                              {e.notas && (
-                                <span className="is-size-7 ej-hist-notas" style={{ width: '100%' }}>
-                                  — {e.notas}
-                                </span>
-                              )}
+                              <span className={`ej-hist-cat ej-hist-cat--${ui.tone}`}>{getCategoriaTipo(e.tipo)}</span>
                             </div>
-                            <div className="is-flex is-align-items-flex-start" style={{ gap: '0.25rem' }}>
-                              <button
-                                type="button"
-                                className="button is-small is-text"
-                                onClick={() => iniciarEdicion(e)}
-                              >
-                                Editar
+                            <div className="ej-hist-stats">
+                              <span>{e.duracion} min</span>
+                              <span className="ej-hist-kcal">~{kcal} kcal</span>
+                            </div>
+                            <div className="ej-hist-actions">
+                              <button type="button" className="ej-hist-edit" onClick={() => iniciarEdicion(e)} aria-label="Editar">
+                                ✏️
                               </button>
-                              <button
-                                type="button"
-                                className="button is-small is-text has-text-grey"
-                                onClick={() => eliminar(e.id)}
-                                aria-label="Eliminar"
-                              >
+                              <button type="button" className="ej-hist-delete" onClick={() => eliminar(e.id)} aria-label="Eliminar">
                                 ×
                               </button>
                             </div>
-                          </div>
-                        </li>
-                      ))}
+                          </li>
+                        )
+                      })}
                     </ul>
-                  </li>
-                )
-              })}
-          </ul>
-        )}
+                  </section>
+                ))}
+              </div>
+            )}
+
+            {hayMasHistorial && (
+              <button type="button" className="ej-hist-more" onClick={() => setHistLimit((n) => n + 10)}>
+                Cargar más historial
+              </button>
+            )}
+            </div>
+          </aside>
+        </div>
       </div>
     </section>
   )

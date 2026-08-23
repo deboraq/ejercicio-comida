@@ -4,8 +4,11 @@ import { getConsejosDelDia } from '../utils/consejos'
 import { caloriasEjercicioRegistro, formatearFecha, fechaToISO, fechaSoloDia, getCategoriaTipo } from '../utils/calorias'
 import { REFERENCIA_ALIMENTOS, buscarAlimentos } from '../utils/referenciaComidas'
 import { PERIODOS, getRangoPorPeriodo, filtrarPorRango } from '../utils/estadisticas'
+import MacroBarCard from '../components/MacroBarCard'
+import PageHeader from '../components/PageHeader'
 
 const COMIDAS = ['Desayuno', 'Almuerzo', 'Cena', 'Snack']
+const MOMENTO_ICON = { Desayuno: '☕', Almuerzo: '🍔', Cena: '🍽️', Snack: '🍎', Otros: '📋' }
 
 /** Agrupa los registros de un mismo día por momento del día (orden fijo + “Otros”). */
 function agruparComidasPorMomento(registrosDia) {
@@ -291,6 +294,12 @@ export default function Comida() {
   const caloriasHoy = hoyRegistros.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
   const proteinasHoy = redondear1(hoyRegistros.reduce((s, r) => s + numeroFlexibleO(r.proteinas), 0))
   const carbosHoy = redondear1(hoyRegistros.reduce((s, r) => s + numeroFlexibleO(r.carbohidratos), 0))
+  const grasasHoy = redondear1(hoyRegistros.reduce((s, r) => s + numeroFlexibleO(r.grasas), 0))
+
+  const metaKcal = config.metaCalorias || 2400
+  const metaPro = config.metaProteina || 150
+  const metaCarb = config.metaCarbohidratos || 250
+  const metaGrasa = config.metaGrasa || 70
 
   const ejerciciosHoy = ejercicios.filter((ex) => fechaSoloDia(ex.fecha) === hoy)
   const ejerciciosPorTipo = ejerciciosHoy.reduce((acc, ex) => {
@@ -314,159 +323,98 @@ export default function Comida() {
 
   const puedeGuardar = items.some((it) => it.descripcion.trim())
 
+  const bloquesHoy = agruparComidasPorMomento(hoyRegistros)
+  const momentosRegistrados = new Set(bloquesHoy.map((b) => b.tipo))
+  const momentosPendientes = COMIDAS.filter((m) => !momentosRegistrados.has(m))
+
+  const scrollHistorial = () => {
+    document.getElementById('comida-historial-completo')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   return (
     <section className="section py-4 comida-page">
-      <div className="container" style={{ maxWidth: '560px' }}>
-        <header className="app-page-hero mb-4">
-          <div className="app-page-hero-icon" aria-hidden="true">🥗</div>
-          <h1 className="title is-5 mb-2">Comida</h1>
-          <p className="subtitle has-text-grey mb-0">Resumen del día, registro rápido e historial.</p>
-          <div className="app-hero-metrics">
-            <span><strong>{caloriasHoy || 0}</strong> kcal</span>
-            <span><strong>{proteinasHoy || 0}</strong> g proteína</span>
-            <span><strong>{hoyRegistros.length}</strong> registros</span>
-          </div>
-        </header>
+      <div className="container app-page-container">
+        <PageHeader
+          icon="🥗"
+          iconTone="green"
+          title="Comida"
+          subtitle="Resumen del día, registro rápido e historial."
+          metrics={[
+            `${caloriasHoy || 0} kcal`,
+            `${proteinasHoy || 0} g proteína`,
+            `${hoyRegistros.length} registros`,
+          ]}
+        />
 
         {consejos.length > 0 && (
           <div className="mb-4">
-            {consejos.map((c, i) => (
-              <article key={i} className="message is-info is-light mb-2 py-3 px-3">
-                <div className="message-body py-0">{c.texto}</div>
+            {consejos.slice(0, 1).map((c, i) => (
+              <article key={i} className="ti-tip-bar">
+                <span className="ti-tip-icon" aria-hidden="true">💡</span>
+                <p className="mb-0">{c.texto}</p>
               </article>
             ))}
           </div>
         )}
 
-        <div className="box comida-hoy-resumen mb-4">
-          <div className="is-flex is-justify-content-space-between is-align-items-center mb-3">
-            <h2 className="title is-6 mb-0">Tu día</h2>
-            <span className="tag is-rounded is-light has-text-weight-medium">{formatearFecha(hoy)}</span>
+        <section className="comida-tu-dia mb-4" aria-label="Resumen del día">
+          <h2 className="title is-6 mb-3">Tu día</h2>
+          <div className="comida-macro-bars">
+            <MacroBarCard label="Calorías" value={caloriasHoy} goal={metaKcal} color="#3b82f6" unit="kcal" />
+            <MacroBarCard label="Proteínas" value={proteinasHoy} goal={metaPro} color="#10b981" unit="g" />
+            <MacroBarCard label="Carbohidratos" value={carbosHoy} goal={metaCarb} color="#a78bfa" unit="g" />
+            <MacroBarCard label="Grasas" value={grasasHoy} goal={metaGrasa} color="#f472b6" unit="g" />
           </div>
-          <div className="columns is-mobile is-multiline comida-stats-grid mb-0">
-            <div className="column is-half">
-              <div className="comida-stat-tile comida-stat-kcal">
-                <p className="comida-stat-label">Calorías</p>
-                <p className="comida-stat-value">{caloriasHoy || 0}</p>
-                <p className="comida-stat-unit">kcal</p>
-              </div>
-            </div>
-            <div className="column is-half">
-              <div className="comida-stat-tile comida-stat-pro">
-                <p className="comida-stat-label">Proteínas</p>
-                <p className="comida-stat-value">{proteinasHoy || 0}</p>
-                <p className="comida-stat-unit">g</p>
-              </div>
-            </div>
-            <div className="column is-half">
-              <div className="comida-stat-tile comida-stat-car">
-                <p className="comida-stat-label">Carbohidratos</p>
-                <p className="comida-stat-value">{carbosHoy || 0}</p>
-                <p className="comida-stat-unit">g</p>
-              </div>
-            </div>
-            <div className="column is-half">
-              <div className="comida-stat-tile comida-stat-count">
-                <p className="comida-stat-label">Registros</p>
-                <p className="comida-stat-value">{hoyRegistros.length}</p>
-                <p className="comida-stat-unit">hoy</p>
-              </div>
-            </div>
-          </div>
-          {(config.metaCalorias || config.metaProteina) && (
-            <div className="mt-4 pt-4 comida-meta-borde">
-              <p className="is-size-7 has-text-grey mb-2">Progreso hacia tu meta (Config)</p>
-              {config.metaCalorias && (
-                <div className="mb-3">
-                  <p className="is-size-7 mb-1">Calorías: {caloriasHoy || 0} / {config.metaCalorias} kcal</p>
-                  <progress className="progress is-info is-small" value={Math.min(Number(caloriasHoy) || 0, Number(config.metaCalorias))} max={config.metaCalorias} />
-                </div>
-              )}
-              {config.metaProteina && (
-                <div>
-                  <p className="is-size-7 mb-1">Proteína: {proteinasHoy || 0} / {config.metaProteina} g</p>
-                  <progress className="progress is-success is-small" value={Math.min(Number(proteinasHoy) || 0, Number(config.metaProteina))} max={config.metaProteina} />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        </section>
 
-        <div className="box comida-form-card mb-4">
-          <h2 className="title is-6 mb-1">Registrar</h2>
-          <p className="is-size-7 has-text-grey mb-3">Elegí el momento del día, la fecha si no es hoy, buscá en la lista o cargá a mano.</p>
+        <div className="comida-layout">
+          <div className="comida-layout-main">
+            <div className="box comida-form-card mb-0">
+          <h2 className="title is-6 mb-1">Registrar comida</h2>
+          <p className="comida-form-subtitle mb-4">Buscá en la base de datos o ingresá manualmente.</p>
           <form onSubmit={guardarComida}>
+            <div className="columns is-mobile mb-3">
+              <div className="column is-half">
+                <label className="ej-form-label mb-1" htmlFor="comida-momento">Momento del día</label>
+                <div className="select is-fullwidth">
+                  <select id="comida-momento" value={comida} onChange={(e) => setComida(e.target.value)}>
+                    {COMIDAS.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="column is-half">
+                <label className="ej-form-label mb-1" htmlFor="comida-fecha">Fecha</label>
+                <input id="comida-fecha" className="input" type="date" value={fechaInput} onChange={(e) => setFechaInput(e.target.value)} />
+              </div>
+            </div>
+
             <div className="field mb-3">
-              <label className="label is-size-7 mb-2">Momento del día</label>
-              <div className="buttons comida-moment-tabs has-addons is-flex-wrap-wrap">
-                {COMIDAS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`button is-small ${comida === c ? 'is-link' : 'is-light'}`}
-                    onClick={() => setComida(c)}
-                  >
-                    {c}
+              <label className="ej-form-label mb-1" htmlFor="comida-buscar">Buscar alimento</label>
+              <input
+                id="comida-buscar"
+                className="input"
+                type="text"
+                value={busquedaRef}
+                onChange={(e) => setBusquedaRef(e.target.value)}
+                placeholder="Ej: pollo, arroz, manzana..."
+                autoComplete="off"
+              />
+            </div>
+
+            {(items.length === 0 && !busquedaRef.trim()) && (
+              <div className="comida-empty-drop mb-3">
+                <span className="comida-empty-icon" aria-hidden="true">🍽</span>
+                <p className="mb-3">Todavía no agregaste alimentos a esta entrada.</p>
+                <div className="comida-empty-actions">
+                  <button type="button" className="button is-link" onClick={() => document.getElementById('comida-buscar')?.focus()}>
+                    + Buscar
                   </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="field">
-              <label className="label is-size-7" htmlFor="comida-fecha">Fecha del registro</label>
-              <div className="control">
-                <input id="comida-fecha" className="input is-small" type="date" value={fechaInput} onChange={(e) => setFechaInput(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="field mb-0">
-              <div className="columns is-mobile is-variable is-2 mb-0">
-                <div className="column is-two-thirds">
-                  <label className="label is-size-7 mb-1" htmlFor="comida-buscar">Buscar en referencia</label>
-                  <div className="control has-icons-left">
-                    <input
-                      id="comida-buscar"
-                      className="input is-small"
-                      type="text"
-                      value={busquedaRef}
-                      onChange={(e) => setBusquedaRef(e.target.value)}
-                      placeholder="Ej: milanesa, arroz, yogur…"
-                      autoComplete="off"
-                    />
-                    <span className="icon is-small is-left">🔍</span>
-                  </div>
-                </div>
-                <div className="column">
-                  <label className="label is-size-7 has-text-grey mb-1" htmlFor="comida-cant-porciones">Cant.</label>
-                  <div className="control">
-                    <input
-                      id="comida-cant-porciones"
-                      className="input is-small"
-                      type="number"
-                      min="1"
-                      max="99"
-                      value={cantidadPorciones}
-                      onChange={(e) => {
-                        const v = e.target.value
-                        if (v === '') {
-                          setCantidadPorciones('')
-                          return
-                        }
-                        const n = parseInt(v, 10)
-                        if (!Number.isFinite(n)) return
-                        setCantidadPorciones(String(Math.max(1, Math.min(99, n))))
-                      }}
-                      onBlur={() => {
-                        if (cantidadPorciones === '') setCantidadPorciones('1')
-                      }}
-                      title="Solo al tocar un resultado de la lista: cuántas porciones base traer a la fila (luego podés cambiar Cant. en cada ítem abajo)"
-                    />
-                  </div>
+                  <button type="button" className="button is-light" onClick={añadirLineaVacia}>
+                    Manual
+                  </button>
                 </div>
               </div>
-              <p className="is-size-7 has-text-grey mt-1 mb-0">
-                Cada resultado es <span className="has-text-weight-semibold">una</span> unidad base (1 taco, 1 pieza de sushi, 1 triángulo de pizza, 100 g de carne en Proteínas, etc.). Podés usar la <span className="has-text-weight-semibold">Cant.</span> de arriba al elegir de la lista, o ajustar la cantidad en cada fila más abajo.
-              </p>
+            )}
               {busquedaRef.trim().length >= 1 && (
                 <div className="box mt-2 p-2 dropdown-panel dropdown-panel-comida comida-resultados" style={{ maxHeight: 'min(45vh, 260px)', overflowY: 'auto' }}>
                   <ul className="comida-resultados-lista">
@@ -492,21 +440,10 @@ export default function Comida() {
                   </ul>
                 </div>
               )}
-            </div>
-
-            <p className="is-size-7 has-text-weight-semibold mb-1">Ítems a guardar (uno o varios)</p>
-            <p className="is-size-7 has-text-grey mb-2">
-              En cada fila podés cambiar <span className="has-text-weight-semibold">Cant.</span> abajo: recalcula kcal, P y C (si venís de la referencia, mantiene la porción base; si cargaste a mano, escala los totales).
-            </p>
-            {items.length === 0 ? (
-              <div className="comida-vacio-cta mb-3">
-                <p className="is-size-7 has-text-grey mb-2">Todavía no agregaste alimentos a esta entrada.</p>
-                <button type="button" className="button is-light is-small" onClick={añadirLineaVacia}>
-                  + Añadir fila manual
-                </button>
-              </div>
-            ) : (
-              items.map((it) => (
+            {items.length > 0 && (
+              <>
+            <p className="is-size-7 has-text-weight-semibold mb-1 mt-3">Ítems a guardar</p>
+              {items.map((it) => (
                 <div key={it.id} className="comida-item-editor mb-3">
                   <div className="is-flex is-justify-content-space-between is-align-items-center mb-2">
                     <span className="is-size-7 has-text-grey">Alimento</span>
@@ -600,17 +537,20 @@ export default function Comida() {
                     />
                   </div>
                 </div>
-              ))
+              ))}
+              </>
             )}
 
+            {items.length > 0 && (
             <div className="field">
               <button type="button" className="button is-light is-small is-fullwidth mb-2" onClick={añadirLineaVacia}>
                 + Añadir otra fila
               </button>
             </div>
+            )}
 
             <div className="field">
-              <label className="label is-size-7" htmlFor="comida-notas">Notas (opcional, aplican a todo el guardado)</label>
+              <label className="label is-size-7" htmlFor="comida-notas">Notas (opcional)</label>
               <div className="control">
                 <input id="comida-notas" className="input is-small" type="text" value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Ej: comida en restaurante, hambre…" />
               </div>
@@ -631,15 +571,70 @@ export default function Comida() {
 
             <div className="field mb-0">
               <div className="control">
-                <button type="submit" className="button is-link is-fullwidth" disabled={!puedeGuardar}>
+                <button type="submit" className="button is-link is-fullwidth comida-guardar-btn" disabled={!puedeGuardar}>
                   Guardar en el historial
                 </button>
               </div>
             </div>
           </form>
+            </div>
+          </div>
+
+          <aside className="comida-layout-aside">
+            <div className="box comida-hist-hoy-card">
+              <div className="comida-hist-hoy-header">
+                <h2 className="title is-6 mb-0">Historial de hoy</h2>
+                <button type="button" className="comida-hist-ver-todo" onClick={scrollHistorial}>Ver todo</button>
+              </div>
+              {bloquesHoy.length === 0 && momentosPendientes.length === COMIDAS.length ? (
+                <p className="is-size-7 has-text-grey mb-0 mt-3">Todavía no registraste comidas hoy.</p>
+              ) : (
+                <div className="comida-hist-hoy-list mt-3">
+                  {bloquesHoy.map(({ tipo, items: itemsGrupo }) => {
+                    const calGrupo = itemsGrupo.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
+                    return (
+                      <div key={tipo} className="comida-hist-hoy-bloque">
+                        <div className="comida-hist-hoy-head">
+                          <span className={`comida-hist-hoy-icon comida-hist-hoy-icon--${tipo.toLowerCase()}`} aria-hidden>{MOMENTO_ICON[tipo] || '📋'}</span>
+                          <div>
+                            <span className="comida-hist-hoy-tipo">{tipo}</span>
+                          </div>
+                        </div>
+                        <ul className="comida-hist-hoy-items">
+                          {itemsGrupo.map((r) => (
+                            <li key={r.id}>
+                              <span>{r.descripcion}</span>
+                              <span className="comida-hist-hoy-kcal">{r.calorias || '—'} kcal</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="comida-hist-hoy-total mb-0">Total: <strong>{calGrupo} kcal</strong></p>
+                      </div>
+                    )
+                  })}
+                  {momentosPendientes.map((momento) => (
+                    <div key={momento} className="comida-hist-hoy-bloque is-pending">
+                      <div className="comida-hist-hoy-head">
+                        <span className="comida-hist-hoy-icon is-muted" aria-hidden>{MOMENTO_ICON[momento]}</span>
+                        <span className="comida-hist-hoy-tipo is-muted">{momento}</span>
+                        <button
+                          type="button"
+                          className="comida-hist-agregar"
+                          onClick={() => setComida(momento)}
+                        >
+                          Agregar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
 
-        <h2 className="title is-6 mb-2">Historial</h2>
+        <div id="comida-historial-completo">
+        <h2 className="title is-6 mb-2 mt-2">Historial</h2>
         <div className="box comida-filtro-periodo mb-3 py-3">
           <label className="label is-size-7 mb-2">Período</label>
           <div className="field mb-0">
@@ -696,6 +691,7 @@ export default function Comida() {
               })}
           </ul>
         )}
+        </div>
       </div>
     </section>
   )

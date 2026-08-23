@@ -35,21 +35,42 @@ export function AuthProvider({ children }) {
       setAuthError('Cuentas no configuradas. Usa la app en modo local.')
       return { error: { message: 'Supabase no configurado' } }
     }
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: metadata },
-    })
-    if (error) {
-      const msg = (error.message || '').toLowerCase()
-      const yaRegistrado = msg.includes('already been registered') || msg.includes('already registered') || error.code === 'user_already_registered'
-      setAuthError(yaRegistrado ? 'Ya existe una cuenta con ese correo. Iniciá sesión en su lugar.' : error.message)
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: metadata },
+      })
+      if (error) {
+        const msg = (error.message || '').toLowerCase()
+        const yaRegistrado = msg.includes('already been registered') || msg.includes('already registered') || error.code === 'user_already_registered'
+        setAuthError(yaRegistrado ? 'Ya existe una cuenta con ese correo. Iniciá sesión en su lugar.' : mensajeAuth(error))
+      }
+      return { data, error }
+    } catch (err) {
+      const msg = mensajeAuth(err)
+      setAuthError(msg)
+      return { error: { message: msg } }
     }
-    return { data, error }
+  }
+
+  function esErrorRed(err) {
+    const m = (err?.message || String(err || '')).toLowerCase()
+    return (
+      m.includes('load failed') ||
+      m.includes('failed to fetch') ||
+      m.includes('networkerror') ||
+      m.includes('network request failed') ||
+      m.includes('could not resolve') ||
+      m.includes('fetch failed')
+    )
   }
 
   function mensajeAuth(error) {
     if (!error?.message) return 'No se pudo iniciar sesión. Probá de nuevo.'
+    if (esErrorRed(error)) {
+      return 'No se pudo conectar con el servidor de cuentas. Revisá que el proyecto de Supabase esté activo y que VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en .env (o en Vercel) sean los actuales. Reiniciá npm run dev después de cambiarlas.'
+    }
     if (error.code === 'email_not_confirmed') {
       return 'Tenés que confirmar el correo antes de entrar. Revisá la bandeja de entrada y spam.'
     }
@@ -72,9 +93,15 @@ export function AuthProvider({ children }) {
       setAuthError('Cuentas no configuradas.')
       return { error: { message: 'Supabase no configurado' } }
     }
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setAuthError(mensajeAuth(error))
-    return { data, error }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) setAuthError(mensajeAuth(error))
+      return { data, error }
+    } catch (err) {
+      const msg = mensajeAuth(err)
+      setAuthError(msg)
+      return { error: { message: msg } }
+    }
   }
 
   const signOut = async () => {
@@ -89,10 +116,16 @@ export function AuthProvider({ children }) {
       setAuthError('Cuentas no configuradas.')
       return { error: { message: 'Supabase no configurado' } }
     }
-    const redirectTo = `${window.location.origin}/reset-password`
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
-    if (error) setAuthError(error.message)
-    return { data, error }
+    try {
+      const redirectTo = `${window.location.origin}/reset-password`
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+      if (error) setAuthError(mensajeAuth(error))
+      return { data, error }
+    } catch (err) {
+      const msg = mensajeAuth(err)
+      setAuthError(msg)
+      return { error: { message: msg } }
+    }
   }
 
   const updatePassword = async (newPassword) => {

@@ -87,7 +87,7 @@ export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
   }
 
   return (
-    <div className="box py-4 px-4" style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}>
+    <div className="box module-panel-card mb-0">
       <div className="mb-4">
         <h2 className="title is-6 mb-2">Catálogo de ejercicios</h2>
         <p className="is-size-7 has-text-grey mb-0" style={{ maxWidth: '42rem', lineHeight: 1.5 }}>

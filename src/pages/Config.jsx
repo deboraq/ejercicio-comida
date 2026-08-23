@@ -7,6 +7,7 @@ import { updateMyFullName } from '../lib/profeDb'
 import { OBJETIVOS } from '../utils/consejos'
 import { SUPLEMENTOS } from '../utils/suplementos'
 import PesoSeguimiento from '../components/PesoSeguimiento'
+import PageHeader from '../components/PageHeader'
 export default function Config() {
   const { user, signOut, isConfigured } = useAuth()
   const { profile, profileError, loading: profileLoading, refresh: refreshProfile } = useMyProfile()
@@ -43,6 +44,8 @@ export default function Config() {
     pesoKg: 70,
     metaCalorias: '',
     metaProteina: '',
+    metaCarbohidratos: '',
+    metaGrasa: '',
     suplementosActivos: SUPLEMENTOS.map((s) => s.id),
   })
 
@@ -57,6 +60,8 @@ export default function Config() {
   }
   const setMetaCalorias = (v) => setConfig((c) => ({ ...c, metaCalorias: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
   const setMetaProteina = (v) => setConfig((c) => ({ ...c, metaProteina: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
+  const setMetaCarbohidratos = (v) => setConfig((c) => ({ ...c, metaCarbohidratos: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
+  const setMetaGrasa = (v) => setConfig((c) => ({ ...c, metaGrasa: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
 
   const toggleSuplemento = (id) => {
     setConfig((c) => {
@@ -80,119 +85,84 @@ export default function Config() {
     return role || '—'
   }
 
-  const claseTagRol = (role) => {
-    if (role === 'admin') return 'tag is-warning mb-0'
-    if (role === 'profe') return 'tag is-info mb-0'
-    if (role === 'alumno') return 'tag is-link is-light mb-0'
-    return 'tag is-light mb-0'
-  }
-
   return (
-    <section className="section py-4">
-      <div className="container" style={{ maxWidth: '560px' }}>
-        <header className="app-page-hero mb-4">
-          <div className="app-page-hero-icon" aria-hidden="true">⚙️</div>
-          <h1 className="title is-5 mb-2">{esProfe && !profileLoading ? 'Tu cuenta' : 'Configuración'}</h1>
-          {!esProfe && (
-            <p className="is-size-7 has-text-grey mb-0">
-              Tu objetivo y peso se usan para calorías quemadas y consejos personalizados
-            </p>
-          )}
-          {esProfe && !profileLoading && (
-            <p className="is-size-7 has-text-grey mb-0">
-              Acá solo ajustás cómo te muestra la app y tu sesión. Metas, peso y suplementos son de cada alumno en su
-              propia cuenta.
-            </p>
-          )}
-        </header>
+    <section className="section py-4 config-page">
+      <div className="container app-page-container">
+        <PageHeader
+          title={esProfe && !profileLoading ? 'Tu cuenta' : 'Configuración'}
+          subtitle={
+            esProfe && !profileLoading
+              ? 'Ajustá tu perfil y sesión en la nube.'
+              : 'Ajustá tu perfil y metas personales.'
+          }
+        />
 
         {cargandoPerfilNube && (
           <p className="is-size-7 has-text-grey mb-4">Cargando tu perfil…</p>
         )}
 
         {user && (
-          <div
-            className="mb-4 px-3 py-3"
-            style={{
-              borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.12)',
-              background: 'rgba(0,0,0,0.25)',
-            }}
-          >
-            <p className="is-size-7 has-text-grey mb-2">Sesión iniciada</p>
-            <div className="is-flex is-flex-wrap-wrap is-align-items-center" style={{ gap: '0.5rem' }}>
-              <span className="is-size-7" style={{ wordBreak: 'break-all' }}>
-                {(profile?.full_name || '').trim() ? (
-                  <>
-                    <strong>{(profile.full_name || '').trim()}</strong>
-                    <span className="has-text-grey"> · {user.email}</span>
-                  </>
-                ) : (
-                  user.email
-                )}
-              </span>
-              {isConfigured && (
-                <>
-                  {profileLoading ? (
-                    <span className="tag is-light">Cargando rol…</span>
-                  ) : (
-                    <span className={claseTagRol(profile?.role)}>{etiquetaRol(profile?.role)}</span>
+          <div className="box config-profile-card mb-4">
+            <div className="config-profile-head">
+              <div className="config-profile-avatar" aria-hidden>
+                {(profile?.full_name || user.email || '?').charAt(0).toUpperCase()}
+              </div>
+              <div className="config-profile-info">
+                <div className="is-flex is-align-items-center is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
+                  <strong className="config-profile-name">
+                    {(profile?.full_name || '').trim() || user.email}
+                  </strong>
+                  {isConfigured && !profileLoading && (
+                    <span className={`config-role-badge config-role-badge--${profile?.role || 'alumno'}`}>
+                      {etiquetaRol(profile?.role)}
+                    </span>
                   )}
-                </>
-              )}
-            </div>
-            <div className="is-flex is-flex-wrap-wrap is-align-items-center mt-2" style={{ gap: '0.5rem' }}>
-              <button type="button" className="button is-small is-light" onClick={() => signOut()}>
-                Cerrar sesión
+                </div>
+                <p className="is-size-7 has-text-grey mb-0 config-profile-email">{user.email}</p>
+              </div>
+              <button type="button" className="button is-small is-light config-profile-logout" onClick={() => signOut()}>
+                ↪ Cerrar sesión
               </button>
             </div>
             {isConfigured && profileError && (
-              <p className="is-size-7 has-text-warning mt-2 mb-0">{profileError}</p>
-            )}
-            {isConfigured && user && !profileLoading && (
-              <div className="field mt-3 mb-0">
-                <label className="label is-size-7">Nombre y apellido</label>
-                <p className="is-size-7 has-text-grey mb-2">
-                  {esProfe
-                    ? 'Así te verán tus alumnos al vincularte (junto a tu correo).'
-                    : 'Así te verá tu entrenador en Profe (junto a tu correo).'}
-                </p>
-                <div className="control mb-2">
-                  <input
-                    className="input is-small"
-                    type="text"
-                    value={nombrePerfil}
-                    onChange={(e) => {
-                      setNombrePerfil(e.target.value)
-                      setNombrePerfilMsg(null)
-                      setNombrePerfilErr(null)
-                    }}
-                    placeholder="Ej. Juan Pérez"
-                    autoComplete="name"
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="button is-link is-small"
-                  disabled={guardandoNombre || !nombreDistintoAlGuardado}
-                  onClick={guardarNombrePerfil}
-                >
-                  {guardandoNombre ? 'Guardando…' : 'Guardar nombre'}
-                </button>
-                {nombrePerfilMsg && (
-                  <p className="is-size-7 has-text-success mt-2 mb-0">{nombrePerfilMsg}</p>
-                )}
-                {nombrePerfilErr && (
-                  <p className="is-size-7 has-text-danger mt-2 mb-0">{nombrePerfilErr}</p>
-                )}
-              </div>
+              <p className="is-size-7 has-text-warning mt-3 mb-0">{profileError}</p>
             )}
           </div>
         )}
 
+        {user && isConfigured && !profileLoading && (
+          <div className="box mb-4 py-3">
+            <h2 className="title is-6 mb-2">Nombre y apellido</h2>
+            <div className="field mb-2">
+              <input
+                className="input"
+                type="text"
+                value={nombrePerfil}
+                onChange={(e) => {
+                  setNombrePerfil(e.target.value)
+                  setNombrePerfilMsg(null)
+                  setNombrePerfilErr(null)
+                }}
+                placeholder="Ej. Juan Pérez"
+                autoComplete="name"
+              />
+            </div>
+            <button
+              type="button"
+              className="button is-light"
+              disabled={guardandoNombre || !nombreDistintoAlGuardado}
+              onClick={guardarNombrePerfil}
+            >
+              {guardandoNombre ? 'Guardando…' : 'Guardar nombre'}
+            </button>
+            {nombrePerfilMsg && <p className="is-size-7 has-text-success mt-2 mb-0">{nombrePerfilMsg}</p>}
+            {nombrePerfilErr && <p className="is-size-7 has-text-danger mt-2 mb-0">{nombrePerfilErr}</p>}
+          </div>
+        )}
+
         {!cargandoPerfilNube && mostrarSeccionesAlumno && (
-        <div className="box mb-4 py-3">
-          <h2 className="title is-6 mb-2">Cuenta</h2>
+        <div className="box mb-4 py-3 config-cuenta-card">
+          <h2 className="title is-6 mb-2">☁️ Cuenta</h2>
           <p className="is-size-7 has-text-grey mb-2">
             Con una cuenta tu progreso se guarda en la nube y podrás recuperarlo en otro dispositivo.
           </p>
@@ -204,7 +174,7 @@ export default function Config() {
               Configura Supabase (ver README) para usar cuentas.
             </p>
           )}
-          <div className="notification is-light py-3 px-3 mt-3 mb-0" style={{ background: 'rgba(0,0,0,0.2)' }}>
+          <div className="notification config-info-box py-3 px-3 mt-3 mb-0">
             <p className="is-size-7 mb-2">
               <strong>¿Sos entrenador?</strong> Un administrador de la plataforma te marca el rol en <strong>Admin</strong>. Después entrá a <Link to="/profe">Profe</Link> para ver avisos del admin, vincular alumnos y enviar rutinas.
             </p>
@@ -222,42 +192,45 @@ export default function Config() {
         {!cargandoPerfilNube && mostrarSeccionesAlumno && (
         <>
         <div className="box mb-4 py-3">
-          <h2 className="title is-6 mb-2">Tu objetivo</h2>
-          <div className="buttons are-small is-flex-wrap-wrap">
+          <h2 className="title is-6 mb-3">Tu objetivo</h2>
+          <div className="config-objetivo-grid">
             {OBJETIVOS.map((o) => (
               <button
                 key={o.value}
                 type="button"
-                className={`button ${config.objetivo === o.value ? 'is-link' : 'is-light'}`}
+                className={`config-objetivo-tile${config.objetivo === o.value ? ' is-active' : ''}`}
                 onClick={() => setObjetivo(o.value)}
               >
-                <span className="mr-2">{o.icon}</span>
-                {o.label}
+                <span className="config-objetivo-icon">{o.icon}</span>
+                <span className="config-objetivo-label">{o.label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="box mb-4 py-3">
+        <div className="box mb-4 py-3 config-metas-card">
           <h2 className="title is-6 mb-2">Metas diarias (opcional)</h2>
-          <p className="is-size-7 has-text-grey mb-2">Para ver barras de progreso en Inicio y Comida.</p>
-          <div className="columns">
-            <div className="column">
-              <div className="field">
-                <label className="label is-size-7">Meta calorías (kcal/día)</label>
-                <div className="control">
-                  <input className="input is-small" type="number" min="0" placeholder="Ej: 2000" value={config.metaCalorias ?? ''} onChange={(e) => setMetaCalorias(e.target.value)} />
-                </div>
-              </div>
+          <p className="is-size-7 has-text-grey mb-3">Para ver barras de progreso en Inicio y Comida.</p>
+          <div className="config-metas-grid">
+            <div className="field">
+              <label className="label is-size-7">🔥 Calorías (kcal)</label>
+              <input className="input" type="number" min="0" placeholder="Ej: 2000" value={config.metaCalorias ?? ''} onChange={(e) => setMetaCalorias(e.target.value)} />
             </div>
-            <div className="column">
-              <div className="field">
-                <label className="label is-size-7">Meta proteína (g/día)</label>
-                <div className="control">
-                  <input className="input is-small" type="number" min="0" placeholder="Ej: 100" value={config.metaProteina ?? ''} onChange={(e) => setMetaProteina(e.target.value)} />
-                </div>
-              </div>
+            <div className="field">
+              <label className="label is-size-7">🥩 Proteínas (g)</label>
+              <input className="input" type="number" min="0" placeholder="Ej: 150" value={config.metaProteina ?? ''} onChange={(e) => setMetaProteina(e.target.value)} />
             </div>
+            <div className="field">
+              <label className="label is-size-7">🌾 Carbohidratos (g)</label>
+              <input className="input" type="number" min="0" placeholder="Ej: 250" value={config.metaCarbohidratos ?? ''} onChange={(e) => setMetaCarbohidratos(e.target.value)} />
+            </div>
+            <div className="field">
+              <label className="label is-size-7">💧 Grasas (g)</label>
+              <input className="input" type="number" min="0" placeholder="Ej: 60" value={config.metaGrasa ?? ''} onChange={(e) => setMetaGrasa(e.target.value)} />
+            </div>
+          </div>
+          <div className="is-flex is-justify-content-flex-end mt-3">
+            <span className="tag is-success">Guardado automático</span>
           </div>
         </div>
 

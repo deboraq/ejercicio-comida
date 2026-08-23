@@ -14,6 +14,9 @@ import {
 import ProfeCatalogoEjercicios from '../components/profe/ProfeCatalogoEjercicios'
 import ProfeRutinasWorkshop from '../components/profe/ProfeRutinasWorkshop'
 import ProfeHistorialAsignaciones from '../components/profe/ProfeHistorialAsignaciones'
+import PageHeader from '../components/PageHeader'
+import ModuleShell, { ModuleSectionIntro } from '../components/ModuleShell'
+import ModuleGateCard from '../components/ModuleGateCard'
 
 function navItemsForProfile(profile) {
   if (!profile) return []
@@ -230,31 +233,31 @@ export default function Profe() {
 
   if (!isConfigured) {
     return (
-      <section className="section py-4">
-        <div className="container" style={{ maxWidth: '560px' }}>
-          <h1 className="title is-5">Entrenador</h1>
-          <p className="is-size-7 has-text-grey">
-            Configurá Supabase en el proyecto para usar cuentas y asignar rutinas en la nube.
-          </p>
-          <Link to="/config" className="button is-link is-small mt-3">
-            Ir a configuración
-          </Link>
-        </div>
-      </section>
+      <ModuleGateCard
+        icon="🧑‍🏫"
+        iconTone="blue"
+        title="Entrenador"
+        subtitle="Configurá Supabase en el proyecto para usar cuentas y asignar rutinas en la nube."
+      >
+        <Link to="/config" className="button is-link is-small">
+          Ir a configuración
+        </Link>
+      </ModuleGateCard>
     )
   }
 
   if (!user) {
     return (
-      <section className="section py-4">
-        <div className="container" style={{ maxWidth: '560px' }}>
-          <h1 className="title is-5">Entrenador</h1>
-          <p className="is-size-7 has-text-grey mb-3">Iniciá sesión para gestionar alumnos y rutinas.</p>
-          <Link to="/login" className="button is-link is-small">
-            Iniciar sesión
-          </Link>
-        </div>
-      </section>
+      <ModuleGateCard
+        icon="🧑‍🏫"
+        iconTone="blue"
+        title="Entrenador"
+        subtitle="Iniciá sesión para gestionar alumnos y rutinas."
+      >
+        <Link to="/login" className="button is-link is-small">
+          Iniciar sesión
+        </Link>
+      </ModuleGateCard>
     )
   }
 
@@ -263,7 +266,7 @@ export default function Profe() {
       {adminVistaLoading && <p className="is-size-7 has-text-grey mb-3">Cargando…</p>}
       {adminVistaErr && (
         <>
-          <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-3">{adminVistaErr}</p>
+          <p className="module-alert module-alert--danger mb-3">{adminVistaErr}</p>
           <details className="mb-0">
             <summary className="is-size-7 has-text-grey" style={{ cursor: 'pointer' }}>
               Si es error de permisos en Supabase
@@ -306,13 +309,9 @@ export default function Profe() {
                   return fn.includes(qProfe) || em.includes(qProfe) || sid.includes(qProfe)
                 })
           return (
-            <div
-              key={teacher.id}
-              className="mb-3 pb-3"
-              style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              <p className={`is-size-7 has-text-weight-semibold ${mostrarMailDebajo ? 'mb-1' : 'mb-2'}`}>{titulo}</p>
-              {mostrarMailDebajo ? <p className="is-size-7 has-text-grey mb-2">{mail}</p> : null}
+            <div key={teacher.id} className="module-list-block">
+              <p className={`module-list-block-title ${mostrarMailDebajo ? 'mb-1' : 'mb-2'}`}>{titulo}</p>
+              {mostrarMailDebajo ? <p className="module-list-block-sub mb-2">{mail}</p> : null}
               {students.length === 0 ? (
                 <p className="is-size-7 has-text-grey mb-0">Sin alumnos vinculados.</p>
               ) : alumnosMostrar.length === 0 ? (
@@ -334,28 +333,26 @@ export default function Profe() {
   )
 
   return (
-    <section className="section py-4">
-      <div className="container" style={{ maxWidth: '1120px' }}>
-        <header className="app-page-hero mb-4">
-          <div className="app-page-hero-icon" aria-hidden="true">🧑‍🏫</div>
-          <h1 className="title is-5 mb-2">Entrenador</h1>
-          <p className="is-size-7 has-text-grey mb-0">
-            El alumno ve lo que envías en la pestaña <strong>Rutina</strong> de su cuenta.
-          </p>
-          {esProfe ? (
-            <div className="app-hero-metrics">
-              <span><strong>{students.length}</strong> alumnos</span>
-              <span><strong>{navItems.length}</strong> secciones</span>
-            </div>
-          ) : null}
-        </header>
+    <section className="section py-4 profe-page">
+      <div className="container app-page-container">
+        <PageHeader
+          icon="🧑‍🏫"
+          iconTone="blue"
+          title="Entrenador"
+          subtitle="El alumno ve lo que envías en la pestaña Rutina de su cuenta."
+          metrics={
+            esProfe
+              ? [`${students.length} alumnos`, `${navItems.length} secciones`]
+              : undefined
+          }
+        />
 
         {profileLoading ? (
-          <p className="is-size-7 has-text-grey">Cargando perfil…</p>
+          <p className="is-size-7 has-text-grey mb-0">Cargando perfil…</p>
         ) : navItems.length === 0 ? (
-          <div className="box py-4 px-4" style={{ maxWidth: '520px' }}>
-            <h2 className="title is-6 mb-2">Modo entrenador</h2>
-            <p className="is-size-7 has-text-grey mb-3">
+          <div className="box module-gate-card module-gate-card--inline">
+            <h2 className="module-shell-section-title mb-2">Modo entrenador</h2>
+            <p className="module-shell-section-desc mb-3">
               {esAdmin ? (
                 <>
                   Con rol <strong>admin</strong> podés usar <Link to="/admin">Administración</Link>. Para alumnos,
@@ -369,155 +366,107 @@ export default function Profe() {
             </p>
           </div>
         ) : (
-          <>
-            <div className="columns is-variable is-1 is-multiline is-align-items-flex-start">
-              <div className="column is-12-mobile is-3-tablet" style={{ alignSelf: 'flex-start' }}>
-                <nav
-                  className="box py-3 px-3 mb-0"
-                  style={{
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: 10,
-                    background: 'rgba(0,0,0,0.2)',
-                    position: 'sticky',
-                    top: '0.75rem',
-                  }}
-                  aria-label="Secciones entrenador"
-                >
-                  <p className="menu-label mb-2 has-text-grey-light">Menú</p>
-                  <ul
-                    className="is-flex is-flex-direction-column"
-                    style={{ gap: '0.35rem', listStyle: 'none', margin: 0, padding: 0 }}
-                  >
-                    {navItems.map((item) => {
-                      const activa = panel === item.id
-                      return (
-                        <li key={item.id}>
-                          <button
-                            type="button"
-                            className={`button is-small is-fullwidth has-text-left ${activa ? 'is-link' : 'is-light'}`}
-                            onClick={() => setPanel(item.id)}
-                            aria-current={activa ? 'page' : undefined}
-                          >
-                            <span className="is-block">{item.label}</span>
-                          </button>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </nav>
+          <ModuleShell
+            sections={navItems.map((i) => ({ id: i.id, label: i.label }))}
+            activeId={panel}
+            onSelect={setPanel}
+            sidebarLabel="Menú"
+          >
+            {mostrarCabeceraPanel && panelActivo && (
+              <ModuleSectionIntro title={panelActivo.label} desc={panelActivo.desc} />
+            )}
+
+            {mostrarBuscadorProfe && (
+              <div className="module-search mb-3">
+                <span className="module-search-icon" aria-hidden>🔍</span>
+                <input
+                  id="profe-busqueda"
+                  type="search"
+                  value={busquedaProfe}
+                  onChange={(e) => setBusquedaProfe(e.target.value)}
+                  placeholder={placeholderBusqueda}
+                  autoComplete="off"
+                />
               </div>
+            )}
 
-              <div className="column" style={{ minWidth: 0 }}>
-                {mostrarCabeceraPanel && panelActivo && (
-                  <div className="mb-3">
-                    <h2 className="title is-6 mb-1">{panelActivo.label}</h2>
-                    <p className="is-size-7 has-text-grey mb-0">{panelActivo.desc}</p>
-                  </div>
-                )}
+            {esAdmin && !esProfe && panel === 'supervision' && (
+              <p className="module-alert module-alert--info mb-3">
+                Roles y menú de cuentas: <Link to="/admin">Administración</Link>. Para usar Alumnos / Ejercicios /
+                Rutinas con esta misma cuenta, sumá rol <strong>profe</strong> ahí.
+              </p>
+            )}
 
-                {mostrarBuscadorProfe && (
-                  <div
-                    className={`field ${panel === 'rutinas' || panel === 'ejercicios' || panel === 'historial' ? 'mb-2' : 'mb-3'}`}
-                  >
-                    <label className="label is-size-7 mb-1" htmlFor="profe-busqueda">
-                      Buscar
-                    </label>
+            {panel === 'supervision' && (
+              <div className="box module-panel-card mb-0">
+                {bloqueSupervision}
+              </div>
+            )}
+
+            {panel === 'alumnos' && esProfe && (
+              <div className="box module-panel-card mb-0">
+                <div className="field has-addons mb-4">
+                  <div className="control is-expanded">
                     <input
-                      id="profe-busqueda"
-                      className="input is-small"
-                      type="search"
-                      value={busquedaProfe}
-                      onChange={(e) => setBusquedaProfe(e.target.value)}
-                      placeholder={placeholderBusqueda}
-                      autoComplete="off"
+                      className="input"
+                      type="email"
+                      placeholder="Correo del alumno (cuenta registrada)"
+                      value={emailAlumno}
+                      onChange={(e) => setEmailAlumno(e.target.value)}
                     />
                   </div>
-                )}
-
-                {esAdmin && !esProfe && panel === 'supervision' && (
-                  <p className="notification is-info is-light is-size-7 py-2 px-3 mb-3">
-                    Roles y menú de cuentas: <Link to="/admin">Administración</Link>. Para usar Alumnos / Ejercicios /
-                    Rutinas con esta misma cuenta, sumá rol <strong>profe</strong> ahí.
-                  </p>
-                )}
-
-                {panel === 'supervision' && (
-                  <div className="box mb-4 py-3">
-                    {bloqueSupervision}
+                  <div className="control">
+                    <button type="button" className="button is-link" onClick={vincularAlumno}>
+                      Vincular
+                    </button>
                   </div>
-                )}
-
-                {panel === 'alumnos' && esProfe && (
-                  <div className="box mb-4 py-3">
-                    <div className="field has-addons mb-3">
-                      <div className="control is-expanded">
-                        <input
-                          className="input is-small"
-                          type="email"
-                          placeholder="Correo del alumno (cuenta registrada)"
-                          value={emailAlumno}
-                          onChange={(e) => setEmailAlumno(e.target.value)}
-                        />
-                      </div>
-                      <div className="control">
-                        <button type="button" className="button is-link is-small" onClick={vincularAlumno}>
-                          Vincular
+                </div>
+                {studentsLoading ? (
+                  <p className="module-empty-text mb-0">Cargando lista…</p>
+                ) : students.length === 0 ? (
+                  <p className="module-empty-text mb-0">Todavía no tenés alumnos vinculados.</p>
+                ) : studentsFiltrados.length === 0 ? (
+                  <p className="module-empty-text mb-0">No hay coincidencias con la búsqueda.</p>
+                ) : (
+                  <ul className="module-list-rows mb-0">
+                    {studentsFiltrados.map((s) => (
+                      <li key={s.linkId} className="module-list-row">
+                        <span className="module-list-row-text">
+                          <strong>{s.fullName || s.email}</strong>
+                          {s.fullName ? <span className="has-text-grey"> · {s.email}</span> : null}
+                        </span>
+                        <button type="button" className="button is-small is-light" onClick={() => quitarAlumno(s.linkId)}>
+                          Quitar
                         </button>
-                      </div>
-                    </div>
-                    {studentsLoading ? (
-                      <p className="is-size-7 has-text-grey mb-0">Cargando lista…</p>
-                    ) : students.length === 0 ? (
-                      <p className="is-size-7 has-text-grey mb-0">Todavía no tenés alumnos vinculados.</p>
-                    ) : studentsFiltrados.length === 0 ? (
-                      <p className="is-size-7 has-text-grey mb-0">No hay coincidencias con la búsqueda.</p>
-                    ) : (
-                      <ul className="mb-0" style={{ listStyle: 'none', padding: 0 }}>
-                        {studentsFiltrados.map((s) => (
-                          <li
-                            key={s.linkId}
-                            className="is-flex is-justify-content-space-between is-align-items-center py-2 subtle-divider-b"
-                            style={{ gap: '0.5rem' }}
-                          >
-                            <span className="is-size-7">
-                              <strong>{s.fullName || s.email}</strong>
-                              {s.fullName ? <span className="has-text-grey"> · {s.email}</span> : null}
-                            </span>
-                            <button type="button" className="button is-small is-light" onClick={() => quitarAlumno(s.linkId)}>
-                              Quitar
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-
-                {panel === 'ejercicios' && esProfe && <ProfeCatalogoEjercicios busqueda={busquedaProfe} />}
-
-                {panel === 'rutinas' && esProfe && (
-                  <ProfeRutinasWorkshop
-                    students={students}
-                    teacherId={user.id}
-                    busqueda={busquedaProfe}
-                    onToast={onToast}
-                    onEnviado={() => setHistorialTick((n) => n + 1)}
-                  />
-                )}
-
-                {panel === 'historial' && esProfe && (
-                  <ProfeHistorialAsignaciones
-                    key={historialTick}
-                    teacherId={user.id}
-                    students={students}
-                    busqueda={busquedaProfe}
-                    onToast={onToast}
-                  />
-                )}
-
               </div>
-            </div>
-          </>
+            )}
+
+            {panel === 'ejercicios' && esProfe && <ProfeCatalogoEjercicios busqueda={busquedaProfe} />}
+
+            {panel === 'rutinas' && esProfe && (
+              <ProfeRutinasWorkshop
+                students={students}
+                teacherId={user.id}
+                busqueda={busquedaProfe}
+                onToast={onToast}
+                onEnviado={() => setHistorialTick((n) => n + 1)}
+              />
+            )}
+
+            {panel === 'historial' && esProfe && (
+              <ProfeHistorialAsignaciones
+                key={historialTick}
+                teacherId={user.id}
+                students={students}
+                busqueda={busquedaProfe}
+                onToast={onToast}
+              />
+            )}
+          </ModuleShell>
         )}
       </div>
     </section>

@@ -5,20 +5,26 @@ import { useMyProfile } from '../hooks/useMyProfile'
 import { createAdminMessage, listProfilesForAdmin } from '../lib/profeDb'
 import AdminUsersRolesSection from '../components/AdminUsersRolesSection'
 import AdminRoleMenuSection from '../components/AdminRoleMenuSection'
+import PageHeader from '../components/PageHeader'
+import ModuleShell, { ModuleAlerts, ModuleSectionIntro } from '../components/ModuleShell'
+import ModuleGateCard from '../components/ModuleGateCard'
 
 const SECCIONES = [
   {
     id: 'mensajes',
+    label: 'Mensajes a entrenadores',
     titulo: 'Mensajes a entrenadores',
     desc: 'Avisos que verán en la pestaña Profe.',
   },
   {
     id: 'menu-rol',
+    label: 'Menú por rol',
     titulo: 'Menú por rol',
-    desc: 'Qué pestañas oculta cada rol en el menú inferior.',
+    desc: 'Qué pestañas oculta cada rol en el menú lateral.',
   },
   {
     id: 'usuarios',
+    label: 'Usuarios y roles',
     titulo: 'Usuarios y roles',
     desc: 'Roles, búsqueda y menú personalizado por cuenta.',
   },
@@ -75,35 +81,39 @@ export default function Admin() {
 
   if (!isConfigured) {
     return (
-      <section className="section py-4">
-        <div className="container" style={{ maxWidth: '720px' }}>
-          <p className="is-size-7 has-text-grey">Configurá Supabase en el proyecto.</p>
-          <Link to="/config" className="button is-link is-small mt-2">
-            Configuración
-          </Link>
-        </div>
-      </section>
+      <ModuleGateCard
+        icon="🛡️"
+        iconTone="blue"
+        title="Administración"
+        subtitle="Configurá Supabase en el proyecto para gestionar usuarios y roles."
+      >
+        <Link to="/config" className="button is-link is-small">
+          Ir a configuración
+        </Link>
+      </ModuleGateCard>
     )
   }
 
   if (!user) {
     return (
-      <section className="section py-4">
-        <div className="container" style={{ maxWidth: '720px' }}>
-          <p className="is-size-7 has-text-grey mb-2">Iniciá sesión con una cuenta administradora.</p>
-          <Link to="/login" className="button is-link is-small">
-            Iniciar sesión
-          </Link>
-        </div>
-      </section>
+      <ModuleGateCard
+        icon="🛡️"
+        iconTone="blue"
+        title="Administración"
+        subtitle="Iniciá sesión con una cuenta administradora."
+      >
+        <Link to="/login" className="button is-link is-small">
+          Iniciar sesión
+        </Link>
+      </ModuleGateCard>
     )
   }
 
   if (profileLoading) {
     return (
-      <section className="section py-4">
-        <div className="container" style={{ maxWidth: '720px' }}>
-          <p className="is-size-7 has-text-grey">Cargando…</p>
+      <section className="section py-4 admin-page">
+        <div className="container app-page-container">
+          <p className="is-size-7 has-text-grey mb-0">Cargando…</p>
         </div>
       </section>
     )
@@ -111,62 +121,18 @@ export default function Admin() {
 
   if (!esAdmin) {
     return (
-      <section className="section py-4">
-        <div className="container" style={{ maxWidth: '720px' }}>
-          <h1 className="title is-5 mb-2">Administración</h1>
-          <p className="is-size-7 has-text-grey mb-3">
-            Esta cuenta no tiene rol administrador. El primer admin se define en Supabase (SQL en <code>SUPABASE.md</code>, sección 6).
-          </p>
-          <Link to="/" className="button is-light is-small">
-            Volver al inicio
-          </Link>
-        </div>
-      </section>
+      <ModuleGateCard
+        icon="🛡️"
+        iconTone="blue"
+        title="Administración"
+        subtitle="Esta cuenta no tiene rol administrador. El primer admin se define en Supabase (SQL en SUPABASE.md, sección 6)."
+      >
+        <Link to="/" className="button is-light is-small">
+          Volver al inicio
+        </Link>
+      </ModuleGateCard>
     )
   }
-
-  const bloqueMensajes = (
-    <div className="box mb-4 py-3">
-      <h2 className="title is-6 mb-3">Mensaje a un entrenador</h2>
-      <p className="is-size-7 has-text-grey mb-3">Solo podés enviar a usuarios que ya tengan rol <strong>profe</strong>.</p>
-      {profes.length === 0 ? (
-        <p className="is-size-7 has-text-grey mb-0">Todavía no hay entrenadores. Asigná el rol en Usuarios y roles.</p>
-      ) : (
-        <>
-          <div className="field mb-3">
-            <label className="label is-size-7">Entrenador</label>
-            <div className="control">
-              <div className="select is-small is-fullwidth">
-                <select value={teacherIdMsg} onChange={(e) => setTeacherIdMsg(e.target.value)}>
-                  <option value="">Elegí…</option>
-                  {profes.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {(p.full_name || '').trim() || p.email || p.id}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-          <div className="field mb-3">
-            <label className="label is-size-7">Mensaje</label>
-            <div className="control">
-              <textarea
-                className="textarea is-small"
-                rows={4}
-                value={bodyMsg}
-                onChange={(e) => setBodyMsg(e.target.value)}
-                placeholder="Instrucciones, políticas, novedades…"
-              />
-            </div>
-          </div>
-          <button type="button" className="button is-link is-small" disabled={enviandoMsg} onClick={enviarMensaje}>
-            {enviandoMsg ? 'Enviando…' : 'Enviar mensaje'}
-          </button>
-        </>
-      )}
-    </div>
-  )
 
   const seccionActiva = SECCIONES.find((s) => s.id === seccion) || SECCIONES[0]
 
@@ -176,64 +142,73 @@ export default function Admin() {
     setMsg('')
   }
 
-  return (
-    <section className="section py-4">
-      <div className="container" style={{ maxWidth: '1120px' }}>
-        <header className="mb-4">
-          <h1 className="title is-5 mb-2">Administración</h1>
-          <p className="is-size-7 has-text-grey mb-0">
-            Elegí una sección en el menú de la izquierda; el contenido se muestra a la derecha.
-          </p>
-        </header>
-
-        <div className="columns is-variable is-2 is-multiline">
-          <div className="column is-12-mobile is-3-tablet">
-            <nav
-              className="box py-3 px-3 mb-0"
-              style={{
-                border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: 10,
-                background: 'rgba(0,0,0,0.2)',
-              }}
-              aria-label="Secciones de administración"
-            >
-              <p className="menu-label mb-2 has-text-grey-light">Secciones</p>
-              <ul className="is-flex is-flex-direction-column" style={{ gap: '0.35rem', listStyle: 'none', margin: 0, padding: 0 }}>
-                {SECCIONES.map((s) => {
-                  const activa = seccion === s.id
-                  return (
-                    <li key={s.id}>
-                      <button
-                        type="button"
-                        className={`button is-small is-fullwidth has-text-left ${activa ? 'is-link' : 'is-light'}`}
-                        onClick={() => cambiarSeccion(s.id)}
-                        aria-current={activa ? 'page' : undefined}
-                      >
-                        <span className="is-block">{s.titulo}</span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            </nav>
-          </div>
-
-          <div className="column">
-            <div className="mb-3">
-              <h2 className="title is-6 mb-1">{seccionActiva.titulo}</h2>
-              <p className="is-size-7 has-text-grey mb-0">{seccionActiva.desc}</p>
+  const bloqueMensajes = (
+    <div className="box module-panel-card mb-0">
+      <p className="module-panel-hint mb-4">
+        Solo podés enviar a usuarios que ya tengan rol <strong>profe</strong>.
+      </p>
+      {profes.length === 0 ? (
+        <p className="module-empty-text mb-0">Todavía no hay entrenadores. Asigná el rol en Usuarios y roles.</p>
+      ) : (
+        <>
+          <div className="field mb-3">
+            <label className="ej-form-label" htmlFor="admin-teacher">Entrenador</label>
+            <div className="select is-fullwidth">
+              <select id="admin-teacher" value={teacherIdMsg} onChange={(e) => setTeacherIdMsg(e.target.value)}>
+                <option value="">Elegí…</option>
+                {profes.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {(p.full_name || '').trim() || p.email || p.id}
+                  </option>
+                ))}
+              </select>
             </div>
-
-            {msg && <p className="notification is-success is-light is-size-7 py-2 px-3 mb-2">{msg}</p>}
-            {err && <p className="notification is-danger is-light is-size-7 py-2 px-3 mb-2">{err}</p>}
-
-            {seccion === 'mensajes' && bloqueMensajes}
-            {seccion === 'menu-rol' && <AdminRoleMenuSection />}
-            {seccion === 'usuarios' && (
-              <AdminUsersRolesSection rows={adminRows} loading={adminRowsLoading} onReload={refreshAdminRows} />
-            )}
           </div>
-        </div>
+          <div className="field mb-4">
+            <label className="ej-form-label" htmlFor="admin-msg-body">Mensaje</label>
+            <textarea
+              id="admin-msg-body"
+              className="textarea"
+              rows={4}
+              value={bodyMsg}
+              onChange={(e) => setBodyMsg(e.target.value)}
+              placeholder="Instrucciones, políticas, novedades…"
+            />
+          </div>
+          <button type="button" className="button is-link" disabled={enviandoMsg} onClick={enviarMensaje}>
+            {enviandoMsg ? 'Enviando…' : 'Enviar mensaje'}
+          </button>
+        </>
+      )}
+    </div>
+  )
+
+  return (
+    <section className="section py-4 admin-page">
+      <div className="container app-page-container">
+        <PageHeader
+          icon="🛡️"
+          iconTone="blue"
+          title="Administración"
+          subtitle="Gestioná mensajes, menú por rol y cuentas de usuario."
+          metrics={[`${adminRows.length} cuentas`, `${profes.length} entrenadores`]}
+        />
+
+        <ModuleShell
+          sections={SECCIONES}
+          activeId={seccion}
+          onSelect={cambiarSeccion}
+          sidebarLabel="Secciones"
+        >
+          <ModuleSectionIntro title={seccionActiva.titulo} desc={seccionActiva.desc} />
+          <ModuleAlerts msg={msg} err={err} />
+
+          {seccion === 'mensajes' && bloqueMensajes}
+          {seccion === 'menu-rol' && <AdminRoleMenuSection />}
+          {seccion === 'usuarios' && (
+            <AdminUsersRolesSection rows={adminRows} loading={adminRowsLoading} onReload={refreshAdminRows} />
+          )}
+        </ModuleShell>
       </div>
     </section>
   )

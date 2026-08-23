@@ -72,11 +72,11 @@ export default function AdminUsersRolesSection({ rows = [], loading = false, onR
   }
 
   return (
-    <div className="box mb-4 py-3">
+    <div className="box module-panel-card mb-0">
       <div className="field mb-3">
-        <label className="label is-size-7">Buscar usuario</label>
+        <label className="ej-form-label">Buscar usuario</label>
         <input
-          className="input is-small"
+          className="input"
           type="search"
           placeholder="Correo, nombre o ID…"
           value={busqueda}
