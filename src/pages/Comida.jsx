@@ -390,15 +390,17 @@ export default function Comida() {
 
             <div className="field mb-3">
               <label className="ej-form-label mb-1" htmlFor="comida-buscar">Buscar alimento</label>
-              <input
-                id="comida-buscar"
-                className="input"
-                type="text"
-                value={busquedaRef}
-                onChange={(e) => setBusquedaRef(e.target.value)}
-                placeholder="Ej: pollo, arroz, manzana..."
-                autoComplete="off"
-              />
+              <div className="module-search comida-buscar">
+                <span className="module-search-icon" aria-hidden>🔍</span>
+                <input
+                  id="comida-buscar"
+                  type="text"
+                  value={busquedaRef}
+                  onChange={(e) => setBusquedaRef(e.target.value)}
+                  placeholder="Ej: pollo, arroz, manzana..."
+                  autoComplete="off"
+                />
+              </div>
             </div>
 
             {(items.length === 0 && !busquedaRef.trim()) && (
