@@ -18,6 +18,35 @@ import { getRachaDias, PERIODOS, getRangoPorPeriodo, getFechasEnRango, getUltimo
 import { SUPLEMENTOS, getSuplementoLabel } from '../utils/suplementos'
 import StatMiniCard from '../components/StatMiniCard'
 
+function InicioActividadGrupo({ titulo, cantidad, kcalTotal, abierto, onToggle, children }) {
+  const etiquetaCantidad = cantidad === 1 ? '1 ejercicio' : `${cantidad} ejercicios`
+  return (
+    <div className={`inicio-actividad-grupo${abierto ? ' is-open' : ''}`}>
+      <button
+        type="button"
+        className="inicio-actividad-grupo-head"
+        onClick={onToggle}
+        aria-expanded={abierto}
+      >
+        <span className="inicio-actividad-grupo-chevron" aria-hidden="true">
+          {abierto ? '▼' : '▶'}
+        </span>
+        <span className="inicio-actividad-grupo-texto">
+          <span className="inicio-actividad-grupo-titulo">{titulo}</span>
+          <span className="inicio-actividad-grupo-resumen">
+            {etiquetaCantidad} · <strong>~{kcalTotal} kcal</strong>
+          </span>
+        </span>
+      </button>
+      {abierto && (
+        <div className="inicio-actividad-grupo-body">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Inicio() {
   const { user, isConfigured } = useAuth()
   const [ejercicios] = useStorage('ejercicios', [])
@@ -41,6 +70,8 @@ export default function Inicio() {
   })
   const [hastaCustom, setHastaCustom] = useState(hoy)
   const [diaGraficoSeleccionado, setDiaGraficoSeleccionado] = useState(null)
+  const [calendarioRutinaAbierta, setCalendarioRutinaAbierta] = useState(false)
+  const [calendarioEjerciciosAbierta, setCalendarioEjerciciosAbierta] = useState(false)
   const refZonaGrafico = useRef(null)
   const refCuadroDetalle = useRef(null)
   const [barrasAnimadas, setBarrasAnimadas] = useState(false)
@@ -73,6 +104,11 @@ export default function Inicio() {
       setDesdeCustom(fechaToISO(d))
     }
   }
+
+  useEffect(() => {
+    setCalendarioRutinaAbierta(false)
+    setCalendarioEjerciciosAbierta(false)
+  }, [fechaCalendarioSeleccionada])
 
   const diaEnVista = fechaCalendarioSeleccionada || hoy
   const ejerciciosDelDia = ejercicios.filter((e) => fechaSoloDia(e.fecha) === diaEnVista)
@@ -244,6 +280,14 @@ export default function Inicio() {
   const fechasConRutina = new Set(registrosRutina.map((r) => fechaSoloDia(r.fecha)))
   const rutinaDelDiaCalendario = registrosRutina.filter((r) => fechaSoloDia(r.fecha) === diaEnVista)
   const ejerciciosDelDiaCalendario = ejercicios.filter((e) => fechaSoloDia(e.fecha) === diaEnVista)
+  const kcalRutinaDiaCalendario = rutinaDelDiaCalendario.reduce(
+    (s, r) => s + caloriasQuemadasRegistroRutina(r, pesoCfg),
+    0
+  )
+  const kcalEjerciciosDiaCalendario = ejerciciosDelDiaCalendario.reduce(
+    (s, e) => s + caloriasEjercicioRegistro(e, pesoCfg),
+    0
+  )
 
   return (
     <section className="section" style={{ paddingBottom: '2rem' }}>
@@ -358,12 +402,17 @@ export default function Inicio() {
               )
             })}
           </div>
-          <div className="mt-4 pt-4" style={{ borderTop: '1px solid #eee' }}>
+          <div className="mt-4 pt-4 inicio-calendario-detalle">
               <h3 className="title is-6 mb-3">{diaEnVista === hoy ? 'Hoy' : formatearFecha(diaEnVista)} — Lo que hiciste</h3>
               {rutinaDelDiaCalendario.length > 0 && (
-                <div className="mb-4">
-                  <p className="is-size-7 mb-2 has-text-weight-semibold inicio-actividad-seccion">Rutina / Gimnasio</p>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                <InicioActividadGrupo
+                  titulo="Rutina / Gimnasio"
+                  cantidad={rutinaDelDiaCalendario.length}
+                  kcalTotal={kcalRutinaDiaCalendario}
+                  abierto={calendarioRutinaAbierta}
+                  onToggle={() => setCalendarioRutinaAbierta((v) => !v)}
+                >
+                  <ul className="inicio-actividad-lista">
                     {rutinaDelDiaCalendario.map((r) => (
                       <li key={r.id} className="box py-2 px-3 mb-2 inicio-actividad-card">
                         <strong className="inicio-actividad-card-titulo">{r.ejercicio}</strong>
@@ -383,12 +432,17 @@ export default function Inicio() {
                       </li>
                     ))}
                   </ul>
-                </div>
+                </InicioActividadGrupo>
               )}
               {ejerciciosDelDiaCalendario.length > 0 && (
-                <div className="mb-2">
-                  <p className="is-size-7 mb-2 has-text-weight-semibold inicio-actividad-seccion">Ejercicios (cardio, etc.)</p>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                <InicioActividadGrupo
+                  titulo="Ejercicios (cardio, etc.)"
+                  cantidad={ejerciciosDelDiaCalendario.length}
+                  kcalTotal={kcalEjerciciosDiaCalendario}
+                  abierto={calendarioEjerciciosAbierta}
+                  onToggle={() => setCalendarioEjerciciosAbierta((v) => !v)}
+                >
+                  <ul className="inicio-actividad-lista">
                     {ejerciciosDelDiaCalendario.map((e) => (
                       <li key={e.id} className="box py-2 px-3 mb-2 inicio-actividad-card">
                         <strong className="inicio-actividad-card-titulo">{e.nombre}</strong>
@@ -404,7 +458,7 @@ export default function Inicio() {
                       </li>
                     ))}
                   </ul>
-                </div>
+                </InicioActividadGrupo>
               )}
               {rutinaDelDiaCalendario.length === 0 && ejerciciosDelDiaCalendario.length === 0 && (
                 <p className="is-size-7 has-text-grey">No hay rutina ni ejercicios registrados para este día.</p>

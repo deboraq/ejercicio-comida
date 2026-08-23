@@ -111,9 +111,9 @@ function AppRoutes() {
             <button
               type="button"
               className="app-menu-toggle"
-              aria-label="Abrir menú"
+              aria-label={mobileNavOpen ? 'Cerrar menú' : 'Abrir menú'}
               aria-expanded={mobileNavOpen}
-              onClick={() => setMobileNavOpen(true)}
+              onClick={() => setMobileNavOpen((open) => !open)}
             >
               <span /><span /><span />
             </button>
