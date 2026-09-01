@@ -100,8 +100,9 @@ export default function Rutina() {
   const [hastaProgresoCustom, setHastaProgresoCustom] = useState(() => fechaToISO(new Date()))
   /** Edición de un registro de pesos: { id, ejercicio, series, repeticiones, pesoKg, notas } */
   const [editandoRegistro, setEditandoRegistro] = useState(null)
-  /** Fechas ISO con el bloque del historial plegado (Registrar → Historial por fecha). */
-  const [historialFechasPlegadas, setHistorialFechasPlegadas] = useState(() => new Set())
+  /** Historial en Registrar: cerrado por defecto; fecha a consultar (hoy). */
+  const [historialAbierto, setHistorialAbierto] = useState(false)
+  const [fechaHistorial, setFechaHistorial] = useState(() => fechaToISO(new Date()))
 
   const hoy = fechaToISO(new Date())
   const pesoCfg = config?.pesoKg || 70
@@ -524,7 +525,6 @@ export default function Rutina() {
     acc[r.fecha].push(r)
     return acc
   }, {})
-  const fechasOrdenadas = Object.keys(porFecha).sort((a, b) => b.localeCompare(a))
   const fechasConEntreno = new Set(registrosRutina.map((r) => r.fecha))
   const registrosDiaSeleccionado = fechaCalendarioSeleccionada
     ? (porFecha[fechaCalendarioSeleccionada] || [])
@@ -1223,7 +1223,9 @@ export default function Rutina() {
               <div className="box mb-4">
                 <div className="mb-3">
                   <h3 className="title is-6 mb-0">Plan de {diaParaRegistrar?.nombre}</h3>
-                  <p className="is-size-7 has-text-grey mb-0">Tocá un ejercicio para completarlo. Podés guardar varias tandas el mismo día.</p>
+                  <p className="is-size-7 has-text-grey mb-0">
+                    Solo ves los pendientes. Al guardar, salen del listado. Podés agregar otra tanda desde “Ya hechos”.
+                  </p>
                 </div>
                 <RegistrarPlanDelDia
                   key={`${diaSeleccionado}-${fechaInput}`}
@@ -1236,94 +1238,63 @@ export default function Rutina() {
               </div>
             )}
 
-            {registrosDeEstaSesion.length > 0 && (
-              <div className="box mb-4">
-                <p className="is-size-7 has-text-grey mb-2">
-                  Registros de {fechaInput || hoy} — {diaParaRegistrar?.nombre}
-                </p>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {registrosDeEstaSesion.map((r) => (
-                    <FilaRegistroRutinaEditable
-                      key={r.id}
-                      registro={r}
-                      draft={editandoRegistro}
-                      pesoCfg={pesoCfg}
-                      onPatch={patchEditandoRegistro}
-                      onEditar={iniciarEdicionRegistro}
-                      onGuardar={guardarEdicionRegistro}
-                      onCancelar={cancelarEdicionRegistro}
-                      onEliminar={eliminarRegistro}
-                      variant="compacto"
-                    />
-                  ))}
-                </ul>
-              </div>
-            )}
+            <div className="box mb-4 py-3 rutina-hist-box">
+              <button
+                type="button"
+                className="rutina-hist-toggle"
+                onClick={() => setHistorialAbierto((v) => !v)}
+                aria-expanded={historialAbierto}
+              >
+                <div>
+                  <h2 className="title is-6 mb-0">Historial</h2>
+                  <p className="is-size-7 has-text-grey mb-0">
+                    {historialAbierto
+                      ? 'Elegí una fecha para ver o editar registros'
+                      : 'Tocá para consultar registros por fecha'}
+                  </p>
+                </div>
+                <span className="rutina-hist-chevron" aria-hidden>{historialAbierto ? '▼' : '▶'}</span>
+              </button>
 
-            <h2 className="title is-6 mb-2">Historial por fecha</h2>
-            {fechasOrdenadas.length === 0 ? (
-              <div className="box has-text-centered has-text-grey is-size-7 py-3">Aún no hay registros.</div>
-            ) : (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {fechasOrdenadas.map((fecha) => {
-                  const lista = porFecha[fecha]
-                  const diaId = lista[0]?.diaRutinaId
-                  const nombreDia = dias.find((d) => d.id === diaId)?.nombre || 'Día'
-                  const historialAbierto = !historialFechasPlegadas.has(fecha)
-                  return (
-                    <li key={fecha} className="mb-3">
-                      <button
-                        type="button"
-                        className="is-flex is-align-items-center is-justify-content-space-between mb-2"
-                        style={{
-                          width: '100%',
-                          background: 'transparent',
-                          border: 'none',
-                          padding: '0.35rem 0',
-                          cursor: 'pointer',
-                          color: 'inherit',
-                          font: 'inherit',
-                          textAlign: 'left',
-                        }}
-                        aria-expanded={historialAbierto}
-                        onClick={() => {
-                          setHistorialFechasPlegadas((prev) => {
-                            const n = new Set(prev)
-                            if (n.has(fecha)) n.delete(fecha)
-                            else n.add(fecha)
-                            return n
-                          })
-                        }}
-                      >
-                        <span className="is-size-7 has-text-grey" style={{ textTransform: 'capitalize' }}>
-                          {formatearFecha(fecha)} — {nombreDia}
-                        </span>
-                        <span className="is-size-7 has-text-grey ml-2" aria-hidden>
-                          {historialAbierto ? '▼' : '▶'}
-                        </span>
-                      </button>
-                      {historialAbierto && (
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                          {lista.map((r) => (
-                            <FilaRegistroRutinaEditable
-                              key={r.id}
-                              registro={r}
-                              draft={editandoRegistro}
-                              pesoCfg={pesoCfg}
-                              onPatch={patchEditandoRegistro}
-                              onEditar={iniciarEdicionRegistro}
-                              onGuardar={guardarEdicionRegistro}
-                              onCancelar={cancelarEdicionRegistro}
-                              onEliminar={eliminarRegistro}
-                            />
-                          ))}
-                        </ul>
-                      )}
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
+              {historialAbierto && (
+                <div className="rutina-hist-panel mt-3">
+                  <HistorialFechaPicker
+                    value={fechaHistorial}
+                    onChange={setFechaHistorial}
+                    hoy={hoy}
+                    fechasConDatos={fechasConEntreno}
+                  />
+                  {(() => {
+                    const lista = porFecha[fechaHistorial] || []
+                    if (lista.length === 0) {
+                      return (
+                        <p className="is-size-7 has-text-grey mb-0 mt-3">
+                          No hay registros el {formatearFecha(fechaHistorial)}.
+                        </p>
+                      )
+                    }
+                    return (
+                      <ul className="rutina-sesion-regs mt-3">
+                        {lista.map((r) => (
+                          <FilaRegistroRutinaEditable
+                            key={r.id}
+                            registro={r}
+                            draft={editandoRegistro}
+                            pesoCfg={pesoCfg}
+                            onPatch={patchEditandoRegistro}
+                            onEditar={iniciarEdicionRegistro}
+                            onGuardar={guardarEdicionRegistro}
+                            onCancelar={cancelarEdicionRegistro}
+                            onEliminar={eliminarRegistro}
+                            variant="compacto"
+                          />
+                        ))}
+                      </ul>
+                    )
+                  })()}
+                </div>
+              )}
+            </div>
           </>
         )}
         </>
@@ -1341,6 +1312,103 @@ export default function Rutina() {
         )}
       </div>
     </section>
+  )
+}
+
+function HistorialFechaPicker({ value, onChange, hoy, fechasConDatos }) {
+  const base = value || hoy
+  const [vistaMes, setVistaMes] = useState(() => base.slice(0, 7))
+
+  useEffect(() => {
+    if (value && value.slice(0, 7) !== vistaMes) setVistaMes(value.slice(0, 7))
+  }, [value])
+
+  const moverDia = (delta) => {
+    const d = new Date(`${(value || hoy)}T12:00:00`)
+    d.setDate(d.getDate() + delta)
+    const iso = fechaToISO(d)
+    onChange(iso)
+    setVistaMes(iso.slice(0, 7))
+  }
+
+  const celdas = useMemo(() => {
+    const [y, m] = vistaMes.split('-').map(Number)
+    const primerDia = new Date(y, m - 1, 1)
+    const ultimoDia = new Date(y, m, 0)
+    const diasEnMes = ultimoDia.getDate()
+    const inicioSemana = primerDia.getDay()
+    const vacios = inicioSemana === 0 ? 6 : inicioSemana - 1
+    const total = Math.ceil((vacios + diasEnMes) / 7) * 7
+    const out = []
+    for (let i = 0; i < vacios; i++) out.push({ vacio: true })
+    for (let d = 1; d <= diasEnMes; d++) {
+      const fecha = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      out.push({ fecha, dia: d, vacio: false })
+    }
+    while (out.length < total) out.push({ vacio: true })
+    return out
+  }, [vistaMes])
+
+  const labelMes = (() => {
+    const [y, m] = vistaMes.split('-').map(Number)
+    return new Date(y, m - 1, 1)
+      .toLocaleDateString('es', { month: 'long', year: 'numeric' })
+      .replace(/^\w/, (c) => c.toUpperCase())
+  })()
+
+  const cambiarMes = (delta) => {
+    const [y, m] = vistaMes.split('-').map(Number)
+    const d = new Date(y, m - 1 + delta, 1)
+    setVistaMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+
+  return (
+    <div className="rutina-hist-picker">
+      <div className="rutina-hist-picker-nav">
+        <button type="button" className="rutina-icon-btn" onClick={() => moverDia(-1)} aria-label="Día anterior">‹</button>
+        <div className="rutina-hist-picker-fecha">
+          <span className="rutina-hist-picker-label">{formatearFecha(value || hoy)}</span>
+          {(value || hoy) === hoy && <span className="rutina-hist-picker-hoy-tag">Hoy</span>}
+        </div>
+        <button type="button" className="rutina-icon-btn" onClick={() => moverDia(1)} aria-label="Día siguiente">›</button>
+        {(value || hoy) !== hoy && (
+          <button type="button" className="button is-small is-link is-light" onClick={() => { onChange(hoy); setVistaMes(hoy.slice(0, 7)) }}>
+            Hoy
+          </button>
+        )}
+      </div>
+
+      <div className="rutina-hist-cal">
+        <div className="rutina-hist-cal-head">
+          <button type="button" className="rutina-icon-btn" onClick={() => cambiarMes(-1)} aria-label="Mes anterior">‹</button>
+          <span className="rutina-hist-cal-mes">{labelMes}</span>
+          <button type="button" className="rutina-icon-btn" onClick={() => cambiarMes(1)} aria-label="Mes siguiente">›</button>
+        </div>
+        <div className="rutina-hist-cal-weekdays">
+          {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((d) => (
+            <span key={d}>{d}</span>
+          ))}
+        </div>
+        <div className="rutina-hist-cal-grid">
+          {celdas.map((c, i) => {
+            if (c.vacio) return <span key={`v-${i}`} className="rutina-hist-cal-empty" />
+            const selected = c.fecha === (value || hoy)
+            const esHoy = c.fecha === hoy
+            const conDatos = fechasConDatos?.has?.(c.fecha)
+            return (
+              <button
+                key={c.fecha}
+                type="button"
+                className={`rutina-hist-cal-day${selected ? ' is-selected' : ''}${esHoy ? ' is-today' : ''}${conDatos ? ' has-data' : ''}`}
+                onClick={() => onChange(c.fecha)}
+              >
+                {c.dia}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -1457,7 +1525,7 @@ function FilaRegistroRutinaEditable({
   const compacto = variant === 'compacto'
 
   const botonesAccion = (
-    <div className="is-flex is-align-items-flex-start" style={{ gap: '0.15rem' }}>
+    <div className="rutina-hist-row-actions">
       <button type="button" className="button is-small is-text" onClick={() => onEditar(registro)}>
         Editar
       </button>
@@ -1470,20 +1538,20 @@ function FilaRegistroRutinaEditable({
   if (!editando) {
     if (compacto) {
       return (
-        <li className="py-2 subtle-divider-b">
-          <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
-            <span>
-              <strong className="rutina-registro-nombre">{registro.ejercicio}</strong>
-              <span className="rutina-chip rutina-chip-plan ml-2">{registro.series}×{registro.repeticiones}</span>
-              {registro.pesoKg != null && registro.pesoKg > 0 && <span className="rutina-chip rutina-chip-peso ml-1">{registro.pesoKg} kg</span>}
-              <span className="rutina-chip rutina-chip-kcal ml-1">~{caloriasQuemadasRegistroRutina(registro, pesoCfg)} kcal</span>
+        <li className="rutina-hist-row">
+          <div className="rutina-hist-row-main">
+            <strong className="rutina-registro-nombre">{registro.ejercicio}</strong>
+            <div className="rutina-hist-row-meta">
+              <span className="rutina-chip rutina-chip-plan">{registro.series}×{registro.repeticiones}</span>
+              {registro.pesoKg != null && registro.pesoKg > 0 && <span className="rutina-chip rutina-chip-peso">{registro.pesoKg} kg</span>}
+              <span className="rutina-chip rutina-chip-kcal">~{caloriasQuemadasRegistroRutina(registro, pesoCfg)} kcal</span>
               {registro.kcalManual != null && Number(registro.kcalManual) > 0 && (
                 <span className="has-text-grey is-size-7"> (manual)</span>
               )}
-              {registro.notas && <span className="rutina-registro-notas"> — {registro.notas}</span>}
-            </span>
-            {botonesAccion}
+            </div>
+            {registro.notas && <p className="is-size-7 rutina-registro-notas mt-1 mb-0">— {registro.notas}</p>}
           </div>
+          {botonesAccion}
         </li>
       )
     }
@@ -1596,17 +1664,24 @@ function serializarPlanItems(planItems) {
 }
 
 function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGuardarMarcados, onEliminarRegistro }) {
-  const hayRegistrosHoy = registrosDeEstaSesion.length > 0
   const [filas, setFilas] = useState(() => filasIniciales(ejercicios))
   const [errorLote, setErrorLote] = useState(null)
+  const [hechosAbiertos, setHechosAbiertos] = useState(true)
 
   useEffect(() => {
-    setFilas(filasIniciales(ejercicios))
+    setFilas((prev) => {
+      const base = filasIniciales(ejercicios)
+      // Conservar borradores abiertos si el ejercicio sigue en el plan
+      for (const it of ejercicios) {
+        if (prev[it.nombre]?.incluir) base[it.nombre] = { ...base[it.nombre], ...prev[it.nombre] }
+      }
+      return base
+    })
     setErrorLote(null)
   }, [serializarPlanItems(ejercicios)])
 
   const setFila = (nombre, patch) => {
-    setFilas((prev) => ({ ...prev, [nombre]: { ...prev[nombre], ...patch } }))
+    setFilas((prev) => ({ ...prev, [nombre]: { ...(prev[nombre] || filasIniciales([ejercicios.find((e) => e.nombre === nombre) || { nombre }])[nombre]), ...patch } }))
   }
 
   const regsPorEjercicio = ejercicios.reduce((acc, it) => {
@@ -1614,21 +1689,41 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
     return acc
   }, {})
 
-  const pendientesGuardar = ejercicios.filter((it) => {
+  const pendientes = ejercicios.filter((it) => (regsPorEjercicio[it.nombre] || []).length === 0)
+  const hechos = ejercicios.filter((it) => (regsPorEjercicio[it.nombre] || []).length > 0)
+  const hechosConOtraTanda = hechos.filter((it) => filas[it.nombre]?.incluir)
+
+  const listaParaGuardar = [...pendientes, ...hechosConOtraTanda]
+
+  const pendientesGuardar = listaParaGuardar.filter((it) => {
     const f = filas[it.nombre]
     if (!f?.incluir) return false
     const reps = (f.repeticiones || '').trim()
     return f.series !== '' && f.series != null && reps
   })
 
+  const abrirOtraTanda = (it) => {
+    const seriesIni = it.series?.trim() ? it.series.trim() : '3'
+    const repsIni = it.repeticiones?.trim() || ''
+    setFila(it.nombre, {
+      incluir: true,
+      series: seriesIni,
+      repeticiones: repsIni,
+      pesoKg: '',
+      kcalManual: '',
+      notas: '',
+    })
+    setHechosAbiertos(true)
+  }
+
   const guardarLote = () => {
     setErrorLote(null)
-    const marcadosSinReps = ejercicios.filter((it) => {
+    const marcadosSinReps = listaParaGuardar.filter((it) => {
       const f = filas[it.nombre]
       return f?.incluir && (!(f.repeticiones || '').trim() || f.series === '' || f.series == null)
     })
     if (marcadosSinReps.length > 0) {
-      setErrorLote('En los marcados como hechos, completá series y reps (reps puede ser texto, ej. 10 o 8+8).')
+      setErrorLote('En los marcados, completá series y reps (reps puede ser texto, ej. 10 o 8+8).')
       return
     }
     const payload = pendientesGuardar.map((it) => {
@@ -1643,7 +1738,7 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
       }
     })
     if (payload.length === 0) {
-      setErrorLote('Marcá al menos un ejercicio con el tilde y completá series y reps.')
+      setErrorLote('Marcá al menos un ejercicio y completá series y reps.')
       return
     }
     onGuardarMarcados(payload)
@@ -1665,141 +1760,205 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
     })
   }
 
+  const renderForm = (ex, f) => (
+    <div className="rutina-reg-form">
+      <div className="rutina-reg-fields">
+        <div>
+          <label className="ej-form-label mb-1">Series</label>
+          <input
+            className="input is-small"
+            type="number"
+            min="1"
+            max="99"
+            value={f.series}
+            onChange={(e) => setFila(ex, { series: e.target.value })}
+          />
+        </div>
+        <div className="rutina-reg-field-grow">
+          <label className="ej-form-label mb-1">Reps</label>
+          <input
+            className="input is-small"
+            type="text"
+            value={f.repeticiones}
+            onChange={(e) => setFila(ex, { repeticiones: e.target.value })}
+            placeholder="10, 8+8, max…"
+            autoComplete="off"
+          />
+        </div>
+        <div>
+          <label className="ej-form-label mb-1">Peso</label>
+          <input
+            className="input is-small"
+            type="number"
+            min="0"
+            step="0.5"
+            value={f.pesoKg}
+            onChange={(e) => setFila(ex, { pesoKg: e.target.value })}
+            placeholder="kg"
+          />
+        </div>
+        <div>
+          <label className="ej-form-label mb-1">Kcal</label>
+          <input
+            className="input is-small"
+            type="number"
+            min="1"
+            step="1"
+            value={f.kcalManual}
+            onChange={(e) => setFila(ex, { kcalManual: e.target.value })}
+            placeholder="Auto"
+            title="Opcional: si lo cargás, reemplaza la estimación"
+          />
+        </div>
+      </div>
+      <input
+        className="input is-small mt-2"
+        type="text"
+        value={f.notas}
+        onChange={(e) => setFila(ex, { notas: e.target.value })}
+        placeholder="Notas (opcional)"
+      />
+    </div>
+  )
+
   return (
     <div className="rutina-reg-plan">
       {errorLote && (
         <div className="notification is-warning is-light is-size-7 py-2 px-3 mb-3">{errorLote}</div>
       )}
-      <ul className="rutina-reg-list">
-        {ejercicios.map((it) => {
-          const ex = it.nombre
-          const ya = regsPorEjercicio[ex] || []
-          const f = filas[ex] || {
-            incluir: false,
-            series: '3',
-            repeticiones: '',
-            pesoKg: '',
-            kcalManual: '',
-            notas: '',
-          }
-          const sugSer = it.series?.trim()
-          const sugRep = it.repeticiones?.trim()
-          return (
-            <li key={ex} className={`rutina-reg-card${f.incluir ? ' is-open' : ''}${ya.length > 0 ? ' has-done' : ''}`}>
-              <button
-                type="button"
-                className="rutina-reg-card-head"
-                onClick={() => setFila(it.nombre, { incluir: !f.incluir })}
-                aria-expanded={f.incluir}
-              >
-                <span className={`rutina-reg-check${f.incluir ? ' is-on' : ''}`} aria-hidden>
-                  {f.incluir ? '✓' : ''}
-                </span>
-                <span className="rutina-reg-card-title">
-                  <strong className="rutina-registro-nombre">{ex}</strong>
-                  {(sugSer || sugRep) && (
-                    <span className="rutina-chip rutina-chip-plan">
-                      {sugSer && sugRep ? `${sugSer}×${sugRep}` : sugSer ? `${sugSer} series` : `${sugRep} reps`}
+
+      <div className="rutina-reg-progress mb-3">
+        <span>
+          {hechos.length}/{ejercicios.length} hechos
+        </span>
+        {pendientes.length > 0 ? (
+          <span className="has-text-grey">{pendientes.length} pendiente{pendientes.length !== 1 ? 's' : ''}</span>
+        ) : (
+          <span className="rutina-reg-progress-ok">Plan del día completo</span>
+        )}
+      </div>
+
+      {pendientes.length > 0 ? (
+        <>
+          <p className="ej-form-label mb-2">Pendientes</p>
+          <ul className="rutina-reg-list">
+            {pendientes.map((it) => {
+              const ex = it.nombre
+              const f = filas[ex] || {
+                incluir: false,
+                series: '3',
+                repeticiones: '',
+                pesoKg: '',
+                kcalManual: '',
+                notas: '',
+              }
+              const sugSer = it.series?.trim()
+              const sugRep = it.repeticiones?.trim()
+              return (
+                <li key={ex} className={`rutina-reg-card${f.incluir ? ' is-open' : ''}`}>
+                  <button
+                    type="button"
+                    className="rutina-reg-card-head"
+                    onClick={() => setFila(ex, { incluir: !f.incluir })}
+                    aria-expanded={f.incluir}
+                  >
+                    <span className={`rutina-reg-check${f.incluir ? ' is-on' : ''}`} aria-hidden>
+                      {f.incluir ? '✓' : ''}
                     </span>
-                  )}
-                </span>
-                {ya.length > 0 && (
-                  <span className="rutina-reg-done-badge">{ya.length} guardado{ya.length !== 1 ? 's' : ''}</span>
-                )}
-              </button>
+                    <span className="rutina-reg-card-title">
+                      <strong className="rutina-registro-nombre">{ex}</strong>
+                      {(sugSer || sugRep) && (
+                        <span className="rutina-chip rutina-chip-plan">
+                          {sugSer && sugRep ? `${sugSer}×${sugRep}` : sugSer ? `${sugSer} series` : `${sugRep} reps`}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                  {f.incluir && renderForm(ex, f)}
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      ) : (
+        <div className="rutina-reg-all-done mb-3">
+          <p className="mb-1"><strong>Ya registraste todos los ejercicios del plan.</strong></p>
+          <p className="is-size-7 has-text-grey mb-0">Si querés otra tanda de alguno, abrí “Ya hechos” y tocá “+ Otra tanda”.</p>
+        </div>
+      )}
 
-              {ya.length > 0 && (
-                <div className="rutina-reg-done-list">
-                  {ya.map((r) => (
-                    <div key={r.id} className="rutina-reg-done-row">
-                      <span>
-                        <span className="rutina-chip rutina-chip-plan">{r.series}×{r.repeticiones}</span>
-                        {r.pesoKg != null && r.pesoKg > 0 && <span className="rutina-chip rutina-chip-peso ml-1">{r.pesoKg} kg</span>}
-                        <span className="rutina-chip rutina-chip-kcal ml-1">~{caloriasQuemadasRegistroRutina(r, pesoCfg)} kcal</span>
-                        {r.notas && <span className="rutina-registro-notas"> — {r.notas}</span>}
-                      </span>
-                      <button type="button" className="rutina-icon-btn is-danger" onClick={() => onEliminarRegistro(r.id)} aria-label="Quitar registro">×</button>
+      {hechos.length > 0 && (
+        <div className="rutina-reg-hechos mt-3">
+          <button
+            type="button"
+            className="rutina-reg-hechos-toggle"
+            onClick={() => setHechosAbiertos((v) => !v)}
+            aria-expanded={hechosAbiertos}
+          >
+            <span>Ya hechos ({hechos.length})</span>
+            <span aria-hidden>{hechosAbiertos ? '▼' : '▶'}</span>
+          </button>
+          {hechosAbiertos && (
+            <ul className="rutina-reg-list rutina-reg-list--hechos">
+              {hechos.map((it) => {
+                const ex = it.nombre
+                const ya = regsPorEjercicio[ex] || []
+                const f = filas[ex] || {
+                  incluir: false,
+                  series: '3',
+                  repeticiones: '',
+                  pesoKg: '',
+                  kcalManual: '',
+                  notas: '',
+                }
+                return (
+                  <li key={ex} className={`rutina-reg-card has-done${f.incluir ? ' is-open' : ''}`}>
+                    <div className="rutina-reg-hecho-head">
+                      <div className="rutina-reg-card-title">
+                        <strong className="rutina-registro-nombre">{ex}</strong>
+                        <span className="rutina-reg-done-badge">{ya.length} guardado{ya.length !== 1 ? 's' : ''}</span>
+                      </div>
+                      {!f.incluir ? (
+                        <button type="button" className="button is-small is-link is-light" onClick={() => abrirOtraTanda(it)}>
+                          + Otra tanda
+                        </button>
+                      ) : (
+                        <button type="button" className="button is-small is-light" onClick={() => setFila(ex, { incluir: false })}>
+                          Cancelar
+                        </button>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="rutina-reg-done-list">
+                      {ya.map((r) => (
+                        <div key={r.id} className="rutina-reg-done-row">
+                          <span>
+                            <span className="rutina-chip rutina-chip-plan">{r.series}×{r.repeticiones}</span>
+                            {r.pesoKg != null && r.pesoKg > 0 && <span className="rutina-chip rutina-chip-peso ml-1">{r.pesoKg} kg</span>}
+                            <span className="rutina-chip rutina-chip-kcal ml-1">~{caloriasQuemadasRegistroRutina(r, pesoCfg)} kcal</span>
+                            {r.notas && <span className="rutina-registro-notas"> — {r.notas}</span>}
+                          </span>
+                          <button type="button" className="rutina-icon-btn is-danger" onClick={() => onEliminarRegistro(r.id)} aria-label="Quitar registro">×</button>
+                        </div>
+                      ))}
+                    </div>
+                    {f.incluir && renderForm(ex, f)}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      )}
 
-              {f.incluir && (
-                <div className="rutina-reg-form">
-                  <div className="rutina-reg-fields">
-                    <div>
-                      <label className="ej-form-label mb-1">Series</label>
-                      <input
-                        className="input is-small"
-                        type="number"
-                        min="1"
-                        max="99"
-                        value={f.series}
-                        onChange={(e) => setFila(ex, { series: e.target.value })}
-                      />
-                    </div>
-                    <div className="rutina-reg-field-grow">
-                      <label className="ej-form-label mb-1">Reps</label>
-                      <input
-                        className="input is-small"
-                        type="text"
-                        value={f.repeticiones}
-                        onChange={(e) => setFila(ex, { repeticiones: e.target.value })}
-                        placeholder="10, 8+8, max…"
-                        autoComplete="off"
-                      />
-                    </div>
-                    <div>
-                      <label className="ej-form-label mb-1">Peso</label>
-                      <input
-                        className="input is-small"
-                        type="number"
-                        min="0"
-                        step="0.5"
-                        value={f.pesoKg}
-                        onChange={(e) => setFila(ex, { pesoKg: e.target.value })}
-                        placeholder="kg"
-                      />
-                    </div>
-                    <div>
-                      <label className="ej-form-label mb-1">Kcal</label>
-                      <input
-                        className="input is-small"
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={f.kcalManual}
-                        onChange={(e) => setFila(ex, { kcalManual: e.target.value })}
-                        placeholder="Auto"
-                        title="Opcional: si lo cargás, reemplaza la estimación"
-                      />
-                    </div>
-                  </div>
-                  <input
-                    className="input is-small mt-2"
-                    type="text"
-                    value={f.notas}
-                    onChange={(e) => setFila(ex, { notas: e.target.value })}
-                    placeholder="Notas (opcional)"
-                  />
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-      <button
-        type="button"
-        className="button is-link is-fullwidth mt-3"
-        onClick={guardarLote}
-        disabled={pendientesGuardar.length === 0}
-      >
-        Guardar lo marcado{pendientesGuardar.length > 0 ? ` (${pendientesGuardar.length})` : ''}
-      </button>
-      {hayRegistrosHoy && (
-        <p className="is-size-7 has-text-grey mt-2 mb-0">
-          ¿Otra tanda? Abrí de nuevo el ejercicio, completá y tocá Guardar.
-        </p>
+      {(pendientes.length > 0 || hechosConOtraTanda.length > 0) && (
+        <button
+          type="button"
+          className="button is-link is-fullwidth mt-3"
+          onClick={guardarLote}
+          disabled={pendientesGuardar.length === 0}
+        >
+          Guardar lo marcado{pendientesGuardar.length > 0 ? ` (${pendientesGuardar.length})` : ''}
+        </button>
       )}
     </div>
   )
