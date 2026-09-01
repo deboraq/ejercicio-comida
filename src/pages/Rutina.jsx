@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useStorage } from '../hooks/useStorage'
 import { useAuth } from '../context/AuthContext'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
@@ -80,6 +80,12 @@ export default function Rutina() {
   const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
   const [diaSeleccionado, setDiaSeleccionado] = useState('')
   const [nombreNuevaRutina, setNombreNuevaRutina] = useState('')
+  /** Índice del ejercicio en edición dentro del día (Configurar). */
+  const [ejercicioEditandoIdx, setEjercicioEditandoIdx] = useState(null)
+  const [draftEjercicio, setDraftEjercicio] = useState({ nombre: '', series: '', repeticiones: '' })
+  const [dragEjercicio, setDragEjercicio] = useState(null) // { fromIdx, overIdx } | null
+  const dragEjercicioRef = useRef(null)
+  const planListRef = useRef(null)
   const [mesCalendario, setMesCalendario] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -166,6 +172,13 @@ export default function Rutina() {
   }, [vista])
 
   useEffect(() => {
+    setEjercicioEditandoIdx(null)
+    setDraftEjercicio({ nombre: '', series: '', repeticiones: '' })
+    setDragEjercicio(null)
+    dragEjercicioRef.current = null
+  }, [diaEditando, vista])
+
+  useEffect(() => {
     if (origenRutinas === 'asignadas') setVista('calendario')
   }, [origenRutinas])
 
@@ -249,6 +262,7 @@ export default function Rutina() {
 
   const quitarDia = (idDia) => {
     if (dias.length <= 1) return
+    if (!window.confirm('¿Quitar este día y sus ejercicios del plan?')) return
     actualizarRutina((r) => ({
       ...r,
       dias: r.dias.filter((d) => d.id !== idDia),
@@ -257,34 +271,157 @@ export default function Rutina() {
     if (diaSeleccionado === idDia) setDiaSeleccionado(dias.find((d) => d.id !== idDia)?.id || '')
   }
 
-  const añadirEjercicioAlDia = (nombre) => {
+  const renombrarDia = (idDia, nombre) => {
+    const n = String(nombre || '').trim()
+    if (!n) return
+    actualizarRutina((r) => ({
+      ...r,
+      dias: r.dias.map((d) => (d.id === idDia ? { ...d, nombre: n } : d)),
+    }))
+  }
+
+  const moverDia = (idDia, direccion) => {
+    actualizarRutina((r) => {
+      const list = [...(r.dias || [])]
+      const idx = list.findIndex((d) => d.id === idDia)
+      if (idx < 0) return r
+      const dest = idx + direccion
+      if (dest < 0 || dest >= list.length) return r
+      ;[list[idx], list[dest]] = [list[dest], list[idx]]
+      return { ...r, dias: list }
+    })
+  }
+
+  const añadirEjercicioAlDia = (nombre, series = '', repeticiones = '') => {
     const n = String(nombre || '').trim()
     if (!n) return
     const ya = nombresEjerciciosDia({ ejercicios: diaActual?.ejercicios })
     if (ya.includes(n)) return
+    const s = String(series || '').trim()
+    const rps = String(repeticiones || '').trim()
+    const item = s || rps ? { nombre: n, ...(s ? { series: s } : {}), ...(rps ? { repeticiones: rps } : {}) } : n
     actualizarRutina((r) => ({
       ...r,
       dias: r.dias.map((d) =>
         d.id === diaEditando
-          ? { ...d, ejercicios: [...(d.ejercicios || []), n] }
+          ? { ...d, ejercicios: [...(d.ejercicios || []), item] }
           : d
       ),
     }))
     setBusqueda('')
   }
 
-  const quitarEjercicioDelDia = (nombre) => {
+  const quitarEjercicioDelDiaPorIdx = (idx) => {
     actualizarRutina((r) => ({
       ...r,
-      dias: r.dias.map((d) =>
-        d.id === diaEditando
-          ? {
-              ...d,
-              ejercicios: (d.ejercicios || []).filter((e) => nombreDeEjercicioDiaItem(e) !== nombre),
-            }
-          : d
-      ),
+      dias: r.dias.map((d) => {
+        if (d.id !== diaEditando) return d
+        const ejercicios = [...(d.ejercicios || [])]
+        ejercicios.splice(idx, 1)
+        return { ...d, ejercicios }
+      }),
     }))
+    if (ejercicioEditandoIdx === idx) {
+      setEjercicioEditandoIdx(null)
+      setDraftEjercicio({ nombre: '', series: '', repeticiones: '' })
+    } else if (ejercicioEditandoIdx != null && ejercicioEditandoIdx > idx) {
+      setEjercicioEditandoIdx(ejercicioEditandoIdx - 1)
+    }
+  }
+
+  const reordenarEjercicioDelDia = (fromIdx, toIdx) => {
+    if (fromIdx == null || toIdx == null || fromIdx === toIdx) return
+    actualizarRutina((r) => ({
+      ...r,
+      dias: r.dias.map((d) => {
+        if (d.id !== diaEditando) return d
+        const ejercicios = [...(d.ejercicios || [])]
+        if (fromIdx < 0 || fromIdx >= ejercicios.length || toIdx < 0 || toIdx >= ejercicios.length) return d
+        const [item] = ejercicios.splice(fromIdx, 1)
+        ejercicios.splice(toIdx, 0, item)
+        return { ...d, ejercicios }
+      }),
+    }))
+    setEjercicioEditandoIdx((prev) => {
+      if (prev == null) return prev
+      if (prev === fromIdx) return toIdx
+      if (fromIdx < prev && toIdx >= prev) return prev - 1
+      if (fromIdx > prev && toIdx <= prev) return prev + 1
+      return prev
+    })
+  }
+
+  const idxDesdePuntero = (clientY) => {
+    const list = planListRef.current
+    if (!list) return null
+    const rows = [...list.querySelectorAll('[data-plan-idx]')]
+    if (rows.length === 0) return null
+    for (const row of rows) {
+      const rect = row.getBoundingClientRect()
+      const mid = rect.top + rect.height / 2
+      if (clientY < mid) return Number(row.dataset.planIdx)
+    }
+    return Number(rows[rows.length - 1].dataset.planIdx)
+  }
+
+  const onPlanPointerDown = (e, idx) => {
+    if (ejercicioEditandoIdx != null) return
+    if (e.button != null && e.button !== 0) return
+    e.preventDefault()
+    const state = { fromIdx: idx, overIdx: idx, pointerId: e.pointerId }
+    dragEjercicioRef.current = state
+    setDragEjercicio({ fromIdx: idx, overIdx: idx })
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+  }
+
+  const onPlanPointerMove = (e) => {
+    const state = dragEjercicioRef.current
+    if (!state) return
+    const overIdx = idxDesdePuntero(e.clientY)
+    if (overIdx == null || overIdx === state.overIdx) return
+    state.overIdx = overIdx
+    setDragEjercicio({ fromIdx: state.fromIdx, overIdx })
+  }
+
+  const onPlanPointerUp = () => {
+    const state = dragEjercicioRef.current
+    if (!state) return
+    reordenarEjercicioDelDia(state.fromIdx, state.overIdx)
+    dragEjercicioRef.current = null
+    setDragEjercicio(null)
+  }
+
+  const iniciarEdicionEjercicio = (idx) => {
+    const it = itemEjercicioDiaNormalizado(ejerciciosDelDia[idx])
+    if (!it) return
+    setEjercicioEditandoIdx(idx)
+    setDraftEjercicio({ nombre: it.nombre, series: it.series, repeticiones: it.repeticiones })
+  }
+
+  const cancelarEdicionEjercicio = () => {
+    setEjercicioEditandoIdx(null)
+    setDraftEjercicio({ nombre: '', series: '', repeticiones: '' })
+  }
+
+  const guardarEdicionEjercicio = () => {
+    if (ejercicioEditandoIdx == null) return
+    const nombre = String(draftEjercicio.nombre || '').trim()
+    if (!nombre) return
+    const series = String(draftEjercicio.series || '').trim()
+    const repeticiones = String(draftEjercicio.repeticiones || '').trim()
+    const item = series || repeticiones
+      ? { nombre, ...(series ? { series } : {}), ...(repeticiones ? { repeticiones } : {}) }
+      : nombre
+    actualizarRutina((r) => ({
+      ...r,
+      dias: r.dias.map((d) => {
+        if (d.id !== diaEditando) return d
+        const ejercicios = [...(d.ejercicios || [])]
+        ejercicios[ejercicioEditandoIdx] = item
+        return { ...d, ejercicios }
+      }),
+    }))
+    cancelarEdicionEjercicio()
   }
 
   const crearRutina = () => {
@@ -823,121 +960,253 @@ export default function Rutina() {
         )}
 
         {vista === 'configurar' && (
-          <div className="box mb-4 py-3">
-            <h2 className="title is-6 mb-2">Ejercicios por día</h2>
-            <div className="is-flex is-flex-wrap-wrap is-align-items-center mb-3" style={{ gap: '0.5rem' }}>
-              {dias.map((d) => (
-                <span key={d.id} className="tag is-medium">
-                  {d.nombre}
-                  <button
-                    type="button"
-                    className="delete is-small ml-1"
-                    onClick={() => quitarDia(d.id)}
-                    disabled={dias.length <= 1}
-                    aria-label={`Quitar ${d.nombre}`}
+          <div className="rutina-config">
+            <div className="box mb-4 py-3">
+              <div className="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap mb-3" style={{ gap: '0.5rem' }}>
+                <div>
+                  <h2 className="title is-6 mb-1">Armá tu plan</h2>
+                  <p className="is-size-7 has-text-grey mb-0">Elegí un día, agregá ejercicios, editá series/reps y arrastrá ⠿ para ordenarlos.</p>
+                </div>
+                <button type="button" className="button is-small is-link is-light" onClick={añadirDia}>
+                  + Día
+                </button>
+              </div>
+
+              <div className="rutina-dias-tabs mb-3" role="tablist" aria-label="Días de la rutina">
+                {dias.map((d, di) => {
+                  const activo = diaEditando === d.id
+                  const cant = (d.ejercicios || []).length
+                  return (
+                    <div key={d.id} className={`rutina-dia-tab${activo ? ' is-active' : ''}`}>
+                      <button
+                        type="button"
+                        className="rutina-dia-tab-main"
+                        role="tab"
+                        aria-selected={activo}
+                        onClick={() => setDiaEditando(d.id)}
+                      >
+                        <span className="rutina-dia-tab-nombre">{d.nombre}</span>
+                        <span className="rutina-dia-tab-count">{cant}</span>
+                      </button>
+                      {activo && (
+                        <div className="rutina-dia-tab-tools">
+                          <button type="button" className="rutina-icon-btn" disabled={di === 0} onClick={() => moverDia(d.id, -1)} aria-label="Mover día arriba" title="Mover día">↑</button>
+                          <button type="button" className="rutina-icon-btn" disabled={di === dias.length - 1} onClick={() => moverDia(d.id, 1)} aria-label="Mover día abajo" title="Mover día">↓</button>
+                          <button
+                            type="button"
+                            className="rutina-icon-btn"
+                            onClick={() => {
+                              const n = window.prompt('Nombre del día', d.nombre)
+                              if (n != null) renombrarDia(d.id, n)
+                            }}
+                            aria-label="Renombrar día"
+                            title="Renombrar"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            type="button"
+                            className="rutina-icon-btn is-danger"
+                            disabled={dias.length <= 1}
+                            onClick={() => quitarDia(d.id)}
+                            aria-label={`Quitar ${d.nombre}`}
+                            title="Quitar día"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="rutina-add-block mb-3">
+                <label className="ej-form-label mb-1" htmlFor="rutina-buscar-ex">Agregar ejercicio a {diaActual?.nombre}</label>
+                <div className="module-search rutina-buscar">
+                  <span className="module-search-icon" aria-hidden>🔍</span>
+                  <input
+                    id="rutina-buscar-ex"
+                    type="text"
+                    value={busqueda}
+                    onChange={(e) => setBusqueda(e.target.value)}
+                    placeholder="Buscar o escribir un nombre…"
+                    autoComplete="off"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && busqueda.trim()) {
+                        e.preventDefault()
+                        if (resultadosBusqueda[0]) añadirEjercicioAlDia(resultadosBusqueda[0])
+                        else añadirEjercicioAlDia(busqueda.trim())
+                      }
+                    }}
                   />
-                </span>
-              ))}
-              <button type="button" className="button is-small is-light" onClick={añadirDia}>
-                + Añadir día
-              </button>
-            </div>
-            <div className="buttons are-small mb-3">
-              {dias.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  className={`button ${diaEditando === d.id ? 'is-link' : 'is-light'}`}
-                  onClick={() => setDiaEditando(d.id)}
-                >
-                  {d.nombre}
-                </button>
-              ))}
-            </div>
-            <p className="is-size-7 has-text-grey mb-2">
-              <strong>{diaActual?.nombre}</strong> — Busca y añade ejercicios:
-            </p>
-            <div className="field has-addons mb-3">
-              <div className="control is-expanded">
-                <input
-                  className="input is-small"
-                  type="text"
-                  value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
-                  placeholder="Buscar ejercicio..."
-                />
-              </div>
-            </div>
-            {resultadosBusqueda.length > 0 && (
-              <div className="mb-3" style={{ maxHeight: '180px', overflowY: 'auto' }}>
-                <p className="is-size-7 has-text-grey mb-1">Clic para añadir a {diaActual?.nombre}</p>
-                {resultadosBusqueda.map((ex) => (
+                </div>
+                {resultadosBusqueda.length > 0 && (
+                  <ul className="rutina-sugerencias">
+                    {resultadosBusqueda.slice(0, 8).map((ex) => (
+                      <li key={ex}>
+                        <button type="button" className="rutina-sugerencia-btn" onClick={() => añadirEjercicioAlDia(ex)}>
+                          <span>+ {ex}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {busqueda.trim() && resultadosBusqueda.length === 0 && (
                   <button
-                    key={ex}
                     type="button"
-                    className="button is-small is-light is-fullwidth has-text-left mb-1"
-                    onClick={() => añadirEjercicioAlDia(ex)}
+                    className="button is-small is-link is-light mt-2"
+                    onClick={() => añadirEjercicioAlDia(busqueda.trim())}
                   >
-                    + {ex}
+                    + Agregar &quot;{busqueda.trim()}&quot;
                   </button>
-                ))}
+                )}
               </div>
-            )}
-            {busqueda.trim() && resultadosBusqueda.length === 0 && (
-              <div className="mb-3">
-                <button
-                  type="button"
-                  className="button is-small is-light"
-                  onClick={() => añadirEjercicioAlDia(busqueda.trim())}
-                >
-                  + Añadir &quot;{busqueda.trim()}&quot; a {diaActual?.nombre}
-                </button>
+
+              <div className="rutina-plan-list-head">
+                <h3 className="title is-6 mb-0">{diaActual?.nombre}</h3>
+                <span className="is-size-7 has-text-grey">
+                  {ejerciciosDelDia.length === 0
+                    ? 'Sin ejercicios'
+                    : `${ejerciciosDelDia.length} ejercicio${ejerciciosDelDia.length !== 1 ? 's' : ''} · arrastrá ⠿ para ordenar`}
+                </span>
               </div>
-            )}
-            <p className="is-size-7 has-text-grey mb-2">En {diaActual?.nombre} tienes:</p>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+
               {ejerciciosDelDia.length === 0 ? (
-                <li className="is-size-7 has-text-grey">Ninguno aún. Usa el buscador.</li>
+                <div className="rutina-empty-plan">
+                  <p className="mb-0">Todavía no hay ejercicios en este día.</p>
+                  <p className="is-size-7 has-text-grey mt-1 mb-0">Buscá arriba o escribí un nombre y agregalo.</p>
+                </div>
               ) : (
-                ejerciciosDelDia.map((ex, idx) => (
-                  <li
-                    key={`${nombreDeEjercicioDiaItem(ex)}-${idx}`}
-                    className="is-flex is-justify-content-space-between is-align-items-center py-2 subtle-divider-b"
-                  >
-                    <span className="rutina-plan-ejercicio">{etiquetaPlanEjercicio(ex)}</span>
-                    <button
-                      type="button"
-                      className="button is-small is-text has-text-grey"
-                      onClick={() => quitarEjercicioDelDia(nombreDeEjercicioDiaItem(ex))}
-                    >
-                      Quitar
-                    </button>
-                  </li>
-                ))
+                <ul
+                  className={`rutina-plan-list${dragEjercicio ? ' is-dragging' : ''}`}
+                  ref={planListRef}
+                >
+                  {ejerciciosDelDia.map((ex, idx) => {
+                    const it = itemEjercicioDiaNormalizado(ex)
+                    const editando = ejercicioEditandoIdx === idx
+                    const isDragging = dragEjercicio?.fromIdx === idx
+                    const isDropTarget = dragEjercicio && dragEjercicio.overIdx === idx && dragEjercicio.fromIdx !== idx
+                    return (
+                      <li
+                        key={`${it?.nombre || 'ex'}-${idx}`}
+                        data-plan-idx={idx}
+                        className={`rutina-plan-row${editando ? ' is-editing' : ''}${isDragging ? ' is-dragging' : ''}${isDropTarget ? ' is-drop-target' : ''}`}
+                      >
+                        {editando ? (
+                          <div className="rutina-plan-edit">
+                            <input
+                              className="input is-small"
+                              type="text"
+                              value={draftEjercicio.nombre}
+                              onChange={(e) => setDraftEjercicio((d) => ({ ...d, nombre: e.target.value }))}
+                              placeholder="Nombre del ejercicio"
+                              autoFocus
+                            />
+                            <div className="rutina-plan-edit-grid">
+                              <div>
+                                <label className="ej-form-label mb-1">Series</label>
+                                <input
+                                  className="input is-small"
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={draftEjercicio.series}
+                                  onChange={(e) => setDraftEjercicio((d) => ({ ...d, series: e.target.value }))}
+                                  placeholder="3"
+                                />
+                              </div>
+                              <div>
+                                <label className="ej-form-label mb-1">Reps</label>
+                                <input
+                                  className="input is-small"
+                                  type="text"
+                                  value={draftEjercicio.repeticiones}
+                                  onChange={(e) => setDraftEjercicio((d) => ({ ...d, repeticiones: e.target.value }))}
+                                  placeholder="10 o 8+8"
+                                />
+                              </div>
+                            </div>
+                            <div className="rutina-plan-edit-actions">
+                              <button type="button" className="button is-small is-link" onClick={guardarEdicionEjercicio} disabled={!draftEjercicio.nombre.trim()}>
+                                Guardar
+                              </button>
+                              <button type="button" className="button is-small is-light" onClick={cancelarEdicionEjercicio}>
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="rutina-drag-handle"
+                              aria-label={`Arrastrar para reordenar ${it?.nombre || 'ejercicio'}`}
+                              title="Arrastrá para mover"
+                              onPointerDown={(e) => onPlanPointerDown(e, idx)}
+                              onPointerMove={onPlanPointerMove}
+                              onPointerUp={onPlanPointerUp}
+                              onPointerCancel={onPlanPointerUp}
+                            >
+                              <span aria-hidden>⠿</span>
+                            </button>
+                            <div className="rutina-plan-row-body">
+                              <span className="rutina-plan-row-num">{idx + 1}</span>
+                              <div className="rutina-plan-row-text">
+                                <strong className="rutina-plan-ejercicio">{it?.nombre}</strong>
+                                {(it?.series || it?.repeticiones) ? (
+                                  <span className="rutina-chip rutina-chip-plan">
+                                    {it.series && it.repeticiones ? `${it.series}×${it.repeticiones}` : it.series ? `${it.series} series` : `${it.repeticiones} reps`}
+                                  </span>
+                                ) : (
+                                  <span className="is-size-7 has-text-grey">Sin series/reps sugeridas</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="rutina-plan-row-actions">
+                              <button type="button" className="rutina-icon-btn" onClick={() => iniciarEdicionEjercicio(idx)} aria-label="Editar" title="Editar">✎</button>
+                              <button type="button" className="rutina-icon-btn is-danger" onClick={() => quitarEjercicioDelDiaPorIdx(idx)} aria-label="Quitar" title="Quitar">×</button>
+                            </div>
+                          </>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
               )}
-            </ul>
+            </div>
           </div>
         )}
 
         {vista === 'registrar' && (
           <>
             <div className="box mb-4 py-3">
-              <h2 className="title is-6 mb-2">Cargar pesos del día</h2>
-              <div className="field">
-                <label className="label is-size-7">Fecha de la sesión</label>
-                <div className="control">
-                  <input className="input is-small" type="date" value={fechaInput} onChange={(e) => setFechaInput(e.target.value)} />
+              <h2 className="title is-6 mb-1">Registrar sesión</h2>
+              <p className="is-size-7 has-text-grey mb-3">Elegí fecha y día del plan, marcá lo que hiciste y guardá.</p>
+              <div className="rutina-reg-meta">
+                <div>
+                  <label className="ej-form-label mb-1" htmlFor="rutina-fecha-sesion">Fecha</label>
+                  <input
+                    id="rutina-fecha-sesion"
+                    className="input"
+                    type="date"
+                    value={fechaInput}
+                    onChange={(e) => setFechaInput(e.target.value)}
+                  />
                 </div>
-              </div>
-              <div className="field">
-                <label className="label is-size-7">¿Qué día de la rutina hiciste?</label>
-                <div className="control">
-                  <div className="select is-fullwidth is-small">
-                    <select value={diaSeleccionado} onChange={(e) => setDiaSeleccionado(e.target.value)}>
-                      {dias.map((d) => (
-                        <option key={d.id} value={d.id}>{d.nombre}</option>
-                      ))}
-                    </select>
+                <div>
+                  <span className="ej-form-label mb-1">Día del plan</span>
+                  <div className="rutina-dias-pills" role="group" aria-label="Día de la rutina">
+                    {dias.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        className={`rutina-dia-pill${diaSeleccionado === d.id ? ' is-active' : ''}`}
+                        onClick={() => setDiaSeleccionado(d.id)}
+                      >
+                        {d.nombre}
+                        <span className="rutina-dia-pill-count">{(d.ejercicios || []).length}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -945,13 +1214,17 @@ export default function Rutina() {
 
             {ejerciciosParaCargar.length === 0 ? (
               <div className="box has-text-grey">
-                <p className="mb-0">No hay ejercicios en <strong>{diaParaRegistrar?.nombre}</strong>. Ve a &quot;Configurar rutina&quot; y añade ejercicios.</p>
+                <p className="mb-2">No hay ejercicios en <strong>{diaParaRegistrar?.nombre}</strong>.</p>
+                <button type="button" className="button is-small is-link" onClick={() => setVista('configurar')}>
+                  Ir a Configurar
+                </button>
               </div>
             ) : (
               <div className="box mb-4">
-                <p className="is-size-7 has-text-grey mb-3">
-                  Plan de <strong>{diaParaRegistrar?.nombre}</strong> (lo armás en Configurar). Marcá los que hiciste, completá series y reps — en reps podés escribir números, espacios o texto (ej. <strong>12+12</strong>, <strong>max</strong>). En <strong>Kcal</strong> podés dejar vacío (estimación automática) o un número para usar solo ese valor. Podés <strong>guardar varias tandas</strong> del mismo ejercicio el mismo día: después de guardar, volvé a marcar y completar.
-                </p>
+                <div className="mb-3">
+                  <h3 className="title is-6 mb-0">Plan de {diaParaRegistrar?.nombre}</h3>
+                  <p className="is-size-7 has-text-grey mb-0">Tocá un ejercicio para completarlo. Podés guardar varias tandas el mismo día.</p>
+                </div>
                 <RegistrarPlanDelDia
                   key={`${diaSeleccionado}-${fechaInput}`}
                   ejercicios={ejerciciosParaCargar}
@@ -1393,11 +1666,11 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
   }
 
   return (
-    <div>
+    <div className="rutina-reg-plan">
       {errorLote && (
         <div className="notification is-warning is-light is-size-7 py-2 px-3 mb-3">{errorLote}</div>
       )}
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+      <ul className="rutina-reg-list">
         {ejercicios.map((it) => {
           const ex = it.nombre
           const ya = regsPorEjercicio[ex] || []
@@ -1412,106 +1685,104 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
           const sugSer = it.series?.trim()
           const sugRep = it.repeticiones?.trim()
           return (
-            <li key={ex} className="mb-4 pb-3 subtle-divider-b rutina-plan-card">
-              <p className="is-size-7 has-text-weight-semibold mb-1 rutina-registro-nombre">{ex}</p>
-              {(sugSer || sugRep) && (
-                <p className="is-size-7 has-text-grey mb-2">
-                  Sugerido por tu plan:
-                  <span className="rutina-chip rutina-chip-plan ml-1">
-                    {sugSer && sugRep ? `${sugSer} × ${sugRep}` : sugSer ? `${sugSer} series` : `${sugRep} reps`}
-                  </span>
-                </p>
-              )}
+            <li key={ex} className={`rutina-reg-card${f.incluir ? ' is-open' : ''}${ya.length > 0 ? ' has-done' : ''}`}>
+              <button
+                type="button"
+                className="rutina-reg-card-head"
+                onClick={() => setFila(it.nombre, { incluir: !f.incluir })}
+                aria-expanded={f.incluir}
+              >
+                <span className={`rutina-reg-check${f.incluir ? ' is-on' : ''}`} aria-hidden>
+                  {f.incluir ? '✓' : ''}
+                </span>
+                <span className="rutina-reg-card-title">
+                  <strong className="rutina-registro-nombre">{ex}</strong>
+                  {(sugSer || sugRep) && (
+                    <span className="rutina-chip rutina-chip-plan">
+                      {sugSer && sugRep ? `${sugSer}×${sugRep}` : sugSer ? `${sugSer} series` : `${sugRep} reps`}
+                    </span>
+                  )}
+                </span>
+                {ya.length > 0 && (
+                  <span className="rutina-reg-done-badge">{ya.length} guardado{ya.length !== 1 ? 's' : ''}</span>
+                )}
+              </button>
+
               {ya.length > 0 && (
-                <div className="mb-2">
+                <div className="rutina-reg-done-list">
                   {ya.map((r) => (
-                    <div key={r.id} className="is-flex is-justify-content-space-between is-align-items-center is-size-7 mb-1">
+                    <div key={r.id} className="rutina-reg-done-row">
                       <span>
-                        <span className="rutina-check">✓</span>
-                        <span className="rutina-chip rutina-chip-plan ml-1">{r.series}×{r.repeticiones}</span>
+                        <span className="rutina-chip rutina-chip-plan">{r.series}×{r.repeticiones}</span>
                         {r.pesoKg != null && r.pesoKg > 0 && <span className="rutina-chip rutina-chip-peso ml-1">{r.pesoKg} kg</span>}
                         <span className="rutina-chip rutina-chip-kcal ml-1">~{caloriasQuemadasRegistroRutina(r, pesoCfg)} kcal</span>
                         {r.notas && <span className="rutina-registro-notas"> — {r.notas}</span>}
                       </span>
-                      <button type="button" className="button is-small is-text has-text-grey" onClick={() => onEliminarRegistro(r.id)} aria-label="Quitar registro">
-                        ×
-                      </button>
+                      <button type="button" className="rutina-icon-btn is-danger" onClick={() => onEliminarRegistro(r.id)} aria-label="Quitar registro">×</button>
                     </div>
                   ))}
                 </div>
               )}
-              <div className="field mb-0">
-                <label className="checkbox is-size-7">
+
+              {f.incluir && (
+                <div className="rutina-reg-form">
+                  <div className="rutina-reg-fields">
+                    <div>
+                      <label className="ej-form-label mb-1">Series</label>
+                      <input
+                        className="input is-small"
+                        type="number"
+                        min="1"
+                        max="99"
+                        value={f.series}
+                        onChange={(e) => setFila(ex, { series: e.target.value })}
+                      />
+                    </div>
+                    <div className="rutina-reg-field-grow">
+                      <label className="ej-form-label mb-1">Reps</label>
+                      <input
+                        className="input is-small"
+                        type="text"
+                        value={f.repeticiones}
+                        onChange={(e) => setFila(ex, { repeticiones: e.target.value })}
+                        placeholder="10, 8+8, max…"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <label className="ej-form-label mb-1">Peso</label>
+                      <input
+                        className="input is-small"
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={f.pesoKg}
+                        onChange={(e) => setFila(ex, { pesoKg: e.target.value })}
+                        placeholder="kg"
+                      />
+                    </div>
+                    <div>
+                      <label className="ej-form-label mb-1">Kcal</label>
+                      <input
+                        className="input is-small"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={f.kcalManual}
+                        onChange={(e) => setFila(ex, { kcalManual: e.target.value })}
+                        placeholder="Auto"
+                        title="Opcional: si lo cargás, reemplaza la estimación"
+                      />
+                    </div>
+                  </div>
                   <input
-                    type="checkbox"
-                    checked={f.incluir}
-                    onChange={(e) => setFila(it.nombre, { incluir: e.target.checked })}
+                    className="input is-small mt-2"
+                    type="text"
+                    value={f.notas}
+                    onChange={(e) => setFila(ex, { notas: e.target.value })}
+                    placeholder="Notas (opcional)"
                   />
-                  <span className="ml-2">Lo hice (registrar ahora)</span>
-                </label>
-              </div>
-              {f.incluir && (
-                <div className="columns is-mobile is-multiline mt-2 mb-0">
-                  <div className="column is-narrow">
-                    <label className="label is-size-7 mb-1">Series</label>
-                    <input
-                      className="input is-small"
-                      type="number"
-                      min="1"
-                      max="99"
-                      value={f.series}
-                      onChange={(e) => setFila(ex, { series: e.target.value })}
-                      style={{ width: '4.5rem' }}
-                    />
-                  </div>
-                  <div className="column">
-                    <label className="label is-size-7 mb-1">Reps</label>
-                    <input
-                      className="input is-small"
-                      type="text"
-                      value={f.repeticiones}
-                      onChange={(e) => setFila(ex, { repeticiones: e.target.value })}
-                      placeholder="Ej: 10, 8+8, max, 12 cada lado…"
-                      autoComplete="off"
-                    />
-                  </div>
-                  <div className="column is-narrow">
-                    <label className="label is-size-7 mb-1">Peso (kg)</label>
-                    <input
-                      className="input is-small"
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      value={f.pesoKg}
-                      onChange={(e) => setFila(ex, { pesoKg: e.target.value })}
-                      placeholder="—"
-                      style={{ width: '5rem' }}
-                    />
-                  </div>
-                  <div className="column is-narrow">
-                    <label className="label is-size-7 mb-1">Kcal</label>
-                    <input
-                      className="input is-small"
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={f.kcalManual}
-                      onChange={(e) => setFila(ex, { kcalManual: e.target.value })}
-                      placeholder="Auto"
-                      style={{ width: '4.5rem' }}
-                      title="Opcional: si lo cargás, reemplaza la estimación por series"
-                    />
-                  </div>
                 </div>
-              )}
-              {f.incluir && (
-                <input
-                  className="input is-small is-size-7 mt-2"
-                  type="text"
-                  value={f.notas}
-                  onChange={(e) => setFila(ex, { notas: e.target.value })}
-                  placeholder="Notas (opcional)"
-                />
               )}
             </li>
           )
@@ -1519,7 +1790,7 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
       </ul>
       <button
         type="button"
-        className="button is-link is-fullwidth is-small mt-2"
+        className="button is-link is-fullwidth mt-3"
         onClick={guardarLote}
         disabled={pendientesGuardar.length === 0}
       >
@@ -1527,7 +1798,7 @@ function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGua
       </button>
       {hayRegistrosHoy && (
         <p className="is-size-7 has-text-grey mt-2 mb-0">
-          ¿Otra tanda del mismo día? Volvé a marcar &quot;Lo hice&quot;, completá series/reps y tocá Guardar.
+          ¿Otra tanda? Abrí de nuevo el ejercicio, completá y tocá Guardar.
         </p>
       )}
     </div>

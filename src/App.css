@@ -2528,6 +2528,451 @@ body {
   justify-content: center;
 }
 
+/* ——— Rutina: Configurar + Registrar ——— */
+.rutina-dias-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.rutina-dia-tab {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface-2);
+  overflow: hidden;
+  min-width: 5.5rem;
+}
+
+.rutina-dia-tab.is-active {
+  border-color: rgba(59, 130, 246, 0.55);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+}
+
+.rutina-dia-tab-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  border: 0;
+  background: transparent;
+  color: var(--app-text);
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rutina-dia-tab-nombre {
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.rutina-dia-tab-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--app-muted);
+  background: rgba(148, 163, 184, 0.12);
+  border-radius: 999px;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.3rem;
+}
+
+.rutina-dia-tab.is-active .rutina-dia-tab-count {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.rutina-dia-tab-tools {
+  display: flex;
+  gap: 0.15rem;
+  padding: 0 0.35rem 0.4rem;
+}
+
+.rutina-icon-btn {
+  width: 1.65rem;
+  height: 1.65rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--app-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.rutina-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.rutina-icon-btn:not(:disabled):hover {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+}
+
+.rutina-icon-btn.is-danger:not(:disabled):hover {
+  background: rgba(248, 113, 113, 0.18);
+  color: #fca5a5;
+}
+
+.rutina-add-block {
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.rutina-buscar {
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+.rutina-sugerencias {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  max-height: 11rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.rutina-sugerencia-btn {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text);
+  border-radius: 8px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.rutina-sugerencia-btn:hover {
+  border-color: rgba(96, 165, 250, 0.4);
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.rutina-plan-list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.85rem 0 0.55rem;
+}
+
+.rutina-empty-plan {
+  border: 1px dashed var(--app-border);
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+  color: var(--app-muted);
+}
+
+.rutina-plan-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.rutina-plan-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.55rem 0.55rem;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface-2);
+}
+
+.rutina-plan-row.is-editing {
+  grid-template-columns: 1fr;
+  border-color: rgba(59, 130, 246, 0.45);
+}
+
+.rutina-plan-row-order {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.rutina-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 2.2rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--app-muted);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.rutina-drag-handle:active {
+  cursor: grabbing;
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.rutina-plan-list.is-dragging {
+  user-select: none;
+}
+
+.rutina-plan-row.is-dragging {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+.rutina-plan-row.is-drop-target {
+  border-color: var(--app-primary);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35);
+  transform: translateY(1px);
+}
+
+.rutina-plan-row-body {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.rutina-plan-row-num {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.16);
+  flex-shrink: 0;
+}
+
+.rutina-plan-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.rutina-plan-row-actions {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.rutina-plan-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.rutina-plan-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.rutina-plan-edit-actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.rutina-reg-meta {
+  display: grid;
+  gap: 0.85rem;
+}
+
+@media (min-width: 640px) {
+  .rutina-reg-meta {
+    grid-template-columns: minmax(10rem, 14rem) 1fr;
+    align-items: end;
+  }
+}
+
+.rutina-dias-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.rutina-dia-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-2);
+  color: var(--app-text);
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rutina-dia-pill.is-active {
+  border-color: var(--app-primary);
+  background: rgba(59, 130, 246, 0.18);
+  color: #dbeafe;
+}
+
+.rutina-dia-pill-count {
+  font-size: 0.68rem;
+  opacity: 0.8;
+  background: rgba(148, 163, 184, 0.14);
+  border-radius: 999px;
+  padding: 0.05rem 0.35rem;
+}
+
+.rutina-reg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.rutina-reg-card {
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-surface-2);
+  overflow: hidden;
+}
+
+.rutina-reg-card.is-open {
+  border-color: rgba(59, 130, 246, 0.45);
+}
+
+.rutina-reg-card.has-done {
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+.rutina-reg-card-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0.7rem 0.75rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rutina-reg-check {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 0.4rem;
+  border: 1.5px solid rgba(148, 163, 184, 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: transparent;
+}
+
+.rutina-reg-check.is-on {
+  background: var(--app-primary);
+  border-color: var(--app-primary);
+  color: #fff;
+}
+
+.rutina-reg-card-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.rutina-reg-done-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #86efac;
+  background: rgba(16, 185, 129, 0.14);
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+  white-space: nowrap;
+}
+
+.rutina-reg-done-list {
+  padding: 0 0.75rem 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.rutina-reg-done-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.rutina-reg-form {
+  padding: 0 0.75rem 0.75rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  padding-top: 0.65rem;
+}
+
+.rutina-reg-fields {
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr) 4.5rem 4.2rem;
+  gap: 0.4rem;
+}
+
+@media (max-width: 520px) {
+  .rutina-reg-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .rutina-reg-field-grow {
+    grid-column: 1 / -1;
+  }
+}
+
+.rutina-hist-fecha-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: none;
+  padding: 0.35rem 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.rutina-sesion-regs {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
 /* Config — perfil y objetivos */
 .config-profile-card {
   padding-top: 1rem !important;
