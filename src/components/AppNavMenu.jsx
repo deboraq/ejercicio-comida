@@ -142,9 +142,19 @@ export default function AppNavMenu({
             />
           )
         })}
+        {showClose && !ocultarNav('config') && (
+          <NavLink
+            to="/config"
+            label="Config"
+            icon="config"
+            active={location.pathname === '/config'}
+            onNavigate={onNavigate}
+            collapsed={collapsed}
+          />
+        )}
       </nav>
       <div className="app-sidebar-bottom">
-        {!ocultarNav('config') && (
+        {!showClose && !ocultarNav('config') && (
           <div className="app-sidebar-footer">
             <NavLink
               to="/config"

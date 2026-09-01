@@ -645,6 +645,23 @@ export default function Rutina() {
 
         {origenRutinas === 'propias' ? (
         <>
+        <div className="tabs is-boxed mb-3 rutina-vista-tabs">
+          <ul>
+            <li className={vista === 'calendario' ? 'is-active' : ''}>
+              <a onClick={() => setVista('calendario')} role="tab" aria-selected={vista === 'calendario'}>Calendario</a>
+            </li>
+            <li className={vista === 'registrar' ? 'is-active' : ''}>
+              <a onClick={() => setVista('registrar')} role="tab" aria-selected={vista === 'registrar'}>Registrar</a>
+            </li>
+            <li className={vista === 'configurar' ? 'is-active' : ''}>
+              <a onClick={() => setVista('configurar')} role="tab" aria-selected={vista === 'configurar'}>Configurar</a>
+            </li>
+            <li className={vista === 'progreso' ? 'is-active' : ''}>
+              <a onClick={() => setVista('progreso')} role="tab" aria-selected={vista === 'progreso'}>Progreso</a>
+            </li>
+          </ul>
+        </div>
+
         <div className="rutina-toolbar mb-4">
               <div className="box py-3 calendario-card rutina-toolbar-active">
           <label className="label is-size-7">Rutina activa</label>
@@ -710,23 +727,6 @@ export default function Rutina() {
               Exportar PDF
             </button>
           </div>
-        </div>
-
-        <div className="tabs is-boxed mb-4" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <ul style={{ flexWrap: 'nowrap' }}>
-            <li className={vista === 'calendario' ? 'is-active' : ''}>
-              <a onClick={() => setVista('calendario')} role="tab" aria-selected={vista === 'calendario'}>Calendario</a>
-            </li>
-            <li className={vista === 'registrar' ? 'is-active' : ''}>
-              <a onClick={() => setVista('registrar')} role="tab" aria-selected={vista === 'registrar'}>Registrar</a>
-            </li>
-            <li className={vista === 'configurar' ? 'is-active' : ''}>
-              <a onClick={() => setVista('configurar')} role="tab" aria-selected={vista === 'configurar'}>Configurar</a>
-            </li>
-            <li className={vista === 'progreso' ? 'is-active' : ''}>
-              <a onClick={() => setVista('progreso')} role="tab" aria-selected={vista === 'progreso'}>Progreso</a>
-            </li>
-          </ul>
         </div>
 
         {vista === 'calendario' && (

@@ -1,23 +1,33 @@
 import { useState } from 'react'
 import { useStorage } from '../hooks/useStorage'
-import { getConsejosDelDia } from '../utils/consejos'
-import { caloriasEjercicioRegistro, formatearFecha, fechaToISO, fechaSoloDia, getCategoriaTipo } from '../utils/calorias'
+import { getConsejos, buildContextoDia, buildContextoSemana } from '../utils/consejos'
+import { formatearFecha, fechaToISO, fechaSoloDia } from '../utils/calorias'
 import { REFERENCIA_ALIMENTOS, buscarAlimentos } from '../utils/referenciaComidas'
-import { PERIODOS, getRangoPorPeriodo, filtrarPorRango } from '../utils/estadisticas'
+import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias } from '../utils/estadisticas'
 import MacroBarCard from '../components/MacroBarCard'
 import PageHeader from '../components/PageHeader'
+import ConsejosPanel from '../components/ConsejosPanel'
 
-const COMIDAS = ['Desayuno', 'Almuerzo', 'Cena', 'Snack']
-const MOMENTO_ICON = { Desayuno: '☕', Almuerzo: '🍔', Cena: '🍽️', Snack: '🍎', Otros: '📋' }
+const COMIDAS = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']
+const ALIAS_MOMENTO = { Snack: 'Merienda' }
+const MOMENTO_ICON = { Desayuno: '☕', Almuerzo: '🍔', Merienda: '🧁', Cena: '🍽️', Otros: '📋' }
+
+function normalizarMomento(comida) {
+  if (comida == null || comida === '') return comida
+  return ALIAS_MOMENTO[comida] || comida
+}
 
 /** Agrupa los registros de un mismo día por momento del día (orden fijo + “Otros”). */
 function agruparComidasPorMomento(registrosDia) {
   const bloques = []
   for (const tipo of COMIDAS) {
-    const items = registrosDia.filter((r) => r.comida === tipo)
+    const items = registrosDia.filter((r) => normalizarMomento(r.comida) === tipo)
     if (items.length) bloques.push({ tipo, items })
   }
-  const otros = registrosDia.filter((r) => r.comida == null || r.comida === '' || !COMIDAS.includes(r.comida))
+  const otros = registrosDia.filter((r) => {
+    const m = normalizarMomento(r.comida)
+    return m == null || m === '' || !COMIDAS.includes(m)
+  })
   if (otros.length) bloques.push({ tipo: 'Otros', items: otros })
   return bloques
 }
@@ -135,6 +145,7 @@ function ListaComidaAgrupada({ bloques, onEliminar }) {
 export default function Comida() {
   const [registros, setRegistros] = useStorage('comida', [])
   const [ejercicios] = useStorage('ejercicios', [])
+  const [registrosRutina] = useStorage('rutinaPesos', [])
   const [config] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
   const [comida, setComida] = useState('Desayuno')
   const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
@@ -301,25 +312,29 @@ export default function Comida() {
   const metaCarb = config.metaCarbohidratos || 250
   const metaGrasa = config.metaGrasa || 70
 
-  const ejerciciosHoy = ejercicios.filter((ex) => fechaSoloDia(ex.fecha) === hoy)
-  const ejerciciosPorTipo = ejerciciosHoy.reduce((acc, ex) => {
-    const cat = getCategoriaTipo(ex.tipo)
-    acc[cat] = (acc[cat] || 0) + 1
-    return acc
-  }, {})
-  const caloriasQuemadasHoy = ejerciciosHoy.reduce(
-    (s, ex) => s + caloriasEjercicioRegistro(ex, config?.pesoKg || 70),
-    0
-  )
 
-  const diaData = {
-    caloriasConsumidas: caloriasHoy,
-    caloriasQuemadas: caloriasQuemadasHoy,
-    proteinas: proteinasHoy,
-    carbohidratos: carbosHoy,
-    ejerciciosPorTipo,
-  }
-  const consejos = getConsejosDelDia(config?.objetivo, diaData, config?.pesoKg || 70)
+  const contextoDia = buildContextoDia({
+    comidas: registros,
+    ejercicios,
+    registrosRutina,
+    fecha: hoy,
+    pesoKg: config?.pesoKg || 70,
+    config,
+  })
+  const contextoSemana = buildContextoSemana({
+    comidas: registros,
+    ejercicios,
+    registrosRutina,
+    dias: getUltimosNDias(7),
+    pesoKg: config?.pesoKg || 70,
+    config,
+  })
+  const { diarios: consejosDiarios, semanales: consejosSemanales } = getConsejos(
+    config?.objetivo,
+    contextoDia,
+    contextoSemana,
+    config
+  )
 
   const puedeGuardar = items.some((it) => it.descripcion.trim())
 
@@ -346,16 +361,7 @@ export default function Comida() {
           ]}
         />
 
-        {consejos.length > 0 && (
-          <div className="mb-4">
-            {consejos.slice(0, 1).map((c, i) => (
-              <article key={i} className="ti-tip-bar">
-                <span className="ti-tip-icon" aria-hidden="true">💡</span>
-                <p className="mb-0">{c.texto}</p>
-              </article>
-            ))}
-          </div>
-        )}
+        <ConsejosPanel diarios={consejosDiarios} semanales={consejosSemanales} />
 
         <section className="comida-tu-dia mb-4" aria-label="Resumen del día">
           <h2 className="title is-6 mb-3">Tu día</h2>

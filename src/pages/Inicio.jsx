@@ -9,14 +9,14 @@ import {
   formatearFecha,
   fechaToISO,
   fechaSoloDia,
-  getCategoriaTipo,
   minutosRutinaDia,
   etiquetaTipo,
 } from '../utils/calorias'
-import { getConsejosDelDia, OBJETIVOS } from '../utils/consejos'
+import { getConsejos, buildContextoDia, buildContextoSemana, OBJETIVOS } from '../utils/consejos'
 import { getRachaDias, PERIODOS, getRangoPorPeriodo, getFechasEnRango, getUltimosNDias } from '../utils/estadisticas'
 import { SUPLEMENTOS, getSuplementoLabel } from '../utils/suplementos'
 import StatMiniCard from '../components/StatMiniCard'
+import ConsejosPanel from '../components/ConsejosPanel'
 
 function InicioActividadGrupo({ titulo, cantidad, kcalTotal, abierto, onToggle, children }) {
   const etiquetaCantidad = cantidad === 1 ? '1 ejercicio' : `${cantidad} ejercicios`
@@ -161,20 +161,28 @@ export default function Inicio() {
   const comidasUltimos7 = comida.filter((c) => diasUltimos7.includes(fechaSoloDia(c.fecha)))
   const calConsumidasUltimos7 = comidasUltimos7.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
 
-  const ejerciciosPorTipo = ejerciciosDelDia.reduce((acc, ex) => {
-    const cat = getCategoriaTipo(ex.tipo)
-    acc[cat] = (acc[cat] || 0) + 1
-    return acc
-  }, {})
-
-  const diaData = {
-    caloriasConsumidas: caloriasConsumidasDia,
-    caloriasQuemadas: caloriasQuemadasDia,
-    proteinas: proteinasDia,
-    carbohidratos: carbosDia,
-    ejerciciosPorTipo,
-  }
-  const consejos = getConsejosDelDia(config?.objetivo, diaData, pesoCfg)
+  const contextoDia = buildContextoDia({
+    comidas: comida,
+    ejercicios,
+    registrosRutina,
+    fecha: diaEnVista,
+    pesoKg: pesoCfg,
+    config,
+  })
+  const contextoSemana = buildContextoSemana({
+    comidas: comida,
+    ejercicios,
+    registrosRutina,
+    dias: diasUltimos7,
+    pesoKg: pesoCfg,
+    config,
+  })
+  const { diarios: consejosDiarios, semanales: consejosSemanales } = getConsejos(
+    config?.objetivo,
+    contextoDia,
+    contextoSemana,
+    config
+  )
 
   const objetivoLabel = OBJETIVOS.find((o) => o.value === config?.objetivo)?.label || 'Mantener peso'
 
@@ -295,7 +303,7 @@ export default function Inicio() {
         <header className="app-page-hero inicio-hero has-text-centered mb-4">
           <div className="app-page-hero-icon inicio-hero-diamond" aria-hidden="true">💎</div>
           <h1 className="title is-4">Mi rutina</h1>
-          <p className="subtitle is-6 has-text-grey">Resumen por día y consejos según tu objetivo</p>
+          <p className="subtitle is-6 has-text-grey">Resumen por día y consejos según lo que registrás</p>
           <div className="app-hero-metrics">
             <span><strong>{caloriasConsumidasDia || 0}</strong> kcal</span>
             <span><strong>{minutosDia}</strong> min</span>
@@ -321,16 +329,7 @@ export default function Inicio() {
           <StatMiniCard icon="⚡" iconTone="purple" label="Carbohidratos (g)" value={carbosDia || '—'} />
         </div>
 
-        {consejos.length > 0 && (
-          <div className="mb-4">
-            {consejos.slice(0, 1).map((c, i) => (
-              <article key={i} className="ti-tip-bar">
-                <span className="ti-tip-icon" aria-hidden="true">💡</span>
-                <p className="mb-0">{c.texto}</p>
-              </article>
-            ))}
-          </div>
-        )}
+        <ConsejosPanel diarios={consejosDiarios} semanales={consejosSemanales} />
 
         <div className="inicio-dashboard-grid mb-4">
         <div className="box mb-0 calendario-card">
