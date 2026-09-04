@@ -846,7 +846,29 @@ function consejosPerfilCorporal(obj, perfil) {
         'semana',
         'perfil',
         48,
-        'Si cargás sexo y edad en Config (opcionales), los consejos y futuras estimaciones de kcal basales son más precisos.'
+        'Si cargás sexo y edad en Config, podemos estimar tu metabolismo basal (TMB) y sugerir kcal diarias.'
+      )
+    )
+  }
+
+  if (perfil.edad && perfil.pesoKg && perfil.alturaCm && !perfil.nivelActividad) {
+    tips.push(
+      consejo(
+        'semana',
+        'perfil',
+        76,
+        'Falta tu nivel de actividad en Config. Con eso estimamos tu gasto diario y sugerimos metas de calorías y macros.'
+      )
+    )
+  }
+
+  if (perfil.tdee != null && perfil.sugerencia) {
+    tips.push(
+      consejo(
+        'semana',
+        'perfil',
+        57,
+        `Tu gasto diario estimado es ~${perfil.tdee} kcal. Para tu objetivo sugerimos ~${perfil.sugerencia.calorias} kcal/día (podés aplicarlo en Config → Metas).`
       )
     )
   }

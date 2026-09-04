@@ -6,7 +6,7 @@ import { useMyProfile } from '../hooks/useMyProfile'
 import { updateMyFullName } from '../lib/profeDb'
 import { OBJETIVOS } from '../utils/consejos'
 import { SUPLEMENTOS } from '../utils/suplementos'
-import { buildPerfilCorporal, SEXOS } from '../utils/composicion'
+import { buildPerfilCorporal, SEXOS, NIVELES_ACTIVIDAD } from '../utils/composicion'
 import PesoSeguimiento from '../components/PesoSeguimiento'
 import MedidasSeguimiento from '../components/MedidasSeguimiento'
 import PageHeader from '../components/PageHeader'
@@ -48,6 +48,7 @@ export default function Config() {
     alturaCm: '',
     sexo: '',
     edad: '',
+    nivelActividad: '',
     metaCalorias: '',
     metaProteina: '',
     metaCarbohidratos: '',
@@ -81,12 +82,25 @@ export default function Config() {
     const num = parseInt(v, 10)
     if (!Number.isNaN(num) && num >= 0) setConfig((c) => ({ ...c, edad: num }))
   }
+  const setNivelActividad = (v) => setConfig((c) => ({ ...c, nivelActividad: v }))
   const setMetaCalorias = (v) => setConfig((c) => ({ ...c, metaCalorias: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
   const setMetaProteina = (v) => setConfig((c) => ({ ...c, metaProteina: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
   const setMetaCarbohidratos = (v) => setConfig((c) => ({ ...c, metaCarbohidratos: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
   const setMetaGrasa = (v) => setConfig((c) => ({ ...c, metaGrasa: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
 
   const perfilCorporal = buildPerfilCorporal(config)
+
+  const aplicarSugerenciaMetas = () => {
+    const s = perfilCorporal.sugerencia
+    if (!s) return
+    setConfig((c) => ({
+      ...c,
+      metaCalorias: String(s.calorias),
+      metaProteina: String(s.proteina),
+      metaCarbohidratos: String(s.carbohidratos),
+      metaGrasa: String(s.grasa),
+    }))
+  }
   const toggleSuplemento = (id) => {
     setConfig((c) => {
       const act = c.suplementosActivos ?? SUPLEMENTOS.map((s) => s.id)
@@ -232,37 +246,10 @@ export default function Config() {
           </div>
         </div>
 
-        <div className="box mb-4 py-3 config-metas-card">
-          <h2 className="title is-6 mb-2">Metas diarias (opcional)</h2>
-          <p className="is-size-7 has-text-grey mb-3">Para ver barras de progreso en Inicio y Comida.</p>
-          <div className="config-metas-grid">
-            <div className="field">
-              <label className="label is-size-7">🔥 Calorías (kcal)</label>
-              <input className="input" type="number" min="0" placeholder="Ej: 2000" value={config.metaCalorias ?? ''} onChange={(e) => setMetaCalorias(e.target.value)} />
-            </div>
-            <div className="field">
-              <label className="label is-size-7">🥩 Proteínas (g)</label>
-              <input className="input" type="number" min="0" placeholder="Ej: 150" value={config.metaProteina ?? ''} onChange={(e) => setMetaProteina(e.target.value)} />
-            </div>
-            <div className="field">
-              <label className="label is-size-7">🌾 Carbohidratos (g)</label>
-              <input className="input" type="number" min="0" placeholder="Ej: 250" value={config.metaCarbohidratos ?? ''} onChange={(e) => setMetaCarbohidratos(e.target.value)} />
-            </div>
-            <div className="field">
-              <label className="label is-size-7">💧 Grasas (g)</label>
-              <input className="input" type="number" min="0" placeholder="Ej: 60" value={config.metaGrasa ?? ''} onChange={(e) => setMetaGrasa(e.target.value)} />
-            </div>
-          </div>
-          <div className="is-flex is-justify-content-flex-end mt-3">
-            <span className="tag is-success">Guardado automático</span>
-          </div>
-        </div>
-
         <div id="datos-corporales" className="box mb-4 py-3">
           <h2 className="title is-6 mb-2">Datos corporales</h2>
           <p className="is-size-7 has-text-grey mb-3">
-            El <strong>peso</strong> se usa para estimar kcal quemadas. Con la <strong>altura</strong> calculamos el IMC.
-            Sexo y edad son opcionales (mejoran consejos y, más adelante, estimaciones calóricas).
+            Peso + altura = IMC. Con sexo, edad y nivel de actividad estimamos tu gasto diario (TDEE) y sugerimos metas.
           </p>
           <div className="columns is-mobile is-multiline mb-0">
             <div className="column is-half">
@@ -291,7 +278,7 @@ export default function Config() {
               />
             </div>
             <div className="column is-half">
-              <label className="label is-size-7">Sexo (opcional)</label>
+              <label className="label is-size-7">Sexo</label>
               <div className="select is-fullwidth is-small">
                 <select value={config.sexo || ''} onChange={(e) => setSexo(e.target.value)}>
                   {SEXOS.map((s) => (
@@ -301,7 +288,7 @@ export default function Config() {
               </div>
             </div>
             <div className="column is-half">
-              <label className="label is-size-7">Edad (opcional)</label>
+              <label className="label is-size-7">Edad</label>
               <input
                 className="input is-small"
                 type="number"
@@ -312,16 +299,34 @@ export default function Config() {
                 placeholder="Ej: 28"
               />
             </div>
+            <div className="column is-full">
+              <label className="label is-size-7">Nivel de actividad</label>
+              <div className="select is-fullwidth is-small">
+                <select
+                  value={config.nivelActividad || ''}
+                  onChange={(e) => setNivelActividad(e.target.value)}
+                >
+                  <option value="">Elegí tu nivel…</option>
+                  {NIVELES_ACTIVIDAD.map((n) => (
+                    <option key={n.value} value={n.value}>
+                      {n.label} — {n.hint}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
-          {perfilCorporal.imc != null && (
+          {(perfilCorporal.imc != null || perfilCorporal.tmb != null) && (
             <div className="medidas-chips mt-3">
-              <span className="medidas-chip">
-                <span className="medidas-chip-label">IMC</span>
-                <strong>{perfilCorporal.imc}</strong>
-                {perfilCorporal.categoria && (
-                  <span className="has-text-grey ml-1">· {perfilCorporal.categoria.label}</span>
-                )}
-              </span>
+              {perfilCorporal.imc != null && (
+                <span className="medidas-chip">
+                  <span className="medidas-chip-label">IMC</span>
+                  <strong>{perfilCorporal.imc}</strong>
+                  {perfilCorporal.categoria && (
+                    <span className="has-text-grey ml-1">· {perfilCorporal.categoria.label}</span>
+                  )}
+                </span>
+              )}
               {perfilCorporal.rango && (
                 <span className="medidas-chip">
                   <span className="medidas-chip-label">Rango orientativo</span>
@@ -329,16 +334,86 @@ export default function Config() {
                   <span className="has-text-grey"> kg</span>
                 </span>
               )}
+              {perfilCorporal.tmb != null && (
+                <span className="medidas-chip">
+                  <span className="medidas-chip-label">TMB</span>
+                  <strong>{perfilCorporal.tmb}</strong>
+                  <span className="has-text-grey"> kcal</span>
+                </span>
+              )}
+              {perfilCorporal.tdee != null && (
+                <span className="medidas-chip">
+                  <span className="medidas-chip-label">Gasto diario</span>
+                  <strong>{perfilCorporal.tdee}</strong>
+                  <span className="has-text-grey"> kcal</span>
+                </span>
+              )}
             </div>
           )}
           {!perfilCorporal.alturaCm && (
             <p className="is-size-7 has-text-grey mt-3 mb-0">
-              Cargá tu altura para ver IMC y un rango de peso orientativo.
+              Cargá tu altura para ver IMC.
+            </p>
+          )}
+          {perfilCorporal.alturaCm && perfilCorporal.pesoKg && (!perfilCorporal.edad || !config.nivelActividad) && (
+            <p className="is-size-7 has-text-grey mt-3 mb-0">
+              Completá edad y nivel de actividad para estimar tu gasto diario y sugerir metas.
             </p>
           )}
           <p className="is-size-7 has-text-grey mt-2 mb-0">
-            El IMC es orientativo: no distingue músculo de grasa. Por eso también conviene seguir medidas.
+            Estimaciones orientativas (Mifflin–St Jeor). El IMC no distingue músculo de grasa: seguí también las medidas.
           </p>
+        </div>
+
+        <div className="box mb-4 py-3 config-metas-card">
+          <h2 className="title is-6 mb-2">Metas diarias (opcional)</h2>
+          <p className="is-size-7 has-text-grey mb-3">Para ver barras de progreso en Inicio y Comida.</p>
+
+          {perfilCorporal.sugerencia ? (
+            <div className="config-sugerencia-metas mb-3">
+              <p className="is-size-7 mb-2">
+                Según tu objetivo, perfil y actividad, una sugerencia es{' '}
+                <strong>{perfilCorporal.sugerencia.calorias} kcal</strong>
+                {' · '}P {perfilCorporal.sugerencia.proteina} g
+                {' · '}C {perfilCorporal.sugerencia.carbohidratos} g
+                {' · '}G {perfilCorporal.sugerencia.grasa} g
+                {perfilCorporal.tdee != null && (
+                  <span className="has-text-grey">
+                    {' '}(mantenimiento ≈ {perfilCorporal.tdee} kcal)
+                  </span>
+                )}
+              </p>
+              <button type="button" className="button is-link is-small" onClick={aplicarSugerenciaMetas}>
+                Aplicar sugerencia a mis metas
+              </button>
+            </div>
+          ) : (
+            <p className="is-size-7 has-text-grey mb-3">
+              Completá peso, altura, edad y nivel de actividad arriba para obtener una sugerencia automática.
+            </p>
+          )}
+
+          <div className="config-metas-grid">
+            <div className="field">
+              <label className="label is-size-7">🔥 Calorías (kcal)</label>
+              <input className="input" type="number" min="0" placeholder="Ej: 2000" value={config.metaCalorias ?? ''} onChange={(e) => setMetaCalorias(e.target.value)} />
+            </div>
+            <div className="field">
+              <label className="label is-size-7">🥩 Proteínas (g)</label>
+              <input className="input" type="number" min="0" placeholder="Ej: 150" value={config.metaProteina ?? ''} onChange={(e) => setMetaProteina(e.target.value)} />
+            </div>
+            <div className="field">
+              <label className="label is-size-7">🌾 Carbohidratos (g)</label>
+              <input className="input" type="number" min="0" placeholder="Ej: 250" value={config.metaCarbohidratos ?? ''} onChange={(e) => setMetaCarbohidratos(e.target.value)} />
+            </div>
+            <div className="field">
+              <label className="label is-size-7">💧 Grasas (g)</label>
+              <input className="input" type="number" min="0" placeholder="Ej: 60" value={config.metaGrasa ?? ''} onChange={(e) => setMetaGrasa(e.target.value)} />
+            </div>
+          </div>
+          <div className="is-flex is-justify-content-flex-end mt-3">
+            <span className="tag is-success">Guardado automático</span>
+          </div>
         </div>
 
         <PesoSeguimiento

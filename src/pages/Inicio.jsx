@@ -597,6 +597,13 @@ export default function Inicio() {
                     <span className="has-text-grey"> kg</span>
                   </span>
                 )}
+                {perfilCorporal.tdee != null && (
+                  <span className="medidas-chip">
+                    <span className="medidas-chip-label">Gasto/día</span>
+                    <strong>{perfilCorporal.tdee}</strong>
+                    <span className="has-text-grey"> kcal</span>
+                  </span>
+                )}
               </div>
             ) : (
               <p className="is-size-7 has-text-grey mb-2">
