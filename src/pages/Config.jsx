@@ -9,6 +9,7 @@ import { SUPLEMENTOS } from '../utils/suplementos'
 import { buildPerfilCorporal, SEXOS, NIVELES_ACTIVIDAD } from '../utils/composicion'
 import PesoSeguimiento from '../components/PesoSeguimiento'
 import MedidasSeguimiento from '../components/MedidasSeguimiento'
+import SeguimientoCaja from '../components/SeguimientoCaja'
 import PageHeader from '../components/PageHeader'
 export default function Config() {
   const { user, signOut, isConfigured } = useAuth()
@@ -246,8 +247,18 @@ export default function Config() {
           </div>
         </div>
 
-        <div id="datos-corporales" className="box mb-4 py-3">
-          <h2 className="title is-6 mb-2">Datos corporales</h2>
+        <SeguimientoCaja
+          id="datos-corporales"
+          titulo="Datos corporales"
+          resumen={
+            perfilCorporal.imc != null
+              ? `IMC ${perfilCorporal.imc}${perfilCorporal.tdee != null ? ` · Gasto ~${perfilCorporal.tdee} kcal` : ''}`
+              : perfilCorporal.pesoKg
+                ? `Peso ${perfilCorporal.pesoKg} kg · completá altura y actividad`
+                : 'Peso, altura, edad y actividad'
+          }
+          ctaCerrado="Editar datos"
+        >
           <p className="is-size-7 has-text-grey mb-3">
             Peso + altura = IMC. Con sexo, edad y nivel de actividad estimamos tu gasto diario (TDEE) y sugerimos metas.
           </p>
@@ -363,10 +374,19 @@ export default function Config() {
           <p className="is-size-7 has-text-grey mt-2 mb-0">
             Estimaciones orientativas (Mifflin–St Jeor). El IMC no distingue músculo de grasa: seguí también las medidas.
           </p>
-        </div>
+        </SeguimientoCaja>
 
-        <div className="box mb-4 py-3 config-metas-card">
-          <h2 className="title is-6 mb-2">Metas diarias (opcional)</h2>
+        <SeguimientoCaja
+          id="metas-diarias"
+          titulo="Metas diarias"
+          resumen={
+            config.metaCalorias
+              ? `${config.metaCalorias} kcal · P ${config.metaProteina || '—'} g`
+              : 'Calorías y macros (opcional)'
+          }
+          ctaCerrado="Editar metas"
+          className="config-metas-card"
+        >
           <p className="is-size-7 has-text-grey mb-3">Para ver barras de progreso en Inicio y Comida.</p>
 
           {perfilCorporal.sugerencia ? (
@@ -389,7 +409,7 @@ export default function Config() {
             </div>
           ) : (
             <p className="is-size-7 has-text-grey mb-3">
-              Completá peso, altura, edad y nivel de actividad arriba para obtener una sugerencia automática.
+              Completá peso, altura, edad y nivel de actividad en Datos corporales para obtener una sugerencia automática.
             </p>
           )}
 
@@ -414,7 +434,7 @@ export default function Config() {
           <div className="is-flex is-justify-content-flex-end mt-3">
             <span className="tag is-success">Guardado automático</span>
           </div>
-        </div>
+        </SeguimientoCaja>
 
         <PesoSeguimiento
           historial={historialPeso}
@@ -427,10 +447,14 @@ export default function Config() {
           setHistorial={setHistorialMedidas}
         />
 
-        <div className="box py-3 mb-0">
-          <h2 className="title is-6 mb-2">Suplementos que tomas</h2>
+        <SeguimientoCaja
+          id="suplementos-config"
+          titulo="Suplementos"
+          resumen={`${suplementosActivos.length} activos · se marcan en Inicio`}
+          ctaCerrado="Configurar"
+        >
           <p className="is-size-7 has-text-grey mb-2">
-            Elige cuáles quieres registrar cada día. En Inicio podrás marcar si los tomaste.
+            Elegí cuáles querés registrar cada día. En Inicio podrás marcar si los tomaste.
           </p>
           <div className="buttons are-small are-flex-wrap-wrap">
             {SUPLEMENTOS.map((s) => {
@@ -447,7 +471,7 @@ export default function Config() {
               )
             })}
           </div>
-        </div>
+        </SeguimientoCaja>
         </>
         )}
 

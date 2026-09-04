@@ -3380,6 +3380,80 @@ body {
   border: 1px solid rgba(96, 165, 250, 0.28);
 }
 
+/* Cajas plegables de seguimiento / registro */
+.seguimiento-caja {
+  overflow: hidden;
+}
+
+.seguimiento-caja-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--app-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.seguimiento-caja-head:hover {
+  background: rgba(148, 163, 184, 0.06);
+}
+
+.seguimiento-caja-chevron {
+  flex-shrink: 0;
+  width: 1rem;
+  color: var(--app-muted);
+  font-size: 0.7rem;
+}
+
+.seguimiento-caja-texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.seguimiento-caja-titulo {
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--app-text);
+}
+
+.seguimiento-caja-resumen {
+  font-size: 0.75rem;
+  color: var(--app-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seguimiento-caja-cta {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--app-primary-2);
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: var(--app-primary-soft);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+}
+
+.seguimiento-caja-cta.is-open {
+  color: var(--app-muted);
+  background: rgba(148, 163, 184, 0.1);
+  border-color: var(--app-border);
+}
+
+.seguimiento-caja-body {
+  padding: 0 1rem 1rem;
+  border-top: 1px solid var(--app-border);
+  padding-top: 0.85rem;
+}
+
 @media (min-width: 768px) {
   .config-objetivo-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));

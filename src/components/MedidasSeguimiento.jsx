@@ -8,6 +8,7 @@ import {
   deltaCampo,
   formatDeltaCm,
 } from '../utils/medidas'
+import SeguimientoCaja from './SeguimientoCaja'
 
 /**
  * Seguimiento de medidas corporales (cm).
@@ -52,6 +53,11 @@ export default function MedidasSeguimiento({ historial, setHistorial }) {
     return { minV, maxV, rango }
   }, [serieGraf])
 
+  const ultima = listaOrdenDesc[0]
+  const resumenCerrado = ultima
+    ? `Última toma: ${formatearFecha(ultima.fecha)} · ${Object.keys(valoresDeToma(ultima)).length} medidas`
+    : 'Todavía no hay tomas'
+
   const setCampo = (key, value) => {
     setValores((prev) => ({ ...prev, [key]: value }))
   }
@@ -85,11 +91,15 @@ export default function MedidasSeguimiento({ historial, setHistorial }) {
   }
 
   return (
-    <div id="medidas-seguimiento" className="box mb-4 py-3">
-      <h2 className="title is-6 mb-2">Seguimiento de medidas</h2>
+    <SeguimientoCaja
+      id="medidas-seguimiento"
+      titulo="Medidas corporales"
+      resumen={resumenCerrado}
+      ctaCerrado="Registrar medidas"
+    >
       <p className="is-size-7 has-text-grey mb-3">
-        Registrá circunferencias en <strong>cm</strong> (cinta métrica flexible). Podés dejar campos vacíos:
-        guardá solo lo que midas ese día. Medí siempre en el mismo punto y a la misma hora para comparar bien.
+        Registrá circunferencias en <strong>cm</strong>. Podés dejar campos vacíos y guardar solo lo que midas ese día.
+        Medí siempre en el mismo punto y a la misma hora.
       </p>
 
       <form onSubmit={guardar} className="mb-4">
@@ -234,6 +244,6 @@ export default function MedidasSeguimiento({ historial, setHistorial }) {
           })}
         </ul>
       )}
-    </div>
+    </SeguimientoCaja>
   )
 }

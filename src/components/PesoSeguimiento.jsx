@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { fechaToISO, fechaSoloDia, formatearFecha } from '../utils/calorias'
+import SeguimientoCaja from './SeguimientoCaja'
 
 /**
  * @param {Array<{ id: string, fecha: string, pesoKg: number, notas?: string }>} historial
@@ -27,6 +28,16 @@ export default function PesoSeguimiento({ historial, setHistorial, onActualizarP
     return { minP, maxP, rango }
   }, [ultimosGraf])
 
+  const listaOrdenDesc = useMemo(
+    () => [...(historial || [])].sort((a, b) => fechaSoloDia(b.fecha).localeCompare(fechaSoloDia(a.fecha))),
+    [historial]
+  )
+
+  const ultima = listaOrdenDesc[0]
+  const resumenCerrado = ultima
+    ? `Última: ${ultima.pesoKg} kg · ${formatearFecha(ultima.fecha)}`
+    : 'Todavía no hay mediciones'
+
   const guardarMedicion = (e) => {
     e.preventDefault()
     const kg = parseFloat(String(pesoInput).replace(',', '.'))
@@ -50,16 +61,15 @@ export default function PesoSeguimiento({ historial, setHistorial, onActualizarP
     setHistorial((prev) => (prev || []).filter((x) => x.id !== id))
   }
 
-  const listaOrdenDesc = useMemo(
-    () => [...(historial || [])].sort((a, b) => fechaSoloDia(b.fecha).localeCompare(fechaSoloDia(a.fecha))),
-    [historial]
-  )
-
   return (
-    <div id="peso-seguimiento" className="box mb-4 py-3">
-      <h2 className="title is-6 mb-2">Seguimiento de peso corporal</h2>
+    <SeguimientoCaja
+      id="peso-seguimiento"
+      titulo="Peso corporal"
+      resumen={resumenCerrado}
+      ctaCerrado="Registrar peso"
+    >
       <p className="is-size-7 has-text-grey mb-3">
-        Registrá mediciones con fecha. Se actualiza también el <strong>peso en Config</strong> (el que usan las kcal estimadas).
+        Registrá mediciones con fecha. Se actualiza también el peso de Config (kcal estimadas).
         Los datos se guardan en este dispositivo y, si tenés sesión, en la nube.
       </p>
 
@@ -143,6 +153,6 @@ export default function PesoSeguimiento({ historial, setHistorial, onActualizarP
           ))}
         </ul>
       )}
-    </div>
+    </SeguimientoCaja>
   )
 }
