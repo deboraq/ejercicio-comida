@@ -124,7 +124,9 @@ También: crear/eliminar rutinas, rutina activa, **Exportar PDF**.
 
 ### Base de comidas (referencia)
 
-Archivo: `src/utils/referenciaComidas.js` — **642** ítems.
+Archivo de código: `src/utils/referenciaComidas.js` — **642** ítems.
+
+**Listado completo con kcal / proteínas / carbohidratos / porción de cada alimento:** ver [`LISTADO_COMIDAS.md`](LISTADO_COMIDAS.md).
 
 | Categoría | Cantidad aprox. |
 |-----------|-----------------|
