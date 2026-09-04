@@ -1,4 +1,19 @@
 export default function ConsejosPanel({ diarios = [], semanales = [], className = '' }) {
+  const labelTipo = {
+    nutricion: 'Nutrición',
+    balance: 'Balance',
+    salud: 'Salud',
+    habitos: 'Hábitos',
+    habito: 'Hábitos',
+    recuperacion: 'Recuperación',
+    rendimiento: 'Rendimiento',
+    descanso: 'Descanso',
+    ejercicio: 'Ejercicio',
+    comida: 'Nutrición',
+    medidas: 'Medidas',
+    perfil: 'Perfil',
+  }
+
   const items = [
     ...diarios.slice(0, 1).map((c) => ({ ...c, etiqueta: 'Hoy', icono: '💡', tono: 'dia' })),
     ...semanales.slice(0, 1).map((c) => ({ ...c, etiqueta: 'Semana', icono: '📅', tono: 'semana' })),
@@ -15,7 +30,12 @@ export default function ConsejosPanel({ diarios = [], semanales = [], className 
           >
             <span className="ti-tip-icon" aria-hidden="true">{c.icono}</span>
             <div>
-              <p className="consejos-panel-etiqueta mb-1">{c.etiqueta}</p>
+              <p className="consejos-panel-etiqueta mb-1">
+                {c.etiqueta}
+                {c.tipo && labelTipo[c.tipo] ? (
+                  <span className="consejos-panel-tipo"> · {labelTipo[c.tipo]}</span>
+                ) : null}
+              </p>
               <p className="mb-0">{c.texto}</p>
             </div>
           </article>

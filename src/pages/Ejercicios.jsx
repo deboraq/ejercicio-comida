@@ -43,14 +43,15 @@ export default function Ejercicios() {
   const [filtrosOpen, setFiltrosOpen] = useState(false)
   const [editandoId, setEditandoId] = useState(null)
   const [histLimit, setHistLimit] = useState(12)
+  const [formAbierto, setFormAbierto] = useState(false)
   const refPanelFormulario = useRef(null)
 
   useEffect(() => {
-    if (!editandoId) return
+    if (!formAbierto) return
     const el = refPanelFormulario.current
     if (!el) return
     el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [editandoId])
+  }, [formAbierto, editandoId])
 
   useEffect(() => {
     if (!tipoAdmiteKilometros(tipo) && modoMedida === 'km') setModoMedida('minutos')
@@ -68,6 +69,16 @@ export default function Ejercicios() {
     setNotas('')
     setFechaInput(fechaToISO(new Date()))
     setEditandoId(null)
+  }
+
+  const abrirNuevoEjercicio = () => {
+    limpiarFormulario()
+    setFormAbierto(true)
+  }
+
+  const cerrarFormulario = () => {
+    limpiarFormulario()
+    setFormAbierto(false)
   }
 
   const parseManualCal = () => {
@@ -122,7 +133,7 @@ export default function Ejercicios() {
       if (!kmOk) delete nuevo.distanciaKm
       setEjercicios((prev) => [nuevo, ...prev])
     }
-    limpiarFormulario()
+    cerrarFormulario()
   }
 
   const iniciarEdicion = (item) => {
@@ -142,11 +153,11 @@ export default function Ejercicios() {
     setCaloriasManual(item.caloriasManual != null && Number(item.caloriasManual) > 0 ? String(item.caloriasManual) : '')
     setNotas(item.notas || '')
     setFechaInput(fechaSoloDia(item.fecha) || fechaToISO(new Date()))
-    refPanelFormulario.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setFormAbierto(true)
   }
 
   const eliminar = (id) => {
-    setEditandoId((eid) => (eid === id ? null : eid))
+    if (editandoId === id) cerrarFormulario()
     setEjercicios((prev) => prev.filter((e) => e.id !== id))
   }
 
@@ -200,7 +211,7 @@ export default function Ejercicios() {
             <button
               type="button"
               className="button is-light ti-page-action-btn ej-nuevo-btn"
-              onClick={() => refPanelFormulario.current?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={abrirNuevoEjercicio}
             >
               + Nuevo ejercicio
             </button>
@@ -241,167 +252,189 @@ export default function Ejercicios() {
           </div>
 
           <div className="ejercicios-layout-main">
-            <div ref={refPanelFormulario} className="box ejercicios-form-card mb-0">
-              <h2 className="ej-form-title mb-4">{editandoId ? 'Editar ejercicio' : '+ Nuevo ejercicio'}</h2>
-              <form onSubmit={agregar} className="ej-form">
-                <div className="field">
-                  <label className="ej-form-label" htmlFor="ej-fecha">Fecha</label>
-                  <div className="control">
-                    <input
-                      id="ej-fecha"
-                      className="input"
-                      type="date"
-                      value={fechaInput}
-                      onChange={(e) => setFechaInput(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="field">
-                  <label className="ej-form-label" htmlFor="ej-nombre">Nombre del ejercicio</label>
-                  <div className="control">
-                    <input
-                      id="ej-nombre"
-                      className="input"
-                      type="text"
-                      value={nombre}
-                      onChange={(e) => setNombre(e.target.value)}
-                      placeholder="Ej: Padel, Correr, Pesas..."
-                      autoComplete="off"
-                    />
-                  </div>
-                </div>
-
-                <div className="field">
-                  <label className="ej-form-label" htmlFor="ej-tipo">Tipo de actividad</label>
-                  <div className="control">
-                    <div className="select is-fullwidth">
-                      <select
-                        id="ej-tipo"
-                        value={tipo}
-                        onChange={(e) => {
-                          const v = e.target.value
-                          setTipo(v)
-                          if (!tipoAdmiteKilometros(v)) setModoMedida('minutos')
-                        }}
-                      >
-                        {TIPOS_EJERCICIO_AGRUPADOS.map((g) => (
-                          <optgroup key={g.categoria} label={g.categoria}>
-                            {g.opciones.map((op) => (
-                              <option key={op.value} value={op.value}>{op.label}</option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {tipoAdmiteKilometros(tipo) ? (
-                  <div className="field">
-                    <label className="ej-form-label">Medida</label>
-                    <div className="ti-segmented">
-                      <button
-                        type="button"
-                        className={modoMedida === 'minutos' ? 'is-active' : ''}
-                        onClick={() => setModoMedida('minutos')}
-                      >
-                        Minutos
-                      </button>
-                      <button
-                        type="button"
-                        className={modoMedida === 'km' ? 'is-active' : ''}
-                        onClick={() => setModoMedida('km')}
-                      >
-                        Kilómetros
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="field">
-                  <label className="ej-form-label" htmlFor="ej-duracion">
-                    {tipoAdmiteKilometros(tipo) && modoMedida === 'km' ? 'Distancia (km)' : 'Duración (min)'}
-                  </label>
-                  <div className="control">
-                    {tipoAdmiteKilometros(tipo) && modoMedida === 'km' ? (
-                      <input
-                        id="ej-duracion"
-                        className="input"
-                        type="number"
-                        min="0.1"
-                        step="0.1"
-                        value={distanciaKm}
-                        onChange={(e) => setDistanciaKm(e.target.value)}
-                        placeholder="Ej: 5"
-                      />
-                    ) : (
-                      <input
-                        id="ej-duracion"
-                        className="input"
-                        type="number"
-                        min="1"
-                        value={duracion}
-                        onChange={(e) => setDuracion(e.target.value)}
-                        placeholder="30"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                <div className="field">
-                  <label className="ej-form-label" htmlFor="ej-kcal">Kcal manual (opcional)</label>
-                  <div className="control">
-                    <input
-                      id="ej-kcal"
-                      className="input"
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={caloriasManual}
-                      onChange={(e) => setCaloriasManual(e.target.value)}
-                      placeholder="Reemplaza el cálculo automático"
-                    />
-                  </div>
-                </div>
-
-                {(() => {
-                  const m = parseManualCal()
-                  const kmP = modoMedida === 'km' && tipoAdmiteKilometros(tipo) && Number(distanciaKm) > 0
-                  const minP = modoMedida === 'minutos' && Number(duracion) > 0
-                  if (!tipo || (!m && !kmP && !minP)) return null
-                  const durEst = kmP ? minutosDesdeKm(tipo, Number(distanciaKm)) : Number(duracion) || 0
-                  return (
-                    <p className="ej-form-hint mb-3">
-                      Aprox. <strong>{caloriasEjercicioRegistro({ tipo, duracion: durEst, caloriasManual: m || undefined }, pesoKg)}</strong> kcal
-                      {m ? ' (manual)' : ' según tu peso en Config'}.
-                    </p>
-                  )
-                })()}
-
-                <div className="field">
-                  <label className="ej-form-label" htmlFor="ej-notas">Notas (opcional)</label>
-                  <div className="control">
-                    <input
-                      id="ej-notas"
-                      className="input"
-                      type="text"
-                      value={notas}
-                      onChange={(e) => setNotas(e.target.value)}
-                      placeholder="Intensidad, cómo te sentiste..."
-                    />
-                  </div>
-                </div>
-
-                <button type="submit" className="button is-link is-fullwidth ej-form-submit">
-                  {editandoId ? 'Guardar cambios' : 'Guardar ejercicio'}
+            <div ref={refPanelFormulario} className="box ejercicios-form-card mb-0 py-0">
+              {!formAbierto ? (
+                <button
+                  type="button"
+                  className="ej-form-cta-cerrado"
+                  onClick={abrirNuevoEjercicio}
+                >
+                  <span>
+                    <strong className="ej-form-cta-titulo">Registrar ejercicio</strong>
+                    <span className="ej-form-cta-sub">Caminata, cardio, deportes…</span>
+                  </span>
+                  <span className="ej-form-cta-btn">+ Nuevo</span>
                 </button>
-                {editandoId && (
-                  <button type="button" className="button is-light is-fullwidth mt-2" onClick={limpiarFormulario}>
-                    Cancelar edición
-                  </button>
-                )}
-              </form>
+              ) : (
+                <div className="ejercicios-form-abierto">
+                  <div className="ej-form-head">
+                    <h2 className="ej-form-title mb-0">
+                      {editandoId ? 'Editar ejercicio' : 'Nuevo ejercicio'}
+                    </h2>
+                    <button type="button" className="button is-small is-light" onClick={cerrarFormulario}>
+                      Cerrar
+                    </button>
+                  </div>
+                  <form onSubmit={agregar} className="ej-form">
+                    <div className="field">
+                      <label className="ej-form-label" htmlFor="ej-fecha">Fecha</label>
+                      <div className="control">
+                        <input
+                          id="ej-fecha"
+                          className="input"
+                          type="date"
+                          value={fechaInput}
+                          onChange={(e) => setFechaInput(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="field">
+                      <label className="ej-form-label" htmlFor="ej-nombre">Nombre del ejercicio</label>
+                      <div className="control">
+                        <input
+                          id="ej-nombre"
+                          className="input"
+                          type="text"
+                          value={nombre}
+                          onChange={(e) => setNombre(e.target.value)}
+                          placeholder="Ej: Padel, Correr, Pesas..."
+                          autoComplete="off"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+
+                    <div className="field">
+                      <label className="ej-form-label" htmlFor="ej-tipo">Tipo de actividad</label>
+                      <div className="control">
+                        <div className="select is-fullwidth">
+                          <select
+                            id="ej-tipo"
+                            value={tipo}
+                            onChange={(e) => {
+                              const v = e.target.value
+                              setTipo(v)
+                              if (!tipoAdmiteKilometros(v)) setModoMedida('minutos')
+                            }}
+                          >
+                            {TIPOS_EJERCICIO_AGRUPADOS.map((g) => (
+                              <optgroup key={g.categoria} label={g.categoria}>
+                                {g.opciones.map((op) => (
+                                  <option key={op.value} value={op.value}>{op.label}</option>
+                                ))}
+                              </optgroup>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {tipoAdmiteKilometros(tipo) ? (
+                      <div className="field">
+                        <label className="ej-form-label">Medida</label>
+                        <div className="ti-segmented">
+                          <button
+                            type="button"
+                            className={modoMedida === 'minutos' ? 'is-active' : ''}
+                            onClick={() => setModoMedida('minutos')}
+                          >
+                            Minutos
+                          </button>
+                          <button
+                            type="button"
+                            className={modoMedida === 'km' ? 'is-active' : ''}
+                            onClick={() => setModoMedida('km')}
+                          >
+                            Kilómetros
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="field">
+                      <label className="ej-form-label" htmlFor="ej-duracion">
+                        {tipoAdmiteKilometros(tipo) && modoMedida === 'km' ? 'Distancia (km)' : 'Duración (min)'}
+                      </label>
+                      <div className="control">
+                        {tipoAdmiteKilometros(tipo) && modoMedida === 'km' ? (
+                          <input
+                            id="ej-duracion"
+                            className="input"
+                            type="number"
+                            min="0.1"
+                            step="0.1"
+                            value={distanciaKm}
+                            onChange={(e) => setDistanciaKm(e.target.value)}
+                            placeholder="Ej: 5"
+                          />
+                        ) : (
+                          <input
+                            id="ej-duracion"
+                            className="input"
+                            type="number"
+                            min="1"
+                            value={duracion}
+                            onChange={(e) => setDuracion(e.target.value)}
+                            placeholder="30"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="field">
+                      <label className="ej-form-label" htmlFor="ej-kcal">Kcal manual (opcional)</label>
+                      <div className="control">
+                        <input
+                          id="ej-kcal"
+                          className="input"
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={caloriasManual}
+                          onChange={(e) => setCaloriasManual(e.target.value)}
+                          placeholder="Reemplaza el cálculo automático"
+                        />
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const m = parseManualCal()
+                      const kmP = modoMedida === 'km' && tipoAdmiteKilometros(tipo) && Number(distanciaKm) > 0
+                      const minP = modoMedida === 'minutos' && Number(duracion) > 0
+                      if (!tipo || (!m && !kmP && !minP)) return null
+                      const durEst = kmP ? minutosDesdeKm(tipo, Number(distanciaKm)) : Number(duracion) || 0
+                      return (
+                        <p className="ej-form-hint mb-3">
+                          Aprox. <strong>{caloriasEjercicioRegistro({ tipo, duracion: durEst, caloriasManual: m || undefined }, pesoKg)}</strong> kcal
+                          {m ? ' (manual)' : ' según tu peso en Config'}.
+                        </p>
+                      )
+                    })()}
+
+                    <div className="field">
+                      <label className="ej-form-label" htmlFor="ej-notas">Notas (opcional)</label>
+                      <div className="control">
+                        <input
+                          id="ej-notas"
+                          className="input"
+                          type="text"
+                          value={notas}
+                          onChange={(e) => setNotas(e.target.value)}
+                          placeholder="Intensidad, cómo te sentiste..."
+                        />
+                      </div>
+                    </div>
+
+                    <button type="submit" className="button is-link is-fullwidth ej-form-submit">
+                      {editandoId ? 'Guardar cambios' : 'Guardar ejercicio'}
+                    </button>
+                    <button type="button" className="button is-light is-fullwidth mt-2" onClick={cerrarFormulario}>
+                      {editandoId ? 'Cancelar edición' : 'Cancelar'}
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
 

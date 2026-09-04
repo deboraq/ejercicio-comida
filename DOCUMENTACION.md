@@ -112,7 +112,7 @@ También: crear/eliminar rutinas, rutina activa, **Exportar PDF**.
 
 ### Registro
 1. Elegís momento + fecha.
-2. Buscás en la **base de referencia** (~642 alimentos) o cargás a mano.
+2. Buscás en la **base de referencia** (~650 alimentos) o cargás a mano.
 3. **Cant.** admite fracciones: `0.5` = media porción, `0.25` = cuarto (escala kcal/P/C).
 4. Varias filas por entrada; total de la entrada; guardar al historial.
 5. Historial de hoy agrupado por momento (+ “Agregar” si falta uno).
@@ -124,20 +124,23 @@ También: crear/eliminar rutinas, rutina activa, **Exportar PDF**.
 
 ### Base de comidas (referencia)
 
-Archivo de código: `src/utils/referenciaComidas.js` — **642** ítems.
+Archivo de código: `src/utils/referenciaComidas.js` — **~650** ítems (grasas, aliases, sin duplicados obvios + **Salida / Social**).
 
-**Listado completo con kcal / proteínas / carbohidratos / porción de cada alimento:** ver [`LISTADO_COMIDAS.md`](LISTADO_COMIDAS.md).
+**Listado completo con kcal / P / C / G / porción / aliases:** ver [`LISTADO_COMIDAS.md`](LISTADO_COMIDAS.md).
+
+Cada ítem incluye **grasas (g)** estimadas por balance calórico cuando corresponde: `G = max(0, (kcal − P×4 − C×4) / 9)`.
 
 | Categoría | Cantidad aprox. |
 |-----------|-----------------|
-| Comidas saludables | 121 |
-| Verduras | 63 |
+| Comidas saludables | 93 |
+| Verduras | 61 |
 | Almuerzo | 50 |
+| Salida / Social | 42 |
 | Frutas | 41 |
-| Desayuno / Lácteos | 37 |
+| Desayuno / Lácteos | 35 |
 | Pizza (1 triángulo) | 36 |
-| Carbohidratos | 33 |
-| Snacks / Bebidas | 33 |
+| Carbohidratos | 32 |
+| Snacks / Bebidas | 32 |
 | Tartas (1 porción) | 32 |
 | Empanadas (1 unidad) | 31 |
 | Pastas | 28 |
@@ -149,11 +152,13 @@ Archivo de código: `src/utils/referenciaComidas.js` — **642** ítems.
 | Fiambres | 15 |
 | Milanesas y rebozados | 13 |
 
-Cada ítem: nombre, categoría, kcal, proteínas (g), carbohidratos (g), texto de porción.
+Cada ítem: nombre, categoría, kcal, proteínas (g), carbohidratos (g), grasas (g), porción (medida casera + g/ml) y aliases.
 
-**Búsqueda:** sin acentos; varias palabras (ej. “tarta acelga pollo”, “media palta”); prioriza coincidencias completas.
+**Búsqueda:** sin acentos; varias palabras; **aliases** y expansión de query (frutilla↔fresa, huevos→huevo/clara, pinta→cerveza, etc.).
 
-**Ejemplos recientes:** media/entera/cuarto de palta; tarta de acelga y pollo; tarta de verdura/espinaca y pollo.
+**Salida / Social:** hamburguesa, pinta, empanada frita, delivery, brunch, etc. — estimaciones para no romper la racha al salir.
+
+**Ejemplos:** media/entera/cuarto de palta; tarta de acelga y pollo; hamburguesa de bodega; cerveza/pinta.
 
 ---
 
@@ -164,11 +169,11 @@ Cada ítem: nombre, categoría, kcal, proteínas (g), carbohidratos (g), texto d
 ### Secciones (alumno)
 1. **Cuenta** — login / nombre / cerrar sesión (si hay Supabase).
 2. **Tu objetivo** — Bajar de peso / Mantener / Aumentar / Ganar músculo.
-3. **Datos corporales** (plegable) — peso, altura, sexo, edad, nivel de actividad → IMC, rango kg, TMB, gasto diario (TDEE).
-4. **Metas diarias** (plegable) — kcal, proteína, carbos, grasas; botón “Aplicar sugerencia” según TDEE + objetivo.
-5. **Peso corporal** (plegable) — form + gráfica + historial (`pesoHistorial`).
-6. **Medidas corporales** (plegable) — cm + gráfica por campo + historial (`medidasHistorial`).
-7. **Suplementos** (plegable) — cuáles aparecen en Inicio.
+3. **Seguimiento → Peso corporal** — único lugar para registrar pesajes (`pesoHistorial`). El último valor actualiza `config.pesoKg` (IMC, kcal, consejos).
+4. **Seguimiento → Medidas corporales** — cm + gráfica + historial (`medidasHistorial`).
+5. **Perfil → Datos para cálculos** — altura, sexo, edad, actividad (el peso se muestra en solo lectura, viene del último pesaje).
+6. **Perfil → Metas diarias** — kcal y macros; sugerencia según TDEE + objetivo.
+7. **Suplementos** — cuáles aparecen en Inicio.
 
 ### Niveles de actividad (multiplicador TDEE)
 | Nivel | Factor | Idea |
@@ -195,23 +200,28 @@ Todos opcionales por toma.
 **Dónde:** Inicio y Comida.  
 **Límite actual:** **1 consejo de hoy** + **1 de la semana** (el de mayor prioridad).
 
+Los textos son **prescriptivos**: dicen qué hacer ahora (ej. “Te faltan 25 g de proteína: 3 huevos o 1 lata de atún”).
+
 ### Datos que mira
-- Comidas del día / semana (momentos, kcal, proteína, carbos).
-- Ejercicios + rutina (minutos, kcal quemadas, tipo Cardio/Fuerza…).
+- Comidas del día / semana (momentos, kcal, proteína, carbos) y huecos de **ayer** (cena/merienda).
+- Ejercicios + rutina (minutos, kcal quemadas, tipo Cardio/Fuerza, racha de gym).
 - Historial de medidas (deltas, días desde última toma).
 - Perfil: objetivo, peso, altura, IMC, TDEE, actividad, metas.
 
 ### Tipos de consejo
 
-| Tipo | Ejemplos de disparo |
-|------|---------------------|
-| **comida** | No registraste comidas; faltan momentos; poca proteína; pocas meriendas en la semana |
-| **ejercicio** | Día sin actividad; cardio + pocos carbos; fuerza + poca proteína; &lt;3 días activos en la semana |
-| **balance** | Muy por encima/debajo de la meta kcal según objetivo; excedente o déficit fuerte vs quemadas |
-| **medidas** | Sin tomas; hace +14 días; bajó cintura; subieron brazos; asimetría brazo/muslo; recomposición |
-| **perfil** | Falta altura/actividad; tip de IMC vs objetivo; sugerencia de kcal/TDEE |
-| **habito** | Buen ritmo de registros en la semana |
-
+| Tipo | Disparadores (ejemplos) | Acción típica |
+|------|-------------------------|---------------|
+| **nutricion** | Proteína &lt;70% tras el almuerzo; promedio semanal bajo | Indica g faltantes + alimentos concretos |
+| **balance** | Carbos altos + bajar de peso; excedente/déficit vs meta | Priorizar proteína+verduras o sumar merienda densa |
+| **salud** | Déficit &gt;800 kcal vs meta | Advertir metabolismo/músculo y sugerir merienda |
+| **habitos** | Sin registro hoy; falta cena de ayer; pocos días con comida | Mantener racha / estimar platos de salida |
+| **recuperacion** | Día de fuerza/gym + proteína baja | “Asegurá X g de proteína antes de dormir…” |
+| **rendimiento** | Cardio ≥45 min + carbos bajos | Avena/fruta para glucógeno |
+| **descanso** | ≥3 días seguidos de gym | Día activo (caminata suave) |
+| **ejercicio** | Sin actividad; solo cardio si el objetivo es músculo | Sesión concreta a registrar |
+| **medidas** | Sin tomas; +14 días; deltas cintura/brazos | Medir / interpretar progreso |
+| **perfil** | Falta altura/actividad; IMC vs objetivo | Completar Config / aplicar TDEE |
 ---
 
 ## 10. Módulo Profe (`/profe`)

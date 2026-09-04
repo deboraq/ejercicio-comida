@@ -41,6 +41,7 @@ function crearItemVacio() {
     calorias: '',
     proteinas: '',
     carbohidratos: '',
+    grasas: '',
     porciones: '',
   }
 }
@@ -81,11 +82,11 @@ function cantidadBaseParaEscala(it) {
   return prev != null && prev > 0 ? prev : 1
 }
 
-/** Aplica cantidad (admite decimales) y recalcula kcal/P/C desde referencia o por ratio. */
+/** Aplica cantidad (admite decimales) y recalcula kcal/P/C/G desde referencia o por ratio. */
 function itemConCantidadAplicada(it, newQ) {
   const q = normalizarCantidad(newQ, 1)
   if (it._macrosPorUnidad) {
-    const { cal, pro, car } = it._macrosPorUnidad
+    const { cal, pro, car, gra } = it._macrosPorUnidad
     return {
       ...it,
       cantidad: q,
@@ -93,6 +94,7 @@ function itemConCantidadAplicada(it, newQ) {
       calorias: String(Math.round(cal * q)),
       proteinas: String(redondear1(pro * q)),
       carbohidratos: String(redondear1(car * q)),
+      grasas: gra != null ? String(redondear1(gra * q)) : it.grasas,
       porciones: it._porcionRef != null ? textoPorcionDesdeRef(it._porcionRef, q) : it.porciones,
     }
   }
@@ -105,6 +107,7 @@ function itemConCantidadAplicada(it, newQ) {
     calorias: it.calorias !== '' ? String(Math.round(numeroFlexibleO(it.calorias) * r)) : '',
     proteinas: it.proteinas !== '' ? String(redondear1(numeroFlexibleO(it.proteinas) * r)) : '',
     carbohidratos: it.carbohidratos !== '' ? String(redondear1(numeroFlexibleO(it.carbohidratos) * r)) : '',
+    grasas: it.grasas !== '' && it.grasas != null ? String(redondear1(numeroFlexibleO(it.grasas) * r)) : it.grasas,
   }
 }
 
@@ -128,11 +131,12 @@ function ListaComidaAgrupada({ bloques, onEliminar }) {
                   <div className="comida-linea-dia-inner">
                     <div className="is-flex-grow-1" style={{ minWidth: 0 }}>
                       <p className="comida-linea-nombre mb-0">{r.descripcion}</p>
-                      {(r.calorias != null || r.proteinas != null || r.carbohidratos != null || r.porciones) && (
+                      {(r.calorias != null || r.proteinas != null || r.carbohidratos != null || r.grasas != null || r.porciones) && (
                         <div className="comida-macros comida-macros--linea">
                           {r.calorias != null && <span className="tag is-light is-size-7">{r.calorias} kcal</span>}
                           {r.proteinas != null && <span className="tag is-success is-light is-size-7">P {r.proteinas} g</span>}
                           {r.carbohidratos != null && <span className="tag is-warning is-light is-size-7">C {r.carbohidratos} g</span>}
+                          {r.grasas != null && <span className="tag is-danger is-light is-size-7">G {r.grasas} g</span>}
                           {r.porciones && <span className="is-size-7 has-text-grey ml-1">{r.porciones}</span>}
                         </div>
                       )}
@@ -167,6 +171,9 @@ export default function Comida() {
   const [periodo, setPeriodo] = useState('semana')
   const [desdeCustom, setDesdeCustom] = useState('')
   const [hastaCustom, setHastaCustom] = useState('')
+  const [historialPasadoAbierto, setHistorialPasadoAbierto] = useState(false)
+  const [historialMostrado, setHistorialMostrado] = useState(false)
+  const [diasExpandidos, setDiasExpandidos] = useState(() => new Set())
 
   const resultadosBusqueda = buscarAlimentos(busquedaRef)
   const hoy = fechaToISO(new Date())
@@ -181,7 +188,11 @@ export default function Comida() {
   const añadirDesdeReferencia = (itemRef, cantidad = cantidadPorciones) => {
     const raw = cantidad === '' || cantidad == null ? String(cantidadPorciones) : String(cantidad)
     const n = normalizarCantidad(raw, 1)
-    const base = { cal: itemRef.calorias, pro: itemRef.proteinas, car: itemRef.carbohidratos }
+    const gra =
+      itemRef.grasas != null && Number.isFinite(Number(itemRef.grasas))
+        ? Number(itemRef.grasas)
+        : Math.max(0, Math.round(((itemRef.calorias - itemRef.proteinas * 4 - itemRef.carbohidratos * 4) / 9) * 10) / 10)
+    const base = { cal: itemRef.calorias, pro: itemRef.proteinas, car: itemRef.carbohidratos, gra }
     const porcionRef = itemRef.porcion || 'porción'
     const nuevo = {
       id: crypto.randomUUID(),
@@ -191,6 +202,7 @@ export default function Comida() {
       calorias: String(Math.round(base.cal * n)),
       proteinas: String(redondear1(base.pro * n)),
       carbohidratos: String(redondear1(base.car * n)),
+      grasas: String(redondear1(base.gra * n)),
       porciones: textoPorcionDesdeRef(porcionRef, n),
       _macrosPorUnidad: base,
       _porcionRef: porcionRef,
@@ -249,12 +261,14 @@ export default function Comida() {
           if (field === 'calorias') m.cal = num / q
           if (field === 'proteinas') m.pro = num / q
           if (field === 'carbohidratos') m.car = num / q
+          if (field === 'grasas') m.gra = num / q
           return {
             ...it,
             _macrosPorUnidad: m,
             calorias: String(Math.round(m.cal * q)),
             proteinas: String(redondear1(m.pro * q)),
             carbohidratos: String(redondear1(m.car * q)),
+            grasas: m.gra != null ? String(redondear1(m.gra * q)) : '',
           }
         }
         return { ...it, [field]: value, _macrosPorUnidad: undefined, _porcionRef: undefined }
@@ -267,7 +281,7 @@ export default function Comida() {
       actualizarItemCantidad(id, value)
       return
     }
-    if (field === 'calorias' || field === 'proteinas' || field === 'carbohidratos') {
+    if (field === 'calorias' || field === 'proteinas' || field === 'carbohidratos' || field === 'grasas') {
       actualizarItemMacro(id, field, value)
       return
     }
@@ -291,8 +305,9 @@ export default function Comida() {
       cal: acc.cal + numeroFlexibleO(it.calorias),
       pro: redondear1(acc.pro + numeroFlexibleO(it.proteinas)),
       car: redondear1(acc.car + numeroFlexibleO(it.carbohidratos)),
+      gra: redondear1(acc.gra + numeroFlexibleO(it.grasas)),
     }),
-    { cal: 0, pro: 0, car: 0 }
+    { cal: 0, pro: 0, car: 0, gra: 0 }
   )
 
   const guardarComida = (e) => {
@@ -309,6 +324,7 @@ export default function Comida() {
       calorias: numeroFlexible(it.calorias) ?? undefined,
       proteinas: numeroFlexible(it.proteinas) ?? undefined,
       carbohidratos: numeroFlexible(it.carbohidratos) ?? undefined,
+      grasas: numeroFlexible(it.grasas) ?? undefined,
       porciones: it.porciones?.trim() || undefined,
       notas: notas.trim(),
       fecha,
@@ -366,8 +382,32 @@ export default function Comida() {
   const momentosPendientes = COMIDAS.filter((m) => !momentosRegistrados.has(m))
 
   const scrollHistorial = () => {
-    document.getElementById('comida-historial-completo')?.scrollIntoView({ behavior: 'smooth' })
+    setHistorialPasadoAbierto(true)
+    requestAnimationFrame(() => {
+      document.getElementById('comida-historial-completo')?.scrollIntoView({ behavior: 'smooth' })
+    })
   }
+
+  const consultarHistorial = (e) => {
+    e?.preventDefault?.()
+    setHistorialMostrado(true)
+    setDiasExpandidos(new Set())
+  }
+
+  const toggleDiaHistorial = (fecha) => {
+    setDiasExpandidos((prev) => {
+      const next = new Set(prev)
+      if (next.has(fecha)) next.delete(fecha)
+      else next.add(fecha)
+      return next
+    })
+  }
+
+  const diasHistorialPasado = Object.entries(porFechaEnRango)
+    .filter(([fecha]) => fechaSoloDia(fecha) !== hoy)
+    .sort(([a], [b]) => b.localeCompare(a))
+
+  const registrosAnterioresCount = registros.filter((r) => fechaSoloDia(r.fecha) !== hoy).length
 
   return (
     <section className="section py-4 comida-page">
@@ -463,6 +503,7 @@ export default function Comida() {
                               <span className="tag is-info is-light is-size-7">{a.calorias} kcal</span>
                               <span className="tag is-success is-light is-size-7">P {a.proteinas}</span>
                               <span className="tag is-warning is-light is-size-7">C {a.carbohidratos}</span>
+                              <span className="tag is-danger is-light is-size-7">G {a.grasas ?? 0}</span>
                             </span>
                           </button>
                         </li>
@@ -554,6 +595,20 @@ export default function Comida() {
                         onChange={(e) => actualizarItem(it.id, 'carbohidratos', e.target.value)}
                       />
                     </div>
+                    <div className="comida-item-macro-cell">
+                      <label className="is-size-7 has-text-grey comida-item-macro-label" htmlFor={`comida-gra-${it.id}`}>
+                        Grasas (g)
+                      </label>
+                      <input
+                        id={`comida-gra-${it.id}`}
+                        className="input is-small"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0"
+                        value={it.grasas ?? ''}
+                        onChange={(e) => actualizarItem(it.id, 'grasas', e.target.value)}
+                      />
+                    </div>
                   </div>
                   <div className="field mb-0 mt-2">
                     <label className="is-size-7 has-text-grey is-block mb-1" htmlFor={`comida-porc-${it.id}`}>
@@ -597,6 +652,8 @@ export default function Comida() {
                   <span className="has-text-success">P {totalesItems.pro} g</span>
                   <span className="mx-2 has-text-grey">·</span>
                   <span className="has-text-warning">C {totalesItems.car} g</span>
+                  <span className="mx-2 has-text-grey">·</span>
+                  <span style={{ color: '#f472b6' }}>G {totalesItems.gra} g</span>
                 </p>
               </div>
             )}
@@ -615,10 +672,14 @@ export default function Comida() {
           <aside className="comida-layout-aside">
             <div className="box comida-hist-hoy-card">
               <div className="comida-hist-hoy-header">
-                <h2 className="title is-6 mb-0">Historial de hoy</h2>
-                <button type="button" className="comida-hist-ver-todo" onClick={scrollHistorial}>Ver todo</button>
+                <h2 className="title is-6 mb-0">Hoy</h2>
+                {registrosAnterioresCount > 0 && (
+                  <button type="button" className="comida-hist-ver-todo" onClick={scrollHistorial}>
+                    Historial
+                  </button>
+                )}
               </div>
-              {bloquesHoy.length === 0 && momentosPendientes.length === COMIDAS.length ? (
+              {bloquesHoy.length === 0 ? (
                 <p className="is-size-7 has-text-grey mb-0 mt-3">Todavía no registraste comidas hoy.</p>
               ) : (
                 <div className="comida-hist-hoy-list mt-3">
@@ -634,9 +695,15 @@ export default function Comida() {
                         </div>
                         <ul className="comida-hist-hoy-items">
                           {itemsGrupo.map((r) => (
-                            <li key={r.id}>
-                              <span>{r.descripcion}</span>
+                            <li key={r.id} className="comida-hist-hoy-item-row">
+                              <span className="comida-hist-hoy-desc">{r.descripcion}</span>
                               <span className="comida-hist-hoy-kcal">{r.calorias || '—'} kcal</span>
+                              <button
+                                type="button"
+                                className="delete is-small"
+                                aria-label="Eliminar"
+                                onClick={() => eliminar(r.id)}
+                              />
                             </li>
                           ))}
                         </ul>
@@ -644,20 +711,33 @@ export default function Comida() {
                       </div>
                     )
                   })}
+                </div>
+              )}
+              {momentosPendientes.length > 0 && bloquesHoy.length > 0 && (
+                <div className="comida-hist-hoy-pendientes mt-3">
                   {momentosPendientes.map((momento) => (
-                    <div key={momento} className="comida-hist-hoy-bloque is-pending">
-                      <div className="comida-hist-hoy-head">
-                        <span className="comida-hist-hoy-icon is-muted" aria-hidden>{MOMENTO_ICON[momento]}</span>
-                        <span className="comida-hist-hoy-tipo is-muted">{momento}</span>
-                        <button
-                          type="button"
-                          className="comida-hist-agregar"
-                          onClick={() => setComida(momento)}
-                        >
-                          Agregar
-                        </button>
-                      </div>
-                    </div>
+                    <button
+                      key={momento}
+                      type="button"
+                      className="comida-hist-chip-pendiente"
+                      onClick={() => setComida(momento)}
+                    >
+                      + {momento}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {bloquesHoy.length === 0 && momentosPendientes.length > 0 && (
+                <div className="comida-hist-hoy-pendientes mt-3">
+                  {momentosPendientes.map((momento) => (
+                    <button
+                      key={momento}
+                      type="button"
+                      className="comida-hist-chip-pendiente"
+                      onClick={() => setComida(momento)}
+                    >
+                      + {momento}
+                    </button>
                   ))}
                 </div>
               )}
@@ -665,64 +745,139 @@ export default function Comida() {
           </aside>
         </div>
 
-        <div id="comida-historial-completo">
-        <h2 className="title is-6 mb-2 mt-2">Historial</h2>
-        <div className="box comida-filtro-periodo mb-3 py-3">
-          <label className="label is-size-7 mb-2">Período</label>
-          <div className="field mb-0">
-            <div className="control">
-              <div className="select is-fullwidth is-small">
-                <select value={periodo} onChange={(e) => setPeriodo(e.target.value)}>
-                  {PERIODOS.map((p) => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
-                </select>
+        <div id="comida-historial-completo" className="mt-4">
+          {!historialPasadoAbierto ? (
+            <button
+              type="button"
+              className="box comida-hist-pasado-cta mb-0"
+              onClick={() => setHistorialPasadoAbierto(true)}
+            >
+              <span>
+                <strong className="comida-hist-pasado-cta-titulo">Historial anterior</strong>
+                <span className="comida-hist-pasado-cta-sub">
+                  {registrosAnterioresCount > 0
+                    ? `${registrosAnterioresCount} registros · elegí período para verlos`
+                    : 'Todavía no hay comidas de días anteriores'}
+                </span>
+              </span>
+              <span className="comida-hist-pasado-cta-btn">Consultar</span>
+            </button>
+          ) : (
+            <div className="box comida-hist-pasado-panel mb-0">
+              <div className="comida-hist-pasado-head">
+                <h2 className="title is-6 mb-0">Historial anterior</h2>
+                <button
+                  type="button"
+                  className="button is-small is-light"
+                  onClick={() => {
+                    setHistorialPasadoAbierto(false)
+                    setHistorialMostrado(false)
+                    setDiasExpandidos(new Set())
+                  }}
+                >
+                  Cerrar
+                </button>
               </div>
-            </div>
-          </div>
-          {periodo === 'personalizado' && (
-            <div className="columns is-mobile mt-2 mb-0">
-              <div className="column">
-                <label className="label is-size-7">Desde</label>
-                <input className="input is-small" type="date" value={desdeCustom} onChange={(e) => setDesdeCustom(e.target.value)} />
-              </div>
-              <div className="column">
-                <label className="label is-size-7">Hasta</label>
-                <input className="input is-small" type="date" value={hastaCustom} onChange={(e) => setHastaCustom(e.target.value)} />
-              </div>
+
+              <form className="comida-filtro-periodo mt-3 mb-0" onSubmit={consultarHistorial}>
+                <label className="label is-size-7 mb-2">Elegí qué querés ver</label>
+                <div className="field mb-2">
+                  <div className="control">
+                    <div className="select is-fullwidth">
+                      <select
+                        value={periodo}
+                        onChange={(e) => {
+                          setPeriodo(e.target.value)
+                          setHistorialMostrado(false)
+                        }}
+                      >
+                        {PERIODOS.map((p) => (
+                          <option key={p.value} value={p.value}>{p.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                {periodo === 'personalizado' && (
+                  <div className="columns is-mobile mb-2">
+                    <div className="column">
+                      <label className="label is-size-7">Desde</label>
+                      <input
+                        className="input is-small"
+                        type="date"
+                        value={desdeCustom}
+                        onChange={(e) => {
+                          setDesdeCustom(e.target.value)
+                          setHistorialMostrado(false)
+                        }}
+                      />
+                    </div>
+                    <div className="column">
+                      <label className="label is-size-7">Hasta</label>
+                      <input
+                        className="input is-small"
+                        type="date"
+                        value={hastaCustom}
+                        onChange={(e) => {
+                          setHastaCustom(e.target.value)
+                          setHistorialMostrado(false)
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+                <button type="submit" className="button is-link is-fullwidth">
+                  Ver historial
+                </button>
+              </form>
+
+              {historialMostrado && (
+                <div className="mt-4">
+                  <p className="is-size-7 has-text-grey mb-3">
+                    Del {desde} al {hasta}
+                    {diasHistorialPasado.length === 0 ? '' : ` · ${diasHistorialPasado.length} día${diasHistorialPasado.length === 1 ? '' : 's'}`}
+                  </p>
+                  {diasHistorialPasado.length === 0 ? (
+                    <p className="is-size-7 has-text-grey mb-0">No hay comidas en este período (además de hoy).</p>
+                  ) : (
+                    <ul className="comida-historial-lista mb-0">
+                      {diasHistorialPasado.map(([fecha, lista]) => {
+                        const cal = lista.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
+                        const pro = redondear1(lista.reduce((s, r) => s + numeroFlexibleO(r.proteinas), 0))
+                        const car = redondear1(lista.reduce((s, r) => s + numeroFlexibleO(r.carbohidratos), 0))
+                        const abierto = diasExpandidos.has(fecha)
+                        return (
+                          <li key={fecha} className={`comida-hist-dia${abierto ? ' is-open' : ''}`}>
+                            <button
+                              type="button"
+                              className="comida-hist-dia-toggle"
+                              onClick={() => toggleDiaHistorial(fecha)}
+                              aria-expanded={abierto}
+                            >
+                              <span className="comida-hist-dia-toggle-main">
+                                <span className="comida-hist-chevron" aria-hidden>{abierto ? '▼' : '▶'}</span>
+                                <span className="comida-hist-fecha" style={{ textTransform: 'capitalize' }}>
+                                  {formatearFecha(fecha)}
+                                </span>
+                              </span>
+                              <span className="tag is-info is-light is-size-7">
+                                {cal || '—'} kcal · P {pro || '—'} · C {car || '—'}
+                              </span>
+                            </button>
+                            {abierto && (
+                              <div className="comida-hist-grupos-dia">
+                                <ListaComidaAgrupada bloques={agruparComidasPorMomento(lista)} onEliminar={eliminar} />
+                              </div>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           )}
-          <p className="is-size-7 has-text-grey mt-2 mb-0">Del {desde} al {hasta}</p>
-        </div>
-
-        {Object.keys(porFechaEnRango).length === 0 ? (
-          <div className="box has-text-centered has-text-grey py-4 mb-0">No hay comidas en este período.</div>
-        ) : (
-          <ul className="comida-historial-lista mb-0">
-            {Object.entries(porFechaEnRango)
-              .sort(([a], [b]) => b.localeCompare(a))
-              .map(([fecha, lista]) => {
-                const cal = lista.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
-                const pro = redondear1(lista.reduce((s, r) => s + numeroFlexibleO(r.proteinas), 0))
-                const car = redondear1(lista.reduce((s, r) => s + numeroFlexibleO(r.carbohidratos), 0))
-                return (
-                  <li key={fecha} className="comida-hist-dia">
-                    <div className="is-flex is-justify-content-space-between is-align-items-center comida-hist-dia-cabecera is-flex-wrap-wrap">
-                      <p className="title is-6 mb-0 comida-hist-fecha" style={{ textTransform: 'capitalize' }}>
-                        {formatearFecha(fecha)}
-                      </p>
-                      <span className="tag is-info is-light is-size-7 comida-hist-resumen">
-                        {cal || '—'} kcal · P {pro || '—'} · C {car || '—'}
-                      </span>
-                    </div>
-                    <div className="comida-hist-grupos-dia">
-                      <ListaComidaAgrupada bloques={agruparComidasPorMomento(lista)} onEliminar={eliminar} />
-                    </div>
-                  </li>
-                )
-              })}
-          </ul>
-        )}
         </div>
       </div>
     </section>

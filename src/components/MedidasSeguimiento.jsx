@@ -97,9 +97,8 @@ export default function MedidasSeguimiento({ historial, setHistorial }) {
       resumen={resumenCerrado}
       ctaCerrado="Registrar medidas"
     >
-      <p className="is-size-7 has-text-grey mb-3">
-        Registrá circunferencias en <strong>cm</strong>. Podés dejar campos vacíos y guardar solo lo que midas ese día.
-        Medí siempre en el mismo punto y a la misma hora.
+      <p className="config-hint mb-3">
+        Circunferencias en <strong>cm</strong>. Podés dejar campos vacíos. Medí siempre en el mismo punto y horario.
       </p>
 
       <form onSubmit={guardar} className="mb-4">

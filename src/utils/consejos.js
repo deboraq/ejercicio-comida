@@ -59,6 +59,64 @@ function uniqTextos(lista, max) {
   return out
 }
 
+function pct(valor, meta) {
+  if (!meta || meta <= 0) return null
+  return valor / meta
+}
+
+function redondear(n) {
+  return Math.round(Number(n) || 0)
+}
+
+/** Sugerencias concretas de alimentos según gramos de proteína faltantes. */
+function sugerenciaProteina(faltanG) {
+  const f = Math.max(0, redondear(faltanG))
+  if (f <= 12) return `${f} g: 1 huevo + 1 yogur o 1 loncha de queso`
+  if (f <= 25) return `${f} g: 3 huevos o 1 lata de atún`
+  if (f <= 40) return `${f} g: 1 pechuga chica (~120 g) o atún + 2 huevos`
+  return `${f} g: pechuga de pollo (~150 g) o pescado + yogur griego`
+}
+
+function sugerenciaCarbos(faltanG) {
+  const f = Math.max(0, redondear(faltanG))
+  if (f <= 30) return `un plátano o 1 taza de fruta (~${f} g)`
+  if (f <= 50) return `1 bowl de avena o 1 taza de arroz (~${f} g)`
+  return `avena + fruta o 1 plato de pasta (~${f} g)`
+}
+
+function esDiaFuerza(ctx) {
+  return (ctx.ejerciciosPorTipo?.Fuerza || 0) > 0 || ctx.numRegistrosRutina > 0
+}
+
+function minutosCardio(ctx) {
+  return (ctx.ejercicios || [])
+    .filter((e) => e.categoria === 'Cardio')
+    .reduce((s, e) => s + num(e.duracion), 0)
+}
+
+function diaAnterior(fechaYYYYMMDD) {
+  if (!fechaYYYYMMDD) return null
+  const [y, m, d] = fechaYYYYMMDD.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() - 1)
+  const yy = dt.getFullYear()
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  const dd = String(dt.getDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
+}
+
+function rachaGymSinDescanso(diasDetalle) {
+  if (!diasDetalle?.length) return 0
+  // días ordenados cronológicamente; mirar desde el más reciente hacia atrás
+  const ordenados = [...diasDetalle].sort((a, b) => a.fecha.localeCompare(b.fecha))
+  let racha = 0
+  for (let i = ordenados.length - 1; i >= 0; i--) {
+    if (esDiaFuerza(ordenados[i])) racha += 1
+    else break
+  }
+  return racha
+}
+
 /**
  * Arma el contexto del día a partir de comidas, ejercicios y rutina registrados.
  */
@@ -225,73 +283,132 @@ export function buildContextoSemana({
   }
 }
 
-function consejosComidaDelDia(obj, ctx) {
+function consejosComidaDelDia(obj, ctx, ctxAyer = null) {
   const tips = []
   const { metas } = ctx
   const metaPro = metas.proteina
   const metaCal = metas.calorias
+  const metaCarb = metas.carbohidratos
 
   if (ctx.numComidas === 0) {
     tips.push(
       consejo(
         'dia',
-        'comida',
+        'habitos',
         100,
-        'Todavía no registraste comidas hoy. Anotá al menos el desayuno o la comida que ya hayas hecho para tener consejos más útiles.'
+        'Todavía no registraste comidas hoy. Anotá al menos el desayuno (o buscá “hamburguesa” / “empanada” si saliste) para no romper la racha.'
       )
     )
     return tips
   }
 
-  if (ctx.momentosPendientes.length > 0) {
-    const faltan = ctx.momentosPendientes.join(', ')
-    tips.push(
-      consejo(
-        'dia',
-        'comida',
-        90,
-        `Registraste ${ctx.momentosRegistrados.join(', ') || 'algunas comidas'}. Te falta anotar: ${faltan}.`
-      )
-    )
-  }
-
-  const desayuno = ctx.comidasPorMomento.Desayuno
-  if (desayuno && desayuno.proteinas < metaPro * 0.15 && ctx.proteinas < metaPro * 0.5) {
-    tips.push(
-      consejo(
-        'dia',
-        'comida',
-        82,
-        'El desayuno trae poca proteína. Sumá huevo, yogur, queso o legumbres para arrancar mejor el día.'
-      )
-    )
-  }
-
-  const momentosConCal = Object.entries(ctx.comidasPorMomento)
-  if (momentosConCal.length >= 1 && ctx.caloriasConsumidas > 0) {
-    const [, mayor] = momentosConCal.reduce(
-      (max, entry) => (entry[1].calorias > max[1].calorias ? entry : max),
-      ['', { calorias: 0 }]
-    )
-    if (mayor.calorias > ctx.caloriasConsumidas * 0.75 && momentosConCal.length > 1) {
+  // Falta Merienda o Cena de AYER
+  if (ctxAyer && ctxAyer.numComidas > 0) {
+    const faltaCena = !ctxAyer.momentosRegistrados.includes('Cena')
+    const faltaMerienda = !ctxAyer.momentosRegistrados.includes('Merienda')
+    if (faltaCena) {
       tips.push(
         consejo(
           'dia',
-          'comida',
-          70,
-          'La mayor parte de las calorías está en una sola comida. Repartir en más momentos ayuda a la energía y al control del apetito.'
+          'habitos',
+          96,
+          'No registraste la cena de ayer. Mantener la racha te ayuda a predecir tu progreso semanal: cargala ahora (aunque sea una estimación).'
+        )
+      )
+    } else if (faltaMerienda) {
+      tips.push(
+        consejo(
+          'dia',
+          'habitos',
+          88,
+          'Ayer no registraste la merienda. Si comiste algo a la tarde, anotalo: los huecos distorsionan proteína y calorías del día.'
         )
       )
     }
   }
 
-  if (metaCal && ctx.caloriasConsumidas > metaCal * 1.12 && obj === 'bajar_peso') {
+  const pPro = pct(ctx.proteinas, metaPro)
+  const pCal = pct(ctx.caloriasConsumidas, metaCal)
+  const pCarb = metaCarb ? pct(ctx.carbohidratos, metaCarb) : null
+  const tieneAlmuerzo = ctx.momentosRegistrados.includes('Almuerzo')
+  const faltaMeriendaHoy = !ctx.momentosRegistrados.includes('Merienda')
+  const faltaCenaHoy = !ctx.momentosRegistrados.includes('Cena')
+
+  // Proteína baja (<70% de la meta) tras el almuerzo
+  if (tieneAlmuerzo && pPro != null && pPro < 0.7) {
+    const faltan = Math.max(0, metaPro - ctx.proteinas)
+    const pctHoy = redondear(pPro * 100)
+    const cuando = faltaMeriendaHoy || faltaCenaHoy ? 'en la merienda o cena' : 'en la próxima comida'
+    tips.push(
+      consejo(
+        'dia',
+        'nutricion',
+        95,
+        `Llegás al ${pctHoy}% de tu proteína de hoy. Te faltan ${sugerenciaProteina(faltan)}. Sumalos ${cuando}.`
+      )
+    )
+  }
+
+  // Carbos altos + objetivo bajar
+  if (
+    obj === 'bajar_peso' &&
+    ((pCarb != null && pCarb >= 0.85) ||
+      (metaCarb == null && ctx.carbohidratos > 0 && ctx.caloriasConsumidas > 0 && ctx.carbohidratos * 4 > ctx.caloriasConsumidas * 0.55))
+  ) {
     tips.push(
       consejo(
         'dia',
         'balance',
-        88,
-        `Llevás ${ctx.caloriasConsumidas} kcal y tu meta es ${metaCal}. Para bajar de peso, intentá cerrar el día más cerca de la meta o sumar actividad.`
+        92,
+        'Consumiste la mayoría de tus carbos hoy. En la cena priorizá proteínas + vegetales de hoja verde (ensalada, espinaca, brócoli) y evitá pan/arroz extra.'
+      )
+    )
+  }
+
+  // Déficit excesivo (>800 kcal abajo de la meta)
+  if (metaCal && ctx.caloriasConsumidas > 0 && metaCal - ctx.caloriasConsumidas > 800 && (faltaCenaHoy || faltaMeriendaHoy || pCal < 0.55)) {
+    tips.push(
+      consejo(
+        'dia',
+        'salud',
+        97,
+        `Llevás muy pocas calorías hoy (${redondear(ctx.caloriasConsumidas)} de ${metaCal}). Comer de menos puede ralentizar tu metabolismo y hacerte perder músculo: sumá una merienda con avena, fruta o yogur.`
+      )
+    )
+  }
+
+  // Falta registrar cena de HOY
+  if (faltaCenaHoy && ctx.momentosRegistrados.length >= 2) {
+    tips.push(
+      consejo(
+        'dia',
+        'habitos',
+        78,
+        'Todavía no registraste la cena. Cuando comas, buscá el plato (o “Salida / Social” si salís) para cerrar el día.'
+      )
+    )
+  }
+
+  const desayuno = ctx.comidasPorMomento.Desayuno
+  if (desayuno && desayuno.proteinas < metaPro * 0.12 && ctx.proteinas < metaPro * 0.45) {
+    tips.push(
+      consejo(
+        'dia',
+        'nutricion',
+        80,
+        `El desayuno trae poca proteína (${redondear(desayuno.proteinas)} g). Mañana sumá 2 huevos o yogur griego; hoy recuperá ${sugerenciaProteina(metaPro * 0.3 - ctx.proteinas)}.`
+      )
+    )
+  }
+
+  if (metaCal && ctx.caloriasConsumidas > metaCal * 1.12 && obj === 'bajar_peso') {
+    const exceso = redondear(ctx.caloriasConsumidas - metaCal)
+    tips.push(
+      consejo(
+        'dia',
+        'balance',
+        90,
+        `Vas ~${exceso} kcal arriba de tu meta. En lo que queda del día priorizá proteína magra + verduras y saltá snacks azucarados.`
       )
     )
   }
@@ -302,34 +419,36 @@ function consejosComidaDelDia(obj, ctx) {
     ctx.caloriasConsumidas < metaCal * 0.65 &&
     (obj === 'aumentar_peso' || obj === 'ganar_musculo')
   ) {
+    const faltan = redondear(metaCal - ctx.caloriasConsumidas)
     tips.push(
       consejo(
         'dia',
         'balance',
-        86,
-        `Hoy vas ${ctx.caloriasConsumidas} kcal de ${metaCal}. Para tu objetivo conviene sumar comidas nutritivas, sobre todo en almuerzo o merienda.`
+        89,
+        `Te faltan ~${faltan} kcal para tu meta. Sumá arroz con pollo, pasta o un snack denso (palta + pan + huevo) en merienda/cena.`
       )
     )
   }
 
-  if (ctx.proteinas > 0 && ctx.proteinas < metaPro * 0.55) {
+  if (pPro != null && pPro < 0.55 && !tieneAlmuerzo) {
+    const faltan = Math.max(0, metaPro - ctx.proteinas)
     tips.push(
       consejo(
         'dia',
-        'comida',
-        85,
-        `Llevás ${Math.round(ctx.proteinas)} g de proteína y tu meta ronda ${metaPro} g. La cena es buen momento para pollo, pescado, huevo o legumbres.`
+        'nutricion',
+        84,
+        `Llevás ${redondear(ctx.proteinas)} g de proteína (meta ${metaPro} g). Te faltan ${sugerenciaProteina(faltan)}.`
       )
     )
   }
 
-  if (ctx.proteinas >= metaPro * 0.9 && (obj === 'ganar_musculo' || obj === 'aumentar_peso')) {
+  if (pPro != null && pPro >= 0.9 && (obj === 'ganar_musculo' || obj === 'aumentar_peso')) {
     tips.push(
       consejo(
         'dia',
-        'comida',
-        60,
-        `Buen día de proteína (${Math.round(ctx.proteinas)} g). Mantené esa línea para apoyar tu objetivo.`
+        'nutricion',
+        55,
+        `Buen día de proteína (${redondear(ctx.proteinas)} g). Mantené esa línea en la cena para apoyar músculo.`
       )
     )
   }
@@ -341,6 +460,10 @@ function consejosEjercicioDelDia(obj, ctx) {
   const tips = []
   const { metas } = ctx
   const metaPro = metas.proteina
+  const metaCarb = metas.carbohidratos
+  const hayFuerza = esDiaFuerza(ctx)
+  const minCardio = minutosCardio(ctx)
+  const hayCardio = minCardio > 0 || (ctx.ejerciciosPorTipo?.Cardio || 0) > 0
 
   if (!ctx.tieneActividad) {
     if (obj === 'bajar_peso' || obj === 'mantener_peso') {
@@ -348,8 +471,8 @@ function consejosEjercicioDelDia(obj, ctx) {
         consejo(
           'dia',
           'ejercicio',
-          75,
-          'Hoy no hay ejercicio ni rutina registrados. Una caminata o sesión corta suma al balance calórico y al ánimo.'
+          72,
+          'Hoy no hay actividad registrada. Sumá una caminata de 20–30 min o una sesión corta: anotala para que el consejo de mañana sea más preciso.'
         )
       )
     } else if (obj === 'ganar_musculo') {
@@ -357,53 +480,47 @@ function consejosEjercicioDelDia(obj, ctx) {
         consejo(
           'dia',
           'ejercicio',
-          78,
-          'No registraste entrenamiento hoy. Para ganar músculo, la constancia con fuerza o rutina de gimnasio es clave.'
+          75,
+          'No registraste entrenamiento hoy. Para ganar músculo, priorizá fuerza o tu rutina de gym y cerrá el día con proteína alta.'
         )
       )
     }
     return tips
   }
 
-  const partes = []
-  if (ctx.numEjercicios > 0) {
-    const nombres = [...new Set(ctx.ejercicios.map((e) => e.etiqueta))].slice(0, 3)
-    partes.push(`${ctx.numEjercicios} ejercicio${ctx.numEjercicios > 1 ? 's' : ''} (${nombres.join(', ')})`)
-  }
-  if (ctx.numRegistrosRutina > 0) {
-    partes.push(`${ctx.numRegistrosRutina} registro${ctx.numRegistrosRutina > 1 ? 's' : ''} de rutina`)
-  }
-
-  tips.push(
-    consejo(
-      'dia',
-      'ejercicio',
-      72,
-      `Hoy registraste ${partes.join(' y ')}: ~${Math.round(ctx.caloriasQuemadas)} kcal quemadas en ${ctx.minutosActividad} min.`
-    )
-  )
-
-  const hayCardio = (ctx.ejerciciosPorTipo.Cardio || 0) > 0
-  const hayFuerza = (ctx.ejerciciosPorTipo.Fuerza || 0) > 0 || ctx.numRegistrosRutina > 0
-
-  if (hayCardio && ctx.carbohidratos < 80 && ctx.caloriasConsumidas > 0) {
+  // Día de fuerza + proteína baja → recuperación
+  if (hayFuerza && pct(ctx.proteinas, metaPro) != null && pct(ctx.proteinas, metaPro) < 0.75) {
+    const objetivoCena = Math.max(25, redondear(metaPro - ctx.proteinas))
     tips.push(
       consejo(
         'dia',
-        'ejercicio',
-        80,
-        'Hiciste cardio y hoy hay pocos carbohidratos registrados. Arroz, fruta o pan integral en la próxima comida ayudan a recuperar.'
+        'recuperacion',
+        98,
+        `Hoy entrenaste pesado. Asegurá al menos ${objetivoCena} g de proteína antes de dormir (${sugerenciaProteina(objetivoCena)}) para reparar músculo.`
       )
     )
   }
 
-  if (hayFuerza && ctx.proteinas < metaPro * 0.7) {
+  // Cardio intenso >45 min + carbos bajos → rendimiento
+  const carbosBajos =
+    (metaCarb && pct(ctx.carbohidratos, metaCarb) < 0.5) ||
+    (!metaCarb && ctx.carbohidratos < 100 && ctx.caloriasConsumidas > 0)
+  if (minCardio >= 45 && carbosBajos) {
     tips.push(
       consejo(
         'dia',
-        'ejercicio',
-        84,
-        'Entrenaste fuerza o rutina y la proteína del día va baja. Priorizala en la comida que siga para recuperar mejor.'
+        'rendimiento',
+        94,
+        `Quemaste mucha energía en cardio (${minCardio} min). No le temas a un bowl de avena o fruta para recuperar glucógeno (${sugerenciaCarbos(metaCarb ? metaCarb * 0.3 : 40)}).`
+      )
+    )
+  } else if (hayCardio && ctx.carbohidratos < 80 && ctx.caloriasConsumidas > 0 && minCardio < 45) {
+    tips.push(
+      consejo(
+        'dia',
+        'rendimiento',
+        82,
+        'Hiciste cardio y hoy hay pocos carbohidratos. Sumá fruta, arroz o pan integral en la próxima comida.'
       )
     )
   }
@@ -415,8 +532,8 @@ function consejosEjercicioDelDia(obj, ctx) {
         consejo(
           'dia',
           'balance',
-          87,
-          `Consumiste ${ctx.caloriasConsumidas} kcal y quemaste ~${Math.round(ctx.caloriasQuemadas)}. El excedente es alto para bajar de peso; controlá porciones en la cena.`
+          86,
+          `Consumiste ${redondear(ctx.caloriasConsumidas)} kcal y quemaste ~${redondear(ctx.caloriasQuemadas)}. El excedente es alto: en la cena priorizá proteína + verduras.`
         )
       )
     }
@@ -425,8 +542,8 @@ function consejosEjercicioDelDia(obj, ctx) {
         consejo(
           'dia',
           'balance',
-          83,
-          `Quemaste más de lo que llevás consumido (~${Math.abs(Math.round(balance))} kcal de diferencia). Sumá una comida o merienda nutritiva para no quedarte corto.`
+          85,
+          `Quemaste ~${Math.abs(redondear(balance))} kcal más de las que llevás comidas. Recuperá con una merienda densa (avena + proteína o banana + mantequilla de maní).`
         )
       )
     }
@@ -438,7 +555,7 @@ function consejosEjercicioDelDia(obj, ctx) {
         'dia',
         'ejercicio',
         68,
-        'Hoy solo hay cardio registrado. Para ganar músculo, sumá también entrenamiento de fuerza o tu rutina de gimnasio.'
+        'Hoy solo hay cardio. Esta semana sumá al menos 2 días de fuerza o rutina de gym para ganar músculo.'
       )
     )
   }
@@ -452,13 +569,26 @@ function consejosSemanales(obj, ctx) {
   const metaPro = metas.proteina
   const metaCal = metas.calorias
 
+  // 3 días seguidos de gym sin descanso
+  const racha = rachaGymSinDescanso(ctx.diasDetalle)
+  if (racha >= 3) {
+    tips.push(
+      consejo(
+        'semana',
+        'descanso',
+        96,
+        `¡Gran racha de ${racha} días de fuerza! Los músculos crecen en el descanso. Considerá hoy un día activo: caminata suave 30–40 min y priorizá sueño + proteína.`
+      )
+    )
+  }
+
   if (ctx.diasConComida === 0) {
     tips.push(
       consejo(
         'semana',
-        'comida',
+        'habitos',
         95,
-        'Esta semana no hay comidas registradas. Anotar aunque sea desayuno y cena te da un panorama real y mejores consejos.'
+        'Esta semana no hay comidas registradas. Anotá aunque sea desayuno y cena (o platos de “Salida / Social”) para no perder la racha.'
       )
     )
     return tips
@@ -468,32 +598,45 @@ function consejosSemanales(obj, ctx) {
     tips.push(
       consejo(
         'semana',
-        'comida',
+        'habitos',
         92,
-        `Solo registraste comidas ${ctx.diasConComida} de ${numDias} días. Registrar más seguido ayuda a ver patrones y ajustar mejor.`
+        `Solo registraste comidas ${ctx.diasConComida} de ${numDias} días. Apuntá a marcar al menos una comida por día: la app aprende tu patrón y los consejos mejoran.`
       )
     )
   }
 
+  const cenas = ctx.momentosConteo.Cena || 0
   const meriendas = ctx.momentosConteo.Merienda || 0
+  if (cenas <= 2 && ctx.diasConComida >= 4) {
+    tips.push(
+      consejo(
+        'semana',
+        'habitos',
+        90,
+        `Registraste cena solo ${cenas} días esta semana. Cerrar el día con el registro (aunque sea estimado) mejora el promedio de proteína y calorías.`
+      )
+    )
+  }
+
   if (meriendas <= 1 && ctx.diasConComida >= 3) {
     tips.push(
       consejo(
         'semana',
-        'comida',
+        'nutricion',
         78,
-        'Casi no registraste meriendas esta semana. Si comés a la tarde, anotarlas evita quedarte corto en calorías o proteína.'
+        'Casi no hay meriendas esta semana. Si picás a la tarde, anotalo: yogur, fruta o un snack de salida evita quedarte corto en proteína.'
       )
     )
   }
 
   if (ctx.promedioProteinas > 0 && ctx.promedioProteinas < metaPro * 0.75) {
+    const faltan = metaPro - ctx.promedioProteinas
     tips.push(
       consejo(
         'semana',
-        'comida',
-        86,
-        `Tu promedio de proteína ronda ${ctx.promedioProteinas} g/día y la meta es ${metaPro} g. Subí proteína en almuerzo y cena de forma constante.`
+        'nutricion',
+        88,
+        `Tu promedio de proteína es ${ctx.promedioProteinas} g/día (meta ${metaPro} g). Cada día sumá ${sugerenciaProteina(faltan)} en almuerzo o cena.`
       )
     )
   }
@@ -503,8 +646,8 @@ function consejosSemanales(obj, ctx) {
       consejo(
         'semana',
         'balance',
-        88,
-        `En los días que registraste comida, promediás ${ctx.promedioCalorias} kcal (meta ${metaCal}). Revisá porciones o sumá actividad varias veces por semana.`
+        87,
+        `Promediás ${ctx.promedioCalorias} kcal (meta ${metaCal}). Esta semana: porciones un poco menores en cena y 2–3 caminatas de 30 min.`
       )
     )
   }
@@ -514,8 +657,8 @@ function consejosSemanales(obj, ctx) {
       consejo(
         'semana',
         'balance',
-        87,
-        `Promediás ${ctx.promedioCalorias} kcal en días con registro; tu meta es ${metaCal}. Sumá meriendas o colaciones nutritivas entre comidas principales.`
+        86,
+        `Promediás ${ctx.promedioCalorias} kcal; tu meta es ${metaCal}. Sumá meriendas densas (avena, pan + palta, batido) todos los días.`
       )
     )
   }
@@ -525,8 +668,8 @@ function consejosSemanales(obj, ctx) {
       consejo(
         'semana',
         'ejercicio',
-        85,
-        `Esta semana registraste actividad ${ctx.diasConActividad} de ${numDias} días. Apuntá a al menos 3 días con movimiento o rutina.`
+        84,
+        `Actividad ${ctx.diasConActividad} de ${numDias} días. Esta semana apuntá a 3 sesiones (aunque sean caminatas) y registralas al terminar.`
       )
     )
   }
@@ -537,19 +680,19 @@ function consejosSemanales(obj, ctx) {
       consejo(
         'semana',
         'ejercicio',
-        82,
-        'Esta semana predominó el cardio. Para ganar músculo, incluí fuerza o rutina de gimnasio al menos 2 veces por semana.'
+        83,
+        'Esta semana predominó el cardio. Incluí fuerza o rutina de gimnasio al menos 2 veces y cerrá esos días con +30 g de proteína.'
       )
     )
   }
 
-  if (ctx.diasConComida >= 5 && ctx.diasConActividad >= 3) {
+  if (ctx.diasConComida >= 5 && ctx.diasConActividad >= 3 && racha < 3) {
     tips.push(
       consejo(
         'semana',
-        'habito',
+        'habitos',
         55,
-        `Buen ritmo: ${ctx.diasConComida} días con comidas y ${ctx.diasConActividad} con actividad esta semana. Mantener el registro te da ventaja.`
+        `Buen ritmo: ${ctx.diasConComida} días con comidas y ${ctx.diasConActividad} con actividad. Seguí así: la constancia predice mejor tu progreso.`
       )
     )
   }
@@ -878,8 +1021,9 @@ function consejosPerfilCorporal(obj, perfil) {
 
 /**
  * Consejos del día según comidas y ejercicios registrados.
+ * @param {object} [contextoSemana] para tips de ayer / racha (opcional)
  */
-export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedidas = null) {
+export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedidas = null, contextoSemana = null) {
   const obj = objetivo || config?.objetivo || 'mantener_peso'
   const ctx =
     contexto?.numComidas != null
@@ -906,25 +1050,32 @@ export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedid
           'dia',
           'balance',
           80,
-          'Hoy llevás más calorías que las quemadas. Para bajar, buscá un déficit moderado con comida o más movimiento.'
+          'Hoy llevás más calorías que las quemadas. En la próxima comida priorizá proteína + verduras y evitá snacks extra.'
         )
       )
     }
     if ((obj === 'ganar_musculo' || obj === 'aumentar_peso') && pro < metaPro && cal > 0) {
+      const faltan = metaPro - pro
       tips.push(
         consejo(
           'dia',
-          'comida',
+          'nutricion',
           80,
-          `Para tu objetivo conviene más proteína: intentá llegar a unos ${metaPro} g al día.`
+          `Te faltan ${sugerenciaProteina(faltan)}. Sumalos en la cena.`
         )
       )
     }
     return uniqTextos(tips, 1)
   }
 
+  const fechaAyer = diaAnterior(ctx.fecha)
+  let ctxAyer = null
+  if (fechaAyer && contextoSemana?.diasDetalle) {
+    ctxAyer = contextoSemana.diasDetalle.find((d) => d.fecha === fechaAyer) || null
+  }
+
   const tips = [
-    ...consejosComidaDelDia(obj, ctx),
+    ...consejosComidaDelDia(obj, ctx, ctxAyer),
     ...consejosEjercicioDelDia(obj, ctx),
   ]
 
@@ -944,7 +1095,7 @@ export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedid
         'dia',
         'medidas',
         77,
-        'Hace más de 2 semanas de tu última medición. Hoy o mañana es buen día para actualizar cintura y brazos.'
+        'Hace más de 2 semanas de tu última medición. Hoy o mañana actualizá cintura y brazos (mismos puntos y hora).'
       )
     )
   }
@@ -956,7 +1107,7 @@ export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedid
         'dia',
         'perfil',
         58,
-        'Con tu peso ya cargado, sumá la altura en Config para calcular el IMC.'
+        'Con tu peso ya cargado, sumá la altura en Config para calcular el IMC y sugerir kcal.'
       )
     )
   }
@@ -1002,7 +1153,7 @@ export function getConsejos(objetivo, contextoDia, contextoSemana, config = {}, 
       : null)
 
   return {
-    diarios: getConsejosDelDia(objetivo, contextoDia, config, progresoMedidas),
+    diarios: getConsejosDelDia(objetivo, contextoDia, config, progresoMedidas, contextoSemana),
     semanales: getConsejosSemanales(objetivo, contextoSemana, config, progresoMedidas),
   }
 }

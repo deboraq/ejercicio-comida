@@ -58,14 +58,6 @@ export default function Config() {
   })
 
   const setObjetivo = (v) => setConfig((c) => ({ ...c, objetivo: v }))
-  const setPeso = (v) => {
-    if (v === '' || v == null) {
-      setConfig((c) => ({ ...c, pesoKg: '' }))
-      return
-    }
-    const num = Number(v)
-    if (!Number.isNaN(num) && num >= 0) setConfig((c) => ({ ...c, pesoKg: num }))
-  }
   const setAltura = (v) => {
     if (v === '' || v == null) {
       setConfig((c) => ({ ...c, alturaCm: '' }))
@@ -89,7 +81,30 @@ export default function Config() {
   const setMetaCarbohidratos = (v) => setConfig((c) => ({ ...c, metaCarbohidratos: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
   const setMetaGrasa = (v) => setConfig((c) => ({ ...c, metaGrasa: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
 
+  // El peso “oficial” es el último del historial; sincroniza config para IMC/kcal
+  useEffect(() => {
+    if (!historialPeso?.length) return
+    const latest = [...historialPeso].sort((a, b) =>
+      String(b.fecha).localeCompare(String(a.fecha))
+    )[0]
+    const kg = Number(latest?.pesoKg)
+    if (!Number.isFinite(kg) || kg <= 0) return
+    if (Number(config.pesoKg) === kg) return
+    setConfig((c) => ({ ...c, pesoKg: kg }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar historial
+  }, [historialPeso])
+
   const perfilCorporal = buildPerfilCorporal(config)
+  const pesoMostrado = perfilCorporal.pesoKg
+
+  const perfilResumen = (() => {
+    const bits = []
+    if (pesoMostrado) bits.push(`${pesoMostrado} kg`)
+    if (perfilCorporal.alturaCm) bits.push(`${perfilCorporal.alturaCm} cm`)
+    if (perfilCorporal.imc != null) bits.push(`IMC ${perfilCorporal.imc}`)
+    if (perfilCorporal.tdee != null) bits.push(`~${perfilCorporal.tdee} kcal`)
+    return bits.length ? bits.join(' · ') : 'Altura, sexo, edad y actividad'
+  })()
 
   const aplicarSugerenciaMetas = () => {
     const s = perfilCorporal.sugerencia
@@ -247,38 +262,59 @@ export default function Config() {
           </div>
         </div>
 
+        <div className="config-bloque-seguimiento mb-2">
+          <h2 className="config-bloque-titulo">Seguimiento</h2>
+          <p className="config-bloque-sub">
+            Para cambiar tu peso abrí <strong>Peso corporal</strong>, editá el número y guardá.
+          </p>
+        </div>
+
+        <PesoSeguimiento
+          historial={historialPeso}
+          setHistorial={setHistorialPeso}
+          pesoActualKg={pesoMostrado}
+          defaultOpen
+          onActualizarPesoConfig={(kg) => setConfig((c) => ({ ...c, pesoKg: kg }))}
+        />
+
+        <MedidasSeguimiento
+          historial={historialMedidas}
+          setHistorial={setHistorialMedidas}
+        />
+
+        <div className="config-bloque-seguimiento mb-2 mt-4">
+          <h2 className="config-bloque-titulo">Perfil y metas</h2>
+          <p className="config-bloque-sub">
+            Datos estables para IMC y gasto diario. El peso no se edita acá: viene del último pesaje.
+          </p>
+        </div>
+
         <SeguimientoCaja
           id="datos-corporales"
-          titulo="Datos corporales"
-          resumen={
-            perfilCorporal.imc != null
-              ? `IMC ${perfilCorporal.imc}${perfilCorporal.tdee != null ? ` · Gasto ~${perfilCorporal.tdee} kcal` : ''}`
-              : perfilCorporal.pesoKg
-                ? `Peso ${perfilCorporal.pesoKg} kg · completá altura y actividad`
-                : 'Peso, altura, edad y actividad'
-          }
-          ctaCerrado="Editar datos"
+          titulo="Datos para cálculos"
+          resumen={perfilResumen}
+          ctaCerrado="Editar perfil"
         >
-          <p className="is-size-7 has-text-grey mb-3">
-            Peso + altura = IMC. Con sexo, edad y nivel de actividad estimamos tu gasto diario (TDEE) y sugerimos metas.
-          </p>
-          <div className="columns is-mobile is-multiline mb-0">
-            <div className="column is-half">
-              <label className="label is-size-7">Peso (kg)</label>
-              <input
-                className="input is-small"
-                type="number"
-                min="0"
-                step="0.1"
-                value={config.pesoKg === '' || config.pesoKg == null ? '' : config.pesoKg}
-                onChange={(e) => setPeso(e.target.value)}
-                placeholder="70"
-              />
+          <div className="config-peso-mirror mb-3">
+            <div>
+              <span className="config-peso-mirror-label">Peso actual</span>
+              <strong>
+                {pesoMostrado != null ? `${pesoMostrado} kg` : 'Sin registrar'}
+              </strong>
+              <p className="is-size-7 has-text-grey mb-0 mt-1">
+                Para modificarlo usá la sección Peso corporal (arriba).
+              </p>
             </div>
-            <div className="column is-half">
+            <a className="button is-small is-link is-light" href="#peso-seguimiento">
+              Modificar peso
+            </a>
+          </div>
+
+          <div className="config-perfil-grid">
+            <div className="field mb-0">
               <label className="label is-size-7">Altura (cm)</label>
               <input
-                className="input is-small"
+                className="input"
                 type="number"
                 min="100"
                 max="250"
@@ -288,9 +324,9 @@ export default function Config() {
                 placeholder="Ej: 165"
               />
             </div>
-            <div className="column is-half">
+            <div className="field mb-0">
               <label className="label is-size-7">Sexo</label>
-              <div className="select is-fullwidth is-small">
+              <div className="select is-fullwidth">
                 <select value={config.sexo || ''} onChange={(e) => setSexo(e.target.value)}>
                   {SEXOS.map((s) => (
                     <option key={s.value || 'na'} value={s.value}>{s.label}</option>
@@ -298,10 +334,10 @@ export default function Config() {
                 </select>
               </div>
             </div>
-            <div className="column is-half">
+            <div className="field mb-0">
               <label className="label is-size-7">Edad</label>
               <input
-                className="input is-small"
+                className="input"
                 type="number"
                 min="10"
                 max="120"
@@ -310,9 +346,9 @@ export default function Config() {
                 placeholder="Ej: 28"
               />
             </div>
-            <div className="column is-full">
+            <div className="field mb-0 config-perfil-actividad">
               <label className="label is-size-7">Nivel de actividad</label>
-              <div className="select is-fullwidth is-small">
+              <div className="select is-fullwidth">
                 <select
                   value={config.nivelActividad || ''}
                   onChange={(e) => setNivelActividad(e.target.value)}
@@ -327,6 +363,7 @@ export default function Config() {
               </div>
             </div>
           </div>
+
           {(perfilCorporal.imc != null || perfilCorporal.tmb != null) && (
             <div className="medidas-chips mt-3">
               {perfilCorporal.imc != null && (
@@ -362,18 +399,18 @@ export default function Config() {
             </div>
           )}
           {!perfilCorporal.alturaCm && (
-            <p className="is-size-7 has-text-grey mt-3 mb-0">
-              Cargá tu altura para ver IMC.
-            </p>
+            <p className="config-hint mt-3 mb-0">Cargá tu altura para ver el IMC.</p>
           )}
           {perfilCorporal.alturaCm && perfilCorporal.pesoKg && (!perfilCorporal.edad || !config.nivelActividad) && (
-            <p className="is-size-7 has-text-grey mt-3 mb-0">
-              Completá edad y nivel de actividad para estimar tu gasto diario y sugerir metas.
+            <p className="config-hint mt-3 mb-0">
+              Completá edad y actividad para estimar el gasto diario y sugerir metas.
             </p>
           )}
-          <p className="is-size-7 has-text-grey mt-2 mb-0">
-            Estimaciones orientativas (Mifflin–St Jeor). El IMC no distingue músculo de grasa: seguí también las medidas.
-          </p>
+          {!pesoMostrado && (
+            <p className="config-hint mt-3 mb-0">
+              Todavía no hay peso: registrá el primero en <a href="#peso-seguimiento">Peso corporal</a>.
+            </p>
+          )}
         </SeguimientoCaja>
 
         <SeguimientoCaja
@@ -387,12 +424,12 @@ export default function Config() {
           ctaCerrado="Editar metas"
           className="config-metas-card"
         >
-          <p className="is-size-7 has-text-grey mb-3">Para ver barras de progreso en Inicio y Comida.</p>
+          <p className="config-hint mb-3">Para ver barras de progreso en Inicio y Comida.</p>
 
           {perfilCorporal.sugerencia ? (
             <div className="config-sugerencia-metas mb-3">
               <p className="is-size-7 mb-2">
-                Según tu objetivo, perfil y actividad, una sugerencia es{' '}
+                Según tu objetivo y perfil, sugerimos{' '}
                 <strong>{perfilCorporal.sugerencia.calorias} kcal</strong>
                 {' · '}P {perfilCorporal.sugerencia.proteina} g
                 {' · '}C {perfilCorporal.sugerencia.carbohidratos} g
@@ -404,48 +441,35 @@ export default function Config() {
                 )}
               </p>
               <button type="button" className="button is-link is-small" onClick={aplicarSugerenciaMetas}>
-                Aplicar sugerencia a mis metas
+                Aplicar sugerencia
               </button>
             </div>
           ) : (
-            <p className="is-size-7 has-text-grey mb-3">
-              Completá peso, altura, edad y nivel de actividad en Datos corporales para obtener una sugerencia automática.
+            <p className="config-hint mb-3">
+              Completá peso (en Seguimiento), altura, edad y actividad para una sugerencia automática.
             </p>
           )}
 
           <div className="config-metas-grid">
             <div className="field">
-              <label className="label is-size-7">🔥 Calorías (kcal)</label>
+              <label className="label is-size-7">Calorías (kcal)</label>
               <input className="input" type="number" min="0" placeholder="Ej: 2000" value={config.metaCalorias ?? ''} onChange={(e) => setMetaCalorias(e.target.value)} />
             </div>
             <div className="field">
-              <label className="label is-size-7">🥩 Proteínas (g)</label>
+              <label className="label is-size-7">Proteínas (g)</label>
               <input className="input" type="number" min="0" placeholder="Ej: 150" value={config.metaProteina ?? ''} onChange={(e) => setMetaProteina(e.target.value)} />
             </div>
             <div className="field">
-              <label className="label is-size-7">🌾 Carbohidratos (g)</label>
+              <label className="label is-size-7">Carbohidratos (g)</label>
               <input className="input" type="number" min="0" placeholder="Ej: 250" value={config.metaCarbohidratos ?? ''} onChange={(e) => setMetaCarbohidratos(e.target.value)} />
             </div>
             <div className="field">
-              <label className="label is-size-7">💧 Grasas (g)</label>
+              <label className="label is-size-7">Grasas (g)</label>
               <input className="input" type="number" min="0" placeholder="Ej: 60" value={config.metaGrasa ?? ''} onChange={(e) => setMetaGrasa(e.target.value)} />
             </div>
           </div>
-          <div className="is-flex is-justify-content-flex-end mt-3">
-            <span className="tag is-success">Guardado automático</span>
-          </div>
+          <p className="is-size-7 has-text-grey has-text-right mt-2 mb-0">Se guarda solo</p>
         </SeguimientoCaja>
-
-        <PesoSeguimiento
-          historial={historialPeso}
-          setHistorial={setHistorialPeso}
-          onActualizarPesoConfig={(kg) => setConfig((c) => ({ ...c, pesoKg: kg }))}
-        />
-
-        <MedidasSeguimiento
-          historial={historialMedidas}
-          setHistorial={setHistorialMedidas}
-        />
 
         <SeguimientoCaja
           id="suplementos-config"
@@ -453,8 +477,8 @@ export default function Config() {
           resumen={`${suplementosActivos.length} activos · se marcan en Inicio`}
           ctaCerrado="Configurar"
         >
-          <p className="is-size-7 has-text-grey mb-2">
-            Elegí cuáles querés registrar cada día. En Inicio podrás marcar si los tomaste.
+          <p className="config-hint mb-2">
+            Elegí cuáles querés registrar cada día. En Inicio marcás si los tomaste.
           </p>
           <div className="buttons are-small are-flex-wrap-wrap">
             {SUPLEMENTOS.map((s) => {
