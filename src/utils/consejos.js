@@ -7,6 +7,8 @@ import {
   minutosRutinaDia,
 } from './calorias'
 import { getUltimosNDias } from './estadisticas'
+import { buildProgresoMedidas, formatDeltaCm, labelCampo } from './medidas'
+import { buildPerfilCorporal } from './composicion'
 
 export const OBJETIVOS = [
   { value: 'bajar_peso', label: 'Bajar de peso', icon: '📉' },
@@ -556,9 +558,306 @@ function consejosSemanales(obj, ctx) {
 }
 
 /**
+ * Consejos según historial de medidas corporales (cm).
+ */
+function consejosMedidas(obj, progreso) {
+  const tips = []
+  if (!progreso) return tips
+
+  if (progreso.numTomas === 0) {
+    tips.push(
+      consejo(
+        'semana',
+        'medidas',
+        70,
+        'Todavía no hay medidas corporales. Registrá cintura, cadera y brazos en Config: el peso solo no cuenta toda la historia del progreso.'
+      )
+    )
+    return tips
+  }
+
+  if (progreso.numTomas === 1) {
+    tips.push(
+      consejo(
+        'semana',
+        'medidas',
+        72,
+        'Ya tenés una toma de medidas. Volvé a medir en 1–2 semanas (mismos puntos y hora) para ver si bajó cintura o subieron brazos/muslos.'
+      )
+    )
+  }
+
+  if (progreso.diasDesdeUltima != null && progreso.diasDesdeUltima >= 14) {
+    tips.push(
+      consejo(
+        'semana',
+        'medidas',
+        90,
+        `Pasaron ${progreso.diasDesdeUltima} días desde tu última toma de medidas. Una nueva medición actualiza el progreso real de cintura, cadera y brazos.`
+      )
+    )
+  } else if (progreso.diasDesdeUltima != null && progreso.diasDesdeUltima >= 7 && progreso.numTomas >= 1) {
+    tips.push(
+      consejo(
+        'semana',
+        'medidas',
+        62,
+        'Esta semana es buen momento para una nueva toma de medidas y comparar con la anterior.'
+      )
+    )
+  }
+
+  const d = progreso.deltas || {}
+  const v = progreso.valoresUltima || {}
+
+  if (d.cinturaBaja != null) {
+    const textoDelta = formatDeltaCm(d.cinturaBaja)
+    if (obj === 'bajar_peso' && d.cinturaBaja <= -1) {
+      tips.push(
+        consejo(
+          'semana',
+          'medidas',
+          88,
+          `La cintura baja bajó ${textoDelta} vs. la toma anterior. Buen progreso de composición, aunque el peso no se mueva tanto.`
+        )
+      )
+    } else if (obj === 'bajar_peso' && d.cinturaBaja >= 1.5) {
+      tips.push(
+        consejo(
+          'semana',
+          'medidas',
+          84,
+          `La cintura baja subió ${textoDelta}. Revisá calorías de la semana y mantené constancia con actividad; medí siempre en el mismo punto.`
+        )
+      )
+    } else if (d.cinturaBaja <= -1) {
+      tips.push(
+        consejo(
+          'semana',
+          'medidas',
+          74,
+          `Cintura baja: ${textoDelta} respecto a la medición anterior. El seguimiento en cm ayuda a ver cambios reales.`
+        )
+      )
+    }
+  }
+
+  if (d.cadera != null && obj === 'bajar_peso' && d.cadera <= -1) {
+    tips.push(
+      consejo(
+        'semana',
+        'medidas',
+        80,
+        `La cadera bajó ${formatDeltaCm(d.cadera)}. Seguí priorizando proteína y déficit moderado para conservar músculo.`
+      )
+    )
+  }
+
+  const deltaBrazo = (() => {
+    const partes = [d.brazoIzq, d.brazoDer].filter((x) => x != null)
+    if (!partes.length) return null
+    return Math.round((partes.reduce((s, x) => s + x, 0) / partes.length) * 10) / 10
+  })()
+
+  if (deltaBrazo != null) {
+    if ((obj === 'ganar_musculo' || obj === 'aumentar_peso') && deltaBrazo >= 0.5) {
+      tips.push(
+        consejo(
+          'semana',
+          'medidas',
+          86,
+          `Los brazos subieron en promedio ${formatDeltaCm(deltaBrazo)}. Buena señal de progreso muscular; mantené fuerza y proteína alta.`
+        )
+      )
+    } else if (obj === 'ganar_musculo' && deltaBrazo <= -0.5) {
+      tips.push(
+        consejo(
+          'semana',
+          'medidas',
+          83,
+          `Los brazos bajaron ~${formatDeltaCm(Math.abs(deltaBrazo))}. Revisá si estás en déficit fuerte o faltan series de fuerza / proteína.`
+        )
+      )
+    }
+  }
+
+  if (d.pecho != null && (obj === 'ganar_musculo' || obj === 'aumentar_peso') && d.pecho >= 0.8) {
+    tips.push(
+      consejo(
+        'semana',
+        'medidas',
+        76,
+        `El pecho subió ${formatDeltaCm(d.pecho)}. Si entrenás pecho/espalda, ese cambio suele ir con más masa o mejor postura.`
+      )
+    )
+  }
+
+  if (progreso.asimBrazo != null && progreso.asimBrazo >= 1.5) {
+    tips.push(
+      consejo(
+        'semana',
+        'medidas',
+        68,
+        `Hay ${progreso.asimBrazo} cm de diferencia entre brazos. Trabajá un poco más el lado más chico (mismas series unilaterales) y medí siempre igual.`
+      )
+    )
+  }
+
+  if (progreso.asimMuslo != null && progreso.asimMuslo >= 2) {
+    tips.push(
+      consejo(
+        'semana',
+        'medidas',
+        66,
+        `Los muslos difieren ${progreso.asimMuslo} cm. Sumá trabajo unilateral (zancadas, step-ups) para equilibrar.`
+      )
+    )
+  }
+
+  if (v.cinturaBaja != null && v.cadera != null && v.cadera > 0) {
+    const ratio = Math.round((v.cinturaBaja / v.cadera) * 100) / 100
+    if (obj === 'bajar_peso' && ratio >= 0.9) {
+      tips.push(
+        consejo(
+          'semana',
+          'medidas',
+          64,
+          `Tu cintura (${v.cinturaBaja} cm) está cerca de la cadera (${v.cadera} cm). Bajar cintura con déficit y caminatas suele mejorar esa proporción.`
+        )
+      )
+    }
+  }
+
+  if (progreso.camposComparables?.length >= 2) {
+    const bajaron = progreso.camposComparables.filter((k) => d[k] < 0)
+    const subieron = progreso.camposComparables.filter((k) => d[k] > 0)
+    if (obj === 'bajar_peso' && bajaron.includes('cinturaBaja') && (subieron.includes('brazoIzq') || subieron.includes('brazoDer'))) {
+      tips.push(
+        consejo(
+          'semana',
+          'medidas',
+          79,
+          'Bajó cintura y subieron brazos: típico de recomposición (menos grasa, más músculo). Seguí con fuerza + proteína.'
+        )
+      )
+    }
+  }
+
+  // Tip suave si hay datos pero sin deltas “fuertes”
+  if (tips.length === 0 && progreso.numTomas >= 2 && Object.keys(d).length > 0) {
+    const ejemplo = progreso.camposComparables[0]
+    tips.push(
+      consejo(
+        'semana',
+        'medidas',
+        58,
+        `Última comparación: ${labelCampo(ejemplo)} ${formatDeltaCm(d[ejemplo])}. Los cambios chicos son normales; mirá la tendencia en 3–4 tomas.`
+      )
+    )
+  }
+
+  return tips
+}
+
+/**
+ * Consejos según peso, altura (IMC), sexo y edad.
+ */
+function consejosPerfilCorporal(obj, perfil) {
+  const tips = []
+  if (!perfil) return tips
+
+  if (!perfil.alturaCm) {
+    tips.push(
+      consejo(
+        'semana',
+        'perfil',
+        73,
+        'Falta tu altura en Config. Con peso + altura calculamos el IMC y un rango de peso orientativo.'
+      )
+    )
+    return tips
+  }
+
+  if (!perfil.pesoKg) {
+    tips.push(
+      consejo(
+        'semana',
+        'perfil',
+        74,
+        'Tenés altura cargada pero falta el peso. Registrá una medición para ver el IMC.'
+      )
+    )
+    return tips
+  }
+
+  if (perfil.imc != null && perfil.categoria) {
+    const { imc, categoria, rango } = perfil
+    if (obj === 'bajar_peso' && (categoria.key === 'sobrepeso' || categoria.key === 'obesidad')) {
+      tips.push(
+        consejo(
+          'semana',
+          'perfil',
+          81,
+          `Tu IMC es ${imc} (${categoria.label}). Bajá de a poco con déficit moderado; el rango orientativo para tu altura es ${rango.min}–${rango.max} kg (el IMC no ve músculo vs grasa).`
+        )
+      )
+    } else if (obj === 'aumentar_peso' && categoria.key === 'bajo') {
+      tips.push(
+        consejo(
+          'semana',
+          'perfil',
+          81,
+          `Tu IMC es ${imc} (bajo peso). Subí calorías con comidas nutritivas y sumá fuerza para ganar músculo, no solo grasa.`
+        )
+      )
+    } else if (obj === 'ganar_musculo' && categoria.key === 'normal') {
+      tips.push(
+        consejo(
+          'semana',
+          'perfil',
+          60,
+          `IMC ${imc} en rango saludable. Para ganar músculo importan más fuerza, proteína y medidas (brazos/pecho) que el IMC solo.`
+        )
+      )
+    } else if (categoria.key === 'normal' && obj === 'mantener_peso') {
+      tips.push(
+        consejo(
+          'semana',
+          'perfil',
+          52,
+          `IMC ${imc}: en rango saludable. Seguí midiendo cintura y peso cada tanto para mantener el equilibrio.`
+        )
+      )
+    } else if (obj === 'ganar_musculo' && (categoria.key === 'sobrepeso' || categoria.key === 'obesidad')) {
+      tips.push(
+        consejo(
+          'semana',
+          'perfil',
+          78,
+          `IMC ${imc}. Si buscás músculo con sobrepeso, priorizá fuerza + proteína y mirá cintura/medidas: el peso puede bajar poco mientras mejorás composición.`
+        )
+      )
+    }
+  }
+
+  if (!perfil.sexo || !perfil.edad) {
+    tips.push(
+      consejo(
+        'semana',
+        'perfil',
+        48,
+        'Si cargás sexo y edad en Config (opcionales), los consejos y futuras estimaciones de kcal basales son más precisos.'
+      )
+    )
+  }
+
+  return tips
+}
+
+/**
  * Consejos del día según comidas y ejercicios registrados.
  */
-export function getConsejosDelDia(objetivo, contexto, config = {}) {
+export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedidas = null) {
   const obj = objetivo || config?.objetivo || 'mantener_peso'
   const ctx =
     contexto?.numComidas != null
@@ -607,13 +906,46 @@ export function getConsejosDelDia(objetivo, contexto, config = {}) {
     ...consejosEjercicioDelDia(obj, ctx),
   ]
 
+  // Recordatorio puntual de medidas (prioridad media) mezclado en el día
+  if (progresoMedidas?.numTomas === 0) {
+    tips.push(
+      consejo(
+        'dia',
+        'medidas',
+        55,
+        'Para ver progreso real, sumá una toma de medidas (cintura, cadera, brazos) en Config cuando puedas.'
+      )
+    )
+  } else if (progresoMedidas?.diasDesdeUltima != null && progresoMedidas.diasDesdeUltima >= 14) {
+    tips.push(
+      consejo(
+        'dia',
+        'medidas',
+        77,
+        'Hace más de 2 semanas de tu última medición. Hoy o mañana es buen día para actualizar cintura y brazos.'
+      )
+    )
+  }
+
+  const perfil = buildPerfilCorporal(config)
+  if (!perfil.alturaCm && perfil.pesoKg) {
+    tips.push(
+      consejo(
+        'dia',
+        'perfil',
+        58,
+        'Con tu peso ya cargado, sumá la altura en Config para calcular el IMC.'
+      )
+    )
+  }
+
   return uniqTextos(tips, 3)
 }
 
 /**
  * Consejos semanales según lo registrado en los últimos días.
  */
-export function getConsejosSemanales(objetivo, contextoSemana, config = {}) {
+export function getConsejosSemanales(objetivo, contextoSemana, config = {}, progresoMedidas = null) {
   const obj = objetivo || config?.objetivo || 'mantener_peso'
   const ctx = contextoSemana?.diasConComida != null
     ? contextoSemana
@@ -626,15 +958,29 @@ export function getConsejosSemanales(objetivo, contextoSemana, config = {}) {
         config,
       })
 
-  return uniqTextos(consejosSemanales(obj, ctx), 2)
+  const tips = [
+    ...consejosSemanales(obj, ctx),
+    ...consejosMedidas(obj, progresoMedidas),
+    ...consejosPerfilCorporal(obj, buildPerfilCorporal(config)),
+  ]
+
+  return uniqTextos(tips, 3)
 }
 
 /**
  * Devuelve consejos diarios y semanales listos para mostrar.
+ * @param {object} [extras] { historialMedidas, hoy }
  */
-export function getConsejos(objetivo, contextoDia, contextoSemana, config = {}) {
+export function getConsejos(objetivo, contextoDia, contextoSemana, config = {}, extras = {}) {
+  const hoy = extras.hoy || contextoDia?.fecha
+  const progresoMedidas =
+    extras.progresoMedidas ||
+    (extras.historialMedidas != null
+      ? buildProgresoMedidas(extras.historialMedidas, hoy)
+      : null)
+
   return {
-    diarios: getConsejosDelDia(objetivo, contextoDia, config),
-    semanales: getConsejosSemanales(objetivo, contextoSemana, config),
+    diarios: getConsejosDelDia(objetivo, contextoDia, config, progresoMedidas),
+    semanales: getConsejosSemanales(objetivo, contextoSemana, config, progresoMedidas),
   }
 }

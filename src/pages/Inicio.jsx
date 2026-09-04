@@ -15,6 +15,8 @@ import {
 import { getConsejos, buildContextoDia, buildContextoSemana, OBJETIVOS } from '../utils/consejos'
 import { getRachaDias, PERIODOS, getRangoPorPeriodo, getFechasEnRango, getUltimosNDias } from '../utils/estadisticas'
 import { SUPLEMENTOS, getSuplementoLabel } from '../utils/suplementos'
+import { CAMPOS_RESUMEN, labelCampo, deltaCampo, formatDeltaCm, valoresDeToma } from '../utils/medidas'
+import { buildPerfilCorporal } from '../utils/composicion'
 import StatMiniCard from '../components/StatMiniCard'
 import ConsejosPanel from '../components/ConsejosPanel'
 
@@ -54,6 +56,7 @@ export default function Inicio() {
   const [suplementos, setSuplementos] = useStorage('suplementos', [])
   const [registrosRutina] = useStorage('rutinaPesos', [])
   const [historialPeso] = useStorage('pesoHistorial', [])
+  const [historialMedidas] = useStorage('medidasHistorial', [])
   const [config] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
 
   const hoy = fechaToISO(new Date())
@@ -140,6 +143,40 @@ export default function Inicio() {
     const delta = pen != null ? Math.round((Number(ult.pesoKg) - Number(pen.pesoKg)) * 10) / 10 : null
     return { ult, pen, delta }
   }, [historialPeso])
+
+  const resumenMedidas = useMemo(() => {
+    const h = historialMedidas
+    if (!Array.isArray(h) || h.length === 0) return null
+    const o = [...h].sort((a, b) => fechaSoloDia(b.fecha).localeCompare(fechaSoloDia(a.fecha)))
+    const ult = o[0]
+    const pen = o[1]
+    const vals = valoresDeToma(ult)
+    const chips = CAMPOS_RESUMEN
+      .filter((key) => vals[key] != null)
+      .map((key) => ({
+        key,
+        label: labelCampo(key),
+        valor: vals[key],
+        delta: pen ? deltaCampo(ult, pen, key) : null,
+      }))
+    if (chips.length === 0) {
+      const extras = Object.keys(vals).slice(0, 4).map((key) => ({
+        key,
+        label: labelCampo(key),
+        valor: vals[key],
+        delta: pen ? deltaCampo(ult, pen, key) : null,
+      }))
+      if (extras.length === 0) return null
+      return { ult, pen, chips: extras }
+    }
+    return { ult, pen, chips }
+  }, [historialMedidas])
+
+  const perfilCorporal = useMemo(() => {
+    const pesoHist = resumenPesoCorporal?.ult?.pesoKg
+    return buildPerfilCorporal(config, pesoHist ?? config?.pesoKg)
+  }, [config, resumenPesoCorporal])
+
   const minutosEjercicioDia = ejerciciosDelDia.reduce((s, e) => s + e.duracion, 0)
   const minutosRutinaEstDia = minutosRutinaDia(registrosRutina, diaEnVista)
   const minutosDia = minutosEjercicioDia + minutosRutinaEstDia
@@ -181,7 +218,8 @@ export default function Inicio() {
     config?.objetivo,
     contextoDia,
     contextoSemana,
-    config
+    config,
+    { historialMedidas, hoy: diaEnVista }
   )
 
   const objetivoLabel = OBJETIVOS.find((o) => o.value === config?.objetivo)?.label || 'Mantener peso'
@@ -519,9 +557,9 @@ export default function Inicio() {
           </div>
         )}
 
-        {resumenPesoCorporal && (
+        {resumenPesoCorporal ? (
           <div className="box mb-4">
-            <h2 className="title is-6 mb-2">Peso corporal</h2>
+            <h2 className="title is-6 mb-2">Peso e IMC</h2>
             <p className="mb-1">
               Última medición:{' '}
               <strong className="has-text-link">{resumenPesoCorporal.ult.pesoKg} kg</strong>
@@ -536,8 +574,88 @@ export default function Inicio() {
                 </strong>
               </p>
             )}
+            {perfilCorporal.imc != null ? (
+              <div className="medidas-chips mb-2">
+                <span className="medidas-chip">
+                  <span className="medidas-chip-label">IMC</span>
+                  <strong>{perfilCorporal.imc}</strong>
+                  {perfilCorporal.categoria && (
+                    <span className="has-text-grey ml-1">· {perfilCorporal.categoria.label}</span>
+                  )}
+                </span>
+                {perfilCorporal.alturaCm && (
+                  <span className="medidas-chip">
+                    <span className="medidas-chip-label">Altura</span>
+                    <strong>{perfilCorporal.alturaCm}</strong>
+                    <span className="has-text-grey"> cm</span>
+                  </span>
+                )}
+                {perfilCorporal.rango && (
+                  <span className="medidas-chip">
+                    <span className="medidas-chip-label">Rango orient.</span>
+                    <strong>{perfilCorporal.rango.min}–{perfilCorporal.rango.max}</strong>
+                    <span className="has-text-grey"> kg</span>
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="is-size-7 has-text-grey mb-2">
+                Cargá tu altura en Config para calcular el IMC (peso ÷ altura²).
+              </p>
+            )}
+            <Link to="/config#datos-corporales" className="is-size-7">
+              Ajustar peso / altura →
+            </Link>
+            <span className="is-size-7 has-text-grey mx-2">·</span>
             <Link to="/config#peso-seguimiento" className="is-size-7">
-              Registrar medición o ver historial →
+              Historial de peso →
+            </Link>
+          </div>
+        ) : (
+          <div className="box mb-4">
+            <h2 className="title is-6 mb-2">Peso e IMC</h2>
+            <p className="is-size-7 has-text-grey mb-2">
+              Registrá peso y altura para ver IMC y un rango orientativo.
+            </p>
+            <Link to="/config#datos-corporales" className="is-size-7">
+              Completar datos corporales →
+            </Link>
+          </div>
+        )}
+
+        {resumenMedidas ? (
+          <div className="box mb-4">
+            <h2 className="title is-6 mb-2">Medidas corporales</h2>
+            <p className="is-size-7 has-text-grey mb-2">
+              Última toma: {formatearFecha(resumenMedidas.ult.fecha)}
+              {resumenMedidas.pen ? ` · vs. ${formatearFecha(resumenMedidas.pen.fecha)}` : ''}
+            </p>
+            <div className="medidas-chips mb-2">
+              {resumenMedidas.chips.map((c) => (
+                <span key={c.key} className="medidas-chip">
+                  <span className="medidas-chip-label">{c.label}</span>
+                  <strong>{c.valor}</strong>
+                  <span className="has-text-grey"> cm</span>
+                  {c.delta != null && (
+                    <span className={`medidas-chip-delta ${c.delta <= 0 ? 'is-down' : 'is-up'}`}>
+                      {formatDeltaCm(c.delta)}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </div>
+            <Link to="/config#medidas-seguimiento" className="is-size-7">
+              Registrar medidas o ver historial →
+            </Link>
+          </div>
+        ) : (
+          <div className="box mb-4">
+            <h2 className="title is-6 mb-2">Medidas corporales</h2>
+            <p className="is-size-7 has-text-grey mb-2">
+              Todavía no registraste circunferencias. Medí cintura, cadera, brazos, etc. para ver tu progreso más allá del peso.
+            </p>
+            <Link to="/config#medidas-seguimiento" className="is-size-7">
+              Empezar seguimiento de medidas →
             </Link>
           </div>
         )}

@@ -6,7 +6,9 @@ import { useMyProfile } from '../hooks/useMyProfile'
 import { updateMyFullName } from '../lib/profeDb'
 import { OBJETIVOS } from '../utils/consejos'
 import { SUPLEMENTOS } from '../utils/suplementos'
+import { buildPerfilCorporal, SEXOS } from '../utils/composicion'
 import PesoSeguimiento from '../components/PesoSeguimiento'
+import MedidasSeguimiento from '../components/MedidasSeguimiento'
 import PageHeader from '../components/PageHeader'
 export default function Config() {
   const { user, signOut, isConfigured } = useAuth()
@@ -39,9 +41,13 @@ export default function Config() {
 
   const nombreDistintoAlGuardado = nombrePerfil.trim() !== (profile?.full_name || '').trim()
   const [historialPeso, setHistorialPeso] = useStorage('pesoHistorial', [])
+  const [historialMedidas, setHistorialMedidas] = useStorage('medidasHistorial', [])
   const [config, setConfig] = useStorage('config', {
     objetivo: 'mantener_peso',
     pesoKg: 70,
+    alturaCm: '',
+    sexo: '',
+    edad: '',
     metaCalorias: '',
     metaProteina: '',
     metaCarbohidratos: '',
@@ -58,11 +64,29 @@ export default function Config() {
     const num = Number(v)
     if (!Number.isNaN(num) && num >= 0) setConfig((c) => ({ ...c, pesoKg: num }))
   }
+  const setAltura = (v) => {
+    if (v === '' || v == null) {
+      setConfig((c) => ({ ...c, alturaCm: '' }))
+      return
+    }
+    const num = Number(String(v).replace(',', '.'))
+    if (!Number.isNaN(num) && num >= 0) setConfig((c) => ({ ...c, alturaCm: num }))
+  }
+  const setSexo = (v) => setConfig((c) => ({ ...c, sexo: v }))
+  const setEdad = (v) => {
+    if (v === '' || v == null) {
+      setConfig((c) => ({ ...c, edad: '' }))
+      return
+    }
+    const num = parseInt(v, 10)
+    if (!Number.isNaN(num) && num >= 0) setConfig((c) => ({ ...c, edad: num }))
+  }
   const setMetaCalorias = (v) => setConfig((c) => ({ ...c, metaCalorias: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
   const setMetaProteina = (v) => setConfig((c) => ({ ...c, metaProteina: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
   const setMetaCarbohidratos = (v) => setConfig((c) => ({ ...c, metaCarbohidratos: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
   const setMetaGrasa = (v) => setConfig((c) => ({ ...c, metaGrasa: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
 
+  const perfilCorporal = buildPerfilCorporal(config)
   const toggleSuplemento = (id) => {
     setConfig((c) => {
       const act = c.suplementosActivos ?? SUPLEMENTOS.map((s) => s.id)
@@ -234,13 +258,15 @@ export default function Config() {
           </div>
         </div>
 
-        <div className="box mb-4 py-3">
-          <h2 className="title is-6 mb-2">Peso (kg)</h2>
-          <p className="is-size-7 has-text-grey mb-2">
-            Se usa para estimar calorías quemadas en ejercicio. Aproximado.
+        <div id="datos-corporales" className="box mb-4 py-3">
+          <h2 className="title is-6 mb-2">Datos corporales</h2>
+          <p className="is-size-7 has-text-grey mb-3">
+            El <strong>peso</strong> se usa para estimar kcal quemadas. Con la <strong>altura</strong> calculamos el IMC.
+            Sexo y edad son opcionales (mejoran consejos y, más adelante, estimaciones calóricas).
           </p>
-          <div className="field">
-            <div className="control">
+          <div className="columns is-mobile is-multiline mb-0">
+            <div className="column is-half">
+              <label className="label is-size-7">Peso (kg)</label>
               <input
                 className="input is-small"
                 type="number"
@@ -251,13 +277,79 @@ export default function Config() {
                 placeholder="70"
               />
             </div>
+            <div className="column is-half">
+              <label className="label is-size-7">Altura (cm)</label>
+              <input
+                className="input is-small"
+                type="number"
+                min="100"
+                max="250"
+                step="0.1"
+                value={config.alturaCm === '' || config.alturaCm == null ? '' : config.alturaCm}
+                onChange={(e) => setAltura(e.target.value)}
+                placeholder="Ej: 165"
+              />
+            </div>
+            <div className="column is-half">
+              <label className="label is-size-7">Sexo (opcional)</label>
+              <div className="select is-fullwidth is-small">
+                <select value={config.sexo || ''} onChange={(e) => setSexo(e.target.value)}>
+                  {SEXOS.map((s) => (
+                    <option key={s.value || 'na'} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="column is-half">
+              <label className="label is-size-7">Edad (opcional)</label>
+              <input
+                className="input is-small"
+                type="number"
+                min="10"
+                max="120"
+                value={config.edad === '' || config.edad == null ? '' : config.edad}
+                onChange={(e) => setEdad(e.target.value)}
+                placeholder="Ej: 28"
+              />
+            </div>
           </div>
+          {perfilCorporal.imc != null && (
+            <div className="medidas-chips mt-3">
+              <span className="medidas-chip">
+                <span className="medidas-chip-label">IMC</span>
+                <strong>{perfilCorporal.imc}</strong>
+                {perfilCorporal.categoria && (
+                  <span className="has-text-grey ml-1">· {perfilCorporal.categoria.label}</span>
+                )}
+              </span>
+              {perfilCorporal.rango && (
+                <span className="medidas-chip">
+                  <span className="medidas-chip-label">Rango orientativo</span>
+                  <strong>{perfilCorporal.rango.min}–{perfilCorporal.rango.max}</strong>
+                  <span className="has-text-grey"> kg</span>
+                </span>
+              )}
+            </div>
+          )}
+          {!perfilCorporal.alturaCm && (
+            <p className="is-size-7 has-text-grey mt-3 mb-0">
+              Cargá tu altura para ver IMC y un rango de peso orientativo.
+            </p>
+          )}
+          <p className="is-size-7 has-text-grey mt-2 mb-0">
+            El IMC es orientativo: no distingue músculo de grasa. Por eso también conviene seguir medidas.
+          </p>
         </div>
 
         <PesoSeguimiento
           historial={historialPeso}
           setHistorial={setHistorialPeso}
           onActualizarPesoConfig={(kg) => setConfig((c) => ({ ...c, pesoKg: kg }))}
+        />
+
+        <MedidasSeguimiento
+          historial={historialMedidas}
+          setHistorial={setHistorialMedidas}
         />
 
         <div className="box py-3 mb-0">

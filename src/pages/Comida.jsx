@@ -146,6 +146,7 @@ export default function Comida() {
   const [registros, setRegistros] = useStorage('comida', [])
   const [ejercicios] = useStorage('ejercicios', [])
   const [registrosRutina] = useStorage('rutinaPesos', [])
+  const [historialMedidas] = useStorage('medidasHistorial', [])
   const [config] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
   const [comida, setComida] = useState('Desayuno')
   const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
@@ -333,7 +334,8 @@ export default function Comida() {
     config?.objetivo,
     contextoDia,
     contextoSemana,
-    config
+    config,
+    { historialMedidas, hoy }
   )
 
   const puedeGuardar = items.some((it) => it.descripcion.trim())

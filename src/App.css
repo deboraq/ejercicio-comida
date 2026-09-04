@@ -1239,6 +1239,78 @@ body {
   border-bottom: none;
 }
 
+/* Medidas corporales */
+.medidas-campos-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .medidas-campos-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .medidas-campos-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.medidas-campo .label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.medidas-graf-bar {
+  background: var(--app-success) !important;
+}
+
+.medidas-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.medidas-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid var(--app-border);
+  font-size: 0.78rem;
+  color: var(--app-text);
+}
+
+.medidas-chip-label {
+  color: var(--app-muted);
+  font-size: 0.7rem;
+  margin-right: 0.1rem;
+}
+
+.medidas-chip-delta {
+  font-size: 0.68rem;
+  font-weight: 600;
+  margin-left: 0.15rem;
+}
+
+.medidas-chip-delta.is-down {
+  color: var(--app-success);
+}
+
+.medidas-chip-delta.is-up {
+  color: #fbbf24;
+}
+
+.medidas-historial-main {
+  min-width: 0;
+  flex: 1;
+}
+
 /* —— Comida: layout y legibilidad —— */
 .comida-page .comida-hoy-resumen,
 .comida-page .comida-form-card,
