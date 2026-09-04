@@ -1,35 +1,26 @@
 export default function ConsejosPanel({ diarios = [], semanales = [], className = '' }) {
-  if (diarios.length === 0 && semanales.length === 0) return null
+  const items = [
+    ...diarios.slice(0, 1).map((c) => ({ ...c, etiqueta: 'Hoy', icono: '💡', tono: 'dia' })),
+    ...semanales.slice(0, 1).map((c) => ({ ...c, etiqueta: 'Semana', icono: '📅', tono: 'semana' })),
+  ]
+  if (items.length === 0) return null
 
   return (
     <section className={`consejos-panel mb-4${className ? ` ${className}` : ''}`} aria-label="Consejos">
-      {diarios.length > 0 && (
-        <div className="consejos-panel-grupo">
-          {diarios.map((c, i) => (
-            <article key={`d-${i}`} className="ti-tip-bar consejos-panel-tip consejos-panel-tip--dia">
-              <span className="ti-tip-icon" aria-hidden="true">💡</span>
-              <div>
-                <p className="consejos-panel-etiqueta mb-1">Hoy</p>
-                <p className="mb-0">{c.texto}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-
-      {semanales.length > 0 && (
-        <div className="consejos-panel-grupo">
-          {semanales.map((c, i) => (
-            <article key={`s-${i}`} className="ti-tip-bar consejos-panel-tip consejos-panel-tip--semana">
-              <span className="ti-tip-icon" aria-hidden="true">📅</span>
-              <div>
-                <p className="consejos-panel-etiqueta mb-1">Esta semana</p>
-                <p className="mb-0">{c.texto}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+      <div className="consejos-panel-compacto">
+        {items.map((c, i) => (
+          <article
+            key={`${c.tono}-${i}`}
+            className={`ti-tip-bar consejos-panel-tip consejos-panel-tip--${c.tono}`}
+          >
+            <span className="ti-tip-icon" aria-hidden="true">{c.icono}</span>
+            <div>
+              <p className="consejos-panel-etiqueta mb-1">{c.etiqueta}</p>
+              <p className="mb-0">{c.texto}</p>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   )
 }

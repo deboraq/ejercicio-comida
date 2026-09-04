@@ -920,7 +920,7 @@ export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedid
         )
       )
     }
-    return uniqTextos(tips, 3)
+    return uniqTextos(tips, 1)
   }
 
   const tips = [
@@ -961,7 +961,7 @@ export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedid
     )
   }
 
-  return uniqTextos(tips, 3)
+  return uniqTextos(tips, 1)
 }
 
 /**
@@ -986,7 +986,7 @@ export function getConsejosSemanales(objetivo, contextoSemana, config = {}, prog
     ...consejosPerfilCorporal(obj, buildPerfilCorporal(config)),
   ]
 
-  return uniqTextos(tips, 3)
+  return uniqTextos(tips, 1)
 }
 
 /**

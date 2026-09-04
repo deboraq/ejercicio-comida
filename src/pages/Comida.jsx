@@ -47,7 +47,8 @@ function crearItemVacio() {
 
 function textoPorcionDesdeRef(porcionRef, n) {
   const t = porcionRef || 'porción'
-  return n > 1 ? `${n} × (${t})` : t
+  if (n === 1) return t
+  return `${n} × (${t})`
 }
 
 function numeroFlexible(valor) {
@@ -65,15 +66,24 @@ function redondear1(n) {
   return Math.round(n * 10) / 10
 }
 
-/** Última cantidad válida usada para escalar macros si el campo quedó vacío un momento. */
-function cantidadBaseParaEscala(it) {
-  if (it.cantidad !== '' && it.cantidad != null && Number(it.cantidad) > 0) return Number(it.cantidad)
-  return Math.max(1, it._cantidadPrev ?? 1)
+/** Cantidad de porciones: admite medios (0.5), cuartos (0.25), etc. */
+function normalizarCantidad(valor, fallback = 1) {
+  const n = numeroFlexible(valor)
+  if (n == null || n <= 0) return fallback
+  return Math.max(0.25, Math.min(99, Math.round(n * 100) / 100))
 }
 
-/** Aplica cantidad entera 1–99 y recalcula kcal/P/C desde referencia o por ratio. */
+/** Última cantidad válida usada para escalar macros si el campo quedó vacío un momento. */
+function cantidadBaseParaEscala(it) {
+  const actual = numeroFlexible(it.cantidad)
+  if (actual != null && actual > 0) return actual
+  const prev = numeroFlexible(it._cantidadPrev)
+  return prev != null && prev > 0 ? prev : 1
+}
+
+/** Aplica cantidad (admite decimales) y recalcula kcal/P/C desde referencia o por ratio. */
 function itemConCantidadAplicada(it, newQ) {
-  const q = Math.max(1, Math.min(99, Math.round(Number(newQ)) || 1))
+  const q = normalizarCantidad(newQ, 1)
   if (it._macrosPorUnidad) {
     const { cal, pro, car } = it._macrosPorUnidad
     return {
@@ -81,8 +91,8 @@ function itemConCantidadAplicada(it, newQ) {
       cantidad: q,
       _cantidadPrev: q,
       calorias: String(Math.round(cal * q)),
-      proteinas: String(Math.round(pro * q * 10) / 10),
-      carbohidratos: String(Math.round(car * q * 10) / 10),
+      proteinas: String(redondear1(pro * q)),
+      carbohidratos: String(redondear1(car * q)),
       porciones: it._porcionRef != null ? textoPorcionDesdeRef(it._porcionRef, q) : it.porciones,
     }
   }
@@ -170,7 +180,7 @@ export default function Comida() {
 
   const añadirDesdeReferencia = (itemRef, cantidad = cantidadPorciones) => {
     const raw = cantidad === '' || cantidad == null ? String(cantidadPorciones) : String(cantidad)
-    const n = Math.max(1, Math.min(99, parseInt(raw.trim(), 10) || 1))
+    const n = normalizarCantidad(raw, 1)
     const base = { cal: itemRef.calorias, pro: itemRef.proteinas, car: itemRef.carbohidratos }
     const porcionRef = itemRef.porcion || 'porción'
     const nuevo = {
@@ -179,8 +189,8 @@ export default function Comida() {
       cantidad: n,
       _cantidadPrev: n,
       calorias: String(Math.round(base.cal * n)),
-      proteinas: String(Math.round(base.pro * n * 10) / 10),
-      carbohidratos: String(Math.round(base.car * n * 10) / 10),
+      proteinas: String(redondear1(base.pro * n)),
+      carbohidratos: String(redondear1(base.car * n)),
       porciones: textoPorcionDesdeRef(porcionRef, n),
       _macrosPorUnidad: base,
       _porcionRef: porcionRef,
@@ -190,14 +200,24 @@ export default function Comida() {
   }
 
   const actualizarItemCantidad = (id, raw) => {
-    const s = String(raw).trim()
+    const s = String(raw).trim().replace(',', '.')
     if (s === '') {
       setItems((prev) => prev.map((it) => (it.id === id ? { ...it, cantidad: '' } : it)))
       return
     }
-    const parsed = parseInt(s, 10)
+    // Permitir escribir "0." / "0,5" a medias
+    if (!/^\d*\.?\d*$/.test(s)) return
+    if (s.endsWith('.')) {
+      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, cantidad: s } : it)))
+      return
+    }
+    const parsed = Number(s)
     if (!Number.isFinite(parsed)) return
-    const newQ = Math.max(1, Math.min(99, parsed))
+    if (parsed === 0) {
+      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, cantidad: s } : it)))
+      return
+    }
+    const newQ = normalizarCantidad(parsed, 1)
     setItems((prev) => prev.map((it) => (it.id === id ? itemConCantidadAplicada(it, newQ) : it)))
   }
 
@@ -205,7 +225,8 @@ export default function Comida() {
     setItems((prev) =>
       prev.map((it) => {
         if (it.id !== id) return it
-        if (it.cantidad !== '' && it.cantidad != null) return it
+        const n = numeroFlexible(it.cantidad)
+        if (n != null && n > 0) return itemConCantidadAplicada(it, n)
         return itemConCantidadAplicada(it, it._cantidadPrev ?? 1)
       })
     )
@@ -475,19 +496,20 @@ export default function Comida() {
                   <div className="comida-item-macros-grid">
                     <div className="comida-item-macro-cell">
                       <label className="is-size-7 has-text-grey comida-item-macro-label" htmlFor={`comida-cant-${it.id}`}>
-                        Cant.
+                        Cant. (ej. 0.5)
                       </label>
                       <input
                         id={`comida-cant-${it.id}`}
                         className="input is-small"
                         type="number"
-                        min="1"
+                        min="0.25"
                         max="99"
-                        inputMode="numeric"
+                        step="0.25"
+                        inputMode="decimal"
                         value={it.cantidad === '' || it.cantidad == null ? '' : it.cantidad}
                         onChange={(e) => actualizarItem(it.id, 'cantidad', e.target.value)}
                         onBlur={() => blurCantidadItem(it.id)}
-                        title="Porciones base de esta fila (multiplica kcal, P y C desde la referencia, o escala lo cargado a mano)"
+                        title="Porciones (podés usar 0.5 = media). Multiplica kcal, P y C"
                       />
                     </div>
                     <div className="comida-item-macro-cell">

@@ -429,6 +429,9 @@ export const REFERENCIA_ALIMENTOS = [
   { categoria: 'Comidas saludables', nombre: 'Tomate cherry (1 taza)', calorias: 27, proteinas: 1, carbohidratos: 6, porcion: '1 taza' },
   { categoria: 'Comidas saludables', nombre: 'Aguacate (1 unidad de referencia)', calorias: 120, proteinas: 1.5, carbohidratos: 6, porcion: '≈ medio aguacate' },
   { categoria: 'Comidas saludables', nombre: 'Palta (1 unidad de referencia)', calorias: 120, proteinas: 1.5, carbohidratos: 6, porcion: '≈ media palta' },
+  { categoria: 'Comidas saludables', nombre: 'Media palta / medio aguacate', calorias: 120, proteinas: 1.5, carbohidratos: 6, porcion: '1/2 unidad' },
+  { categoria: 'Comidas saludables', nombre: 'Palta entera / aguacate entero', calorias: 240, proteinas: 3, carbohidratos: 12, porcion: '1 unidad' },
+  { categoria: 'Comidas saludables', nombre: 'Cuarto de palta', calorias: 60, proteinas: 0.8, carbohidratos: 3, porcion: '1/4 unidad' },
   { categoria: 'Comidas saludables', nombre: 'Alcachofa hervida (1 unidad)', calorias: 60, proteinas: 4, carbohidratos: 13, porcion: '1 unidad' },
   { categoria: 'Comidas saludables', nombre: 'Judías verdes al vapor (1 taza)', calorias: 35, proteinas: 2, carbohidratos: 8, porcion: '1 taza' },
   { categoria: 'Comidas saludables', nombre: 'Rúcula (1 taza)', calorias: 5, proteinas: 0.5, carbohidratos: 0.75, porcion: '1 taza' },
@@ -521,6 +524,10 @@ export const REFERENCIA_ALIMENTOS = [
   { categoria: 'Tartas (1 porción)', nombre: 'Tarta de carne picada (1 porción)', calorias: 330, proteinas: 17, carbohidratos: 26, porcion: '1 porción' },
   { categoria: 'Tartas (1 porción)', nombre: 'Tarta de espinaca y ricota (1 porción)', calorias: 270, proteinas: 12, carbohidratos: 28, porcion: '1 porción' },
   { categoria: 'Tartas (1 porción)', nombre: 'Tarta de acelga (1 porción)', calorias: 265, proteinas: 11, carbohidratos: 28, porcion: '1 porción' },
+  { categoria: 'Tartas (1 porción)', nombre: 'Tarta de acelga y pollo (1 porción)', calorias: 305, proteinas: 17, carbohidratos: 26, porcion: '1 porción' },
+  { categoria: 'Tartas (1 porción)', nombre: 'Tarta de acelga, pollo y queso (1 porción)', calorias: 330, proteinas: 19, carbohidratos: 26, porcion: '1 porción' },
+  { categoria: 'Tartas (1 porción)', nombre: 'Tarta de verdura y pollo (1 porción)', calorias: 300, proteinas: 16, carbohidratos: 27, porcion: '1 porción' },
+  { categoria: 'Tartas (1 porción)', nombre: 'Tarta de espinaca y pollo (1 porción)', calorias: 295, proteinas: 16, carbohidratos: 25, porcion: '1 porción' },
   { categoria: 'Tartas (1 porción)', nombre: 'Tarta de calabaza y queso (1 porción)', calorias: 250, proteinas: 8, carbohidratos: 30, porcion: '1 porción' },
   { categoria: 'Tartas (1 porción)', nombre: 'Tarta de choclo cremosa (1 porción)', calorias: 290, proteinas: 10, carbohidratos: 32, porcion: '1 porción' },
   { categoria: 'Tartas (1 porción)', nombre: 'Tarta de zapallito (1 porción)', calorias: 220, proteinas: 7, carbohidratos: 28, porcion: '1 porción' },
@@ -706,11 +713,38 @@ export function getCategoriasUnicas() {
 export function buscarAlimentos(texto) {
   if (!texto || texto.length < 1) return []
   const t = sinAcentos(texto.trim())
-  return REFERENCIA_ALIMENTOS.map((a, idx) => ({ ...a, _idx: idx }))
-    .filter(
-      (a) =>
-        sinAcentos(a.nombre).includes(t) ||
-        sinAcentos(a.categoria).includes(t)
-    )
+  const palabras = t.split(/\s+/).filter(Boolean)
+
+  const puntuados = REFERENCIA_ALIMENTOS.map((a, idx) => {
+    const nombre = sinAcentos(a.nombre)
+    const cat = sinAcentos(a.categoria)
+    const haystack = `${nombre} ${cat}`
+    let score = 0
+    if (nombre.includes(t) || cat.includes(t)) score += 100
+
+    const significativas = palabras.filter((p) => p.length >= 3)
+    if (significativas.length >= 2) {
+      const matched = significativas.filter((p) => haystack.includes(p)).length
+      if (matched === 0) return null
+      // Preferí coincidencia de casi todas las palabras (ej. tarta + acelga + pollo)
+      score += matched * 12
+      if (matched === significativas.length) score += 40
+      else if (matched < significativas.length - 1) score -= 15
+    } else {
+      for (const p of palabras) {
+        if (p.length < 2) continue
+        if (nombre.includes(p)) score += 10
+        else if (cat.includes(p)) score += 4
+      }
+    }
+
+    if (palabras.includes('media') || palabras.includes('medio')) {
+      if (/media|medio|1\/2/.test(nombre)) score += 25
+    }
+    return score > 0 ? { ...a, _idx: idx, _score: score } : null
+  }).filter(Boolean)
+
+  return puntuados
+    .sort((a, b) => b._score - a._score || a.nombre.localeCompare(b.nombre, 'es'))
     .slice(0, 120)
 }
