@@ -1,10 +1,15 @@
-export default function StatMiniCard({ icon, iconTone = 'green', label, value, children }) {
+export default function StatMiniCard({ icon, iconTone = 'green', label, value, unit, children }) {
   return (
     <div className="box stat-mini-card mb-0">
       <div className={`stat-mini-icon stat-mini-icon--${iconTone}`} aria-hidden="true">{icon}</div>
       <div className="stat-mini-body">
         <p className="stat-mini-label">{label}</p>
-        <p className="stat-mini-value">{value ?? '—'}</p>
+        <p className="stat-mini-value">
+          {value ?? '—'}
+          {unit && value != null && value !== '—' ? (
+            <span className="stat-mini-unit"> {unit}</span>
+          ) : null}
+        </p>
         {children}
       </div>
     </div>

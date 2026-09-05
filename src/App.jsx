@@ -107,7 +107,7 @@ function AppRoutes() {
       )}
       <div className="app-shell-main">
         {!isAuthPage && (
-          <header className="app-topbar">
+          <header className={`app-topbar${location.pathname === '/' ? ' app-topbar--inicio' : ''}`}>
             <button
               type="button"
               className="app-menu-toggle"
@@ -117,11 +117,21 @@ function AppRoutes() {
             >
               <span /><span /><span />
             </button>
+            {location.pathname !== '/' && (
+              <p className="app-topbar-title mb-0">
+                {location.pathname.startsWith('/ejercicios') && 'Ejercicios'}
+                {location.pathname.startsWith('/rutina') && 'Rutina'}
+                {location.pathname.startsWith('/comida') && 'Comida'}
+                {location.pathname.startsWith('/config') && 'Config'}
+                {location.pathname.startsWith('/profe') && 'Profe'}
+                {location.pathname.startsWith('/admin') && 'Admin'}
+              </p>
+            )}
             <div className="app-topbar-spacer" />
-            <AppNotificacionesCampana />
+            {location.pathname !== '/' && <AppNotificacionesCampana />}
           </header>
         )}
-        <main className="main-content">
+        <main className={`main-content${location.pathname === '/' ? ' main-content--inicio' : ''}`}>
           <Routes>
             <Route path="/" element={<ModuleGate module="inicio" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Inicio /></ModuleGate>} />
             <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Ejercicios /></ModuleGate>} />

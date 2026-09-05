@@ -1,8 +1,4 @@
-/**
- * Helpers para estadísticas: últimos N días, resumen semanal, etc.
- */
-
-import { fechaToISO } from './calorias.js'
+import { fechaToISO, fechaSoloDia } from './calorias.js'
 
 export { fechaToISO }
 
@@ -22,19 +18,35 @@ export function getResumenPorDias(registros, getDatoPorFecha, ultimosDias) {
   return dias.map((fecha) => ({ fecha, valor: getDatoPorFecha(fecha) }))
 }
 
+function diaAnteriorISO(fechaYYYYMMDD) {
+  const d = new Date(`${fechaYYYYMMDD}T12:00:00`)
+  d.setDate(d.getDate() - 1)
+  return fechaToISO(d)
+}
+
+/**
+ * Días seguidos con al menos un registro.
+ * Si hoy todavía no hay datos pero ayer sí, la racha sigue viva hasta las 00:00
+ * (no se pierde durante el día en curso).
+ */
 export function getRachaDias(registros, fechaHoy) {
   const hoy = fechaHoy || fechaToISO(new Date())
-  const fechasConDatos = [...new Set(registros.map((r) => r.fecha))].sort().reverse()
-  if (fechasConDatos[0] !== hoy) return 0
+  const set = new Set(
+    (registros || [])
+      .map((r) => fechaSoloDia(r?.fecha ?? r))
+      .filter(Boolean)
+  )
+  if (set.size === 0) return 0
+
+  const ayer = diaAnteriorISO(hoy)
+  // Gracia del día: sin registro hoy todavía → contar desde ayer
+  let esperada = set.has(hoy) ? hoy : set.has(ayer) ? ayer : null
+  if (!esperada) return 0
+
   let racha = 0
-  let esperada = hoy
-  for (const f of fechasConDatos) {
-    if (f === esperada) {
-      racha++
-      const d = new Date(esperada + 'T12:00:00')
-      d.setDate(d.getDate() - 1)
-      esperada = fechaToISO(d)
-    } else break
+  while (set.has(esperada)) {
+    racha++
+    esperada = diaAnteriorISO(esperada)
   }
   return racha
 }
