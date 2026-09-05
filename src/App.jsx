@@ -107,7 +107,7 @@ function AppRoutes() {
       )}
       <div className="app-shell-main">
         {!isAuthPage && (
-          <header className={`app-topbar${location.pathname === '/' ? ' app-topbar--inicio' : ''}`}>
+          <header className={`app-topbar${location.pathname === '/' ? ' app-topbar--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' app-topbar--rutina' : ''}`}>
             <button
               type="button"
               className="app-menu-toggle"
@@ -117,10 +117,9 @@ function AppRoutes() {
             >
               <span /><span /><span />
             </button>
-            {location.pathname !== '/' && (
+            {location.pathname !== '/' && !location.pathname.startsWith('/rutina') && (
               <p className="app-topbar-title mb-0">
                 {location.pathname.startsWith('/ejercicios') && 'Ejercicios'}
-                {location.pathname.startsWith('/rutina') && 'Rutina'}
                 {location.pathname.startsWith('/comida') && 'Comida'}
                 {location.pathname.startsWith('/config') && 'Config'}
                 {location.pathname.startsWith('/profe') && 'Profe'}
@@ -128,10 +127,10 @@ function AppRoutes() {
               </p>
             )}
             <div className="app-topbar-spacer" />
-            {location.pathname !== '/' && <AppNotificacionesCampana />}
+            {location.pathname !== '/' && !location.pathname.startsWith('/rutina') && <AppNotificacionesCampana />}
           </header>
         )}
-        <main className={`main-content${location.pathname === '/' ? ' main-content--inicio' : ''}`}>
+        <main className={`main-content${location.pathname === '/' ? ' main-content--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' main-content--rutina' : ''}`}>
           <Routes>
             <Route path="/" element={<ModuleGate module="inicio" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Inicio /></ModuleGate>} />
             <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Ejercicios /></ModuleGate>} />

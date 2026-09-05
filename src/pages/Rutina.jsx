@@ -12,7 +12,12 @@ import {
   itemEjercicioDiaNormalizado,
   etiquetaPlanEjercicio,
   nombresEjerciciosDia,
+  inferirGruposMuscularesDia,
+  ejercicioDiaAJson,
+  parseNumSeriesPlan,
 } from '../utils/rutinaEjercicioDia'
+import SesionRegistroTitanium from '../components/SesionRegistroTitanium'
+import { AppNotificacionesCampana } from '../context/AppNotificationsContext'
 
 function crearDia(num) {
   return { id: `d${Date.now()}_${num}`, nombre: `Día ${num}`, ejercicios: [] }
@@ -45,15 +50,7 @@ function clonarRutinaParaMisRutinas(orig) {
     id: `d${base}_${i}_${Math.random().toString(36).slice(2, 7)}`,
     nombre: d.nombre || `Día ${i + 1}`,
     ejercicios: (d.ejercicios || [])
-      .map((e) => {
-        const it = itemEjercicioDiaNormalizado(e)
-        if (!it) return null
-        if (!it.series.trim() && !it.repeticiones.trim()) return it.nombre
-        const o = { nombre: it.nombre }
-        if (it.series.trim()) o.series = it.series.trim()
-        if (it.repeticiones.trim()) o.repeticiones = it.repeticiones.trim()
-        return o
-      })
+      .map((e) => ejercicioDiaAJson(e))
       .filter(Boolean),
   }))
   return {
@@ -74,7 +71,7 @@ export default function Rutina() {
 
   const [origenRutinas, setOrigenRutinas] = useState('propias')
   const [assignmentsRefreshTick, setAssignmentsRefreshTick] = useState(0)
-  const [vista, setVista] = useState('calendario') // 'calendario' | 'registrar' | 'configurar' | 'progreso'
+  const [vista, setVista] = useState('registrar') // 'calendario' | 'registrar' | 'configurar' | 'progreso'
   const [diaEditando, setDiaEditando] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
@@ -82,7 +79,13 @@ export default function Rutina() {
   const [nombreNuevaRutina, setNombreNuevaRutina] = useState('')
   /** Índice del ejercicio en edición dentro del día (Configurar). */
   const [ejercicioEditandoIdx, setEjercicioEditandoIdx] = useState(null)
-  const [draftEjercicio, setDraftEjercicio] = useState({ nombre: '', series: '', repeticiones: '' })
+  const [draftEjercicio, setDraftEjercicio] = useState({
+    nombre: '',
+    series: '',
+    repeticiones: '',
+    superserie: '',
+    descansoPostRonda: '',
+  })
   const [dragEjercicio, setDragEjercicio] = useState(null) // { fromIdx, overIdx } | null
   const dragEjercicioRef = useRef(null)
   const planListRef = useRef(null)
@@ -174,13 +177,13 @@ export default function Rutina() {
 
   useEffect(() => {
     setEjercicioEditandoIdx(null)
-    setDraftEjercicio({ nombre: '', series: '', repeticiones: '' })
+    setDraftEjercicio({ nombre: '', series: '', repeticiones: '', superserie: '', descansoPostRonda: '' })
     setDragEjercicio(null)
     dragEjercicioRef.current = null
   }, [diaEditando, vista])
 
   useEffect(() => {
-    if (origenRutinas === 'asignadas') setVista('calendario')
+    if (origenRutinas === 'asignadas') setVista('registrar')
   }, [origenRutinas])
 
   const quitarAsignadaHandler = useCallback(async (r) => {
@@ -396,12 +399,18 @@ export default function Rutina() {
     const it = itemEjercicioDiaNormalizado(ejerciciosDelDia[idx])
     if (!it) return
     setEjercicioEditandoIdx(idx)
-    setDraftEjercicio({ nombre: it.nombre, series: it.series, repeticiones: it.repeticiones })
+    setDraftEjercicio({
+      nombre: it.nombre,
+      series: it.series,
+      repeticiones: it.repeticiones,
+      superserie: it.superserie || '',
+      descansoPostRonda: it.descansoPostRonda || '',
+    })
   }
 
   const cancelarEdicionEjercicio = () => {
     setEjercicioEditandoIdx(null)
-    setDraftEjercicio({ nombre: '', series: '', repeticiones: '' })
+    setDraftEjercicio({ nombre: '', series: '', repeticiones: '', superserie: '', descansoPostRonda: '' })
   }
 
   const guardarEdicionEjercicio = () => {
@@ -410,9 +419,16 @@ export default function Rutina() {
     if (!nombre) return
     const series = String(draftEjercicio.series || '').trim()
     const repeticiones = String(draftEjercicio.repeticiones || '').trim()
-    const item = series || repeticiones
-      ? { nombre, ...(series ? { series } : {}), ...(repeticiones ? { repeticiones } : {}) }
-      : nombre
+    const superserie = String(draftEjercicio.superserie || '').trim()
+    const descansoPostRonda = String(draftEjercicio.descansoPostRonda || '').trim()
+    const raw = {
+      nombre,
+      ...(series ? { series } : {}),
+      ...(repeticiones ? { repeticiones } : {}),
+      ...(superserie ? { superserie } : {}),
+      ...(descansoPostRonda ? { descansoPostRonda } : {}),
+    }
+    const item = ejercicioDiaAJson(raw) ?? nombre
     actualizarRutina((r) => ({
       ...r,
       dias: r.dias.map((d) => {
@@ -447,7 +463,7 @@ export default function Rutina() {
       return ejercicio && series !== '' && series != null && repsStr
     })
     if (validos.length === 0) return
-    const nuevos = validos.map(({ ejercicio, series, repeticiones, pesoKg, notas, kcalManual }) => {
+    const nuevos = validos.map(({ ejercicio, series, repeticiones, pesoKg, notas, kcalManual, serieNum, rpe }) => {
       const repsStr = typeof repeticiones === 'string' ? repeticiones.trim() : String(repeticiones ?? '').trim()
       const kcalM = kcalManual !== '' && kcalManual != null && Number(kcalManual) > 0 ? Math.round(Number(kcalManual)) : undefined
       const row = {
@@ -461,10 +477,16 @@ export default function Rutina() {
         pesoKg: pesoKg !== '' && pesoKg != null ? Number(pesoKg) : undefined,
         notas: (notas || '').trim(),
       }
+      if (serieNum != null && serieNum !== '') row.serieNum = Number(serieNum)
+      if (rpe != null && rpe !== '') row.rpe = Number(rpe)
       if (kcalM != null) row.kcalManual = kcalM
       return row
     })
     setRegistros([...nuevos, ...registros])
+  }
+
+  const guardarSerieSesion = (serie) => {
+    agregarRegistrosVarios([serie])
   }
 
   const eliminarRegistro = (id) => {
@@ -513,12 +535,70 @@ export default function Rutina() {
 
   const cancelarEdicionRegistro = () => setEditandoRegistro(null)
 
-  const registrosDeEstaSesion = registros.filter(
-    (r) =>
-      r.fecha === (fechaInput || hoy) &&
-      r.diaRutinaId === diaSeleccionado &&
-      (r.rutinaId || r.diaRutinaId) && (r.rutinaId === rutinaIdActual || !r.rutinaId)
-  )
+  const seleccionarFechaSesion = (fecha) => {
+    if (!fecha) return
+    setFechaInput(fecha)
+    setFechaHistorial(fecha)
+    if (fecha.length >= 7) setMesCalendario(fecha.slice(0, 7))
+    const delDia = registros.filter(
+      (r) =>
+        r.fecha === fecha &&
+        (r.rutinaId === rutinaIdActual || !r.rutinaId)
+    )
+    if (delDia.length === 0) return
+    const conteo = {}
+    for (const r of delDia) {
+      if (!r.diaRutinaId) continue
+      conteo[r.diaRutinaId] = (conteo[r.diaRutinaId] || 0) + 1
+    }
+    const mejor = Object.entries(conteo).sort((a, b) => b[1] - a[1])[0]?.[0]
+    if (mejor && dias.some((d) => d.id === mejor)) {
+      setDiaSeleccionado(mejor)
+    }
+  }
+
+  const registrosDeEstaSesion = registros.filter((r) => {
+    if (r.fecha !== (fechaInput || hoy)) return false
+    if (r.rutinaId && r.rutinaId !== rutinaIdActual) return false
+    if (r.diaRutinaId && r.diaRutinaId === diaSeleccionado) return true
+    // Legacy / sin día: contar si el ejercicio está en el plan del día seleccionado
+    if (!r.diaRutinaId) {
+      return ejerciciosParaCargar.some((it) => it.nombre === r.ejercicio)
+    }
+    return false
+  })
+
+  const progresoSesion = (() => {
+    let hechos = 0
+    let seriesTotales = 0
+    let seriesHechas = 0
+    for (const it of ejerciciosParaCargar) {
+      const ya = registrosDeEstaSesion.filter((r) => r.ejercicio === it.nombre)
+      const nPlan = it.superserie ? 1 : parseNumSeriesPlan(it.series)
+      seriesTotales += nPlan
+      if (ya.length === 0) continue
+      // Un solo registro legacy con N series cubre el plan
+      const legacy = ya.find((r) => r.serieNum == null && Number(r.series) >= nPlan)
+      if (legacy || it.superserie) {
+        hechos += 1
+        seriesHechas += nPlan
+        continue
+      }
+      const hechasEx = Math.min(ya.length, nPlan)
+      seriesHechas += hechasEx
+      if (hechasEx >= nPlan) hechos += 1
+    }
+    const total = ejerciciosParaCargar.length
+    const pct = seriesTotales > 0
+      ? Math.round((seriesHechas / seriesTotales) * 100)
+      : (total > 0 ? Math.round((hechos / total) * 100) : 0)
+    const kcal = registrosDeEstaSesion.reduce(
+      (s, r) => s + caloriasQuemadasRegistroRutina(r, pesoCfg),
+      0
+    )
+    return { hechos, total, pct, kcal, seriesHechas, seriesTotales }
+  })()
+
   const registrosRutina = registros.filter((r) => !r.rutinaId || r.rutinaId === rutinaIdActual)
   const porFecha = registrosRutina.reduce((acc, r) => {
     if (!acc[r.fecha]) acc[r.fecha] = []
@@ -592,142 +672,210 @@ export default function Rutina() {
   const conBaja = progresoOrdenadoEnPeriodo.filter((p) => p.tendencia === '↓').length
   const sinCambio = progresoOrdenadoEnPeriodo.filter((p) => p.tendencia === '—').length
 
+  const volumenKgPeriodo = registrosEnPeriodo.reduce((sum, r) => {
+    const peso = r.pesoKg != null ? Number(r.pesoKg) : 0
+    if (!(peso > 0)) return sum
+    const series = Number(r.series) || 1
+    const reps = parseFloat(String(r.repeticiones || '').replace(',', '.')) || 0
+    return sum + peso * series * (reps > 0 ? reps : 1)
+  }, 0)
+  const volumenTon = volumenKgPeriodo / 1000
+
+  const fechaSesionHist = fechaInput || hoy
+  const historialPorEjercicio = {}
+  for (const r of registrosRutina) {
+    if (r.fecha >= fechaSesionHist) continue
+    const name = r.ejercicio || 'Sin nombre'
+    if (!historialPorEjercicio[name]) historialPorEjercicio[name] = []
+    historialPorEjercicio[name].push(r)
+  }
+  for (const name of Object.keys(historialPorEjercicio)) {
+    historialPorEjercicio[name].sort((a, b) => b.fecha.localeCompare(a.fecha))
+  }
+
+  let progresionEjercicioActivo = null
+  {
+    const fechaSesion = fechaInput || hoy
+    const regsHoy = (registrosRutina || []).filter((r) => {
+      const f = fechaSoloDia(r.fecha)
+      return f === fechaSesion && r.pesoKg != null && Number(r.pesoKg) > 0
+    })
+    if (regsHoy.length) {
+      const porEj = {}
+      for (const r of regsHoy) {
+        const name = r.ejercicio || 'Sin nombre'
+        if (!porEj[name]) porEj[name] = []
+        porEj[name].push(Number(r.pesoKg))
+      }
+      const candidatos = Object.entries(porEj).map(([ejercicio, pesos]) => {
+        const hoyPeso = Math.max(...pesos)
+        const hist = [...(progresoPorEjercicio[ejercicio] || [])]
+          .filter((x) => fechaSoloDia(x.fecha) < fechaSesion && x.pesoKg != null && Number(x.pesoKg) > 0)
+          .sort((a, b) => a.fecha.localeCompare(b.fecha))
+        const inicio = hist.length
+          ? Number(hist[0].pesoKg)
+          : hoyPeso
+        const pct = inicio > 0 ? Math.round(((hoyPeso - inicio) / inicio) * 100) : 0
+        return { ejercicio, inicio, hoyPeso, pct, conHistorial: hist.length > 0 }
+      })
+      // Preferir el que más cambió hoy vs historial; si empatan, el de mayor carga
+      candidatos.sort((a, b) => {
+        if (b.pct !== a.pct) return Math.abs(b.pct) - Math.abs(a.pct)
+        return b.hoyPeso - a.hoyPeso
+      })
+      progresionEjercicioActivo = candidatos[0] || null
+    }
+  }
+
   return (
-    <section className="section py-4">
-      <div className="container app-page-container">
-        <header className="app-page-hero mb-4 rutina-page-hero">
-          <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.75rem' }}>
-            <div>
-              <div className="app-page-hero-icon" aria-hidden="true">🏋️</div>
-              <h1 className="title is-5 mb-2">Rutina de gimnasio</h1>
-              <p className="is-size-7 has-text-grey mb-0">
-                En <strong>Mis rutinas</strong> creás y registrás entrenos. En <strong>Asignadas</strong> ves lo que te mandó tu entrenador desde Profe (por la nube).
+    <section className="section py-2 rutina-titanium">
+      <div className="container app-page-container rutina-container">
+        <header className="rut-head">
+          <div className="rut-head-top">
+            <div className="rut-head-titles">
+              <h1 className="rut-head-title">Gestión de Rutinas y Entrenamiento</h1>
+              <p className="rut-head-sub">
+                Control de cargas, superseries conectadas y progresión en tiempo real.
               </p>
             </div>
-            <div className="rutina-hero-badges">
-              <span className="rutina-hero-badge rutina-hero-badge--blue"><i />{listaRutinas.length} rutinas</span>
-              <span className="rutina-hero-badge rutina-hero-badge--green"><i />{registrosRutina.length} registros</span>
-              <span className="rutina-hero-badge rutina-hero-badge--muted"><i />{rutinasAsignadas.length} asignadas</span>
+
+            <div className="rut-head-actions">
+              <span className="rut-modo">Modo Atleta</span>
+
+              <div className="rut-activa">
+                <span className="rut-activa-label" id="rutina-activa-label">Rutina activa:</span>
+                <div className="rut-activa-select">
+                  <select
+                    id="rutina-activa-select"
+                    aria-labelledby="rutina-activa-label"
+                    value={rutinaActivaId || rutinaIdActual}
+                    onChange={(e) => setRutinaActivaId(e.target.value)}
+                    disabled={origenRutinas !== 'propias'}
+                  >
+                    {listaRutinas.map((r) => (
+                      <option key={r.id} value={r.id}>{r.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="rut-ico-btn"
+                disabled={origenRutinas !== 'propias' || listaRutinas.length <= 1}
+                onClick={() => window.confirm('¿Eliminar esta rutina?') && eliminarRutina(rutinaIdActual)}
+                title="Eliminar rutina"
+                aria-label="Eliminar rutina"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                  <path d="M4 7h16" /><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" /><path d="M18 7l-.8 12.2A2 2 0 0115.2 21H8.8a2 2 0 01-2-1.8L6 7" /><path d="M10 11v6M14 11v6" />
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                className="rut-btn-dark"
+                disabled={origenRutinas !== 'propias'}
+                onClick={() => {
+                  const nombre = window.prompt('Nombre de la nueva rutina', nombreNuevaRutina || 'Nueva rutina')
+                  if (nombre == null) return
+                  const nueva = { ...rutinaVacia(), id: `r${Date.now()}`, nombre: nombre.trim() || 'Nueva rutina' }
+                  setRutinas((list) => [...(list || []), nueva])
+                  setRutinaActivaId(nueva.id)
+                  setNombreNuevaRutina('')
+                  setOrigenRutinas('propias')
+                  setVista('configurar')
+                }}
+              >
+                + Nueva rutina
+              </button>
+
+              <button
+                type="button"
+                className="rut-btn-pdf"
+                disabled={origenRutinas !== 'propias'}
+                onClick={() => {
+                  try {
+                    descargarRutinaPdf(rutinaActiva)
+                  } catch (e) {
+                    window.alert(e?.message || 'No se pudo generar el PDF.')
+                  }
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+                  <path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M5 21h14" />
+                </svg>
+                Exportar PDF
+              </button>
+
+              <div className="rut-campana">
+                <AppNotificacionesCampana />
+              </div>
+            </div>
+          </div>
+
+          <div className="rut-head-tabs">
+            <nav className="rut-tabs" aria-label="Vistas de rutina">
+              <button
+                type="button"
+                className={`rut-tab${vista === 'registrar' && origenRutinas === 'propias' ? ' is-active' : ''}`}
+                onClick={() => { setOrigenRutinas('propias'); setVista('registrar') }}
+              >
+                <span className="rut-tab-check" aria-hidden>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <path d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+                Registrar Sesión (Hoy)
+              </button>
+              <button
+                type="button"
+                className={`rut-tab${vista === 'configurar' && origenRutinas === 'propias' ? ' is-active' : ''}`}
+                onClick={() => { setOrigenRutinas('propias'); setVista('configurar') }}
+              >
+                Armar tu plan
+              </button>
+              <button
+                type="button"
+                className={`rut-tab${vista === 'calendario' && origenRutinas === 'propias' ? ' is-active' : ''}`}
+                onClick={() => { setOrigenRutinas('propias'); setVista('calendario') }}
+              >
+                Calendario & Días
+              </button>
+              <button
+                type="button"
+                className={`rut-tab${vista === 'progreso' && origenRutinas === 'propias' ? ' is-active' : ''}`}
+                onClick={() => { setOrigenRutinas('propias'); setVista('progreso') }}
+              >
+                Progreso & Cargas
+              </button>
+            </nav>
+
+            <div className="rut-origen" role="tablist" aria-label="Origen de rutinas">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={origenRutinas === 'propias'}
+                className={origenRutinas === 'propias' ? 'is-active' : ''}
+                onClick={() => setOrigenRutinas('propias')}
+              >
+                Mis rutinas
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={origenRutinas === 'asignadas'}
+                className={origenRutinas === 'asignadas' ? 'is-active' : ''}
+                onClick={() => setOrigenRutinas('asignadas')}
+              >
+                Asignadas por Profe
+              </button>
             </div>
           </div>
         </header>
 
-        <div className="tabs is-toggle is-fullwidth mb-3 rutina-origen-tabs">
-          <ul>
-            <li className={origenRutinas === 'propias' ? 'is-active' : ''}>
-              <a
-                role="tab"
-                aria-selected={origenRutinas === 'propias'}
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault()
-                  setOrigenRutinas('propias')
-                }}
-              >
-                Mis rutinas
-              </a>
-            </li>
-            <li className={origenRutinas === 'asignadas' ? 'is-active' : ''}>
-              <a
-                role="tab"
-                aria-selected={origenRutinas === 'asignadas'}
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault()
-                  setOrigenRutinas('asignadas')
-                }}
-              >
-                Asignadas
-              </a>
-            </li>
-          </ul>
-        </div>
-
         {origenRutinas === 'propias' ? (
         <>
-        <div className="tabs is-boxed mb-3 rutina-vista-tabs">
-          <ul>
-            <li className={vista === 'calendario' ? 'is-active' : ''}>
-              <a onClick={() => setVista('calendario')} role="tab" aria-selected={vista === 'calendario'}>Calendario</a>
-            </li>
-            <li className={vista === 'registrar' ? 'is-active' : ''}>
-              <a onClick={() => setVista('registrar')} role="tab" aria-selected={vista === 'registrar'}>Registrar</a>
-            </li>
-            <li className={vista === 'configurar' ? 'is-active' : ''}>
-              <a onClick={() => setVista('configurar')} role="tab" aria-selected={vista === 'configurar'}>Configurar</a>
-            </li>
-            <li className={vista === 'progreso' ? 'is-active' : ''}>
-              <a onClick={() => setVista('progreso')} role="tab" aria-selected={vista === 'progreso'}>Progreso</a>
-            </li>
-          </ul>
-        </div>
-
-        <div className="rutina-toolbar mb-4">
-              <div className="box py-3 calendario-card rutina-toolbar-active">
-          <label className="label is-size-7">Rutina activa</label>
-          <div className="field has-addons">
-            <div className="control is-expanded">
-              <div className="select is-fullwidth is-small">
-                <select
-                  value={rutinaActivaId || rutinaIdActual}
-                  onChange={(e) => setRutinaActivaId(e.target.value)}
-                >
-                  {listaRutinas.map((r) => (
-                    <option key={r.id} value={r.id}>{r.nombre}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {listaRutinas.length > 1 && (
-              <div className="control">
-                <button
-                  type="button"
-                  className="button is-danger is-light"
-                  onClick={() => window.confirm('¿Eliminar esta rutina?') && eliminarRutina(rutinaIdActual)}
-                  title="Eliminar rutina"
-                >
-                  🗑
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="field has-addons mt-2">
-            <div className="control is-expanded">
-              <input
-                className="input is-small"
-                type="text"
-                value={nombreNuevaRutina}
-                onChange={(e) => setNombreNuevaRutina(e.target.value)}
-                placeholder="Nombre de nueva rutina"
-              />
-            </div>
-            <div className="control">
-              <button type="button" className="button is-link is-small" onClick={crearRutina}>
-                Crear rutina
-              </button>
-            </div>
-          </div>
-          </div>
-          <div className="box py-3 rutina-toolbar-export">
-            <h2 className="title is-6 mb-2">Exportar</h2>
-            <p className="is-size-7 has-text-grey mb-3">
-              Descargá la rutina activa como PDF para imprimirla o compartirla.
-            </p>
-            <button
-              type="button"
-              className="button is-link is-fullwidth"
-              onClick={() => {
-                try {
-                  descargarRutinaPdf(rutinaActiva)
-                } catch (e) {
-                  window.alert(e?.message || 'No se pudo generar el PDF.')
-                }
-              }}
-            >
-              Exportar PDF
-            </button>
-          </div>
-        </div>
 
         {vista === 'calendario' && (
           <div className="box mb-4 py-3">
@@ -1125,6 +1273,27 @@ export default function Rutina() {
                                   placeholder="10 o 8+8"
                                 />
                               </div>
+                              <div>
+                                <label className="ej-form-label mb-1">Superserie</label>
+                                <input
+                                  className="input is-small"
+                                  type="text"
+                                  value={draftEjercicio.superserie}
+                                  onChange={(e) => setDraftEjercicio((d) => ({ ...d, superserie: e.target.value }))}
+                                  placeholder="A"
+                                />
+                              </div>
+                              <div>
+                                <label className="ej-form-label mb-1">Descanso ronda (seg)</label>
+                                <input
+                                  className="input is-small"
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={draftEjercicio.descansoPostRonda}
+                                  onChange={(e) => setDraftEjercicio((d) => ({ ...d, descansoPostRonda: e.target.value }))}
+                                  placeholder="90"
+                                />
+                              </div>
                             </div>
                             <div className="rutina-plan-edit-actions">
                               <button type="button" className="button is-small is-link" onClick={guardarEdicionEjercicio} disabled={!draftEjercicio.nombre.trim()}>
@@ -1160,6 +1329,9 @@ export default function Rutina() {
                                 ) : (
                                   <span className="is-size-7 has-text-grey">Sin series/reps sugeridas</span>
                                 )}
+                                {it?.superserie ? (
+                                  <span className="rutina-chip rut-superserie-chip">SS {it.superserie}</span>
+                                ) : null}
                               </div>
                             </div>
                             <div className="rutina-plan-row-actions">
@@ -1178,124 +1350,326 @@ export default function Rutina() {
         )}
 
         {vista === 'registrar' && (
-          <>
-            <div className="box mb-4 py-3">
-              <h2 className="title is-6 mb-1">Registrar sesión</h2>
-              <p className="is-size-7 has-text-grey mb-3">Elegí fecha y día del plan, marcá lo que hiciste y guardá.</p>
-              <div className="rutina-reg-meta">
-                <div>
-                  <label className="ej-form-label mb-1" htmlFor="rutina-fecha-sesion">Fecha</label>
-                  <input
-                    id="rutina-fecha-sesion"
-                    className="input"
-                    type="date"
-                    value={fechaInput}
-                    onChange={(e) => setFechaInput(e.target.value)}
-                  />
+          <div className="rut-sesion-layout">
+            <div className="rut-sesion-main">
+              <div className="rut-day-panel">
+                <div className="rut-day-panel-top">
+                  <p className="rut-day-kicker mb-0">
+                    <i className="rut-day-dot" aria-hidden />
+                    Seleccionar día del plan activo
+                  </p>
+                  <p className="rut-day-fecha mb-0">
+                    <span className="rut-day-fecha-label">
+                      {(fechaInput || hoy) === hoy ? 'Hoy:' : 'Sesión:'}
+                    </span>{' '}
+                    {(() => {
+                      try {
+                        const base = fechaInput || hoy
+                        const [y, m, d] = base.split('-').map(Number)
+                        return new Date(y, m - 1, d).toLocaleDateString('es-AR', {
+                          weekday: 'long',
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric',
+                        })
+                      } catch {
+                        return fechaInput || hoy
+                      }
+                    })()}
+                  </p>
                 </div>
-                <div>
-                  <span className="ej-form-label mb-1">Día del plan</span>
-                  <div className="rutina-dias-pills" role="group" aria-label="Día de la rutina">
-                    {dias.map((d) => (
+
+                <div className="rut-day-chips" role="group" aria-label="Día de la rutina">
+                  {dias.map((d, di) => {
+                    const grupos = inferirGruposMuscularesDia(d.ejercicios)
+                    const cant = (d.ejercicios || []).length
+                    const activo = diaSeleccionado === d.id
+                    const titulo = grupos || d.nombre || `Día ${di + 1}`
+                    return (
                       <button
                         key={d.id}
                         type="button"
-                        className={`rutina-dia-pill${diaSeleccionado === d.id ? ' is-active' : ''}`}
+                        className={`rut-day-chip${activo ? ' is-active' : ''}`}
                         onClick={() => setDiaSeleccionado(d.id)}
                       >
-                        {d.nombre}
-                        <span className="rutina-dia-pill-count">{(d.ejercicios || []).length}</span>
+                        {activo && (
+                          <span className="rut-day-chip-check" aria-hidden>✓</span>
+                        )}
+                        <span className="rut-day-chip-name">Día {di + 1}: {titulo}</span>
+                        <span className="rut-day-chip-badge">{cant} ejer.</span>
                       </button>
-                    ))}
-                  </div>
+                    )
+                  })}
+                  <button
+                    type="button"
+                    className="rut-day-chip rut-day-chip--add"
+                    onClick={() => { setVista('configurar'); añadirDia() }}
+                  >
+                    + Añadir día
+                  </button>
                 </div>
-              </div>
-            </div>
 
-            {ejerciciosParaCargar.length === 0 ? (
-              <div className="box has-text-grey">
-                <p className="mb-2">No hay ejercicios en <strong>{diaParaRegistrar?.nombre}</strong>.</p>
-                <button type="button" className="button is-small is-link" onClick={() => setVista('configurar')}>
-                  Ir a Configurar
-                </button>
+                {(() => {
+                  const { hechos, total, pct, kcal } = progresoSesion
+                  return (
+                    <div className="rut-day-progress">
+                      <div className="rut-day-progress-top">
+                        <p className="mb-0">
+                          Progreso de la sesión:{' '}
+                          <strong className="rut-day-progress-hi">
+                            {hechos} de {total} ejercicios
+                          </strong>{' '}
+                          completados
+                        </p>
+                        <p className="rut-day-progress-meta mb-0">
+                          {pct}% · Estimado: ~{kcal > 0 ? kcal : Math.max(0, hechos * 45)} kcal gastadas
+                        </p>
+                      </div>
+                      <div className="rut-day-progress-bar" aria-hidden>
+                        <span style={{ width: `${Math.max(pct, 0)}%` }} />
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
-            ) : (
-              <div className="box mb-4">
-                <div className="mb-3">
-                  <h3 className="title is-6 mb-0">Plan de {diaParaRegistrar?.nombre}</h3>
-                  <p className="is-size-7 has-text-grey mb-0">
-                    Solo ves los pendientes. Al guardar, salen del listado. Podés agregar otra tanda desde “Ya hechos”.
-                  </p>
+
+              {ejerciciosParaCargar.length === 0 ? (
+                <div className="rut-empty">
+                  <p className="mb-2">No hay ejercicios en <strong>{diaParaRegistrar?.nombre}</strong>.</p>
+                  <button type="button" className="rut-btn-primary" onClick={() => setVista('configurar')}>
+                    Ir a Armar tu plan
+                  </button>
                 </div>
-                <RegistrarPlanDelDia
+              ) : (
+                <SesionRegistroTitanium
                   key={`${diaSeleccionado}-${fechaInput}`}
                   ejercicios={ejerciciosParaCargar}
                   registrosDeEstaSesion={registrosDeEstaSesion}
+                  historialPorEjercicio={historialPorEjercicio}
                   pesoCfg={pesoCfg}
-                  onGuardarMarcados={agregarRegistrosVarios}
+                  onGuardarSerie={guardarSerieSesion}
                   onEliminarRegistro={eliminarRegistro}
-                />
-              </div>
-            )}
-
-            <div className="box mb-4 py-3 rutina-hist-box">
-              <button
-                type="button"
-                className="rutina-hist-toggle"
-                onClick={() => setHistorialAbierto((v) => !v)}
-                aria-expanded={historialAbierto}
-              >
-                <div>
-                  <h2 className="title is-6 mb-0">Historial</h2>
-                  <p className="is-size-7 has-text-grey mb-0">
-                    {historialAbierto
-                      ? 'Elegí una fecha para ver o editar registros'
-                      : 'Tocá para consultar registros por fecha'}
-                  </p>
-                </div>
-                <span className="rutina-hist-chevron" aria-hidden>{historialAbierto ? '▼' : '▶'}</span>
-              </button>
-
-              {historialAbierto && (
-                <div className="rutina-hist-panel mt-3">
-                  <HistorialFechaPicker
-                    value={fechaHistorial}
-                    onChange={setFechaHistorial}
-                    hoy={hoy}
-                    fechasConDatos={fechasConEntreno}
-                  />
-                  {(() => {
-                    const lista = porFecha[fechaHistorial] || []
-                    if (lista.length === 0) {
-                      return (
-                        <p className="is-size-7 has-text-grey mb-0 mt-3">
-                          No hay registros el {formatearFecha(fechaHistorial)}.
-                        </p>
-                      )
+                  ocultarProgreso
+                  onAnadirEjercicioExtra={() => {
+                    const nombre = window.prompt('Nombre del ejercicio extra a añadir:')
+                    const n = String(nombre || '').trim()
+                    if (!n) return
+                    const idDia = diaSeleccionado || diaParaRegistrar?.id
+                    if (!idDia) return
+                    const ya = nombresEjerciciosDia(diaParaRegistrar)
+                    if (ya.includes(n)) {
+                      window.alert('Ese ejercicio ya está en la sesión.')
+                      return
                     }
+                    actualizarRutina((r) => ({
+                      ...r,
+                      dias: r.dias.map((d) =>
+                        d.id === idDia
+                          ? { ...d, ejercicios: [...(d.ejercicios || []), n] }
+                          : d
+                      ),
+                    }))
+                  }}
+                  onPausarSesion={() => {
+                    window.alert('Sesión pausada. Los registros ya quedaron guardados; podés continuar cuando quieras.')
+                  }}
+                  onGuardarSesion={() => {
+                    window.alert('Sesión guardada. Las marcas de carga se actualizaron con lo registrado hoy.')
+                  }}
+                />
+              )}
+
+            </div>
+
+            <aside className="rut-aside">
+              <div className="rut-aside-card">
+                <h2 className="rut-aside-title">Consistencia mensual</h2>
+                <div className="rut-mini-cal-nav">
+                  <button
+                    type="button"
+                    className="rut-icon-btn"
+                    onClick={() => {
+                      const [y, m] = mesCalendario.split('-').map(Number)
+                      const prev = new Date(y, m - 2, 1)
+                      setMesCalendario(`${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`)
+                    }}
+                  >
+                    ‹
+                  </button>
+                  <span>
+                    {(() => {
+                      const [y, m] = mesCalendario.split('-').map(Number)
+                      return new Date(y, m - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+                    })()}
+                  </span>
+                  <button
+                    type="button"
+                    className="rut-icon-btn"
+                    onClick={() => {
+                      const [y, m] = mesCalendario.split('-').map(Number)
+                      const next = new Date(y, m, 1)
+                      setMesCalendario(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`)
+                    }}
+                  >
+                    ›
+                  </button>
+                </div>
+                <div className="rut-mini-cal">
+                  <div className="rut-mini-cal-head">
+                    {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => (
+                      <span key={d}>{d}</span>
+                    ))}
+                  </div>
+                  <div className="rut-mini-cal-grid">
+                    {diasDelMes.map((cel, i) => {
+                      if (cel.vacio) return <span key={`e${i}`} className="rut-mini-cal-cell is-empty" />
+                      const entrenado = fechasConEntreno.has(cel.fecha)
+                      const esHoy = cel.fecha === hoy
+                      const sel = cel.fecha === fechaInput
+                      return (
+                        <button
+                          key={cel.fecha}
+                          type="button"
+                          className={`rut-mini-cal-cell${entrenado ? ' is-trained' : ''}${esHoy ? ' is-today' : ''}${sel ? ' is-sel' : ''}`}
+                          onClick={() => seleccionarFechaSesion(cel.fecha)}
+                          title={entrenado ? 'Ver sesión de este día' : 'Abrir sesión de este día'}
+                        >
+                          {cel.dia}
+                          {entrenado && <i />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rut-avance">
+                <div className="rut-avance-head">
+                  <div>
+                    <h2 className="rut-avance-title">Avance de Cargas</h2>
+                    <p className="rut-avance-sub mb-0">Últimos 30 días de progreso</p>
+                  </div>
+                  {(() => {
+                    const conPeso = progresoOrdenadoEnPeriodo.filter((p) => p.ultima?.pesoKg && p.anterior?.pesoKg)
+                    if (!conPeso.length) return null
+                    const deltas = conPeso.map((p) => ((p.ultima.pesoKg - p.anterior.pesoKg) / p.anterior.pesoKg) * 100)
+                    const avg = deltas.reduce((a, b) => a + b, 0) / deltas.length
+                    const signo = avg >= 0 ? '+' : ''
                     return (
-                      <ul className="rutina-sesion-regs mt-3">
-                        {lista.map((r) => (
-                          <FilaRegistroRutinaEditable
-                            key={r.id}
-                            registro={r}
-                            draft={editandoRegistro}
-                            pesoCfg={pesoCfg}
-                            onPatch={patchEditandoRegistro}
-                            onEditar={iniciarEdicionRegistro}
-                            onGuardar={guardarEdicionRegistro}
-                            onCancelar={cancelarEdicionRegistro}
-                            onEliminar={eliminarRegistro}
-                            variant="compacto"
-                          />
-                        ))}
-                      </ul>
+                      <span className={`rut-avance-badge${avg < 0 ? ' is-down' : ''}`}>
+                        ↑ {signo}{Math.abs(avg).toFixed(1)}% fuerza
+                      </span>
                     )
                   })()}
                 </div>
+
+                <div className="rut-avance-grid">
+                  <div className="rut-avance-kpi">
+                    <span className="rut-avance-kpi-label">Sesiones</span>
+                    <strong className="rut-avance-kpi-value">{sesionesEnPeriodo}</strong>
+                    <span className="rut-avance-kpi-hint">Días entrenados</span>
+                  </div>
+                  <div className="rut-avance-kpi">
+                    <span className="rut-avance-kpi-label">Volumen Total</span>
+                    <strong className="rut-avance-kpi-value is-blue">
+                      {volumenTon >= 10 ? volumenTon.toFixed(1) : volumenTon.toFixed(2)} ton
+                    </strong>
+                    <span className="rut-avance-kpi-hint">Tonelaje acumulado</span>
+                  </div>
+                  <div className="rut-avance-kpi">
+                    <span className="rut-avance-kpi-label">Ejercicios</span>
+                    <strong className="rut-avance-kpi-value">{ejerciciosEnPeriodo}</strong>
+                    <span className="rut-avance-kpi-hint">Patrones evaluados</span>
+                  </div>
+                  <div className="rut-avance-kpi">
+                    <span className="rut-avance-kpi-label">Mejorados</span>
+                    <strong className="rut-avance-kpi-value is-green">↑ {conMejora}</strong>
+                    <span className="rut-avance-kpi-hint">Superaron PR previo</span>
+                  </div>
+                </div>
+
+                {progresionEjercicioActivo ? (
+                  <div className="rut-avance-prog">
+                    <div className="rut-avance-prog-top">
+                      <h3 className="rut-avance-prog-title">
+                        {(() => {
+                          const n = String(progresionEjercicioActivo.ejercicio || '')
+                            .replace(/^\s*\d+\s*[-–.)]\s*/, '')
+                            .replace(/\s*\(.*$/, '')
+                            .trim()
+                          const label = n.length > 26 ? `${n.slice(0, 24)}…` : n
+                          return `${label} (Progresión)`
+                        })()}
+                      </h3>
+                      <span className={`rut-avance-prog-pct${progresionEjercicioActivo.pct < 0 ? ' is-down' : ''}`}>
+                        {progresionEjercicioActivo.pct >= 0 ? '+' : ''}{progresionEjercicioActivo.pct}% de carga
+                      </span>
+                    </div>
+                    <div className="rut-avance-prog-meta">
+                      <span>Inicio: {progresionEjercicioActivo.inicio} kg</span>
+                      <span className="is-hoy">Hoy: {progresionEjercicioActivo.hoyPeso} kg</span>
+                    </div>
+                    <div className="rut-avance-prog-bar" aria-hidden>
+                      <span
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.max(
+                              8,
+                              progresionEjercicioActivo.pct === 0
+                                ? 42
+                                : 42 + Math.min(50, Math.abs(progresionEjercicioActivo.pct))
+                            )
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rut-avance-prog is-empty">
+                    <div className="rut-avance-prog-top">
+                      <h3 className="rut-avance-prog-title">Progresión de carga</h3>
+                      <span className="rut-avance-prog-pct is-muted">—</span>
+                    </div>
+                    <div className="rut-avance-prog-meta">
+                      <span>Inicio: —</span>
+                      <span className="is-hoy">Hoy: —</span>
+                    </div>
+                    <div className="rut-avance-prog-bar" aria-hidden>
+                      <span style={{ width: '0%' }} />
+                    </div>
+                    <p className="rut-avance-prog-empty mb-0">Registrá series con kilos para ver la evolución aquí.</p>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className="rut-avance-hist"
+                  onClick={() => setVista('progreso')}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                    <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+                  </svg>
+                  Ver historial completo de registros
+                </button>
+              </div>
+
+              {syncRutinasNube && (
+                <div className="rut-cloud">
+                  <span className="rut-cloud-ico" aria-hidden>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M7 18a4 4 0 010-8 5 5 0 019.6-1.4A3.5 3.5 0 0119 18H7z" />
+                      <path d="M12 14v-6M9.5 10.5L12 8l2.5 2.5" />
+                    </svg>
+                  </span>
+                  <div>
+                    <strong>Sincronización Cloud con Profe</strong>
+                    <p className="mb-0">Tus series y RPE se suben automáticamente a la nube al guardar.</p>
+                  </div>
+                </div>
               )}
-            </div>
-          </>
+            </aside>
+          </div>
         )}
         </>
         ) : (
