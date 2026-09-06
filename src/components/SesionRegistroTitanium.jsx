@@ -3,6 +3,7 @@ import {
   itemEjercicioDiaNormalizado,
   agruparPlanEnBloques,
   parseNumSeriesPlan,
+  nombresEjercicioCoinciden,
 } from '../utils/rutinaEjercicioDia'
 import { caloriasQuemadasRegistroRutina } from '../utils/calorias'
 
@@ -137,7 +138,9 @@ export default function SesionRegistroTitanium({
   historialPorEjercicio = {},
   pesoCfg,
   onGuardarSerie,
+  onGuardarSeries,
   onEliminarRegistro,
+  onEliminarRegistros,
   ocultarProgreso = false,
   onAnadirEjercicioExtra,
   onPausarSesion,
@@ -153,15 +156,25 @@ export default function SesionRegistroTitanium({
   const [seriesAdj, setSeriesAdj] = useState({})
   const [notas, setNotas] = useState({})
   const [ssDrafts, setSsDrafts] = useState({})
-  const [ssChecks, setSsChecks] = useState({})
   const [ssRondas, setSsRondas] = useState({})
   const [expandidos, setExpandidos] = useState({})
+  const [ssExpandidos, setSsExpandidos] = useState({})
+
+  const borrarRegs = (lista) => {
+    const ids = (lista || []).map((r) => r.id).filter(Boolean)
+    if (ids.length === 0) return
+    if (onEliminarRegistros) onEliminarRegistros(ids)
+    else ids.forEach((id) => onEliminarRegistro(id))
+  }
+
+  const regsDeNombre = (nombre) =>
+    (registrosDeEstaSesion || []).filter((r) => nombresEjercicioCoinciden(r.ejercicio, nombre))
 
   useEffect(() => {
     setSeriesAdj({})
-    setSsChecks({})
     setSsRondas({})
     setExpandidos({})
+    setSsExpandidos({})
   }, [planItems])
 
   useEffect(() => {
@@ -191,7 +204,9 @@ export default function SesionRegistroTitanium({
   const regsPorEjercicio = useMemo(() => {
     const map = {}
     for (const it of planItems) {
-      map[it.nombre] = (registrosDeEstaSesion || []).filter((r) => r.ejercicio === it.nombre)
+      map[it.nombre] = (registrosDeEstaSesion || []).filter((r) =>
+        nombresEjercicioCoinciden(r.ejercicio, it.nombre)
+      )
     }
     return map
   }, [planItems, registrosDeEstaSesion])
@@ -203,16 +218,21 @@ export default function SesionRegistroTitanium({
   }
 
   const limpiarRegistrosEjercicio = (nombre) => {
-    const ya = regsPorEjercicio[nombre] || []
-    ya.forEach((r) => onEliminarRegistro(r.id))
+    borrarRegs(regsDeNombre(nombre))
     setExpandidos((p) => ({ ...p, [nombre]: false }))
   }
 
   const hechosCount = planItems.filter((it) => {
-    const n = numSeriesDe(it)
     const ya = regsPorEjercicio[it.nombre] || []
-    if (it.superserie) return ya.length > 0
-    return ya.length >= n
+    if (it.superserie) {
+      const vueltas = parseNumSeriesPlan(it.series, 3)
+      if (!ya.length) return false
+      for (let r = 1; r <= vueltas; r += 1) {
+        if (!ya.some((reg) => Number(reg.serieNum) === r)) return false
+      }
+      return true
+    }
+    return ya.length >= numSeriesDe(it)
   }).length
 
   const pct = planItems.length > 0 ? Math.round((hechosCount / planItems.length) * 100) : 0
@@ -582,33 +602,154 @@ export default function SesionRegistroTitanium({
     return Math.max(ssRondas[bloque.id] || 0, completas)
   }
 
-  const renderSuperserieItem = (it, label, idx, bloqueId, rondaActual) => {
+  const vueltasDeBloque = (bloque) => parseNumSeriesPlan(bloque.items[0]?.series, 3)
+
+  const ejercicioSsCompleto = (it, vueltas) => {
     const ya = regsPorEjercicio[it.nombre] || []
-    const hist = historialPorEjercicio[it.nombre] || []
-    const ant = anteriorPorSerie(hist, rondaActual || 1)
+    if (!ya.length) return false
+    for (let r = 1; r <= vueltas; r += 1) {
+      if (!ya.some((reg) => Number(reg.serieNum) === r)) return false
+    }
+    return true
+  }
+
+  const draftSsDe = (bloqueId, it, ronda = 1) => {
     const draftKey = `${bloqueId}::${it.nombre}`
-    const d = ssDrafts[draftKey] || {
+    const hist = historialPorEjercicio[it.nombre] || []
+    const ant = anteriorPorSerie(hist, ronda)
+    return ssDrafts[draftKey] || {
       pesoKg: ant?.pesoKg != null ? String(ant.pesoKg) : '',
       repeticiones: (it.repeticiones || ant?.repeticiones || '10').toString().replace(/\s*reps?/i, ''),
     }
-    const checkKey = `${bloqueId}::${it.nombre}::${rondaActual}`
-    const checked = Boolean(ssChecks[checkKey]) || ya.some((r) => Number(r.serieNum) === rondaActual)
+  }
+
+  const limpiarSuperserie = (bloque) => {
+    const todos = []
+    for (const it of bloque.items) {
+      todos.push(...regsDeNombre(it.nombre))
+    }
+    borrarRegs(todos)
+    setSsRondas((p) => ({ ...p, [bloque.id]: 0 }))
+    setSsExpandidos((p) => ({ ...p, [bloque.id]: false }))
+  }
+
+  const deshacerUltimaRonda = (bloque) => {
+    const hechas = rondasHechasBloque(bloque)
+    if (hechas < 1) return
+    const aBorrar = []
+    for (const it of bloque.items) {
+      const ya = regsDeNombre(it.nombre)
+      const reg = ya.find((r) => Number(r.serieNum) === hechas)
+      if (reg) aBorrar.push(reg)
+    }
+    borrarRegs(aBorrar)
+    setSsRondas((p) => ({ ...p, [bloque.id]: Math.max(0, hechas - 1) }))
+  }
+
+  const guardarUnaOVarias = (lista) => {
+    if (!lista?.length) return
+    if (lista.length === 1) onGuardarSerie(lista[0])
+    else if (onGuardarSeries) onGuardarSeries(lista)
+    else lista.forEach((s) => onGuardarSerie(s))
+  }
+
+  /** Un click marca/desmarca TODAS las vueltas de ese ejercicio en la superserie. */
+  const toggleEjercicioSs = (bloque, it, label) => {
+    const vueltas = vueltasDeBloque(bloque)
+    const ya = regsDeNombre(it.nombre)
+    if (ejercicioSsCompleto(it, vueltas)) {
+      // Al desmarcar uno, limpiamos toda la superserie para no dejar rondas huérfanas
+      limpiarSuperserie(bloque)
+      return
+    }
+    const d = draftSsDe(bloque.id, it, 1)
+    const reps = String(d.repeticiones || it.repeticiones || '10').trim()
+    const pendientes = []
+    for (let r = 1; r <= vueltas; r += 1) {
+      if (ya.some((reg) => Number(reg.serieNum) === r)) continue
+      pendientes.push({
+        ejercicio: it.nombre,
+        series: 1,
+        serieNum: r,
+        repeticiones: reps,
+        pesoKg: d.pesoKg,
+        notas: `Superserie ${label} · Ronda ${r}`,
+      })
+    }
+    guardarUnaOVarias(pendientes)
+  }
+
+  const completarRonda = (bloque) => {
+    const vueltas = vueltasDeBloque(bloque)
+    const hechas = rondasHechasBloque(bloque)
+    if (hechas >= vueltas) return
+    const next = hechas + 1
+    const pendientes = []
+    for (const it of bloque.items) {
+      const ya = regsPorEjercicio[it.nombre] || []
+      if (ya.some((r) => Number(r.serieNum) === next)) continue
+      const d = draftSsDe(bloque.id, it, next)
+      pendientes.push({
+        ejercicio: it.nombre,
+        series: 1,
+        serieNum: next,
+        repeticiones: String(d.repeticiones || '10').trim(),
+        pesoKg: d.pesoKg,
+        notas: `Superserie ${bloque.label} · Ronda ${next}`,
+      })
+    }
+    guardarUnaOVarias(pendientes)
+    setSsRondas((p) => ({ ...p, [bloque.id]: next }))
+  }
+
+  const completarSuperserieEntera = (bloque) => {
+    const vueltas = vueltasDeBloque(bloque)
+    const pendientes = []
+    for (let i = 0; i < bloque.items.length; i += 1) {
+      const it = bloque.items[i]
+      const label = `${bloque.label}${i + 1}`
+      const ya = regsPorEjercicio[it.nombre] || []
+      const d = draftSsDe(bloque.id, it, 1)
+      const reps = String(d.repeticiones || it.repeticiones || '10').trim()
+      for (let r = 1; r <= vueltas; r += 1) {
+        if (ya.some((reg) => Number(reg.serieNum) === r)) continue
+        pendientes.push({
+          ejercicio: it.nombre,
+          series: 1,
+          serieNum: r,
+          repeticiones: reps,
+          pesoKg: d.pesoKg,
+          notas: `Superserie ${label} · Ronda ${r}`,
+        })
+      }
+    }
+    guardarUnaOVarias(pendientes)
+    setSsRondas((p) => ({ ...p, [bloque.id]: vueltas }))
+  }
+
+  const renderSuperserieItem = (it, label, idx, bloque) => {
+    const vueltas = vueltasDeBloque(bloque)
+    const ya = regsPorEjercicio[it.nombre] || []
+    const hist = historialPorEjercicio[it.nombre] || []
+    const ant = anteriorPorSerie(hist, 1)
+    const draftKey = `${bloque.id}::${it.nombre}`
+    const d = draftSsDe(bloque.id, it, 1)
+    const checked = ejercicioSsCompleto(it, vueltas)
+    const parcial = !checked && ya.length > 0
     const esPesoCorporal = /plancha|elevaciones? de piernas|peso\s*corporal|abdominal|core/i.test(it.nombre)
       && !/mancuerna|barra|kg/i.test(it.nombre)
-    const hintExtra = ant?.pesoKg != null
-      ? ` (ref: ${ant.pesoKg} kg)`
-      : ''
+    const hintExtra = ant?.pesoKg != null ? ` (ref: ${ant.pesoKg} kg)` : ''
 
     return (
-      <div key={it.nombre} className={`fp-ss-item${checked ? ' is-done' : ''}`}>
+      <div key={it.nombre} className={`fp-ss-item${checked ? ' is-done' : ''}${parcial ? ' is-partial' : ''}`}>
         {idx > 0 && <p className="fp-ss-join">↓ Combinado de inmediato con:</p>}
         <div className="fp-ss-row">
           <span className="fp-ss-dot" aria-hidden />
           <div className="fp-ss-copy">
             <span className="fp-ss-label">Ejercicio {label}</span>
-            <strong className="fp-ss-name">{it.nombre}</strong>
+            <strong className="fp-ss-name">{nombreDisplayEjercicio(it.nombre)}</strong>
             <span className="fp-ss-hint">
-              {it.series || '3'} series × {it.repeticiones || '10'} reps sugeridas{hintExtra}
+              {vueltas} vueltas × {it.repeticiones || '10'} reps sugeridas{hintExtra}
             </span>
           </div>
           <div className="fp-ss-log">
@@ -646,25 +787,9 @@ export default function SesionRegistroTitanium({
               type="button"
               className={`fp-ss-check${checked ? ' is-on' : ''}`}
               aria-pressed={checked}
-              aria-label={checked ? 'Desmarcar' : 'Marcar hecho'}
-              onClick={() => {
-                if (checked) {
-                  setSsChecks((p) => ({ ...p, [checkKey]: false }))
-                  const reg = ya.find((r) => Number(r.serieNum) === rondaActual)
-                  if (reg) onEliminarRegistro(reg.id)
-                  return
-                }
-                setSsChecks((p) => ({ ...p, [checkKey]: true }))
-                const reps = String(d.repeticiones || it.repeticiones || '10').trim()
-                onGuardarSerie({
-                  ejercicio: it.nombre,
-                  series: 1,
-                  serieNum: rondaActual,
-                  repeticiones: reps,
-                  pesoKg: d.pesoKg,
-                  notas: `Superserie ${label} · Ronda ${rondaActual}`,
-                })
-              }}
+              aria-label={checked ? 'Quitar ejercicio de la superserie' : 'Marcar ejercicio (todas las vueltas)'}
+              title={checked ? 'Quitar' : 'Marcar todas las vueltas'}
+              onClick={() => toggleEjercicioSs(bloque, it, label)}
             >
               {checked ? <IconCheck /> : null}
             </button>
@@ -672,35 +797,6 @@ export default function SesionRegistroTitanium({
         </div>
       </div>
     )
-  }
-
-  const completarRonda = (bloque) => {
-    const vueltas = parseNumSeriesPlan(bloque.items[0]?.series, 3)
-    const hechas = rondasHechasBloque(bloque)
-    if (hechas >= vueltas) return
-    const next = hechas + 1
-    for (const it of bloque.items) {
-      const draftKey = `${bloque.id}::${it.nombre}`
-      const checkKey = `${bloque.id}::${it.nombre}::${next}`
-      const ya = regsPorEjercicio[it.nombre] || []
-      if (ya.some((r) => Number(r.serieNum) === next)) continue
-      const hist = historialPorEjercicio[it.nombre] || []
-      const ant = anteriorPorSerie(hist, next)
-      const d = ssDrafts[draftKey] || {
-        pesoKg: ant?.pesoKg != null ? String(ant.pesoKg) : '',
-        repeticiones: (it.repeticiones || ant?.repeticiones || '10').toString().replace(/\s*reps?/i, ''),
-      }
-      onGuardarSerie({
-        ejercicio: it.nombre,
-        series: 1,
-        serieNum: next,
-        repeticiones: String(d.repeticiones || '10').trim(),
-        pesoKg: d.pesoKg,
-        notas: `Superserie ${bloque.label} · Ronda ${next}`,
-      })
-      setSsChecks((p) => ({ ...p, [checkKey]: true }))
-    }
-    setSsRondas((p) => ({ ...p, [bloque.id]: next }))
   }
 
   const idxPorNombre = (() => {
@@ -739,12 +835,68 @@ export default function SesionRegistroTitanium({
 
       {bloques.map((bloque) => {
         if (bloque.tipo === 'superserie') {
-          const vueltas = parseNumSeriesPlan(bloque.items[0]?.series, 3)
+          const vueltas = vueltasDeBloque(bloque)
           const labels = bloque.items.map((_, i) => `${bloque.label}${i + 1}`)
           const hechas = rondasHechasBloque(bloque)
           const rondaActual = Math.min(hechas + 1, vueltas)
           const completa = hechas >= vueltas
           const labelJoin = labels.length >= 2 ? `${labels[0]} y ${labels[1]}` : labels[0]
+          const expandido = Boolean(ssExpandidos[bloque.id])
+          const nombres = bloque.items.map((it) => nombreDisplayEjercicio(it.nombre)).join(' + ')
+          const kcalSs = bloque.items.reduce((sum, it) => {
+            const ya = regsPorEjercicio[it.nombre] || []
+            return sum + ya.reduce((s, r) => s + caloriasQuemadasRegistroRutina(r, pesoCfg), 0)
+          }, 0)
+
+          if (completa && !expandido) {
+            return (
+              <article key={bloque.id} className="fp-ex fp-ex--done fp-ss--done">
+                <div className="fp-ex-done-inner">
+                  <span className="fp-ex-done-ico" aria-hidden><IconCheck /></span>
+                  <div className="fp-ex-done-body">
+                    <div className="fp-ex-done-top">
+                      <span className="fp-ss-badge fp-ss-badge--sm"><IconBolt /> Superserie {bloque.label}</span>
+                      <strong>{nombres}</strong>
+                      <span className="fp-badge-done">Completado</span>
+                    </div>
+                    <p className="fp-ex-done-sum mb-0">
+                      {vueltas} vueltas · {bloque.items.map((it) => {
+                        const ya = regsPorEjercicio[it.nombre] || []
+                        const last = ya[ya.length - 1]
+                        if (!last) return null
+                        return last.pesoKg != null
+                          ? `${nombreDisplayEjercicio(it.nombre)}: ${last.pesoKg} kg × ${last.repeticiones}`
+                          : `${nombreDisplayEjercicio(it.nombre)}: ${last.repeticiones}`
+                      }).filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <div className="fp-ex-done-side">
+                    <div className="fp-kcal-box">~{Math.max(kcalSs, 40)} kcal quemadas</div>
+                    <div className="fp-ex-done-actions">
+                      <button
+                        type="button"
+                        className="fp-ex-done-icon"
+                        onClick={() => setSsExpandidos((p) => ({ ...p, [bloque.id]: true }))}
+                        aria-label="Editar superserie"
+                        title="Editar"
+                      >
+                        <IconPencil />
+                      </button>
+                      <button
+                        type="button"
+                        className="fp-ex-done-icon is-danger"
+                        onClick={() => limpiarSuperserie(bloque)}
+                        aria-label="Quitar superserie"
+                        title="Quitar"
+                      >
+                        <IconTrash />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            )
+          }
 
           return (
             <div key={bloque.id} className="fp-ss">
@@ -759,21 +911,61 @@ export default function SesionRegistroTitanium({
               </div>
               <div className="fp-ss-track">
                 {bloque.items.map((it, idx) =>
-                  renderSuperserieItem(it, `${bloque.label}${idx + 1}`, idx, bloque.id, rondaActual)
+                  renderSuperserieItem(it, `${bloque.label}${idx + 1}`, idx, bloque)
                 )}
               </div>
               <div className="fp-ss-foot">
                 <span className="fp-ss-rondas">
                   Rondas completadas: <strong>{hechas} de {vueltas}</strong>
                 </span>
-                <button
-                  type="button"
-                  className="fp-ss-ronda-btn"
-                  disabled={completa}
-                  onClick={() => completarRonda(bloque)}
-                >
-                  {completa ? 'Superserie completa' : `Completar Ronda ${rondaActual}`}
-                </button>
+                <div className="fp-ss-foot-actions">
+                  {hechas > 0 && (
+                    <button
+                      type="button"
+                      className="fp-ss-undo"
+                      onClick={() => deshacerUltimaRonda(bloque)}
+                    >
+                      Deshacer última ronda
+                    </button>
+                  )}
+                  {!completa && (
+                    <button
+                      type="button"
+                      className="fp-ss-ronda-btn is-ghost"
+                      onClick={() => completarSuperserieEntera(bloque)}
+                    >
+                      Completar superserie
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="fp-ss-ronda-btn"
+                    disabled={completa}
+                    onClick={() => completarRonda(bloque)}
+                  >
+                    {completa ? 'Superserie completa' : `Completar Ronda ${rondaActual}`}
+                  </button>
+                  {expandido && (
+                    <button
+                      type="button"
+                      className="fp-ex-done-icon is-danger"
+                      onClick={() => limpiarSuperserie(bloque)}
+                      aria-label="Quitar superserie"
+                      title="Quitar"
+                    >
+                      <IconTrash />
+                    </button>
+                  )}
+                  {expandido && completa && (
+                    <button
+                      type="button"
+                      className="fp-ss-undo"
+                      onClick={() => setSsExpandidos((p) => ({ ...p, [bloque.id]: false }))}
+                    >
+                      Comprimir
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )

@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useStorage } from '../hooks/useStorage'
 import { useAuth } from '../context/AuthContext'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { listAssignmentsForStudent, assignmentsToRutinasItems, deleteRoutineAssignment } from '../lib/profeDb'
 import { formatearFecha, fechaToISO, fechaSoloDia, caloriasQuemadasRegistroRutina } from '../utils/calorias'
 import { getRangoPorPeriodo } from '../utils/estadisticas'
-import { EJERCICIOS_RUTINA, buscarEjercicios } from '../utils/rutinaEjercicios'
 import { descargarRutinaPdf } from '../utils/rutinaPdf'
 import {
   nombreDeEjercicioDiaItem,
@@ -15,8 +14,11 @@ import {
   inferirGruposMuscularesDia,
   ejercicioDiaAJson,
   parseNumSeriesPlan,
+  siguienteLabelSuperserie,
+  nombresEjercicioCoinciden,
 } from '../utils/rutinaEjercicioDia'
 import SesionRegistroTitanium from '../components/SesionRegistroTitanium'
+import ArmarPlanTitanium from '../components/ArmarPlanTitanium'
 import { AppNotificacionesCampana } from '../context/AppNotificationsContext'
 
 function crearDia(num) {
@@ -71,29 +73,15 @@ export default function Rutina() {
 
   const [origenRutinas, setOrigenRutinas] = useState('propias')
   const [assignmentsRefreshTick, setAssignmentsRefreshTick] = useState(0)
-  const [vista, setVista] = useState('registrar') // 'calendario' | 'registrar' | 'configurar' | 'progreso'
+  const [vista, setVista] = useState('registrar') // 'registrar' | 'configurar' | 'progreso'
   const [diaEditando, setDiaEditando] = useState('')
-  const [busqueda, setBusqueda] = useState('')
   const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
   const [diaSeleccionado, setDiaSeleccionado] = useState('')
   const [nombreNuevaRutina, setNombreNuevaRutina] = useState('')
-  /** Índice del ejercicio en edición dentro del día (Configurar). */
-  const [ejercicioEditandoIdx, setEjercicioEditandoIdx] = useState(null)
-  const [draftEjercicio, setDraftEjercicio] = useState({
-    nombre: '',
-    series: '',
-    repeticiones: '',
-    superserie: '',
-    descansoPostRonda: '',
-  })
-  const [dragEjercicio, setDragEjercicio] = useState(null) // { fromIdx, overIdx } | null
-  const dragEjercicioRef = useRef(null)
-  const planListRef = useRef(null)
   const [mesCalendario, setMesCalendario] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })
-  const [fechaCalendarioSeleccionada, setFechaCalendarioSeleccionada] = useState(null)
   const [periodProgreso, setPeriodProgreso] = useState('mes')
   const [desdeProgresoCustom, setDesdeProgresoCustom] = useState(() => {
     const d = new Date()
@@ -101,11 +89,14 @@ export default function Rutina() {
     return fechaToISO(d)
   })
   const [hastaProgresoCustom, setHastaProgresoCustom] = useState(() => fechaToISO(new Date()))
-  /** Edición de un registro de pesos: { id, ejercicio, series, repeticiones, pesoKg, notas } */
-  const [editandoRegistro, setEditandoRegistro] = useState(null)
   /** Historial en Registrar: cerrado por defecto; fecha a consultar (hoy). */
   const [historialAbierto, setHistorialAbierto] = useState(false)
   const [fechaHistorial, setFechaHistorial] = useState(() => fechaToISO(new Date()))
+
+  // La solapa Calendario se eliminó; si quedó algún estado viejo, volver a registrar
+  useEffect(() => {
+    if (vista === 'calendario') setVista('registrar')
+  }, [vista])
 
   const hoy = fechaToISO(new Date())
   const pesoCfg = config?.pesoKg || 70
@@ -170,17 +161,6 @@ export default function Rutina() {
       if (!dias.some((d) => d.id === diaSeleccionado)) setDiaSeleccionado(idPrimero)
     }
   }, [rutinaIdActual])
-
-  useEffect(() => {
-    setEditandoRegistro(null)
-  }, [vista])
-
-  useEffect(() => {
-    setEjercicioEditandoIdx(null)
-    setDraftEjercicio({ nombre: '', series: '', repeticiones: '', superserie: '', descansoPostRonda: '' })
-    setDragEjercicio(null)
-    dragEjercicioRef.current = null
-  }, [diaEditando, vista])
 
   useEffect(() => {
     if (origenRutinas === 'asignadas') setVista('registrar')
@@ -248,8 +228,6 @@ export default function Rutina() {
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [syncRutinasNube, user?.id])
 
-  const resultadosBusqueda = busqueda.trim() ? buscarEjercicios(busqueda) : []
-
   const actualizarRutina = (fn) => {
     setRutinas((list) =>
       list.map((r) => (r.id === rutinaIdActual ? fn(r) : r))
@@ -262,6 +240,22 @@ export default function Rutina() {
       ...r,
       dias: [...(r.dias || []), crearDia(num)],
     }))
+  }
+
+  const duplicarDia = (idDia) => {
+    actualizarRutina((r) => {
+      const list = [...(r.dias || [])]
+      const idx = list.findIndex((d) => d.id === idDia)
+      if (idx < 0) return r
+      const src = list[idx]
+      const copia = {
+        id: `d${Date.now()}_copy`,
+        nombre: `${src.nombre || `Día ${idx + 1}`} (copia)`,
+        ejercicios: JSON.parse(JSON.stringify(src.ejercicios || [])),
+      }
+      list.splice(idx + 1, 0, copia)
+      return { ...r, dias: list }
+    })
   }
 
   const quitarDia = (idDia) => {
@@ -312,7 +306,6 @@ export default function Rutina() {
           : d
       ),
     }))
-    setBusqueda('')
   }
 
   const quitarEjercicioDelDiaPorIdx = (idx) => {
@@ -325,12 +318,6 @@ export default function Rutina() {
         return { ...d, ejercicios }
       }),
     }))
-    if (ejercicioEditandoIdx === idx) {
-      setEjercicioEditandoIdx(null)
-      setDraftEjercicio({ nombre: '', series: '', repeticiones: '' })
-    } else if (ejercicioEditandoIdx != null && ejercicioEditandoIdx > idx) {
-      setEjercicioEditandoIdx(ejercicioEditandoIdx - 1)
-    }
   }
 
   const reordenarEjercicioDelDia = (fromIdx, toIdx) => {
@@ -346,87 +333,20 @@ export default function Rutina() {
         return { ...d, ejercicios }
       }),
     }))
-    setEjercicioEditandoIdx((prev) => {
-      if (prev == null) return prev
-      if (prev === fromIdx) return toIdx
-      if (fromIdx < prev && toIdx >= prev) return prev - 1
-      if (fromIdx > prev && toIdx <= prev) return prev + 1
-      return prev
-    })
   }
 
-  const idxDesdePuntero = (clientY) => {
-    const list = planListRef.current
-    if (!list) return null
-    const rows = [...list.querySelectorAll('[data-plan-idx]')]
-    if (rows.length === 0) return null
-    for (const row of rows) {
-      const rect = row.getBoundingClientRect()
-      const mid = rect.top + rect.height / 2
-      if (clientY < mid) return Number(row.dataset.planIdx)
-    }
-    return Number(rows[rows.length - 1].dataset.planIdx)
-  }
-
-  const onPlanPointerDown = (e, idx) => {
-    if (ejercicioEditandoIdx != null) return
-    if (e.button != null && e.button !== 0) return
-    e.preventDefault()
-    const state = { fromIdx: idx, overIdx: idx, pointerId: e.pointerId }
-    dragEjercicioRef.current = state
-    setDragEjercicio({ fromIdx: idx, overIdx: idx })
-    e.currentTarget.setPointerCapture?.(e.pointerId)
-  }
-
-  const onPlanPointerMove = (e) => {
-    const state = dragEjercicioRef.current
-    if (!state) return
-    const overIdx = idxDesdePuntero(e.clientY)
-    if (overIdx == null || overIdx === state.overIdx) return
-    state.overIdx = overIdx
-    setDragEjercicio({ fromIdx: state.fromIdx, overIdx })
-  }
-
-  const onPlanPointerUp = () => {
-    const state = dragEjercicioRef.current
-    if (!state) return
-    reordenarEjercicioDelDia(state.fromIdx, state.overIdx)
-    dragEjercicioRef.current = null
-    setDragEjercicio(null)
-  }
-
-  const iniciarEdicionEjercicio = (idx) => {
-    const it = itemEjercicioDiaNormalizado(ejerciciosDelDia[idx])
-    if (!it) return
-    setEjercicioEditandoIdx(idx)
-    setDraftEjercicio({
-      nombre: it.nombre,
-      series: it.series,
-      repeticiones: it.repeticiones,
-      superserie: it.superserie || '',
-      descansoPostRonda: it.descansoPostRonda || '',
-    })
-  }
-
-  const cancelarEdicionEjercicio = () => {
-    setEjercicioEditandoIdx(null)
-    setDraftEjercicio({ nombre: '', series: '', repeticiones: '', superserie: '', descansoPostRonda: '' })
-  }
-
-  const guardarEdicionEjercicio = () => {
-    if (ejercicioEditandoIdx == null) return
-    const nombre = String(draftEjercicio.nombre || '').trim()
-    if (!nombre) return
-    const series = String(draftEjercicio.series || '').trim()
-    const repeticiones = String(draftEjercicio.repeticiones || '').trim()
-    const superserie = String(draftEjercicio.superserie || '').trim()
-    const descansoPostRonda = String(draftEjercicio.descansoPostRonda || '').trim()
+  const guardarEjercicioPlan = (idx, draft) => {
+    const nombre = String(draft?.nombre || '').trim()
+    if (!nombre || idx == null) return
     const raw = {
       nombre,
-      ...(series ? { series } : {}),
-      ...(repeticiones ? { repeticiones } : {}),
-      ...(superserie ? { superserie } : {}),
-      ...(descansoPostRonda ? { descansoPostRonda } : {}),
+      series: String(draft.series || '').trim(),
+      repeticiones: String(draft.repeticiones || '').trim(),
+      superserie: String(draft.superserie || '').trim(),
+      descansoPostRonda: String(draft.descansoPostRonda || '').trim(),
+      grupoMuscular: String(draft.grupoMuscular || '').trim(),
+      carga: String(draft.carga || '').trim(),
+      notas: String(draft.notas || '').trim(),
     }
     const item = ejercicioDiaAJson(raw) ?? nombre
     actualizarRutina((r) => ({
@@ -434,11 +354,46 @@ export default function Rutina() {
       dias: r.dias.map((d) => {
         if (d.id !== diaEditando) return d
         const ejercicios = [...(d.ejercicios || [])]
-        ejercicios[ejercicioEditandoIdx] = item
+        ejercicios[idx] = item
         return { ...d, ejercicios }
       }),
     }))
-    cancelarEdicionEjercicio()
+  }
+
+  const vincularSuperserie = (idx) => {
+    actualizarRutina((r) => ({
+      ...r,
+      dias: r.dias.map((d) => {
+        if (d.id !== diaEditando) return d
+        const ejercicios = [...(d.ejercicios || [])]
+        if (idx < 0 || idx >= ejercicios.length - 1) return d
+        const label = siguienteLabelSuperserie(ejercicios)
+        const a = itemEjercicioDiaNormalizado(ejercicios[idx])
+        const b = itemEjercicioDiaNormalizado(ejercicios[idx + 1])
+        if (!a || !b) return d
+        const descanso = a.descansoPostRonda || b.descansoPostRonda || '90'
+        ejercicios[idx] = ejercicioDiaAJson({ ...a, superserie: label, descansoPostRonda: descanso })
+        ejercicios[idx + 1] = ejercicioDiaAJson({ ...b, superserie: label, descansoPostRonda: descanso })
+        return { ...d, ejercicios }
+      }),
+    }))
+  }
+
+  const desvincularSuperserie = (label) => {
+    const key = String(label || '').trim()
+    if (!key) return
+    actualizarRutina((r) => ({
+      ...r,
+      dias: r.dias.map((d) => {
+        if (d.id !== diaEditando) return d
+        const ejercicios = (d.ejercicios || []).map((ex) => {
+          const it = itemEjercicioDiaNormalizado(ex)
+          if (!it || it.superserie !== key) return ex
+          return ejercicioDiaAJson({ ...it, superserie: '', descansoPostRonda: '' }) ?? it.nombre
+        })
+        return { ...d, ejercicios }
+      }),
+    }))
   }
 
   const crearRutina = () => {
@@ -482,58 +437,27 @@ export default function Rutina() {
       if (kcalM != null) row.kcalManual = kcalM
       return row
     })
-    setRegistros([...nuevos, ...registros])
+    setRegistros((prev) => [...nuevos, ...prev])
   }
 
   const guardarSerieSesion = (serie) => {
     agregarRegistrosVarios([serie])
   }
 
+  const guardarSeriesSesion = (lista) => {
+    agregarRegistrosVarios(lista)
+  }
+
   const eliminarRegistro = (id) => {
-    setEditandoRegistro((d) => (d?.id === id ? null : d))
     setRegistros((regs) => regs.filter((r) => r.id !== id))
   }
 
-  const patchEditandoRegistro = (patch) => {
-    setEditandoRegistro((d) => (d ? { ...d, ...patch } : null))
+  /** Borra varios registros en un solo update (evita perder deletes al encadenar). */
+  const eliminarRegistrosPorIds = (ids) => {
+    const set = new Set((ids || []).filter(Boolean))
+    if (set.size === 0) return
+    setRegistros((regs) => regs.filter((r) => !set.has(r.id)))
   }
-
-  const iniciarEdicionRegistro = (r) => {
-    setEditandoRegistro({
-      id: r.id,
-      ejercicio: r.ejercicio || '',
-      series: String(r.series ?? ''),
-      repeticiones: String(r.repeticiones ?? ''),
-      pesoKg: r.pesoKg != null && Number(r.pesoKg) > 0 ? String(r.pesoKg) : '',
-      notas: r.notas || '',
-      kcalManual: r.kcalManual != null && Number(r.kcalManual) > 0 ? String(r.kcalManual) : '',
-    })
-  }
-
-  const guardarEdicionRegistro = (d) => {
-    const repsStr = String(d.repeticiones ?? '').trim()
-    if (!d.ejercicio?.trim() || !repsStr || d.series === '' || d.series == null) return
-    const kcalM = d.kcalManual !== '' && d.kcalManual != null && Number(d.kcalManual) > 0 ? Math.round(Number(d.kcalManual)) : undefined
-    setRegistros((regs) =>
-      regs.map((x) => {
-        if (x.id !== d.id) return x
-        const next = {
-          ...x,
-          ejercicio: d.ejercicio.trim(),
-          series: Number(d.series) || 1,
-          repeticiones: repsStr,
-          pesoKg: d.pesoKg !== '' && d.pesoKg != null ? Number(d.pesoKg) : undefined,
-          notas: (d.notas || '').trim(),
-        }
-        if (kcalM != null) next.kcalManual = kcalM
-        else delete next.kcalManual
-        return next
-      })
-    )
-    setEditandoRegistro(null)
-  }
-
-  const cancelarEdicionRegistro = () => setEditandoRegistro(null)
 
   const seleccionarFechaSesion = (fecha) => {
     if (!fecha) return
@@ -561,41 +485,80 @@ export default function Rutina() {
     if (r.fecha !== (fechaInput || hoy)) return false
     if (r.rutinaId && r.rutinaId !== rutinaIdActual) return false
     if (r.diaRutinaId && r.diaRutinaId === diaSeleccionado) return true
-    // Legacy / sin día: contar si el ejercicio está en el plan del día seleccionado
-    if (!r.diaRutinaId) {
-      return ejerciciosParaCargar.some((it) => it.nombre === r.ejercicio)
-    }
-    return false
+    // Legacy / sin día, o día distinto pero mismo ejercicio del plan (huérfanos tras renombrar/cambiar día)
+    return ejerciciosParaCargar.some((it) => nombresEjercicioCoinciden(it.nombre, r.ejercicio))
   })
 
   const progresoSesion = (() => {
     let hechos = 0
     let seriesTotales = 0
     let seriesHechas = 0
+    const nombresCompletos = new Set()
     for (const it of ejerciciosParaCargar) {
-      const ya = registrosDeEstaSesion.filter((r) => r.ejercicio === it.nombre)
-      const nPlan = it.superserie ? 1 : parseNumSeriesPlan(it.series)
+      const ya = registrosDeEstaSesion.filter((r) => nombresEjercicioCoinciden(r.ejercicio, it.nombre))
+      const esWarm =
+        /calentamiento/i.test(String(it.grupoMuscular || '')) ||
+        /bici|el[ií]ptic[oa]|cinta|cardio|calentamiento|spinning|movilidad/i.test(String(it.nombre || ''))
+      let nPlan
+      if (esWarm) {
+        nPlan = 1
+      } else if (it.superserie) {
+        nPlan = Math.max(
+          1,
+          Number(it.superserie.vueltas) || parseNumSeriesPlan(it.series) || 4
+        )
+      } else {
+        nPlan = parseNumSeriesPlan(it.series)
+      }
       seriesTotales += nPlan
       if (ya.length === 0) continue
-      // Un solo registro legacy con N series cubre el plan
-      const legacy = ya.find((r) => r.serieNum == null && Number(r.series) >= nPlan)
-      if (legacy || it.superserie) {
-        hechos += 1
-        seriesHechas += nPlan
+
+      if (it.superserie) {
+        // Misma regla que la UI: cada vuelta (serieNum 1..N) debe existir
+        const hechasSs = Array.from({ length: nPlan }, (_, i) => i + 1).filter((sn) =>
+          ya.some((r) => Number(r.serieNum) === sn)
+        ).length
+        seriesHechas += hechasSs
+        if (hechasSs >= nPlan) {
+          hechos += 1
+          nombresCompletos.add(it.nombre)
+        }
         continue
       }
-      const hechasEx = Math.min(ya.length, nPlan)
+
+      // Un solo registro legacy con N series cubre el plan
+      const legacy = ya.find((r) => r.serieNum == null && Number(r.series) >= nPlan)
+      if (legacy) {
+        hechos += 1
+        seriesHechas += nPlan
+        nombresCompletos.add(it.nombre)
+        continue
+      }
+
+      // Contar solo series numeradas 1..N (ignora registros huérfanos sin serieNum)
+      const conSerie = ya.filter((r) => r.serieNum != null)
+      let hechasEx = 0
+      if (conSerie.length > 0) {
+        hechasEx = Array.from({ length: nPlan }, (_, i) => i + 1).filter((sn) =>
+          conSerie.some((r) => Number(r.serieNum) === sn)
+        ).length
+      } else if (esWarm) {
+        hechasEx = ya.length > 0 ? 1 : 0
+      }
       seriesHechas += hechasEx
-      if (hechasEx >= nPlan) hechos += 1
+      if (hechasEx >= nPlan) {
+        hechos += 1
+        nombresCompletos.add(it.nombre)
+      }
     }
     const total = ejerciciosParaCargar.length
-    const pct = seriesTotales > 0
-      ? Math.round((seriesHechas / seriesTotales) * 100)
-      : (total > 0 ? Math.round((hechos / total) * 100) : 0)
-    const kcal = registrosDeEstaSesion.reduce(
-      (s, r) => s + caloriasQuemadasRegistroRutina(r, pesoCfg),
-      0
-    )
+    // La barra sigue el conteo de ejercicios (misma cifra que el texto "X de Y")
+    const pct = total > 0 ? Math.round((hechos / total) * 100) : 0
+    const kcal = registrosDeEstaSesion.reduce((s, r) => {
+      const ok = [...nombresCompletos].some((n) => nombresEjercicioCoinciden(n, r.ejercicio))
+      if (!ok) return s
+      return s + caloriasQuemadasRegistroRutina(r, pesoCfg)
+    }, 0)
     return { hechos, total, pct, kcal, seriesHechas, seriesTotales }
   })()
 
@@ -606,9 +569,6 @@ export default function Rutina() {
     return acc
   }, {})
   const fechasConEntreno = new Set(registrosRutina.map((r) => r.fecha))
-  const registrosDiaSeleccionado = fechaCalendarioSeleccionada
-    ? (porFecha[fechaCalendarioSeleccionada] || [])
-    : []
 
   const progresoPorEjercicio = registrosRutina.reduce((acc, r) => {
     const name = r.ejercicio || 'Sin nombre'
@@ -837,13 +797,6 @@ export default function Rutina() {
               </button>
               <button
                 type="button"
-                className={`rut-tab${vista === 'calendario' && origenRutinas === 'propias' ? ' is-active' : ''}`}
-                onClick={() => { setOrigenRutinas('propias'); setVista('calendario') }}
-              >
-                Calendario & Días
-              </button>
-              <button
-                type="button"
                 className={`rut-tab${vista === 'progreso' && origenRutinas === 'propias' ? ' is-active' : ''}`}
                 onClick={() => { setOrigenRutinas('propias'); setVista('progreso') }}
               >
@@ -876,98 +829,6 @@ export default function Rutina() {
 
         {origenRutinas === 'propias' ? (
         <>
-
-        {vista === 'calendario' && (
-          <div className="box mb-4 py-3">
-            <h2 className="title is-6 mb-2">Días que entrenaste</h2>
-            <p className="is-size-7 has-text-grey mb-3">Toca un día marcado para ver la rutina que hiciste.</p>
-            <div className="cal-mes-nav mb-3">
-              <button
-                type="button"
-                className="button is-small is-light cal-mes-nav-prev"
-                onClick={() => {
-                  const [y, m] = mesCalendario.split('-').map(Number)
-                  const prev = new Date(y, m - 2, 1)
-                  setMesCalendario(`${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`)
-                }}
-              >
-                ← Anterior
-              </button>
-              <span className="is-size-6 has-text-weight-medium cal-mes-nav-mes">
-                {(() => {
-                  const [y, m] = mesCalendario.split('-').map(Number)
-                  return new Date(y, m - 1, 1).toLocaleDateString('es', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase())
-                })()}
-              </span>
-              <button
-                type="button"
-                className="button is-small is-light cal-mes-nav-next"
-                onClick={() => {
-                  const [y, m] = mesCalendario.split('-').map(Number)
-                  const next = new Date(y, m, 1)
-                  setMesCalendario(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`)
-                }}
-              >
-                Siguiente →
-              </button>
-            </div>
-            <div className="app-calendar-grid">
-              {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((d) => (
-                <div key={d} className="app-calendar-weekday has-text-centered has-text-grey is-size-7">
-                  {d}
-                </div>
-              ))}
-              {diasDelMes.map((celda, idx) => {
-                if (celda.vacio) {
-                  return <div key={`v-${idx}`} className="app-calendar-empty" />
-                }
-                const tieneEntreno = fechasConEntreno.has(celda.fecha)
-                const seleccionado = fechaCalendarioSeleccionada === celda.fecha
-                return (
-                  <button
-                    key={celda.fecha}
-                    type="button"
-                    className={`button is-small has-text-weight-semibold app-calendar-day ${seleccionado ? 'is-link is-selected' : tieneEntreno ? 'has-activity' : 'is-light'}`}
-                    onClick={() => setFechaCalendarioSeleccionada(celda.fecha)}
-                  >
-                    <span>{celda.dia}</span>
-                    {tieneEntreno && (
-                      <span className="app-calendar-dots" aria-hidden="true">
-                        <i className="dot-rut" />
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-            {fechaCalendarioSeleccionada && (
-              <div className="mt-4 pt-4" style={{ borderTop: '1px solid #eee' }}>
-                <h3 className="title is-6 mb-2">
-                  Rutina del {formatearFecha(fechaCalendarioSeleccionada)}
-                </h3>
-                {registrosDiaSeleccionado.length === 0 ? (
-                  <p className="is-size-7 has-text-grey">No hay registros para este día.</p>
-                ) : (
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {registrosDiaSeleccionado.map((r) => (
-                      <FilaRegistroRutinaEditable
-                        key={r.id}
-                        registro={r}
-                        draft={editandoRegistro}
-                        pesoCfg={pesoCfg}
-                        onPatch={patchEditandoRegistro}
-                        onEditar={iniciarEdicionRegistro}
-                        onGuardar={guardarEdicionRegistro}
-                        onCancelar={cancelarEdicionRegistro}
-                        onEliminar={eliminarRegistro}
-                      />
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         {vista === 'progreso' && (
           <>
@@ -1108,245 +969,32 @@ export default function Rutina() {
         )}
 
         {vista === 'configurar' && (
-          <div className="rutina-config">
-            <div className="box mb-4 py-3">
-              <div className="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap mb-3" style={{ gap: '0.5rem' }}>
-                <div>
-                  <h2 className="title is-6 mb-1">Armá tu plan</h2>
-                  <p className="is-size-7 has-text-grey mb-0">Elegí un día, agregá ejercicios, editá series/reps y arrastrá ⠿ para ordenarlos.</p>
-                </div>
-                <button type="button" className="button is-small is-link is-light" onClick={añadirDia}>
-                  + Día
-                </button>
-              </div>
-
-              <div className="rutina-dias-tabs mb-3" role="tablist" aria-label="Días de la rutina">
-                {dias.map((d, di) => {
-                  const activo = diaEditando === d.id
-                  const cant = (d.ejercicios || []).length
-                  return (
-                    <div key={d.id} className={`rutina-dia-tab${activo ? ' is-active' : ''}`}>
-                      <button
-                        type="button"
-                        className="rutina-dia-tab-main"
-                        role="tab"
-                        aria-selected={activo}
-                        onClick={() => setDiaEditando(d.id)}
-                      >
-                        <span className="rutina-dia-tab-nombre">{d.nombre}</span>
-                        <span className="rutina-dia-tab-count">{cant}</span>
-                      </button>
-                      {activo && (
-                        <div className="rutina-dia-tab-tools">
-                          <button type="button" className="rutina-icon-btn" disabled={di === 0} onClick={() => moverDia(d.id, -1)} aria-label="Mover día arriba" title="Mover día">↑</button>
-                          <button type="button" className="rutina-icon-btn" disabled={di === dias.length - 1} onClick={() => moverDia(d.id, 1)} aria-label="Mover día abajo" title="Mover día">↓</button>
-                          <button
-                            type="button"
-                            className="rutina-icon-btn"
-                            onClick={() => {
-                              const n = window.prompt('Nombre del día', d.nombre)
-                              if (n != null) renombrarDia(d.id, n)
-                            }}
-                            aria-label="Renombrar día"
-                            title="Renombrar"
-                          >
-                            ✎
-                          </button>
-                          <button
-                            type="button"
-                            className="rutina-icon-btn is-danger"
-                            disabled={dias.length <= 1}
-                            onClick={() => quitarDia(d.id)}
-                            aria-label={`Quitar ${d.nombre}`}
-                            title="Quitar día"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="rutina-add-block mb-3">
-                <label className="ej-form-label mb-1" htmlFor="rutina-buscar-ex">Agregar ejercicio a {diaActual?.nombre}</label>
-                <div className="module-search rutina-buscar">
-                  <span className="module-search-icon" aria-hidden>🔍</span>
-                  <input
-                    id="rutina-buscar-ex"
-                    type="text"
-                    value={busqueda}
-                    onChange={(e) => setBusqueda(e.target.value)}
-                    placeholder="Buscar o escribir un nombre…"
-                    autoComplete="off"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && busqueda.trim()) {
-                        e.preventDefault()
-                        if (resultadosBusqueda[0]) añadirEjercicioAlDia(resultadosBusqueda[0])
-                        else añadirEjercicioAlDia(busqueda.trim())
-                      }
-                    }}
-                  />
-                </div>
-                {resultadosBusqueda.length > 0 && (
-                  <ul className="rutina-sugerencias">
-                    {resultadosBusqueda.slice(0, 8).map((ex) => (
-                      <li key={ex}>
-                        <button type="button" className="rutina-sugerencia-btn" onClick={() => añadirEjercicioAlDia(ex)}>
-                          <span>+ {ex}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {busqueda.trim() && resultadosBusqueda.length === 0 && (
-                  <button
-                    type="button"
-                    className="button is-small is-link is-light mt-2"
-                    onClick={() => añadirEjercicioAlDia(busqueda.trim())}
-                  >
-                    + Agregar &quot;{busqueda.trim()}&quot;
-                  </button>
-                )}
-              </div>
-
-              <div className="rutina-plan-list-head">
-                <h3 className="title is-6 mb-0">{diaActual?.nombre}</h3>
-                <span className="is-size-7 has-text-grey">
-                  {ejerciciosDelDia.length === 0
-                    ? 'Sin ejercicios'
-                    : `${ejerciciosDelDia.length} ejercicio${ejerciciosDelDia.length !== 1 ? 's' : ''} · arrastrá ⠿ para ordenar`}
-                </span>
-              </div>
-
-              {ejerciciosDelDia.length === 0 ? (
-                <div className="rutina-empty-plan">
-                  <p className="mb-0">Todavía no hay ejercicios en este día.</p>
-                  <p className="is-size-7 has-text-grey mt-1 mb-0">Buscá arriba o escribí un nombre y agregalo.</p>
-                </div>
-              ) : (
-                <ul
-                  className={`rutina-plan-list${dragEjercicio ? ' is-dragging' : ''}`}
-                  ref={planListRef}
-                >
-                  {ejerciciosDelDia.map((ex, idx) => {
-                    const it = itemEjercicioDiaNormalizado(ex)
-                    const editando = ejercicioEditandoIdx === idx
-                    const isDragging = dragEjercicio?.fromIdx === idx
-                    const isDropTarget = dragEjercicio && dragEjercicio.overIdx === idx && dragEjercicio.fromIdx !== idx
-                    return (
-                      <li
-                        key={`${it?.nombre || 'ex'}-${idx}`}
-                        data-plan-idx={idx}
-                        className={`rutina-plan-row${editando ? ' is-editing' : ''}${isDragging ? ' is-dragging' : ''}${isDropTarget ? ' is-drop-target' : ''}`}
-                      >
-                        {editando ? (
-                          <div className="rutina-plan-edit">
-                            <input
-                              className="input is-small"
-                              type="text"
-                              value={draftEjercicio.nombre}
-                              onChange={(e) => setDraftEjercicio((d) => ({ ...d, nombre: e.target.value }))}
-                              placeholder="Nombre del ejercicio"
-                              autoFocus
-                            />
-                            <div className="rutina-plan-edit-grid">
-                              <div>
-                                <label className="ej-form-label mb-1">Series</label>
-                                <input
-                                  className="input is-small"
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={draftEjercicio.series}
-                                  onChange={(e) => setDraftEjercicio((d) => ({ ...d, series: e.target.value }))}
-                                  placeholder="3"
-                                />
-                              </div>
-                              <div>
-                                <label className="ej-form-label mb-1">Reps</label>
-                                <input
-                                  className="input is-small"
-                                  type="text"
-                                  value={draftEjercicio.repeticiones}
-                                  onChange={(e) => setDraftEjercicio((d) => ({ ...d, repeticiones: e.target.value }))}
-                                  placeholder="10 o 8+8"
-                                />
-                              </div>
-                              <div>
-                                <label className="ej-form-label mb-1">Superserie</label>
-                                <input
-                                  className="input is-small"
-                                  type="text"
-                                  value={draftEjercicio.superserie}
-                                  onChange={(e) => setDraftEjercicio((d) => ({ ...d, superserie: e.target.value }))}
-                                  placeholder="A"
-                                />
-                              </div>
-                              <div>
-                                <label className="ej-form-label mb-1">Descanso ronda (seg)</label>
-                                <input
-                                  className="input is-small"
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={draftEjercicio.descansoPostRonda}
-                                  onChange={(e) => setDraftEjercicio((d) => ({ ...d, descansoPostRonda: e.target.value }))}
-                                  placeholder="90"
-                                />
-                              </div>
-                            </div>
-                            <div className="rutina-plan-edit-actions">
-                              <button type="button" className="button is-small is-link" onClick={guardarEdicionEjercicio} disabled={!draftEjercicio.nombre.trim()}>
-                                Guardar
-                              </button>
-                              <button type="button" className="button is-small is-light" onClick={cancelarEdicionEjercicio}>
-                                Cancelar
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              className="rutina-drag-handle"
-                              aria-label={`Arrastrar para reordenar ${it?.nombre || 'ejercicio'}`}
-                              title="Arrastrá para mover"
-                              onPointerDown={(e) => onPlanPointerDown(e, idx)}
-                              onPointerMove={onPlanPointerMove}
-                              onPointerUp={onPlanPointerUp}
-                              onPointerCancel={onPlanPointerUp}
-                            >
-                              <span aria-hidden>⠿</span>
-                            </button>
-                            <div className="rutina-plan-row-body">
-                              <span className="rutina-plan-row-num">{idx + 1}</span>
-                              <div className="rutina-plan-row-text">
-                                <strong className="rutina-plan-ejercicio">{it?.nombre}</strong>
-                                {(it?.series || it?.repeticiones) ? (
-                                  <span className="rutina-chip rutina-chip-plan">
-                                    {it.series && it.repeticiones ? `${it.series}×${it.repeticiones}` : it.series ? `${it.series} series` : `${it.repeticiones} reps`}
-                                  </span>
-                                ) : (
-                                  <span className="is-size-7 has-text-grey">Sin series/reps sugeridas</span>
-                                )}
-                                {it?.superserie ? (
-                                  <span className="rutina-chip rut-superserie-chip">SS {it.superserie}</span>
-                                ) : null}
-                              </div>
-                            </div>
-                            <div className="rutina-plan-row-actions">
-                              <button type="button" className="rutina-icon-btn" onClick={() => iniciarEdicionEjercicio(idx)} aria-label="Editar" title="Editar">✎</button>
-                              <button type="button" className="rutina-icon-btn is-danger" onClick={() => quitarEjercicioDelDiaPorIdx(idx)} aria-label="Quitar" title="Quitar">×</button>
-                            </div>
-                          </>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </div>
-          </div>
+          <ArmarPlanTitanium
+            dias={dias}
+            diaEditando={diaEditando || diaActual?.id || ''}
+            setDiaEditando={setDiaEditando}
+            diaActual={diaActual}
+            ejerciciosDelDia={ejerciciosDelDia}
+            origenEditable={origenRutinas === 'propias'}
+            onAñadirDia={añadirDia}
+            onDuplicarDia={duplicarDia}
+            onMoverDia={moverDia}
+            onRenombrarDia={renombrarDia}
+            onQuitarDia={quitarDia}
+            onAñadirEjercicio={añadirEjercicioAlDia}
+            onQuitarEjercicio={quitarEjercicioDelDiaPorIdx}
+            onGuardarEjercicio={guardarEjercicioPlan}
+            onReordenar={reordenarEjercicioDelDia}
+            onVincularSuperserie={vincularSuperserie}
+            onDesvincularSuperserie={desvincularSuperserie}
+            onExportarPdf={() => {
+              try {
+                descargarRutinaPdf(rutinaActiva)
+              } catch (err) {
+                window.alert(err?.message || 'No se pudo exportar el PDF.')
+              }
+            }}
+          />
         )}
 
         {vista === 'registrar' && (
@@ -1422,11 +1070,11 @@ export default function Rutina() {
                           completados
                         </p>
                         <p className="rut-day-progress-meta mb-0">
-                          {pct}% · Estimado: ~{kcal > 0 ? kcal : Math.max(0, hechos * 45)} kcal gastadas
+                          {pct}% · Estimado: ~{kcal} kcal gastadas
                         </p>
                       </div>
                       <div className="rut-day-progress-bar" aria-hidden>
-                        <span style={{ width: `${Math.max(pct, 0)}%` }} />
+                        <span style={{ width: pct > 0 ? `${pct}%` : '0%' }} />
                       </div>
                     </div>
                   )
@@ -1448,7 +1096,9 @@ export default function Rutina() {
                   historialPorEjercicio={historialPorEjercicio}
                   pesoCfg={pesoCfg}
                   onGuardarSerie={guardarSerieSesion}
+                  onGuardarSeries={guardarSeriesSesion}
                   onEliminarRegistro={eliminarRegistro}
+                  onEliminarRegistros={eliminarRegistrosPorIds}
                   ocultarProgreso
                   onAnadirEjercicioExtra={() => {
                     const nombre = window.prompt('Nombre del ejercicio extra a añadir:')
@@ -1882,159 +1532,6 @@ function VistaRutinasAsignadas({
       )}
     </>
   )
-}
-
-function FilaRegistroRutinaEditable({
-  registro,
-  draft,
-  pesoCfg,
-  onPatch,
-  onEditar,
-  onGuardar,
-  onCancelar,
-  onEliminar,
-  variant,
-}) {
-  const editando = draft?.id === registro.id
-  const compacto = variant === 'compacto'
-
-  const botonesAccion = (
-    <div className="rutina-hist-row-actions">
-      <button type="button" className="button is-small is-text" onClick={() => onEditar(registro)}>
-        Editar
-      </button>
-      <button type="button" className="button is-small is-text has-text-grey" onClick={() => onEliminar(registro.id)} aria-label="Eliminar">
-        ×
-      </button>
-    </div>
-  )
-
-  if (!editando) {
-    if (compacto) {
-      return (
-        <li className="rutina-hist-row">
-          <div className="rutina-hist-row-main">
-            <strong className="rutina-registro-nombre">{registro.ejercicio}</strong>
-            <div className="rutina-hist-row-meta">
-              <span className="rutina-chip rutina-chip-plan">{registro.series}×{registro.repeticiones}</span>
-              {registro.pesoKg != null && registro.pesoKg > 0 && <span className="rutina-chip rutina-chip-peso">{registro.pesoKg} kg</span>}
-              <span className="rutina-chip rutina-chip-kcal">~{caloriasQuemadasRegistroRutina(registro, pesoCfg)} kcal</span>
-              {registro.kcalManual != null && Number(registro.kcalManual) > 0 && (
-                <span className="has-text-grey is-size-7"> (manual)</span>
-              )}
-            </div>
-            {registro.notas && <p className="is-size-7 rutina-registro-notas mt-1 mb-0">— {registro.notas}</p>}
-          </div>
-          {botonesAccion}
-        </li>
-      )
-    }
-    return (
-      <li className="box py-2 px-3 mb-2">
-        <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
-          <div>
-            <strong className="rutina-registro-nombre">{registro.ejercicio}</strong>
-            <p className="is-size-7 mt-1 mb-0">
-              <span className="rutina-chip rutina-chip-plan">{registro.series}×{registro.repeticiones}</span>
-              {registro.pesoKg != null && registro.pesoKg > 0 && <span className="rutina-chip rutina-chip-peso ml-1">{registro.pesoKg} kg</span>}
-              <span className="rutina-chip rutina-chip-kcal ml-1">~{caloriasQuemadasRegistroRutina(registro, pesoCfg)} kcal</span>
-              {registro.kcalManual != null && Number(registro.kcalManual) > 0 && (
-                <span className="has-text-grey"> (manual)</span>
-              )}
-            </p>
-            {registro.notas && <p className="is-size-7 rutina-registro-notas mt-1 mb-0">— {registro.notas}</p>}
-          </div>
-          {botonesAccion}
-        </div>
-      </li>
-    )
-  }
-
-  const formulario = (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        onGuardar(draft)
-      }}
-    >
-      <div className="field mb-2">
-        <label className="label is-size-7">Ejercicio</label>
-        <input className="input is-small" type="text" value={draft.ejercicio} onChange={(e) => onPatch({ ejercicio: e.target.value })} />
-      </div>
-      <div className="columns is-mobile mb-2">
-        <div className="column">
-          <label className="label is-size-7">Series</label>
-          <input className="input is-small" type="number" min="1" value={draft.series} onChange={(e) => onPatch({ series: e.target.value })} />
-        </div>
-        <div className="column">
-          <label className="label is-size-7">Reps</label>
-          <input className="input is-small" type="text" value={draft.repeticiones} onChange={(e) => onPatch({ repeticiones: e.target.value })} />
-        </div>
-        <div className="column">
-          <label className="label is-size-7">Peso (kg)</label>
-          <input
-            className="input is-small"
-            type="number"
-            min="0"
-            step="0.5"
-            value={draft.pesoKg}
-            onChange={(e) => onPatch({ pesoKg: e.target.value })}
-            placeholder="Opcional"
-          />
-        </div>
-        <div className="column">
-          <label className="label is-size-7">Kcal (opc.)</label>
-          <input
-            className="input is-small"
-            type="number"
-            min="1"
-            step="1"
-            value={draft.kcalManual}
-            onChange={(e) => onPatch({ kcalManual: e.target.value })}
-            placeholder="Auto"
-          />
-        </div>
-      </div>
-      <div className="field mb-2">
-        <label className="label is-size-7">Notas</label>
-        <input className="input is-small" type="text" value={draft.notas} onChange={(e) => onPatch({ notas: e.target.value })} />
-      </div>
-      <div className="is-flex is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
-        <button type="submit" className="button is-link is-small">
-          Guardar
-        </button>
-        <button type="button" className="button is-light is-small" onClick={onCancelar}>
-          Cancelar
-        </button>
-      </div>
-    </form>
-  )
-
-  if (compacto) {
-    return (
-      <li className="mb-2">
-        <div className="box py-2 px-3">{formulario}</div>
-      </li>
-    )
-  }
-  return <li className="box py-2 px-3 mb-2">{formulario}</li>
-}
-
-function filasIniciales(planItems) {
-  return Object.fromEntries(
-    planItems.map((it) => {
-      const seriesIni = it.series?.trim() ? it.series.trim() : '3'
-      const repsIni = it.repeticiones?.trim() || ''
-      return [
-        it.nombre,
-        { incluir: false, series: seriesIni, repeticiones: repsIni, pesoKg: '', kcalManual: '', notas: '' },
-      ]
-    })
-  )
-}
-
-function serializarPlanItems(planItems) {
-  return JSON.stringify(planItems.map((it) => ({ n: it.nombre, s: it.series, r: it.repeticiones })))
 }
 
 function RegistrarPlanDelDia({ ejercicios, registrosDeEstaSesion, pesoCfg, onGuardarMarcados, onEliminarRegistro }) {

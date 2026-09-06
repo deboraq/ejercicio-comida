@@ -401,10 +401,22 @@ export default function Inicio() {
         </header>
 
         <div className="inicio-week-strip">
-          <div className="inicio-week-nav-group">
-            <button type="button" className="inicio-week-nav" onClick={() => shiftSemana(-1)} aria-label="Semana anterior">‹</button>
-            <button type="button" className="inicio-week-nav" onClick={() => shiftSemana(1)} aria-label="Semana siguiente">›</button>
-            <p className="inicio-week-label mb-0">{etiquetaSemana(diasSemana, diaEnVista)}</p>
+          <div className="inicio-week-toolbar">
+            <div className="inicio-week-nav-group">
+              <button type="button" className="inicio-week-nav" onClick={() => shiftSemana(-1)} aria-label="Semana anterior">‹</button>
+              <button type="button" className="inicio-week-nav" onClick={() => shiftSemana(1)} aria-label="Semana siguiente">›</button>
+              <p className="inicio-week-label mb-0">{etiquetaSemana(diasSemana, diaEnVista)}</p>
+            </div>
+            <button
+              type="button"
+              className="inicio-week-mes-btn"
+              onClick={() => {
+                setMesCalendario(diaEnVista.slice(0, 7))
+                setMesModalAbierto(true)
+              }}
+            >
+              Mes completo
+            </button>
           </div>
 
           <div className="inicio-week-days">
@@ -432,17 +444,6 @@ export default function Inicio() {
               )
             })}
           </div>
-
-          <button
-            type="button"
-            className="inicio-week-mes-btn"
-            onClick={() => {
-              setMesCalendario(diaEnVista.slice(0, 7))
-              setMesModalAbierto(true)
-            }}
-          >
-            Mes completo
-          </button>
         </div>
 
         <div className="inicio-kpi-grid">

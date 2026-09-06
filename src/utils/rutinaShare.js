@@ -32,11 +32,7 @@ export function rutinaDesdeJsonAsignada(texto, asignadaPorDefecto = 'Entrenador'
         if (e == null) return null
         if (typeof e === 'string') return e.trim() || null
         if (typeof e === 'object' && e.nombre != null) {
-          const o = { nombre: String(e.nombre).trim() }
-          if (!o.nombre) return null
-          if (e.series != null && String(e.series).trim()) o.series = String(e.series).trim()
-          if (e.repeticiones != null && String(e.repeticiones).trim()) o.repeticiones = String(e.repeticiones).trim()
-          return o.series || o.repeticiones ? o : o.nombre
+          return ejercicioDiaAJson(e)
         }
         return null
       })
