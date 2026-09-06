@@ -110,7 +110,10 @@ export function getRangoPorPeriodo(periodo, desdeCustom, hastaCustom) {
 
 /** Filtra registros por rango de fechas (inclusive) */
 export function filtrarPorRango(registros, desde, hasta) {
-  return registros.filter((r) => r.fecha >= desde && r.fecha <= hasta)
+  return registros.filter((r) => {
+    const f = fechaSoloDia(r.fecha)
+    return f >= desde && f <= hasta
+  })
 }
 
 /** Lista de fechas entre desde y hasta (inclusive) */

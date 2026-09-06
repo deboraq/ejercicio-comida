@@ -447,7 +447,7 @@ export default function ArmarPlanTitanium({
               const titulo = tituloDia(d, di)
               const enf = inferirGruposMuscularesDia(d.ejercicios || [])
               return (
-                <div key={d.id} className={`ap-day${activo ? ' is-active' : ''}`}>
+                <div key={d.id} className={`ap-day ap-day--tone-${di % 6}${activo ? ' is-active' : ''}`}>
                   <button
                     type="button"
                     className="ap-day-main"

@@ -3,14 +3,30 @@ import { useStorage } from '../hooks/useStorage'
 import { getConsejos, buildContextoDia, buildContextoSemana } from '../utils/consejos'
 import { formatearFecha, fechaToISO, fechaSoloDia } from '../utils/calorias'
 import { REFERENCIA_ALIMENTOS, buscarAlimentos } from '../utils/referenciaComidas'
-import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias } from '../utils/estadisticas'
-import MacroBarCard from '../components/MacroBarCard'
-import PageHeader from '../components/PageHeader'
-import ConsejosPanel from '../components/ConsejosPanel'
+import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias, getRachaDias } from '../utils/estadisticas'
+import ComidaTitanium from '../components/ComidaTitanium'
 
 const COMIDAS = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']
 const ALIAS_MOMENTO = { Snack: 'Merienda' }
-const MOMENTO_ICON = { Desayuno: '☕', Almuerzo: '🍔', Merienda: '🧁', Cena: '🍽️', Otros: '📋' }
+const MOMENTO_ICON = { Desayuno: '☕', Almuerzo: '🥗', Merienda: '🧁', Cena: '🍽️', Otros: '📋' }
+
+function formatearHoraRegistro(date = new Date()) {
+  const h = date.getHours()
+  const m = String(date.getMinutes()).padStart(2, '0')
+  const suf = h >= 12 ? 'PM' : 'AM'
+  return `${String(h).padStart(2, '0')}:${m} ${suf}`
+}
+
+function buscarReferenciaPorNombre(nombre) {
+  if (!nombre) return null
+  const exact = REFERENCIA_ALIMENTOS.find((a) => a.nombre === nombre)
+  if (exact) return exact
+  const low = nombre.toLowerCase()
+  return REFERENCIA_ALIMENTOS.find((a) => {
+    const n = a.nombre.toLowerCase()
+    return low.includes(n) || n.includes(low)
+  }) || null
+}
 
 function normalizarMomento(comida) {
   if (comida == null || comida === '') return comida
@@ -50,6 +66,47 @@ function textoPorcionDesdeRef(porcionRef, n) {
   const t = porcionRef || 'porción'
   if (n === 1) return t
   return `${n} × (${t})`
+}
+
+function grasasDesdeReferencia(itemRef) {
+  if (itemRef.grasas != null && Number.isFinite(Number(itemRef.grasas))) {
+    return Number(itemRef.grasas)
+  }
+  return Math.max(0, Math.round(((itemRef.calorias - itemRef.proteinas * 4 - itemRef.carbohidratos * 4) / 9) * 10) / 10)
+}
+
+function buildItemDesdeReferencia(itemRef, cantidad) {
+  const n = normalizarCantidad(cantidad, 1)
+  const gra = grasasDesdeReferencia(itemRef)
+  const base = { cal: itemRef.calorias, pro: itemRef.proteinas, car: itemRef.carbohidratos, gra }
+  const porcionRef = itemRef.porcion || 'porción'
+  return {
+    id: crypto.randomUUID(),
+    descripcion: itemRef.nombre,
+    cantidad: n,
+    _cantidadPrev: n,
+    calorias: String(Math.round(base.cal * n)),
+    proteinas: String(redondear1(base.pro * n)),
+    carbohidratos: String(redondear1(base.car * n)),
+    grasas: String(redondear1(base.gra * n)),
+    porciones: textoPorcionDesdeRef(porcionRef, n),
+    _macrosPorUnidad: base,
+    _porcionRef: porcionRef,
+    _categoria: itemRef.categoria || undefined,
+  }
+}
+
+function previewReferencia(itemRef, cantidad) {
+  if (!itemRef) return null
+  const n = normalizarCantidad(cantidad, 1)
+  const gra = grasasDesdeReferencia(itemRef)
+  return {
+    cal: Math.round(itemRef.calorias * n),
+    pro: redondear1(itemRef.proteinas * n),
+    car: redondear1(itemRef.carbohidratos * n),
+    gra: redondear1(gra * n),
+    porcion: textoPorcionDesdeRef(itemRef.porcion || 'porción', n),
+  }
 }
 
 function numeroFlexible(valor) {
@@ -111,38 +168,62 @@ function itemConCantidadAplicada(it, newQ) {
   }
 }
 
-function ListaComidaAgrupada({ bloques, onEliminar }) {
+function ListaComidaAgrupada({ bloques, onEliminar, onEditar }) {
   if (!bloques.length) return null
   return (
-    <>
+    <div className="cd-hist-grupos">
       {bloques.map(({ tipo, items: itemsGrupo }) => {
         const calGrupo = itemsGrupo.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
         return (
-          <div key={tipo} className="comida-grupo-bloque">
-            <p className="comida-grupo-titulo mb-0">
-              <span className={`tag is-light is-size-7 ${tipo === 'Otros' ? 'is-dark' : 'is-info'}`}>{tipo}</span>
+          <div key={tipo} className="cd-hist-grupo">
+            <p className="cd-hist-grupo-head mb-0">
+              <span className="cd-hist-grupo-badge">{tipo}</span>
               {calGrupo > 0 && (
-                <span className="is-size-7 has-text-grey ml-1">{calGrupo} kcal en este momento</span>
+                <span className="cd-hist-grupo-kcal">{Math.round(calGrupo)} kcal en este momento</span>
               )}
             </p>
-            <ul className="comida-lista-dia">
+            <ul className="cd-hist-items mb-0">
               {itemsGrupo.map((r) => (
-                <li key={r.id} className="comida-linea-dia">
-                  <div className="comida-linea-dia-inner">
-                    <div className="is-flex-grow-1" style={{ minWidth: 0 }}>
-                      <p className="comida-linea-nombre mb-0">{r.descripcion}</p>
-                      {(r.calorias != null || r.proteinas != null || r.carbohidratos != null || r.grasas != null || r.porciones) && (
-                        <div className="comida-macros comida-macros--linea">
-                          {r.calorias != null && <span className="tag is-light is-size-7">{r.calorias} kcal</span>}
-                          {r.proteinas != null && <span className="tag is-success is-light is-size-7">P {r.proteinas} g</span>}
-                          {r.carbohidratos != null && <span className="tag is-warning is-light is-size-7">C {r.carbohidratos} g</span>}
-                          {r.grasas != null && <span className="tag is-danger is-light is-size-7">G {r.grasas} g</span>}
-                          {r.porciones && <span className="is-size-7 has-text-grey ml-1">{r.porciones}</span>}
-                        </div>
-                      )}
-                      {r.notas && <p className="is-size-7 has-text-grey mt-1 mb-0">Nota: {r.notas}</p>}
-                    </div>
-                    <button type="button" className="button is-small is-text comida-linea-eliminar" onClick={() => onEliminar(r.id)} aria-label="Eliminar">
+                <li key={r.id} className="cd-hist-item-card">
+                  <div className="cd-hist-item-main">
+                    <p className="cd-hist-item-nombre mb-0">{r.descripcion}</p>
+                    {(r.calorias != null || r.proteinas != null || r.carbohidratos != null || r.grasas != null) && (
+                      <div className="cd-hist-item-pills">
+                        {r.calorias != null && (
+                          <span className="cd-pill cd-pill--kcal cd-pill--sm">
+                            <span className="cd-pill-val">{Math.round(numeroFlexibleO(r.calorias))} kcal</span>
+                          </span>
+                        )}
+                        {r.proteinas != null && (
+                          <span className="cd-pill cd-pill--p cd-pill--sm">
+                            <span className="cd-pill-lbl">P</span>
+                            <span className="cd-pill-val">{r.proteinas} g</span>
+                          </span>
+                        )}
+                        {r.carbohidratos != null && (
+                          <span className="cd-pill cd-pill--c cd-pill--sm">
+                            <span className="cd-pill-lbl">C</span>
+                            <span className="cd-pill-val">{r.carbohidratos} g</span>
+                          </span>
+                        )}
+                        {r.grasas != null && (
+                          <span className="cd-pill cd-pill--g cd-pill--sm">
+                            <span className="cd-pill-lbl">G</span>
+                            <span className="cd-pill-val">{r.grasas} g</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {r.porciones && <p className="cd-hist-item-porcion mb-0">{r.porciones}</p>}
+                    {r.notas && <p className="cd-hist-item-nota mb-0">Nota: {r.notas}</p>}
+                  </div>
+                  <div className="cd-hist-item-actions">
+                    {onEditar && (
+                      <button type="button" className="cd-hist-item-btn" onClick={() => onEditar(r)} aria-label="Editar">
+                        ✎
+                      </button>
+                    )}
+                    <button type="button" className="cd-hist-item-btn cd-hist-item-btn--del" onClick={() => onEliminar(r.id)} aria-label="Eliminar">
                       ×
                     </button>
                   </div>
@@ -152,7 +233,7 @@ function ListaComidaAgrupada({ bloques, onEliminar }) {
           </div>
         )
       })}
-    </>
+    </div>
   )
 }
 
@@ -167,12 +248,14 @@ export default function Comida() {
   const [notas, setNotas] = useState('')
   const [items, setItems] = useState([])
   const [busquedaRef, setBusquedaRef] = useState('')
+  const [referenciaActiva, setReferenciaActiva] = useState(null)
   const [cantidadPorciones, setCantidadPorciones] = useState('1')
-  const [periodo, setPeriodo] = useState('semana')
+  const [hidratacionStore, setHidratacionStore] = useStorage('hidratacionDia', { fecha: '', vasos: 0 })
+  const [periodo, setPeriodo] = useState('15_dias')
   const [desdeCustom, setDesdeCustom] = useState('')
   const [hastaCustom, setHastaCustom] = useState('')
-  const [historialPasadoAbierto, setHistorialPasadoAbierto] = useState(false)
-  const [historialMostrado, setHistorialMostrado] = useState(false)
+  const [vistaComida, setVistaComida] = useState('hoy')
+  const [historialMostrado, setHistorialMostrado] = useState(true)
   const [diasExpandidos, setDiasExpandidos] = useState(() => new Set())
 
   const resultadosBusqueda = buscarAlimentos(busquedaRef)
@@ -180,35 +263,69 @@ export default function Comida() {
   const { desde, hasta } = getRangoPorPeriodo(periodo, desdeCustom, hastaCustom)
   const registrosEnRango = filtrarPorRango(registros, desde, hasta)
   const porFechaEnRango = registrosEnRango.reduce((acc, r) => {
-    if (!acc[r.fecha]) acc[r.fecha] = []
-    acc[r.fecha].push(r)
+    const f = fechaSoloDia(r.fecha)
+    if (!acc[f]) acc[f] = []
+    acc[f].push(r)
     return acc
   }, {})
 
-  const añadirDesdeReferencia = (itemRef, cantidad = cantidadPorciones) => {
-    const raw = cantidad === '' || cantidad == null ? String(cantidadPorciones) : String(cantidad)
-    const n = normalizarCantidad(raw, 1)
-    const gra =
-      itemRef.grasas != null && Number.isFinite(Number(itemRef.grasas))
-        ? Number(itemRef.grasas)
-        : Math.max(0, Math.round(((itemRef.calorias - itemRef.proteinas * 4 - itemRef.carbohidratos * 4) / 9) * 10) / 10)
-    const base = { cal: itemRef.calorias, pro: itemRef.proteinas, car: itemRef.carbohidratos, gra }
-    const porcionRef = itemRef.porcion || 'porción'
-    const nuevo = {
-      id: crypto.randomUUID(),
-      descripcion: itemRef.nombre,
-      cantidad: n,
-      _cantidadPrev: n,
-      calorias: String(Math.round(base.cal * n)),
-      proteinas: String(redondear1(base.pro * n)),
-      carbohidratos: String(redondear1(base.car * n)),
-      grasas: String(redondear1(base.gra * n)),
-      porciones: textoPorcionDesdeRef(porcionRef, n),
-      _macrosPorUnidad: base,
-      _porcionRef: porcionRef,
-    }
-    setItems((prev) => [nuevo, ...prev])
+  const añadirDesdeReferencia = (itemRef, cantidad = '1') => {
+    const n = normalizarCantidad(cantidad === '' || cantidad == null ? cantidadPorciones : cantidad, 1)
+    setReferenciaActiva(itemRef)
+    setItems([buildItemDesdeReferencia(itemRef, n)])
+    setCantidadPorciones(String(n))
+  }
+
+  const seleccionarReferencia = (itemRef) => {
+    setReferenciaActiva(itemRef)
+    setItems([])
     setBusquedaRef('')
+    setCantidadPorciones('1')
+  }
+
+  const limpiarSeleccion = () => {
+    setReferenciaActiva(null)
+    setItems([])
+    setCantidadPorciones('1')
+  }
+
+  const cambiarBusqueda = (value) => {
+    setBusquedaRef(value)
+    if (value.trim() && referenciaActiva) {
+      setReferenciaActiva(null)
+      setItems([])
+    }
+  }
+
+  const recalcularItemsPorCantidad = (raw) => {
+    const s = String(raw).trim().replace(',', '.')
+    if (s === '' || s.endsWith('.')) return
+    const parsed = Number(s)
+    if (!Number.isFinite(parsed) || parsed <= 0) return
+    const n = normalizarCantidad(parsed, 1)
+    setItems((prev) => prev.map((it) => itemConCantidadAplicada(it, n)))
+  }
+
+  const cambiarCantidadPorciones = (raw) => {
+    const s = String(raw)
+    setCantidadPorciones(s)
+    recalcularItemsPorCantidad(s)
+    if (referenciaActiva && items.length === 0) {
+      const n = normalizarCantidad(s, 1)
+      if (s !== '' && !s.endsWith('.')) {
+        setItems([buildItemDesdeReferencia(referenciaActiva, n)])
+      }
+    }
+  }
+
+  const blurCantidadPorciones = () => {
+    const n = normalizarCantidad(cantidadPorciones, 1)
+    setCantidadPorciones(String(n))
+    setItems((prev) => {
+      if (prev.length) return prev.map((it) => itemConCantidadAplicada(it, n))
+      if (referenciaActiva) return [buildItemDesdeReferencia(referenciaActiva, n)]
+      return prev
+    })
   }
 
   const actualizarItemCantidad = (id, raw) => {
@@ -312,26 +429,39 @@ export default function Comida() {
 
   const guardarComida = (e) => {
     e.preventDefault()
-    const fecha = fechaInput || hoy
-    const aGuardar = items
+    let aGuardar = items
       .filter((it) => it.descripcion.trim())
       .map((it) => (it.cantidad === '' || it.cantidad == null ? itemConCantidadAplicada(it, it._cantidadPrev ?? 1) : it))
+    if (aGuardar.length === 0 && referenciaActiva) {
+      aGuardar = [buildItemDesdeReferencia(referenciaActiva, cantidadPorciones)]
+    }
     if (aGuardar.length === 0) return
-    const nuevos = aGuardar.map((it) => ({
-      id: crypto.randomUUID(),
-      comida,
-      descripcion: it.descripcion.trim(),
-      calorias: numeroFlexible(it.calorias) ?? undefined,
-      proteinas: numeroFlexible(it.proteinas) ?? undefined,
-      carbohidratos: numeroFlexible(it.carbohidratos) ?? undefined,
-      grasas: numeroFlexible(it.grasas) ?? undefined,
-      porciones: it.porciones?.trim() || undefined,
-      notas: notas.trim(),
-      fecha,
-    }))
+    const fecha = fechaInput || hoy
+    const hora = formatearHoraRegistro(new Date())
+    const nuevos = aGuardar.map((it) => {
+      const ref = buscarReferenciaPorNombre(it.descripcion.trim())
+      return {
+        id: crypto.randomUUID(),
+        comida,
+        descripcion: it.descripcion.trim(),
+        calorias: numeroFlexible(it.calorias) ?? undefined,
+        proteinas: numeroFlexible(it.proteinas) ?? undefined,
+        carbohidratos: numeroFlexible(it.carbohidratos) ?? undefined,
+        grasas: numeroFlexible(it.grasas) ?? undefined,
+        porciones: it.porciones?.trim() || undefined,
+        categoria: it._categoria || referenciaActiva?.categoria || ref?.categoria || undefined,
+        hora,
+        notas: notas.trim(),
+        fecha,
+      }
+    })
     setRegistros([...nuevos, ...registros])
     setItems([])
+    setReferenciaActiva(null)
     setNotas('')
+    setBusquedaRef('')
+    setCantidadPorciones('1')
+    setComida('Desayuno')
     setFechaInput(hoy)
   }
 
@@ -375,23 +505,48 @@ export default function Comida() {
     { historialMedidas, hoy }
   )
 
-  const puedeGuardar = items.some((it) => it.descripcion.trim())
+  const puedeGuardar = referenciaActiva != null || items.some((it) => it.descripcion.trim())
 
-  const bloquesHoy = agruparComidasPorMomento(hoyRegistros)
-  const momentosRegistrados = new Set(bloquesHoy.map((b) => b.tipo))
-  const momentosPendientes = COMIDAS.filter((m) => !momentosRegistrados.has(m))
+  const previewSeleccion = previewReferencia(referenciaActiva, cantidadPorciones)
 
-  const scrollHistorial = () => {
-    setHistorialPasadoAbierto(true)
-    requestAnimationFrame(() => {
-      document.getElementById('comida-historial-completo')?.scrollIntoView({ behavior: 'smooth' })
-    })
+  const cambiarVistaComida = (vista) => {
+    setVistaComida(vista)
+    if (vista === 'historial') {
+      setHistorialMostrado(true)
+      const first = Object.entries(porFechaEnRango).sort(([a], [b]) => b.localeCompare(a))[0]?.[0]
+      setDiasExpandidos(first ? new Set([first]) : new Set())
+    }
   }
 
   const consultarHistorial = (e) => {
     e?.preventDefault?.()
     setHistorialMostrado(true)
     setDiasExpandidos(new Set())
+  }
+
+  const editarRegistro = (r) => {
+    setVistaComida('hoy')
+    setComida(normalizarMomento(r.comida) || 'Desayuno')
+    setNotas(r.notas || '')
+    const ref = buscarReferenciaPorNombre(r.descripcion)
+    if (ref) {
+      añadirDesdeReferencia(ref, '1')
+      setBusquedaRef('')
+    } else {
+      setReferenciaActiva(null)
+      setItems([{
+        id: crypto.randomUUID(),
+        descripcion: r.descripcion,
+        cantidad: 1,
+        _cantidadPrev: 1,
+        calorias: r.calorias != null ? String(r.calorias) : '',
+        proteinas: r.proteinas != null ? String(r.proteinas) : '',
+        carbohidratos: r.carbohidratos != null ? String(r.carbohidratos) : '',
+        grasas: r.grasas != null ? String(r.grasas) : '',
+        porciones: r.porciones || '',
+      }])
+    }
+    requestAnimationFrame(() => document.getElementById('cd-buscar')?.focus())
   }
 
   const toggleDiaHistorial = (fecha) => {
@@ -403,482 +558,111 @@ export default function Comida() {
     })
   }
 
-  const diasHistorialPasado = Object.entries(porFechaEnRango)
-    .filter(([fecha]) => fechaSoloDia(fecha) !== hoy)
+  const diasHistorial = Object.entries(porFechaEnRango)
     .sort(([a], [b]) => b.localeCompare(a))
+  const rachaDias = getRachaDias(registros, hoy)
+  const vasosHoy = hidratacionStore.fecha === hoy ? hidratacionStore.vasos : 0
+  const mesActual = hoy.slice(0, 7)
+  const registrosMesCount = registros.filter((r) => fechaSoloDia(r.fecha).startsWith(mesActual)).length
+  const bannerConsejo = consejosDiarios[0] || consejosSemanales[0] || null
+  const proteinasRestantes = Math.max(0, redondear1(metaPro - proteinasHoy))
+  const tipNutricionFallback = proteinasRestantes >= 5
+    ? `Para tu cena de hoy, 1 lata de atún al natural o 150g de pechuga completarán tus ${proteinasRestantes}g de proteína restantes sin comprometer tus grasas esenciales.`
+    : proteinasRestantes > 0
+      ? `Te faltan ${proteinasRestantes}g de proteína para la meta del día. Sumá huevos, yogur griego o atún en la cena.`
+      : 'Vas bien con la proteína de hoy. Cerrá el día con verduras y una porción magra para mantener el balance.'
+  const tipNutricion = consejosDiarios.find((c) => c.tipo === 'nutricion')?.texto
+    || consejosSemanales.find((c) => c.tipo === 'nutricion')?.texto
+    || tipNutricionFallback
 
-  const registrosAnterioresCount = registros.filter((r) => fechaSoloDia(r.fecha) !== hoy).length
+  const onToggleVaso = (index) => {
+    const n = index + 1
+    const current = hidratacionStore.fecha === hoy ? hidratacionStore.vasos : 0
+    if (n <= current) {
+      setHidratacionStore({ fecha: hoy, vasos: Math.max(0, n - 1) })
+    } else {
+      setHidratacionStore({ fecha: hoy, vasos: Math.min(8, n) })
+    }
+  }
+
+  const onAdd250ml = () => {
+    const current = hidratacionStore.fecha === hoy ? hidratacionStore.vasos : 0
+    setHidratacionStore({ fecha: hoy, vasos: Math.min(8, current + 1) })
+  }
+
+  const caloriasActivas = Math.round(contextoDia?.caloriasQuemadas || 0)
 
   return (
-    <section className="section py-4 comida-page">
-      <div className="container app-page-container">
-        <PageHeader
-          icon="🥗"
-          iconTone="green"
-          title="Comida"
-          subtitle="Resumen del día, registro rápido e historial."
-          metrics={[
-            `${caloriasHoy || 0} kcal`,
-            `${proteinasHoy || 0} g proteína`,
-            `${hoyRegistros.length} registros`,
-          ]}
-        />
-
-        <ConsejosPanel diarios={consejosDiarios} semanales={consejosSemanales} />
-
-        <section className="comida-tu-dia mb-4" aria-label="Resumen del día">
-          <h2 className="title is-6 mb-3">Tu día</h2>
-          <div className="comida-macro-bars">
-            <MacroBarCard label="Calorías" value={caloriasHoy} goal={metaKcal} color="#3b82f6" unit="kcal" />
-            <MacroBarCard label="Proteínas" value={proteinasHoy} goal={metaPro} color="#10b981" unit="g" />
-            <MacroBarCard label="Carbohidratos" value={carbosHoy} goal={metaCarb} color="#a78bfa" unit="g" />
-            <MacroBarCard label="Grasas" value={grasasHoy} goal={metaGrasa} color="#f472b6" unit="g" />
-          </div>
-        </section>
-
-        <div className="comida-layout">
-          <div className="comida-layout-main">
-            <div className="box comida-form-card mb-0">
-          <h2 className="title is-6 mb-1">Registrar comida</h2>
-          <p className="comida-form-subtitle mb-4">Buscá en la base de datos o ingresá manualmente.</p>
-          <form onSubmit={guardarComida}>
-            <div className="columns is-mobile mb-3">
-              <div className="column is-half">
-                <label className="ej-form-label mb-1" htmlFor="comida-momento">Momento del día</label>
-                <div className="select is-fullwidth">
-                  <select id="comida-momento" value={comida} onChange={(e) => setComida(e.target.value)}>
-                    {COMIDAS.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="column is-half">
-                <label className="ej-form-label mb-1" htmlFor="comida-fecha">Fecha</label>
-                <input id="comida-fecha" className="input" type="date" value={fechaInput} onChange={(e) => setFechaInput(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="field mb-3">
-              <label className="ej-form-label mb-1" htmlFor="comida-buscar">Buscar alimento</label>
-              <div className="module-search comida-buscar">
-                <span className="module-search-icon" aria-hidden>🔍</span>
-                <input
-                  id="comida-buscar"
-                  type="text"
-                  value={busquedaRef}
-                  onChange={(e) => setBusquedaRef(e.target.value)}
-                  placeholder="Ej: pollo, arroz, manzana..."
-                  autoComplete="off"
-                />
-              </div>
-            </div>
-
-            {(items.length === 0 && !busquedaRef.trim()) && (
-              <div className="comida-empty-drop mb-3">
-                <span className="comida-empty-icon" aria-hidden="true">🍽</span>
-                <p className="mb-3">Todavía no agregaste alimentos a esta entrada.</p>
-                <div className="comida-empty-actions">
-                  <button type="button" className="button is-link" onClick={() => document.getElementById('comida-buscar')?.focus()}>
-                    + Buscar
-                  </button>
-                  <button type="button" className="button is-light" onClick={añadirLineaVacia}>
-                    Manual
-                  </button>
-                </div>
-              </div>
-            )}
-              {busquedaRef.trim().length >= 1 && (
-                <div className="box mt-2 p-2 dropdown-panel dropdown-panel-comida comida-resultados" style={{ maxHeight: 'min(45vh, 260px)', overflowY: 'auto' }}>
-                  <ul className="comida-resultados-lista">
-                    {resultadosBusqueda.length === 0 ? (
-                      <li className="is-size-7 has-text-grey py-2">Sin resultados. Probá otra palabra o cargá abajo a mano.</li>
-                    ) : (
-                      resultadosBusqueda.map((a) => (
-                        <li key={a._idx}>
-                          <button type="button" className="button is-fullwidth is-small comida-ref-btn" onClick={() => añadirDesdeReferencia(a)}>
-                            <span className="comida-ref-btn-main">
-                              <span className="comida-ref-nombre">{a.nombre}</span>
-                              <span className="comida-ref-cat is-size-7">{a.categoria}</span>
-                            </span>
-                            <span className="comida-ref-macros">
-                              <span className="tag is-info is-light is-size-7">{a.calorias} kcal</span>
-                              <span className="tag is-success is-light is-size-7">P {a.proteinas}</span>
-                              <span className="tag is-warning is-light is-size-7">C {a.carbohidratos}</span>
-                              <span className="tag is-danger is-light is-size-7">G {a.grasas ?? 0}</span>
-                            </span>
-                          </button>
-                        </li>
-                      ))
-                    )}
-                  </ul>
-                </div>
-              )}
-            {items.length > 0 && (
-              <>
-            <p className="is-size-7 has-text-weight-semibold mb-1 mt-3">Ítems a guardar</p>
-              {items.map((it) => (
-                <div key={it.id} className="comida-item-editor mb-3">
-                  <div className="is-flex is-justify-content-space-between is-align-items-center mb-2">
-                    <span className="is-size-7 has-text-grey">Alimento</span>
-                    <button type="button" className="button is-small is-text has-text-grey py-0" onClick={() => quitarItem(it.id)} aria-label="Quitar fila">
-                      Quitar
-                    </button>
-                  </div>
-                  <div className="field mb-2">
-                    <div className="control">
-                      <input
-                        className="input is-small"
-                        type="text"
-                        value={it.descripcion}
-                        onChange={(e) => actualizarItem(it.id, 'descripcion', e.target.value)}
-                        placeholder="Nombre del alimento"
-                      />
-                    </div>
-                  </div>
-                  <div className="comida-item-macros-grid">
-                    <div className="comida-item-macro-cell">
-                      <label className="is-size-7 has-text-grey comida-item-macro-label" htmlFor={`comida-cant-${it.id}`}>
-                        Cant. (ej. 0.5)
-                      </label>
-                      <input
-                        id={`comida-cant-${it.id}`}
-                        className="input is-small"
-                        type="number"
-                        min="0.25"
-                        max="99"
-                        step="0.25"
-                        inputMode="decimal"
-                        value={it.cantidad === '' || it.cantidad == null ? '' : it.cantidad}
-                        onChange={(e) => actualizarItem(it.id, 'cantidad', e.target.value)}
-                        onBlur={() => blurCantidadItem(it.id)}
-                        title="Porciones (podés usar 0.5 = media). Multiplica kcal, P y C"
-                      />
-                    </div>
-                    <div className="comida-item-macro-cell">
-                      <label className="is-size-7 has-text-grey comida-item-macro-label" htmlFor={`comida-kcal-${it.id}`}>
-                        kcal
-                      </label>
-                      <input
-                        id={`comida-kcal-${it.id}`}
-                        className="input is-small"
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={it.calorias}
-                        onChange={(e) => actualizarItem(it.id, 'calorias', e.target.value)}
-                      />
-                    </div>
-                    <div className="comida-item-macro-cell">
-                      <label className="is-size-7 has-text-grey comida-item-macro-label" htmlFor={`comida-prot-${it.id}`}>
-                        Prot. (g)
-                      </label>
-                      <input
-                        id={`comida-prot-${it.id}`}
-                        className="input is-small"
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0"
-                        value={it.proteinas}
-                        onChange={(e) => actualizarItem(it.id, 'proteinas', e.target.value)}
-                      />
-                    </div>
-                    <div className="comida-item-macro-cell">
-                      <label className="is-size-7 has-text-grey comida-item-macro-label" htmlFor={`comida-carb-${it.id}`}>
-                        Carb. (g)
-                      </label>
-                      <input
-                        id={`comida-carb-${it.id}`}
-                        className="input is-small"
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0"
-                        value={it.carbohidratos}
-                        onChange={(e) => actualizarItem(it.id, 'carbohidratos', e.target.value)}
-                      />
-                    </div>
-                    <div className="comida-item-macro-cell">
-                      <label className="is-size-7 has-text-grey comida-item-macro-label" htmlFor={`comida-gra-${it.id}`}>
-                        Grasas (g)
-                      </label>
-                      <input
-                        id={`comida-gra-${it.id}`}
-                        className="input is-small"
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0"
-                        value={it.grasas ?? ''}
-                        onChange={(e) => actualizarItem(it.id, 'grasas', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="field mb-0 mt-2">
-                    <label className="is-size-7 has-text-grey is-block mb-1" htmlFor={`comida-porc-${it.id}`}>
-                      Porción (texto libre)
-                    </label>
-                    <input
-                      id={`comida-porc-${it.id}`}
-                      className="input is-small"
-                      type="text"
-                      placeholder="Ej: 1 taza, 2 rebanadas…"
-                      value={it.porciones}
-                      onChange={(e) => actualizarItem(it.id, 'porciones', e.target.value)}
-                    />
-                  </div>
-                </div>
-              ))}
-              </>
-            )}
-
-            {items.length > 0 && (
-            <div className="field">
-              <button type="button" className="button is-light is-small is-fullwidth mb-2" onClick={añadirLineaVacia}>
-                + Añadir otra fila
-              </button>
-            </div>
-            )}
-
-            <div className="field">
-              <label className="label is-size-7" htmlFor="comida-notas">Notas (opcional)</label>
-              <div className="control">
-                <input id="comida-notas" className="input is-small" type="text" value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Ej: comida en restaurante, hambre…" />
-              </div>
-            </div>
-
-            {puedeGuardar && (
-              <div className="comida-total-bar notification is-light py-3 mb-3">
-                <p className="is-size-7 has-text-grey mb-1">Total de esta entrada</p>
-                <p className="title is-6 mb-0">
-                  <span className="has-text-info">{totalesItems.cal}</span> kcal
-                  <span className="mx-2 has-text-grey">·</span>
-                  <span className="has-text-success">P {totalesItems.pro} g</span>
-                  <span className="mx-2 has-text-grey">·</span>
-                  <span className="has-text-warning">C {totalesItems.car} g</span>
-                  <span className="mx-2 has-text-grey">·</span>
-                  <span style={{ color: '#f472b6' }}>G {totalesItems.gra} g</span>
-                </p>
-              </div>
-            )}
-
-            <div className="field mb-0">
-              <div className="control">
-                <button type="submit" className="button is-link is-fullwidth comida-guardar-btn" disabled={!puedeGuardar}>
-                  Guardar en el historial
-                </button>
-              </div>
-            </div>
-          </form>
-            </div>
-          </div>
-
-          <aside className="comida-layout-aside">
-            <div className="box comida-hist-hoy-card">
-              <div className="comida-hist-hoy-header">
-                <h2 className="title is-6 mb-0">Hoy</h2>
-                {registrosAnterioresCount > 0 && (
-                  <button type="button" className="comida-hist-ver-todo" onClick={scrollHistorial}>
-                    Historial
-                  </button>
-                )}
-              </div>
-              {bloquesHoy.length === 0 ? (
-                <p className="is-size-7 has-text-grey mb-0 mt-3">Todavía no registraste comidas hoy.</p>
-              ) : (
-                <div className="comida-hist-hoy-list mt-3">
-                  {bloquesHoy.map(({ tipo, items: itemsGrupo }) => {
-                    const calGrupo = itemsGrupo.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
-                    return (
-                      <div key={tipo} className="comida-hist-hoy-bloque">
-                        <div className="comida-hist-hoy-head">
-                          <span className={`comida-hist-hoy-icon comida-hist-hoy-icon--${tipo.toLowerCase()}`} aria-hidden>{MOMENTO_ICON[tipo] || '📋'}</span>
-                          <div>
-                            <span className="comida-hist-hoy-tipo">{tipo}</span>
-                          </div>
-                        </div>
-                        <ul className="comida-hist-hoy-items">
-                          {itemsGrupo.map((r) => (
-                            <li key={r.id} className="comida-hist-hoy-item-row">
-                              <span className="comida-hist-hoy-desc">{r.descripcion}</span>
-                              <span className="comida-hist-hoy-kcal">{r.calorias || '—'} kcal</span>
-                              <button
-                                type="button"
-                                className="delete is-small"
-                                aria-label="Eliminar"
-                                onClick={() => eliminar(r.id)}
-                              />
-                            </li>
-                          ))}
-                        </ul>
-                        <p className="comida-hist-hoy-total mb-0">Total: <strong>{calGrupo} kcal</strong></p>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-              {momentosPendientes.length > 0 && bloquesHoy.length > 0 && (
-                <div className="comida-hist-hoy-pendientes mt-3">
-                  {momentosPendientes.map((momento) => (
-                    <button
-                      key={momento}
-                      type="button"
-                      className="comida-hist-chip-pendiente"
-                      onClick={() => setComida(momento)}
-                    >
-                      + {momento}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {bloquesHoy.length === 0 && momentosPendientes.length > 0 && (
-                <div className="comida-hist-hoy-pendientes mt-3">
-                  {momentosPendientes.map((momento) => (
-                    <button
-                      key={momento}
-                      type="button"
-                      className="comida-hist-chip-pendiente"
-                      onClick={() => setComida(momento)}
-                    >
-                      + {momento}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </aside>
-        </div>
-
-        <div id="comida-historial-completo" className="mt-4">
-          {!historialPasadoAbierto ? (
-            <button
-              type="button"
-              className="box comida-hist-pasado-cta mb-0"
-              onClick={() => setHistorialPasadoAbierto(true)}
-            >
-              <span>
-                <strong className="comida-hist-pasado-cta-titulo">Historial anterior</strong>
-                <span className="comida-hist-pasado-cta-sub">
-                  {registrosAnterioresCount > 0
-                    ? `${registrosAnterioresCount} registros · elegí período para verlos`
-                    : 'Todavía no hay comidas de días anteriores'}
-                </span>
-              </span>
-              <span className="comida-hist-pasado-cta-btn">Consultar</span>
-            </button>
-          ) : (
-            <div className="box comida-hist-pasado-panel mb-0">
-              <div className="comida-hist-pasado-head">
-                <h2 className="title is-6 mb-0">Historial anterior</h2>
-                <button
-                  type="button"
-                  className="button is-small is-light"
-                  onClick={() => {
-                    setHistorialPasadoAbierto(false)
-                    setHistorialMostrado(false)
-                    setDiasExpandidos(new Set())
-                  }}
-                >
-                  Cerrar
-                </button>
-              </div>
-
-              <form className="comida-filtro-periodo mt-3 mb-0" onSubmit={consultarHistorial}>
-                <label className="label is-size-7 mb-2">Elegí qué querés ver</label>
-                <div className="field mb-2">
-                  <div className="control">
-                    <div className="select is-fullwidth">
-                      <select
-                        value={periodo}
-                        onChange={(e) => {
-                          setPeriodo(e.target.value)
-                          setHistorialMostrado(false)
-                        }}
-                      >
-                        {PERIODOS.map((p) => (
-                          <option key={p.value} value={p.value}>{p.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                {periodo === 'personalizado' && (
-                  <div className="columns is-mobile mb-2">
-                    <div className="column">
-                      <label className="label is-size-7">Desde</label>
-                      <input
-                        className="input is-small"
-                        type="date"
-                        value={desdeCustom}
-                        onChange={(e) => {
-                          setDesdeCustom(e.target.value)
-                          setHistorialMostrado(false)
-                        }}
-                      />
-                    </div>
-                    <div className="column">
-                      <label className="label is-size-7">Hasta</label>
-                      <input
-                        className="input is-small"
-                        type="date"
-                        value={hastaCustom}
-                        onChange={(e) => {
-                          setHastaCustom(e.target.value)
-                          setHistorialMostrado(false)
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-                <button type="submit" className="button is-link is-fullwidth">
-                  Ver historial
-                </button>
-              </form>
-
-              {historialMostrado && (
-                <div className="mt-4">
-                  <p className="is-size-7 has-text-grey mb-3">
-                    Del {desde} al {hasta}
-                    {diasHistorialPasado.length === 0 ? '' : ` · ${diasHistorialPasado.length} día${diasHistorialPasado.length === 1 ? '' : 's'}`}
-                  </p>
-                  {diasHistorialPasado.length === 0 ? (
-                    <p className="is-size-7 has-text-grey mb-0">No hay comidas en este período (además de hoy).</p>
-                  ) : (
-                    <ul className="comida-historial-lista mb-0">
-                      {diasHistorialPasado.map(([fecha, lista]) => {
-                        const cal = lista.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
-                        const pro = redondear1(lista.reduce((s, r) => s + numeroFlexibleO(r.proteinas), 0))
-                        const car = redondear1(lista.reduce((s, r) => s + numeroFlexibleO(r.carbohidratos), 0))
-                        const abierto = diasExpandidos.has(fecha)
-                        return (
-                          <li key={fecha} className={`comida-hist-dia${abierto ? ' is-open' : ''}`}>
-                            <button
-                              type="button"
-                              className="comida-hist-dia-toggle"
-                              onClick={() => toggleDiaHistorial(fecha)}
-                              aria-expanded={abierto}
-                            >
-                              <span className="comida-hist-dia-toggle-main">
-                                <span className="comida-hist-chevron" aria-hidden>{abierto ? '▼' : '▶'}</span>
-                                <span className="comida-hist-fecha" style={{ textTransform: 'capitalize' }}>
-                                  {formatearFecha(fecha)}
-                                </span>
-                              </span>
-                              <span className="tag is-info is-light is-size-7">
-                                {cal || '—'} kcal · P {pro || '—'} · C {car || '—'}
-                              </span>
-                            </button>
-                            {abierto && (
-                              <div className="comida-hist-grupos-dia">
-                                <ListaComidaAgrupada bloques={agruparComidasPorMomento(lista)} onEliminar={eliminar} />
-                              </div>
-                            )}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </div>
+    <section className="section py-2 comida-page comida-titanium">
+      <div className="container app-page-container comida-container">
+        <ComidaTitanium
+          hoy={hoy}
+          rachaDias={rachaDias}
+          caloriasHoy={caloriasHoy}
+          proteinasHoy={proteinasHoy}
+          carbosHoy={carbosHoy}
+          grasasHoy={grasasHoy}
+          metaKcal={metaKcal}
+          metaPro={metaPro}
+          metaCarb={metaCarb}
+          metaGrasa={metaGrasa}
+          vasos={vasosHoy}
+          caloriasActivas={caloriasActivas}
+          onToggleVaso={onToggleVaso}
+          onAdd250ml={onAdd250ml}
+          comidas={COMIDAS}
+          momentoIcon={MOMENTO_ICON}
+          hoyRegistros={hoyRegistros}
+          comida={comida}
+          setComida={setComida}
+          eliminar={eliminar}
+          busquedaRef={busquedaRef}
+          setBusquedaRef={cambiarBusqueda}
+          limpiarSeleccion={limpiarSeleccion}
+          resultadosBusqueda={resultadosBusqueda}
+          referenciaActiva={referenciaActiva}
+          seleccionarReferencia={seleccionarReferencia}
+          previewSeleccion={previewSeleccion}
+          cantidadPorciones={cantidadPorciones}
+          setCantidadPorciones={cambiarCantidadPorciones}
+          blurCantidadPorciones={blurCantidadPorciones}
+          items={items}
+          totalesItems={totalesItems}
+          puedeGuardar={puedeGuardar}
+          añadirDesdeReferencia={añadirDesdeReferencia}
+          actualizarItem={actualizarItem}
+          quitarItem={quitarItem}
+          blurCantidadItem={blurCantidadItem}
+          añadirLineaVacia={añadirLineaVacia}
+          notas={notas}
+          setNotas={setNotas}
+          guardarComida={guardarComida}
+          registros={registros}
+          tipNutricion={tipNutricion}
+          bannerConsejo={bannerConsejo}
+          objetivo={config?.objetivo}
+          registrosMesCount={registrosMesCount}
+          vistaComida={vistaComida}
+          setVistaComida={cambiarVistaComida}
+          periodo={periodo}
+          setPeriodo={setPeriodo}
+          desdeCustom={desdeCustom}
+          setDesdeCustom={setDesdeCustom}
+          hastaCustom={hastaCustom}
+          setHastaCustom={setHastaCustom}
+          consultarHistorial={consultarHistorial}
+          historialMostrado={historialMostrado}
+          setHistorialMostrado={setHistorialMostrado}
+          rangoDesde={desde}
+          rangoHasta={hasta}
+          diasHistorial={diasHistorial}
+          diasExpandidos={diasExpandidos}
+          toggleDiaHistorial={toggleDiaHistorial}
+          onEditarRegistro={editarRegistro}
+          renderDiaHistorial={(lista) => (
+            <ListaComidaAgrupada bloques={agruparComidasPorMomento(lista)} onEliminar={eliminar} onEditar={editarRegistro} />
           )}
-        </div>
+        />
       </div>
     </section>
   )

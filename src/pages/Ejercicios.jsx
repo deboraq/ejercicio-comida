@@ -364,7 +364,7 @@ export default function Ejercicios() {
       : null
 
   return (
-    <section className="section py-4 ejercicios-page">
+    <section className="section ejercicios-page">
       <div className="container app-page-container ejercicios-container">
         <PageHeader
           title="Ejercicios"

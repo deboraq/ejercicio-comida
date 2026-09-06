@@ -19,6 +19,7 @@ import {
 } from '../utils/rutinaEjercicioDia'
 import SesionRegistroTitanium from '../components/SesionRegistroTitanium'
 import ArmarPlanTitanium from '../components/ArmarPlanTitanium'
+import ProgresoCargasTitanium from '../components/ProgresoCargasTitanium'
 import { AppNotificacionesCampana } from '../context/AppNotificationsContext'
 
 function crearDia(num) {
@@ -688,14 +689,15 @@ export default function Rutina() {
   }
 
   return (
-    <section className="section py-2 rutina-titanium">
-      <div className="container app-page-container rutina-container">
+    <section className="section py-2 rutina-titanium rutina-layout">
+      <div className="rutina-chrome">
+        <div className="container app-page-container rutina-container">
         <header className="rut-head">
           <div className="rut-head-top">
             <div className="rut-head-titles">
               <h1 className="rut-head-title">Gestión de Rutinas y Entrenamiento</h1>
               <p className="rut-head-sub">
-                Control de cargas, superseries conectadas y progresión en tiempo real.
+                Control de cargas, progresión de 1RM estimada, tonelaje acumulado y métricas de rendimiento en tiempo real.
               </p>
             </div>
 
@@ -800,6 +802,10 @@ export default function Rutina() {
                 className={`rut-tab${vista === 'progreso' && origenRutinas === 'propias' ? ' is-active' : ''}`}
                 onClick={() => { setOrigenRutinas('propias'); setVista('progreso') }}
               >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                  <path d="M4 19V5M4 19h16" strokeLinecap="round" />
+                  <path d="m7 15 3.5-4.5L14 13l4-6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
                 Progreso & Cargas
               </button>
             </nav>
@@ -826,146 +832,35 @@ export default function Rutina() {
             </div>
           </div>
         </header>
+        </div>
+      </div>
 
+      <div className="rutina-scroll">
+        <div className="container app-page-container rutina-container">
         {origenRutinas === 'propias' ? (
         <>
 
         {vista === 'progreso' && (
-          <>
-          <div className="box mb-4 py-3">
-            <h2 className="title is-6 mb-2">Tu avance</h2>
-            <label className="label is-size-7 mb-2">Período</label>
-            <div className="select is-fullwidth is-small mb-2">
-              <select
-                value={periodProgreso}
-                onChange={(e) => {
-                  const value = e.target.value
-                  setPeriodProgreso(value)
-                  if (value === 'personalizado' && !desdeProgresoCustom) {
-                    const d = new Date((hastaProgresoCustom || hoy) + 'T12:00:00')
-                    d.setDate(d.getDate() - 30)
-                    setDesdeProgresoCustom(fechaToISO(d))
-                  }
-                }}
-              >
-                <option value="semana">Última semana (7 días)</option>
-                <option value="mes">Último mes (30 días)</option>
-                <option value="personalizado">Personalizado</option>
-              </select>
-            </div>
-            {periodProgreso === 'personalizado' && (
-              <div className="columns is-mobile mb-2">
-                <div className="column">
-                  <label className="label is-size-7">Desde</label>
-                  <input className="input is-small" type="date" value={desdeProgresoCustom} onChange={(e) => setDesdeProgresoCustom(e.target.value)} />
-                </div>
-                <div className="column">
-                  <label className="label is-size-7">Hasta</label>
-                  <input className="input is-small" type="date" value={hastaProgresoCustom} onChange={(e) => setHastaProgresoCustom(e.target.value)} />
-                </div>
-              </div>
-            )}
-            <p className="is-size-7 has-text-grey mb-3">
-              Del {desdeProgreso} al {hastaProgreso}.
-            </p>
-            {registrosEnPeriodo.length === 0 ? (
-              <p className="has-text-grey is-size-7 mb-0">Aún no hay registros en este período. Cuando registres sesiones, aquí verás tu progreso.</p>
-            ) : (
-              <div className="columns is-mobile is-multiline">
-                <div className="column is-half">
-                  <div className="box has-background-light py-2">
-                    <p className="is-size-7 has-text-grey mb-0">Sesiones</p>
-                    <p className="title is-6 mb-0 has-text-weight-bold">{sesionesEnPeriodo}</p>
-                    <p className="is-size-7 has-text-grey mt-0">días entrenados</p>
-                  </div>
-                </div>
-                <div className="column is-half">
-                  <div className="box has-background-light py-2">
-                    <p className="is-size-7 has-text-grey mb-0">Registros</p>
-                    <p className="title is-6 mb-0 has-text-weight-bold">{totalRegistrosPeriodo}</p>
-                    <p className="is-size-7 has-text-grey mt-0">series/ejercicios</p>
-                  </div>
-                </div>
-                <div className="column is-half">
-                  <div className="box has-background-light py-2">
-                    <p className="is-size-7 has-text-grey mb-0">Ejercicios distintos</p>
-                    <p className="title is-6 mb-0 has-text-weight-bold">{ejerciciosEnPeriodo}</p>
-                  </div>
-                </div>
-                <div className="column is-half">
-                  <div className="box has-background-light py-3">
-                    <p className="is-size-7 has-text-grey mb-0">Tendencia general</p>
-                    <p className="mb-0">
-                      <span className="has-text-success" title="Subiste peso">↑ {conMejora}</span>
-                      <span className="mx-2">·</span>
-                      <span className="has-text-warning" title="Bajaste peso">↓ {conBaja}</span>
-                      <span className="mx-2">·</span>
-                      <span className="has-text-grey">— {sinCambio}</span>
-                    </p>
-                    <p className="is-size-7 has-text-grey mt-0">ejercicios (↑ subiste / ↓ bajaste)</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="box mb-4 py-3">
-            <h2 className="title is-6 mb-2">Avance por ejercicio</h2>
-            <p className="is-size-7 has-text-grey mb-4">
-              Comparación: última sesión, anterior y mejor peso. ↑ subiste, ↓ bajaste.
-            </p>
-            {progresoOrdenadoEnPeriodo.length === 0 ? (
-              <div className="has-text-grey has-text-centered py-4">
-                <p className="mb-0">Aún no hay registros para medir progreso en este período.</p>
-                <p className="is-size-7 mt-2 mb-0">Registra sesiones en la pestaña &quot;Registrar&quot; o elige otro período arriba.</p>
-              </div>
-            ) : (
-              <div className="columns is-mobile is-multiline" style={{ gap: '0.75rem' }}>
-                {progresoOrdenadoEnPeriodo.map(({ ejercicio, ultima, anterior, mejorPeso, tendencia, totalSesiones }) => (
-                  <div key={ejercicio} className="column is-full">
-                    <div className="box py-3 px-4">
-                      <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
-                        <div>
-                          <p className="title is-6 mb-1">{ejercicio}</p>
-                          <p className="is-size-7 has-text-grey mb-0">
-                            {totalSesiones} sesión{totalSesiones !== 1 ? 'es' : ''} registrada{totalSesiones !== 1 ? 's' : ''}
-                          </p>
-                        </div>
-                        <span className={`tag is-medium ${tendencia === '↑' ? 'is-success' : tendencia === '↓' ? 'is-warning is-light' : 'is-light'}`} title={tendencia === '↑' ? 'Subiste peso' : tendencia === '↓' ? 'Bajaste peso' : 'Sin cambio'}>
-                          {tendencia}
-                        </span>
-                      </div>
-                      <div className="columns is-mobile mt-2 mb-0 is-size-7">
-                        <div className="column">
-                          <span className="has-text-grey">Última vez:</span>
-                          <p className="mb-0 mt-1">
-                            {formatearFecha(ultima.fecha)} — {ultima.series}×{ultima.repeticiones}
-                            {ultima.pesoKg != null && ultima.pesoKg > 0 && <strong className="ml-1">· {ultima.pesoKg} kg</strong>}
-                          </p>
-                        </div>
-                        {anterior && (
-                          <div className="column">
-                            <span className="has-text-grey">Anterior:</span>
-                            <p className="mb-0 mt-1">
-                              {formatearFecha(anterior.fecha)} — {anterior.series}×{anterior.repeticiones}
-                              {anterior.pesoKg != null && anterior.pesoKg > 0 && <span className="ml-1">· {anterior.pesoKg} kg</span>}
-                            </p>
-                          </div>
-                        )}
-                        {mejorPeso != null && (
-                          <div className="column">
-                            <span className="has-text-grey">Mejor peso:</span>
-                            <p className="mb-0 mt-1 has-text-success"><strong>{mejorPeso} kg</strong></p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          </>
+          <ProgresoCargasTitanium
+            registros={registrosRutina}
+            ejerciciosPlan={[
+              ...new Set(
+                (dias || []).flatMap((d) =>
+                  (d.ejercicios || [])
+                    .map((e) => (typeof e === 'string' ? e : e?.nombre))
+                    .filter(Boolean)
+                )
+              ),
+            ]}
+            onAplicarSugerencia={({ ejercicio, carga }) => {
+              setVista('registrar')
+              window.alert(
+                ejercicio && carga != null
+                  ? `Sugerencia: en la próxima sesión de «${ejercicio}» apuntá a ${carga} kg.`
+                  : 'Abrí Registrar sesión para aplicar la sugerencia.'
+              )
+            }}
+          />
         )}
 
         {vista === 'configurar' && (
@@ -1037,7 +932,7 @@ export default function Rutina() {
                       <button
                         key={d.id}
                         type="button"
-                        className={`rut-day-chip${activo ? ' is-active' : ''}`}
+                        className={`rut-day-chip rut-day-chip--tone-${di % 6}${activo ? ' is-active' : ''}`}
                         onClick={() => setDiaSeleccionado(d.id)}
                       >
                         {activo && (
@@ -1334,6 +1229,7 @@ export default function Rutina() {
             onRefreshAssignments={() => setAssignmentsRefreshTick((n) => n + 1)}
           />
         )}
+        </div>
       </div>
     </section>
   )
