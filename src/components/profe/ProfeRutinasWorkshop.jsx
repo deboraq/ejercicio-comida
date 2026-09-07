@@ -81,17 +81,19 @@ function plantillasNecesitanMigracion(arr) {
   return false
 }
 
-const rutWorkshopCaja = {
-  borderRadius: 12,
-  border: '1px solid rgba(255,255,255,0.1)',
-  background: 'rgba(0,0,0,0.14)',
+function metaPlantilla(p) {
+  const dias = (p.dias || []).length
+  const ejercicios = (p.dias || []).reduce((n, d) => n + (d.ejercicios || []).length, 0)
+  return { dias, ejercicios }
 }
 
-const rutListadoFila = {
-  borderRadius: 10,
-  border: '1px solid rgba(255,255,255,0.1)',
-  background: 'rgba(0,0,0,0.2)',
-  padding: '0.85rem 1rem',
+function badgePlantilla(p, students) {
+  if (p.soloStudentId) {
+    const st = students.find((s) => s.studentId === p.soloStudentId)
+    const name = st?.fullName || st?.email || 'alumno'
+    return { label: `Personalizada (${name})`, tone: 'orange' }
+  }
+  return { label: 'Global', tone: 'muted' }
 }
 
 function normalizarEjerciciosDia(list) {
@@ -515,76 +517,64 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
 
   return (
     <>
-      <div className="box module-panel-card mb-0">
-        <h2 className="title is-6 mb-2">Plantillas de rutina</h2>
-        <p className="is-size-7 has-text-grey mb-4" style={{ lineHeight: 1.5 }}>
-          Armás cada día con filas (ejercicio, series y repeticiones). Podés marcar una plantilla{' '}
-          <strong>solo para un alumno</strong> (personalizada); el resto sirven para cualquiera. Desde el listado usá{' '}
-          <strong>Enviar</strong> para mandarla a uno o varios alumnos a la vez.
-        </p>
+      <div className="pf-panel pf-plantillas-module mb-0">
+        <header className="pf-plantillas-head">
+          <div>
+            <h2 className="pf-section-title mb-1">Plantillas de rutina</h2>
+            <p className="pf-muted mb-0">
+              Armá cada día con filas (ejercicio, series y repeticiones). Marcá plantillas globales o personalizadas por
+              alumno; envialas desde el listado con <strong>Enviar</strong>.
+            </p>
+          </div>
+          {!editorPlantillaAbierto ? (
+            <button type="button" className="pf-btn pf-btn--primary pf-btn--sm" onClick={agregarPlantilla}>
+              + Nueva rutina
+            </button>
+          ) : null}
+        </header>
 
         {!editorPlantillaAbierto && (
           <>
-            <div className="is-flex is-flex-wrap-wrap is-justify-content-flex-start is-align-items-center mb-3" style={{ gap: '0.5rem' }}>
-              <button type="button" className="button is-link is-small" onClick={agregarPlantilla}>
-                + Nueva rutina
-              </button>
-            </div>
             {!listP.length ? (
-              <p className="is-size-7 has-text-grey mb-0">Tocá «Nueva rutina» para crear la primera y editarla.</p>
+              <p className="pf-muted mb-0">Tocá «Nueva rutina» para crear la primera y editarla.</p>
             ) : (
-              <ul className="mb-0" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                {listaRutinasListado.map((p) => (
-                  <li
-                    key={p.id}
-                    className="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap"
-                    style={{
-                      ...rutListadoFila,
-                      gap: '0.65rem',
-                    }}
-                  >
-                    <span className="is-size-7" style={{ wordBreak: 'break-word', flex: '1 1 12rem', minWidth: 0 }}>
-                      <strong>{p.nombre || 'Sin nombre'}</strong>
-                      {p.soloStudentId ? (
-                        <span className="has-text-grey"> · solo un alumno</span>
-                      ) : null}
-                    </span>
-                    <div className="is-flex is-align-items-center" style={{ gap: '0.4rem', flexShrink: 0 }}>
-                      <button
-                        type="button"
-                        className="button is-small is-link is-light"
-                        onClick={() => abrirEditorPlantilla(p.id)}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        className="button is-small is-info is-light"
-                        onClick={() => abrirModalEnviar(p.id)}
-                      >
-                        Enviar
-                      </button>
-                      <button
-                        type="button"
-                        className="button is-small is-light"
-                        onClick={() => duplicarPlantillaPorId(p.id)}
-                      >
-                        Duplicar
-                      </button>
-                      <button
-                        type="button"
-                        className="button is-small is-danger is-light"
-                        onClick={() => eliminarRutinaPorId(p.id)}
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </li>
-                ))}
+              <ul className="pf-plantilla-list mb-0">
+                {listaRutinasListado.map((p) => {
+                  const meta = metaPlantilla(p)
+                  const badge = badgePlantilla(p, students)
+                  return (
+                    <li key={p.id} className="pf-plantilla-card">
+                      <div className="pf-plantilla-main">
+                        <div className="pf-plantilla-title-row">
+                          <strong className="pf-plantilla-name">{p.nombre || 'Sin nombre'}</strong>
+                          <span className={`pf-badge pf-badge--${badge.tone}`}>{badge.label}</span>
+                        </div>
+                        <p className="pf-plantilla-meta mb-0">
+                          {meta.dias} {meta.dias === 1 ? 'día programado' : 'días programados'} · {meta.ejercicios}{' '}
+                          {meta.ejercicios === 1 ? 'ejercicio' : 'ejercicios'} vinculados
+                        </p>
+                      </div>
+                      <div className="pf-plantilla-actions">
+                        <button type="button" className="pf-btn pf-btn--outline-blue pf-btn--sm" onClick={() => abrirEditorPlantilla(p.id)}>
+                          Editar
+                        </button>
+                        <button type="button" className="pf-btn pf-btn--outline pf-btn--sm" onClick={() => abrirModalEnviar(p.id)}>
+                          Enviar
+                        </button>
+                        <button type="button" className="pf-btn pf-btn--outline pf-btn--sm" onClick={() => duplicarPlantillaPorId(p.id)}>
+                          Duplicar
+                        </button>
+                        <button type="button" className="pf-btn pf-btn--danger-text pf-btn--sm" onClick={() => eliminarRutinaPorId(p.id)}>
+                          Eliminar
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
               </ul>
             )}
             {plantillasFiltradas.length === 0 && qBusq && listP.length > 0 ? (
-              <p className="is-size-7 has-text-grey mt-2 mb-0">Ninguna plantilla coincide con la búsqueda.</p>
+              <p className="pf-muted mt-2 mb-0">Ninguna plantilla coincide con la búsqueda.</p>
             ) : null}
           </>
         )}

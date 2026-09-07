@@ -132,15 +132,27 @@ export async function createAdminMessage(teacherId, body) {
   })
 }
 
-export async function findStudentIdByEmail(email) {
+export async function findStudentIdByEmail(email, { allowSelf = false, selfUserId = null } = {}) {
   if (!supabase) return { studentId: null, error: new Error('Sin cliente') }
+  const norm = (email || '').trim().toLowerCase()
+  if (allowSelf && selfUserId && norm.length >= 3) {
+    const { data: selfRow, error: selfErr } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('id', selfUserId)
+      .maybeSingle()
+    if (!selfErr && selfRow?.id) {
+      const selfMail = (selfRow.email || '').trim().toLowerCase()
+      if (selfMail === norm) return { studentId: selfRow.id, error: null }
+    }
+  }
   const { data, error } = await supabase.rpc('find_student_id_by_email', { p_email: (email || '').trim() })
   if (error) return { studentId: null, error }
   return { studentId: data || null, error: null }
 }
 
 export async function addTeacherStudent(teacherId, studentId) {
-  if (!supabase || !teacherId || !studentId || teacherId === studentId) {
+  if (!supabase || !teacherId || !studentId) {
     return { error: new Error('Datos inválidos') }
   }
   return supabase.from('teacher_students').insert({ teacher_id: teacherId, student_id: studentId })
@@ -259,9 +271,39 @@ export async function listRoutineAssignmentsForTeacher(teacherId) {
   if (!supabase || !teacherId) return { data: [], error: null }
   return supabase
     .from('routine_assignments')
-    .select('id, student_id, title, created_at')
+    .select('id, student_id, title, payload, created_at')
     .eq('teacher_id', teacherId)
     .order('created_at', { ascending: false })
+}
+
+const SNAPSHOT_USER_DATA_KEYS = ['rutinaPesos', 'comida', 'ejercicios', 'rutinasAsignadas']
+
+/** Datos de actividad de alumnos vinculados (requiere política RLS opcional en user_data). */
+export async function fetchLinkedStudentsUserData(studentIds) {
+  if (!supabase || !studentIds?.length) return { data: {}, error: null }
+  const { data, error } = await supabase
+    .from('user_data')
+    .select('user_id, key, value')
+    .in('user_id', studentIds)
+    .in('key', SNAPSHOT_USER_DATA_KEYS)
+  if (error) return { data: {}, error }
+  const out = {}
+  for (const row of data || []) {
+    if (!out[row.user_id]) out[row.user_id] = {}
+    out[row.user_id][row.key] = row.value
+  }
+  return { data: out, error: null }
+}
+
+/** Última rutina enviada por alumno (mapa student_id → fila). */
+export async function fetchLatestAssignmentsByStudent(teacherId) {
+  const { data, error } = await listRoutineAssignmentsForTeacher(teacherId)
+  if (error || !data) return { map: {}, error }
+  const map = {}
+  for (const row of data) {
+    if (!map[row.student_id]) map[row.student_id] = row
+  }
+  return { map, error: null }
 }
 
 export async function deleteRoutineAssignment(assignmentId) {

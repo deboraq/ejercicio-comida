@@ -12971,3 +12971,202 @@ select.ap-input {
 .ej-modal-panel {
   box-shadow: var(--app-grad-inset), 0 6px 18px rgba(0, 0, 0, 0.14);
 }
+
+/* Degradés Titanium — Profe (violeta suave en contenedor, filas sin doble glow) */
+.profe-page.profe-titanium {
+  --pf-panel-bg:
+    linear-gradient(155deg, rgba(139, 92, 246, 0.11) 0%, transparent 54%),
+    linear-gradient(300deg, rgba(124, 58, 237, 0.05) 0%, transparent 48%),
+    #151b2b;
+  --pf-panel-bg-strong:
+    linear-gradient(155deg, rgba(139, 92, 246, 0.14) 0%, transparent 56%),
+    linear-gradient(300deg, rgba(167, 139, 250, 0.06) 0%, transparent 50%),
+    #151b2b;
+  --pf-item-bg:
+    linear-gradient(160deg, rgba(139, 92, 246, 0.04) 0%, transparent 42%),
+    #121722;
+  --pf-item-border: rgba(51, 41, 72, 0.55);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(139, 92, 246, 0.06), transparent 44%),
+    radial-gradient(circle at 92% 6%, rgba(124, 58, 237, 0.04), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(59, 130, 246, 0.03), transparent 35%);
+}
+
+.profe-page.profe-titanium .box:not(.has-background-light) {
+  background: var(--pf-panel-bg) !important;
+  border: 1px solid rgba(139, 92, 246, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(167, 139, 250, 0.06), var(--app-grad-inset) !important;
+  border-radius: 14px !important;
+  color: #e2e8f0;
+}
+
+.profe-page.profe-titanium .pf-panel .box:not(.has-background-light),
+.profe-page.profe-titanium .box:not(.has-background-light) .box:not(.has-background-light) {
+  background: var(--pf-item-bg) !important;
+  border: 1px solid var(--pf-item-border) !important;
+  box-shadow: none !important;
+}
+
+.profe-page.profe-titanium .pf-header {
+  background: var(--pf-panel-bg-strong) !important;
+  border: 1px solid rgba(139, 92, 246, 0.2) !important;
+  box-shadow: inset 0 1px 0 rgba(167, 139, 250, 0.08), var(--app-grad-inset) !important;
+}
+
+.profe-page.profe-titanium .pf-filter-bar,
+.profe-page.profe-titanium .pf-panel:not(.pf-panel--cloud):not(.pf-panel--feed):not(.pf-panel--notes):not(.pf-panel--notes-purple),
+.profe-page.profe-titanium .pf-empty-state,
+.profe-page.profe-titanium .pf-empty,
+.profe-page.profe-titanium .pf-modal-panel,
+.profe-page.profe-titanium .pf-alumno-card {
+  background: var(--pf-panel-bg) !important;
+  border: 1px solid rgba(139, 92, 246, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(167, 139, 250, 0.06), var(--app-grad-inset) !important;
+}
+
+/* Filas internas: fondo plano, sin segundo degradé encima */
+.profe-page.profe-titanium .pf-plantilla-card,
+.profe-page.profe-titanium .pf-catalogo-row,
+.profe-page.profe-titanium .pf-envio-card,
+.profe-page.profe-titanium .pf-admin-msg-item,
+.profe-page.profe-titanium .pf-feedback-item,
+.profe-page.profe-titanium .pf-plantillas-module .box:not(.has-background-light),
+.profe-page.profe-titanium .pf-catalogo-module .box:not(.has-background-light) {
+  background: var(--pf-item-bg) !important;
+  border: 1px solid var(--pf-item-border) !important;
+  box-shadow: none !important;
+}
+
+.profe-page.profe-titanium .pf-panel--cloud {
+  background: var(--pf-panel-bg-strong) !important;
+  border: 1px solid var(--app-grad-border-blue) !important;
+  box-shadow: var(--app-grad-inset) !important;
+}
+
+.profe-page.profe-titanium .pf-panel--feed,
+.profe-page.profe-titanium .pf-panel--notes,
+.profe-page.profe-titanium .pf-panel--notes-purple {
+  background: var(--pf-panel-bg) !important;
+  border: 1px solid rgba(139, 92, 246, 0.16) !important;
+  box-shadow: inset 0 1px 0 rgba(167, 139, 250, 0.07), var(--app-grad-inset) !important;
+}
+
+.profe-page.profe-titanium .pf-panel--feed {
+  border-color: var(--app-grad-border-teal) !important;
+}
+
+.profe-page.profe-titanium .pf-panel--notes,
+.profe-page.profe-titanium .pf-panel--notes-purple {
+  border-color: rgba(139, 92, 246, 0.22) !important;
+}
+
+.profe-page.profe-titanium .pf-alumno-card--green,
+.profe-page.profe-titanium .pf-alumno-card--orange,
+.profe-page.profe-titanium .pf-alumno-card--blue,
+.profe-page.profe-titanium .pf-alumno-card--muted {
+  background: var(--pf-panel-bg) !important;
+  border: 1px solid rgba(139, 92, 246, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(167, 139, 250, 0.06), var(--app-grad-inset) !important;
+}
+
+.profe-page.profe-titanium .pf-alumno-card--green {
+  border-left: 3px solid rgba(16, 185, 129, 0.45) !important;
+}
+
+.profe-page.profe-titanium .pf-alumno-card--orange {
+  border-left: 3px solid rgba(245, 158, 11, 0.45) !important;
+}
+
+.profe-page.profe-titanium .pf-alumno-card--blue {
+  border-left: 3px solid rgba(59, 130, 246, 0.4) !important;
+}
+
+.profe-page.profe-titanium .pf-alumno-card--muted {
+  border-left: 3px solid rgba(100, 116, 139, 0.35) !important;
+}
+
+.profe-page.profe-titanium .pf-kpi {
+  background: var(--pf-item-bg) !important;
+  border: 1px solid var(--pf-item-border) !important;
+  box-shadow: none !important;
+}
+
+.profe-page.profe-titanium .pf-kpi--total {
+  border-color: var(--app-grad-border-blue) !important;
+}
+
+.profe-page.profe-titanium .pf-kpi--green {
+  border-color: var(--app-grad-border-green) !important;
+}
+
+.profe-page.profe-titanium .pf-kpi--orange {
+  border-color: var(--app-grad-border-amber) !important;
+}
+
+.profe-page.profe-titanium .pf-notes-list,
+.profe-page.profe-titanium .pf-notes-empty,
+.profe-page.profe-titanium .pf-search input,
+.profe-page.profe-titanium .pf-field select,
+.profe-page.profe-titanium .pf-field input,
+.profe-page.profe-titanium .pf-field textarea,
+.profe-page.profe-titanium .pf-chip:not(.is-active),
+.profe-page.profe-titanium .pf-msg-item {
+  background: var(--pf-item-bg) !important;
+  border-color: var(--pf-item-border) !important;
+  box-shadow: none !important;
+}
+
+.profe-page.profe-titanium .pf-chip.is-active {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border-color: rgba(59, 130, 246, 0.45) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+.profe-page.profe-titanium .pf-info-banner {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.28) !important;
+}
+
+.profe-page.profe-titanium .pf-alumno-avatar.pf-avatar-tone-0,
+.profe-page.profe-titanium .pf-envio-avatar.pf-avatar-tone-0 {
+  background: linear-gradient(135deg, #818cf8 0%, #6366f1 55%, #4338ca 100%) !important;
+}
+
+.profe-page.profe-titanium .pf-alumno-avatar.pf-avatar-tone-1,
+.profe-page.profe-titanium .pf-envio-avatar.pf-avatar-tone-1 {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 55%, #059669 100%) !important;
+}
+
+.profe-page.profe-titanium .pf-alumno-avatar.pf-avatar-tone-2,
+.profe-page.profe-titanium .pf-envio-avatar.pf-avatar-tone-2 {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 55%, #d97706 100%) !important;
+}
+
+.profe-page.profe-titanium .pf-alumno-avatar.pf-avatar-tone-3,
+.profe-page.profe-titanium .pf-envio-avatar.pf-avatar-tone-3 {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 55%, #2563eb 100%) !important;
+}
+
+.profe-page.profe-titanium .pf-alumno-avatar.pf-avatar-tone-4,
+.profe-page.profe-titanium .pf-envio-avatar.pf-avatar-tone-4 {
+  background: linear-gradient(135deg, #f472b6 0%, #ec4899 55%, #db2777 100%) !important;
+}
+
+.profe-page.profe-titanium .pf-alumno-avatar.pf-avatar-tone-5,
+.profe-page.profe-titanium .pf-envio-avatar.pf-avatar-tone-5 {
+  background: linear-gradient(135deg, #2dd4bf 0%, #14b8a6 55%, #0d9488 100%) !important;
+}
+
+.profe-page.profe-titanium .pf-alumno-avatar,
+.profe-page.profe-titanium .pf-envio-avatar[class*='pf-avatar-tone-'] {
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25) !important;
+}
+
+.profe-page.profe-titanium .pf-coach-avatar {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 55%, #2563eb 100%) !important;
+  border: 1px solid rgba(96, 165, 250, 0.3) !important;
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.2) !important;
+}

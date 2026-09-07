@@ -526,6 +526,8 @@ function MealCard({
 
 export default function ComidaTitanium({
   hoy,
+  fechaVista,
+  onShiftDia,
   rachaDias = 0,
   caloriasHoy,
   proteinasHoy,
@@ -648,6 +650,8 @@ export default function ComidaTitanium({
   }
 
   const etiquetaSecundaria = ETIQUETA_OBJETIVO[objetivo] || null
+  const diaActivo = fechaVista || hoy
+  const puedeIrSiguiente = diaActivo < hoy
 
   return (
     <div className="cd-root">
@@ -665,12 +669,20 @@ export default function ComidaTitanium({
         </div>
         <div className="cd-header-actions">
           <div className="cd-date-nav" aria-label="Fecha del día">
-            <button type="button" className="cd-date-arrow" aria-label="Día anterior" disabled>‹</button>
+            <button type="button" className="cd-date-arrow" aria-label="Día anterior" onClick={() => onShiftDia?.(-1)}>‹</button>
             <span className="cd-date-inner">
               <IconCalendar />
-              {formatearFechaNav(hoy)}
+              {formatearFechaNav(diaActivo)}
             </span>
-            <button type="button" className="cd-date-arrow" aria-label="Día siguiente" disabled>›</button>
+            <button
+              type="button"
+              className="cd-date-arrow"
+              aria-label="Día siguiente"
+              onClick={() => onShiftDia?.(1)}
+              disabled={!puedeIrSiguiente}
+            >
+              ›
+            </button>
           </div>
           <button type="button" className="cd-btn cd-btn--primary" onClick={() => agregarMomento(comida || 'Desayuno')}>
             + Registrar comida rápida

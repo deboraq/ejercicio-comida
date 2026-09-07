@@ -10,48 +10,37 @@ import {
   removeTeacherStudent,
   listAdminMessagesForTeacher,
   listTeachersWithStudentsForAdmin,
+  fetchLinkedStudentsUserData,
+  fetchLatestAssignmentsByStudent,
 } from '../lib/profeDb'
-import ProfeCatalogoEjercicios from '../components/profe/ProfeCatalogoEjercicios'
-import ProfeRutinasWorkshop from '../components/profe/ProfeRutinasWorkshop'
-import ProfeHistorialAsignaciones from '../components/profe/ProfeHistorialAsignaciones'
-import PageHeader from '../components/PageHeader'
-import ModuleShell, { ModuleSectionIntro } from '../components/ModuleShell'
+import { fechaToISO } from '../utils/calorias'
+import { buildAlumnoSnapshot, FILTRO_ALUMNO } from '../utils/profeAlumnosSnapshot'
+import ProfeTitanium from '../components/profe/ProfeTitanium'
+import '../components/profe/ProfeTitanium.css'
 import ModuleGateCard from '../components/ModuleGateCard'
-
-function navItemsForProfile(profile) {
-  if (!profile) return []
-  const items = []
-  if (profile.role === 'admin') {
-    items.push({ id: 'supervision', label: 'Supervisión', desc: 'Entrenadores (rol profe) y alumnos vinculados.' })
-  }
-  if (profile.role === 'profe') {
-    items.push(
-      { id: 'alumnos', label: 'Alumnos', desc: 'Vincular con el correo con el que se registró cada alumno.' },
-      { id: 'ejercicios', label: 'Ejercicios', desc: 'Catálogo para armar rutinas.' },
-      { id: 'rutinas', label: 'Rutinas', desc: 'Plantillas y envío a la cuenta del alumno.' },
-      { id: 'historial', label: 'Historial', desc: 'Rutinas ya enviadas.' },
-    )
-  }
-  return items
-}
 
 export default function Profe() {
   const { user, isConfigured } = useAuth()
-  const { onToast, setAvisosAdmin } = useAppNotifications()
+  const { onToast, setAvisosAdmin, avisosAdmin } = useAppNotifications()
   const [profile, setProfile] = useState(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const [students, setStudents] = useState([])
   const [studentsLoading, setStudentsLoading] = useState(false)
   const [emailAlumno, setEmailAlumno] = useState('')
-  const [panel, setPanel] = useState(null)
   const [historialTick, setHistorialTick] = useState(0)
   const [adminVistaLoading, setAdminVistaLoading] = useState(false)
   const [adminVistaRows, setAdminVistaRows] = useState([])
   const [adminVistaErr, setAdminVistaErr] = useState(null)
   const [busquedaProfe, setBusquedaProfe] = useState('')
+  const [filtroAlumno, setFiltroAlumno] = useState(FILTRO_ALUMNO.todos)
+  const [userDataMap, setUserDataMap] = useState({})
+  const [assignmentsMap, setAssignmentsMap] = useState({})
 
   const esProfe = profile?.role === 'profe'
   const esAdmin = profile?.role === 'admin'
+  /** Admin puede usar el panel del entrenador con la misma cuenta. */
+  const puedeEntrenar = esProfe || esAdmin
+  const hoy = fechaToISO(new Date())
 
   const cargarPerfil = useCallback(async () => {
     if (!user?.id) {
@@ -77,7 +66,7 @@ export default function Profe() {
   }, [user?.id, esProfe, setAvisosAdmin])
 
   const cargarAlumnos = useCallback(async () => {
-    if (!user?.id || !esProfe) {
+    if (!user?.id || !puedeEntrenar) {
       setStudents([])
       return
     }
@@ -90,7 +79,7 @@ export default function Profe() {
       setStudents(list)
     }
     setStudentsLoading(false)
-  }, [user?.id, esProfe, onToast])
+  }, [user?.id, puedeEntrenar, onToast])
 
   useEffect(() => {
     cargarPerfil()
@@ -132,35 +121,38 @@ export default function Profe() {
     }
   }, [isConfigured, user?.id, profileLoading, profile?.role])
 
-  const navItems = useMemo(() => navItemsForProfile(profile), [profile?.role])
-
-  useLayoutEffect(() => {
-    if (profileLoading) return
-    const ids = navItems.map((i) => i.id)
-    if (!ids.length) {
-      setPanel(null)
+  useEffect(() => {
+    if (!user?.id || !puedeEntrenar || !students.length) {
+      setUserDataMap({})
+      setAssignmentsMap({})
       return
     }
-    setPanel((cur) => (cur && ids.includes(cur) ? cur : ids[0]))
-  }, [profileLoading, navItems])
-
-  const panelActivo = panel != null ? navItems.find((i) => i.id === panel) : null
-  const mostrarCabeceraPanel = panel === 'supervision' || panel === 'alumnos'
-
-  useEffect(() => {
-    setBusquedaProfe('')
-  }, [panel])
+    let cancel = false
+    ;(async () => {
+      const ids = students.map((s) => s.studentId)
+      const [{ data: ud }, { map: am }] = await Promise.all([
+        fetchLinkedStudentsUserData(ids),
+        fetchLatestAssignmentsByStudent(user.id),
+      ])
+      if (cancel) return
+      setUserDataMap(ud || {})
+      setAssignmentsMap(am || {})
+    })()
+    return () => {
+      cancel = true
+    }
+  }, [user?.id, puedeEntrenar, students, historialTick])
 
   const qProfe = busquedaProfe.trim().toLowerCase()
 
   const adminVistaFiltrada = useMemo(() => {
     if (!qProfe) return adminVistaRows
-    return adminVistaRows.filter(({ teacher, students }) => {
+    return adminVistaRows.filter(({ teacher, students: sts }) => {
       const nomT = (teacher.full_name || '').toLowerCase()
       const mailT = (teacher.email || '').toLowerCase()
       const idT = String(teacher.id || '').toLowerCase()
       if (nomT.includes(qProfe) || mailT.includes(qProfe) || idT.includes(qProfe)) return true
-      return students.some((s) => {
+      return sts.some((s) => {
         const fn = (s.fullName || '').toLowerCase()
         const em = (s.email || '').toLowerCase()
         const sid = String(s.studentId || '').toLowerCase()
@@ -169,34 +161,20 @@ export default function Profe() {
     })
   }, [adminVistaRows, qProfe])
 
-  const studentsFiltrados = useMemo(() => {
-    if (!qProfe) return students
-    return students.filter((s) => {
-      const fn = (s.fullName || '').toLowerCase()
-      const em = (s.email || '').toLowerCase()
-      return fn.includes(qProfe) || em.includes(qProfe)
-    })
-  }, [students, qProfe])
-
-  const placeholderBusqueda =
-    panel === 'supervision'
-      ? 'Nombre, correo o alumno…'
-      : panel === 'alumnos'
-        ? 'Nombre o correo del alumno…'
-        : panel === 'ejercicios'
-          ? 'Nombre o notas del ejercicio…'
-          : panel === 'rutinas'
-            ? 'Nombre de plantilla o alumno…'
-            : panel === 'historial'
-              ? 'Alumno, rutina o fecha…'
-              : 'Buscar…'
-
-  const mostrarBuscadorProfe =
-    panel === 'supervision' || (esProfe && ['alumnos', 'ejercicios', 'rutinas', 'historial'].includes(panel || ''))
+  const alumnosEnriquecidos = useMemo(
+    () =>
+      students.map((s) =>
+        buildAlumnoSnapshot(s, userDataMap[s.studentId] || {}, assignmentsMap[s.studentId], hoy),
+      ),
+    [students, userDataMap, assignmentsMap, hoy],
+  )
 
   const vincularAlumno = async () => {
-    if (!user?.id || !esProfe) return
-    const { studentId, error: e1 } = await findStudentIdByEmail(emailAlumno)
+    if (!user?.id || !puedeEntrenar) return
+    const { studentId, error: e1 } = await findStudentIdByEmail(emailAlumno, {
+      allowSelf: true,
+      selfUserId: user.id,
+    })
     if (e1) {
       onToast({ err: e1.message || 'No se pudo buscar el alumno.' })
       return
@@ -209,8 +187,13 @@ export default function Profe() {
     }
     const { error: e2 } = await addTeacherStudent(user.id, studentId)
     if (e2) {
-      if (String(e2.message || '').includes('duplicate') || e2.code === '23505') {
+      const msg = String(e2.message || '')
+      if (msg.includes('duplicate') || e2.code === '23505') {
         onToast({ err: 'Ese alumno ya está en tu lista.' })
+      } else if (msg.includes('teacher_students_check') || msg.includes('teacher_id <> student_id')) {
+        onToast({
+          err: 'Tu Supabase aún no permite vincular tu propia cuenta. Ejecutá el SQL «auto-vinculación admin» del punto 5 en SUPABASE.md.',
+        })
       } else {
         onToast({ err: e2.message || 'No se pudo vincular.' })
       }
@@ -219,6 +202,7 @@ export default function Profe() {
     setEmailAlumno('')
     onToast({ msg: 'Alumno vinculado. Ya podés armar rutinas y enviárselas.' })
     await cargarAlumnos()
+    setHistorialTick((n) => n + 1)
   }
 
   const quitarAlumno = async (linkId) => {
@@ -230,6 +214,75 @@ export default function Profe() {
       await cargarAlumnos()
     }
   }
+
+  const bloqueSupervision = (
+    <>
+      {adminVistaErr && (
+        <>
+          <p className="module-alert module-alert--danger mb-3">{adminVistaErr}</p>
+          <details className="mb-0">
+            <summary className="is-size-7 has-text-grey" style={{ cursor: 'pointer' }}>
+              Si es error de permisos en Supabase
+            </summary>
+            <p className="is-size-7 has-text-grey mt-2 mb-0">
+              En el SQL Editor ejecutá la política <code>ts_select_admin</code> sobre <code>teacher_students</code>.
+            </p>
+          </details>
+        </>
+      )}
+      {!adminVistaLoading && !adminVistaErr && adminVistaRows.length === 0 && (
+        <p className="pf-muted mb-0">No hay cuentas con rol profe todavía.</p>
+      )}
+      {!adminVistaLoading &&
+        !adminVistaErr &&
+        adminVistaRows.length > 0 &&
+        adminVistaFiltrada.length === 0 && (
+          <p className="pf-muted mb-0">No hay coincidencias con la búsqueda.</p>
+        )}
+      {!adminVistaLoading &&
+        !adminVistaErr &&
+        adminVistaFiltrada.map(({ teacher, students: sts }) => {
+          const nombre = (teacher.full_name || '').trim()
+          const mail = (teacher.email || '').trim()
+          const titulo = nombre || mail || teacher.id
+          const mostrarMailDebajo = mail && mail !== nombre
+          const nomT = (teacher.full_name || '').toLowerCase()
+          const mailT = (teacher.email || '').toLowerCase()
+          const idT = String(teacher.id || '').toLowerCase()
+          const profeCoincide =
+            !qProfe || nomT.includes(qProfe) || mailT.includes(qProfe) || idT.includes(qProfe)
+          const alumnosMostrar =
+            !qProfe || profeCoincide
+              ? sts
+              : sts.filter((s) => {
+                  const fn = (s.fullName || '').toLowerCase()
+                  const em = (s.email || '').toLowerCase()
+                  const sid = String(s.studentId || '').toLowerCase()
+                  return fn.includes(qProfe) || em.includes(qProfe) || sid.includes(qProfe)
+                })
+          return (
+            <div key={teacher.id} className="pf-admin-block">
+              <p className={`pf-admin-block-title ${mostrarMailDebajo ? 'mb-1' : 'mb-2'}`}>{titulo}</p>
+              {mostrarMailDebajo ? <p className="pf-muted mb-2">{mail}</p> : null}
+              {sts.length === 0 ? (
+                <p className="pf-muted mb-0">Sin alumnos vinculados.</p>
+              ) : alumnosMostrar.length === 0 ? (
+                <p className="pf-muted mb-0">Sin alumnos que coincidan.</p>
+              ) : (
+                <ul className="pf-admin-alumnos mb-0">
+                  {alumnosMostrar.map((s) => (
+                    <li key={s.linkId}>
+                      <strong>{(s.fullName || '').trim() || s.email}</strong>
+                      {s.fullName ? <span className="pf-muted"> · {s.email}</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )
+        })}
+    </>
+  )
 
   if (!isConfigured) {
     return (
@@ -261,213 +314,55 @@ export default function Profe() {
     )
   }
 
-  const bloqueSupervision = (
-    <>
-      {adminVistaLoading && <p className="is-size-7 has-text-grey mb-3">Cargando…</p>}
-      {adminVistaErr && (
-        <>
-          <p className="module-alert module-alert--danger mb-3">{adminVistaErr}</p>
-          <details className="mb-0">
-            <summary className="is-size-7 has-text-grey" style={{ cursor: 'pointer' }}>
-              Si es error de permisos en Supabase
-            </summary>
-            <p className="is-size-7 has-text-grey mt-2 mb-0">
-              En el SQL Editor ejecutá la política <code>ts_select_admin</code> sobre <code>teacher_students</code> (bloque
-              en <code>SUPABASE.md</code> del repo).
-            </p>
-          </details>
-        </>
-      )}
-      {!adminVistaLoading && !adminVistaErr && adminVistaRows.length === 0 && (
-        <p className="is-size-7 has-text-grey mb-0">No hay cuentas con rol profe todavía.</p>
-      )}
-      {!adminVistaLoading &&
-        !adminVistaErr &&
-        adminVistaRows.length > 0 &&
-        adminVistaFiltrada.length === 0 && (
-          <p className="is-size-7 has-text-grey mb-0">No hay coincidencias con la búsqueda.</p>
-        )}
-      {!adminVistaLoading &&
-        !adminVistaErr &&
-        adminVistaFiltrada.map(({ teacher, students }) => {
-          const nombre = (teacher.full_name || '').trim()
-          const mail = (teacher.email || '').trim()
-          const titulo = nombre || mail || teacher.id
-          const mostrarMailDebajo = mail && mail !== nombre
-          const nomT = (teacher.full_name || '').toLowerCase()
-          const mailT = (teacher.email || '').toLowerCase()
-          const idT = String(teacher.id || '').toLowerCase()
-          const profeCoincide =
-            !qProfe || nomT.includes(qProfe) || mailT.includes(qProfe) || idT.includes(qProfe)
-          const alumnosMostrar =
-            !qProfe || profeCoincide
-              ? students
-              : students.filter((s) => {
-                  const fn = (s.fullName || '').toLowerCase()
-                  const em = (s.email || '').toLowerCase()
-                  const sid = String(s.studentId || '').toLowerCase()
-                  return fn.includes(qProfe) || em.includes(qProfe) || sid.includes(qProfe)
-                })
-          return (
-            <div key={teacher.id} className="module-list-block">
-              <p className={`module-list-block-title ${mostrarMailDebajo ? 'mb-1' : 'mb-2'}`}>{titulo}</p>
-              {mostrarMailDebajo ? <p className="module-list-block-sub mb-2">{mail}</p> : null}
-              {students.length === 0 ? (
-                <p className="is-size-7 has-text-grey mb-0">Sin alumnos vinculados.</p>
-              ) : alumnosMostrar.length === 0 ? (
-                <p className="is-size-7 has-text-grey mb-0">Sin alumnos que coincidan.</p>
-              ) : (
-                <ul className="mb-0 pl-4" style={{ listStyle: 'disc' }}>
-                  {alumnosMostrar.map((s) => (
-                    <li key={s.linkId} className="is-size-7 mb-1">
-                      <strong>{(s.fullName || '').trim() || s.email}</strong>
-                      {s.fullName ? <span className="has-text-grey"> · {s.email}</span> : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )
-        })}
-    </>
-  )
+  if (profileLoading) {
+    return (
+      <section className="section py-2 profe-page profe-titanium">
+        <div className="container app-page-container profe-container">
+          <p className="pf-muted mb-0">Cargando perfil…</p>
+        </div>
+      </section>
+    )
+  }
 
-  return (
-    <section className="section py-4 profe-page">
-      <div className="container app-page-container">
-        <PageHeader
-          icon="🧑‍🏫"
-          iconTone="blue"
-          title="Entrenador"
-          subtitle="El alumno ve lo que envías en la pestaña Rutina de su cuenta."
-          metrics={
-            esProfe
-              ? [`${students.length} alumnos`, `${navItems.length} secciones`]
-              : undefined
-          }
-        />
-
-        {profileLoading ? (
-          <p className="is-size-7 has-text-grey mb-0">Cargando perfil…</p>
-        ) : navItems.length === 0 ? (
-          <div className="box module-gate-card module-gate-card--inline">
-            <h2 className="module-shell-section-title mb-2">Modo entrenador</h2>
-            <p className="module-shell-section-desc mb-3">
-              {esAdmin ? (
-                <>
-                  Con rol <strong>admin</strong> podés usar <Link to="/admin">Administración</Link>. Para alumnos,
-                  ejercicios y rutinas desde acá necesitás también rol <strong>profe</strong> en tu cuenta.
-                </>
-              ) : (
-                <>
-                  Pedí rol <strong>profe</strong> a quien administre la app (<Link to="/admin">Administración</Link>).
-                </>
-              )}
+  if (!puedeEntrenar) {
+    return (
+      <section className="section py-2 profe-page profe-titanium">
+        <div className="container app-page-container profe-container">
+          <div className="pf-panel pf-empty-gate">
+            <h2 className="pf-panel-title mb-2">Modo entrenador</h2>
+            <p className="pf-muted mb-3">
+              Pedí rol <strong>profe</strong> a quien administre la app (<Link to="/admin">Administración</Link>).
             </p>
           </div>
-        ) : (
-          <ModuleShell
-            sections={navItems.map((i) => ({ id: i.id, label: i.label }))}
-            activeId={panel}
-            onSelect={setPanel}
-            sidebarLabel="Menú"
-          >
-            {mostrarCabeceraPanel && panelActivo && (
-              <ModuleSectionIntro title={panelActivo.label} desc={panelActivo.desc} />
-            )}
+        </div>
+      </section>
+    )
+  }
 
-            {mostrarBuscadorProfe && (
-              <div className="module-search mb-3">
-                <span className="module-search-icon" aria-hidden>🔍</span>
-                <input
-                  id="profe-busqueda"
-                  type="search"
-                  value={busquedaProfe}
-                  onChange={(e) => setBusquedaProfe(e.target.value)}
-                  placeholder={placeholderBusqueda}
-                  autoComplete="off"
-                />
-              </div>
-            )}
-
-            {esAdmin && !esProfe && panel === 'supervision' && (
-              <p className="module-alert module-alert--info mb-3">
-                Roles y menú de cuentas: <Link to="/admin">Administración</Link>. Para usar Alumnos / Ejercicios /
-                Rutinas con esta misma cuenta, sumá rol <strong>profe</strong> ahí.
-              </p>
-            )}
-
-            {panel === 'supervision' && (
-              <div className="box module-panel-card mb-0">
-                {bloqueSupervision}
-              </div>
-            )}
-
-            {panel === 'alumnos' && esProfe && (
-              <div className="box module-panel-card mb-0">
-                <div className="field has-addons mb-4">
-                  <div className="control is-expanded">
-                    <input
-                      className="input"
-                      type="email"
-                      placeholder="Correo del alumno (cuenta registrada)"
-                      value={emailAlumno}
-                      onChange={(e) => setEmailAlumno(e.target.value)}
-                    />
-                  </div>
-                  <div className="control">
-                    <button type="button" className="button is-link" onClick={vincularAlumno}>
-                      Vincular
-                    </button>
-                  </div>
-                </div>
-                {studentsLoading ? (
-                  <p className="module-empty-text mb-0">Cargando lista…</p>
-                ) : students.length === 0 ? (
-                  <p className="module-empty-text mb-0">Todavía no tenés alumnos vinculados.</p>
-                ) : studentsFiltrados.length === 0 ? (
-                  <p className="module-empty-text mb-0">No hay coincidencias con la búsqueda.</p>
-                ) : (
-                  <ul className="module-list-rows mb-0">
-                    {studentsFiltrados.map((s) => (
-                      <li key={s.linkId} className="module-list-row">
-                        <span className="module-list-row-text">
-                          <strong>{s.fullName || s.email}</strong>
-                          {s.fullName ? <span className="has-text-grey"> · {s.email}</span> : null}
-                        </span>
-                        <button type="button" className="button is-small is-light" onClick={() => quitarAlumno(s.linkId)}>
-                          Quitar
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-
-            {panel === 'ejercicios' && esProfe && <ProfeCatalogoEjercicios busqueda={busquedaProfe} />}
-
-            {panel === 'rutinas' && esProfe && (
-              <ProfeRutinasWorkshop
-                students={students}
-                teacherId={user.id}
-                busqueda={busquedaProfe}
-                onToast={onToast}
-                onEnviado={() => setHistorialTick((n) => n + 1)}
-              />
-            )}
-
-            {panel === 'historial' && esProfe && (
-              <ProfeHistorialAsignaciones
-                key={historialTick}
-                teacherId={user.id}
-                students={students}
-                busqueda={busquedaProfe}
-                onToast={onToast}
-              />
-            )}
-          </ModuleShell>
-        )}
+  return (
+    <section className="section py-2 profe-page profe-titanium">
+      <div className="container app-page-container profe-container">
+        <ProfeTitanium
+          profile={profile}
+          user={user}
+          students={students}
+          studentsLoading={studentsLoading}
+          alumnosEnriquecidos={alumnosEnriquecidos}
+          userDataMap={userDataMap}
+          adminMessages={avisosAdmin || []}
+          busqueda={busquedaProfe}
+          setBusqueda={setBusquedaProfe}
+          filtro={filtroAlumno}
+          setFiltro={setFiltroAlumno}
+          emailAlumno={emailAlumno}
+          setEmailAlumno={setEmailAlumno}
+          vincularAlumno={vincularAlumno}
+          quitarAlumno={quitarAlumno}
+          onToast={onToast}
+          historialTick={historialTick}
+          setHistorialTick={setHistorialTick}
+          esAdmin={esAdmin}
+        />
       </div>
     </section>
   )

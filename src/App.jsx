@@ -107,7 +107,7 @@ function AppRoutes() {
       )}
       <div className="app-shell-main">
         {!isAuthPage && (
-          <header className={`app-topbar${location.pathname === '/' ? ' app-topbar--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' app-topbar--rutina' : ''}${location.pathname.startsWith('/comida') ? ' app-topbar--comida' : ''}${location.pathname.startsWith('/ejercicios') ? ' app-topbar--ejercicios' : ''}`}>
+          <header className={`app-topbar${location.pathname === '/' ? ' app-topbar--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' app-topbar--rutina' : ''}${location.pathname.startsWith('/comida') ? ' app-topbar--comida' : ''}${location.pathname.startsWith('/ejercicios') ? ' app-topbar--ejercicios' : ''}${location.pathname.startsWith('/profe') ? ' app-topbar--profe' : ''}`}>
             <button
               type="button"
               className="app-menu-toggle"
@@ -117,7 +117,7 @@ function AppRoutes() {
             >
               <span /><span /><span />
             </button>
-            {location.pathname !== '/' && !location.pathname.startsWith('/rutina') && !location.pathname.startsWith('/comida') && !location.pathname.startsWith('/ejercicios') && (
+            {location.pathname !== '/' && !location.pathname.startsWith('/rutina') && !location.pathname.startsWith('/comida') && !location.pathname.startsWith('/ejercicios') && !location.pathname.startsWith('/profe') && (
               <p className="app-topbar-title mb-0">
                 {location.pathname.startsWith('/comida') && 'Comida'}
                 {location.pathname.startsWith('/config') && 'Config'}
@@ -126,10 +126,10 @@ function AppRoutes() {
               </p>
             )}
             <div className="app-topbar-spacer" />
-            {location.pathname !== '/' && !location.pathname.startsWith('/rutina') && !location.pathname.startsWith('/comida') && !location.pathname.startsWith('/ejercicios') && <AppNotificacionesCampana />}
+            {location.pathname !== '/' && !location.pathname.startsWith('/rutina') && !location.pathname.startsWith('/comida') && !location.pathname.startsWith('/ejercicios') && !location.pathname.startsWith('/profe') && <AppNotificacionesCampana />}
           </header>
         )}
-        <main className={`main-content${location.pathname === '/' ? ' main-content--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' main-content--rutina' : ''}${location.pathname.startsWith('/comida') ? ' main-content--comida' : ''}${location.pathname.startsWith('/ejercicios') ? ' main-content--ejercicios' : ''}`}>
+        <main className={`main-content${location.pathname === '/' ? ' main-content--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' main-content--rutina' : ''}${location.pathname.startsWith('/comida') ? ' main-content--comida' : ''}${location.pathname.startsWith('/ejercicios') ? ' main-content--ejercicios' : ''}${location.pathname.startsWith('/profe') ? ' main-content--profe' : ''}`}>
           <Routes>
             <Route path="/" element={<ModuleGate module="inicio" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Inicio /></ModuleGate>} />
             <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Ejercicios /></ModuleGate>} />

@@ -55,8 +55,7 @@ create table if not exists public.teacher_students (
   teacher_id uuid not null references public.profiles(id) on delete cascade,
   student_id uuid not null references public.profiles(id) on delete cascade,
   created_at timestamptz default now(),
-  unique (teacher_id, student_id),
-  check (teacher_id <> student_id)
+  unique (teacher_id, student_id)
 );
 
 alter table public.profiles enable row level security;
@@ -150,7 +149,7 @@ create trigger routine_assignments_validate
   for each row
   execute function public.validate_routine_assignment();
 
--- Buscar id de alumno por email (solo si tu rol en profiles es profe)
+-- Buscar id de alumno por email (rol profe o admin)
 create or replace function public.find_student_id_by_email(p_email text)
 returns uuid
 language plpgsql
@@ -167,19 +166,21 @@ begin
   end if;
 
   select role into v_role from public.profiles where id = auth.uid();
-  if v_role is distinct from 'profe' then
+  if v_role not in ('profe', 'admin') then
     return null;
   end if;
 
   select p.id into v_id
   from public.profiles p
   where lower(trim(both from coalesce(p.email, ''))) = v_norm
-    and p.id <> auth.uid()
   limit 1;
 
   return v_id;
 end;
 $$;
+
+-- Si ya creaste teacher_students con check (teacher_id <> student_id), ejecutá también:
+-- alter table public.teacher_students drop constraint if exists teacher_students_check;
 
 revoke all on function public.find_student_id_by_email(text) from public;
 grant execute on function public.find_student_id_by_email(text) to authenticated;
@@ -187,7 +188,60 @@ grant execute on function public.find_student_id_by_email(text) to authenticated
 
 Orden: si `profiles` o `teacher_students` ya existían de un intento previo, podés borrarlas en un proyecto de prueba y volver a ejecutar, o usar `create table if not exists` y crear solo las políticas que falten.
 
+**Admin/profe con la misma cuenta que el alumno** (ej. vincular `debocab2@gmail.com` a vos mismo): en bases creadas antes, ejecutá en SQL Editor:
+
+```sql
+alter table public.teacher_students drop constraint if exists teacher_students_check;
+
+create or replace function public.find_student_id_by_email(p_email text)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_role text;
+  v_id uuid;
+  v_norm text := lower(trim(both from coalesce(p_email, '')));
+begin
+  if length(v_norm) < 3 then
+    return null;
+  end if;
+
+  select role into v_role from public.profiles where id = auth.uid();
+  if v_role not in ('profe', 'admin') then
+    return null;
+  end if;
+
+  select p.id into v_id
+  from public.profiles p
+  where lower(trim(both from coalesce(p.email, ''))) = v_norm
+  limit 1;
+
+  return v_id;
+end;
+$$;
+```
+
+Después, en **Profe → + Vincular nuevo alumno**, usá tu propio correo y debería aparecer en la lista con badge «Admin + Alumna».
+
 Flujo: el alumno y el entrenador se registran e inician sesión al menos una vez (la app crea su fila en `profiles`). Un **administrador** (cuenta con `role = admin` en `profiles` y fila en `admin_accounts`, sincronizado por el SQL del punto 6; el **primer** admin se asigna con el `UPDATE` del final porque en el SQL Editor `auth.uid()` es null) marca quiénes son **entrenadores** (`profe`) desde la pantalla **Admin**. Cada entrenador entra a **Profe**, ve los avisos del admin, vincula alumnos por correo y envía rutinas. El alumno abre **Rutina → Asignadas** con la sesión iniciada y verá la rutina nueva.
+
+**Opcional — Panel Profe con actividad del alumno:** para que el entrenador vea cumplimiento semanal, última carga y feed en vivo (lectura de `rutinaPesos`, `comida`, `ejercicios` del alumno), ejecutá además:
+
+```sql
+drop policy if exists "user_data_select_teacher_linked" on public.user_data;
+create policy "user_data_select_teacher_linked"
+  on public.user_data for select
+  using (
+    exists (
+      select 1 from public.teacher_students ts
+      where ts.teacher_id = auth.uid() and ts.student_id = user_data.user_id
+    )
+  );
+```
+
+Solo lectura: el entrenador no puede modificar los datos del alumno.
 
 6. **Administrador y mensajes a entrenadores** (ejecutá en SQL Editor si ya aplicaste el punto 5). Si ves `infinite recursion detected in policy for relation "profiles"`, re-ejecutá este bloque entero: las políticas de admin ya **no** leen `profiles` dentro de condiciones sobre `profiles`, sino la tabla `admin_accounts`.
 

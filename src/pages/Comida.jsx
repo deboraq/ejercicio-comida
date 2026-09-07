@@ -462,14 +462,23 @@ export default function Comida() {
     setBusquedaRef('')
     setCantidadPorciones('1')
     setComida('Desayuno')
-    setFechaInput(hoy)
+    setFechaInput(fecha)
   }
 
   const eliminar = (id) => {
     setRegistros(registros.filter((r) => r.id !== id))
   }
 
-  const hoyRegistros = registros.filter((r) => fechaSoloDia(r.fecha) === hoy)
+  const fechaVista = fechaInput || hoy
+  const shiftDiaComida = (dir) => {
+    const d = new Date(`${fechaVista}T12:00:00`)
+    d.setDate(d.getDate() + dir)
+    const next = fechaToISO(d)
+    if (dir > 0 && next > hoy) return
+    setFechaInput(next)
+  }
+
+  const hoyRegistros = registros.filter((r) => fechaSoloDia(r.fecha) === fechaVista)
   const caloriasHoy = hoyRegistros.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
   const proteinasHoy = redondear1(hoyRegistros.reduce((s, r) => s + numeroFlexibleO(r.proteinas), 0))
   const carbosHoy = redondear1(hoyRegistros.reduce((s, r) => s + numeroFlexibleO(r.carbohidratos), 0))
@@ -485,7 +494,7 @@ export default function Comida() {
     comidas: registros,
     ejercicios,
     registrosRutina,
-    fecha: hoy,
+    fecha: fechaVista,
     pesoKg: config?.pesoKg || 70,
     config,
   })
@@ -502,7 +511,7 @@ export default function Comida() {
     contextoDia,
     contextoSemana,
     config,
-    { historialMedidas, hoy }
+    { historialMedidas, hoy: fechaVista }
   )
 
   const puedeGuardar = referenciaActiva != null || items.some((it) => it.descripcion.trim())
@@ -526,6 +535,7 @@ export default function Comida() {
 
   const editarRegistro = (r) => {
     setVistaComida('hoy')
+    setFechaInput(fechaSoloDia(r.fecha) || hoy)
     setComida(normalizarMomento(r.comida) || 'Desayuno')
     setNotas(r.notas || '')
     const ref = buscarReferenciaPorNombre(r.descripcion)
@@ -561,7 +571,7 @@ export default function Comida() {
   const diasHistorial = Object.entries(porFechaEnRango)
     .sort(([a], [b]) => b.localeCompare(a))
   const rachaDias = getRachaDias(registros, hoy)
-  const vasosHoy = hidratacionStore.fecha === hoy ? hidratacionStore.vasos : 0
+  const vasosHoy = hidratacionStore.fecha === fechaVista ? hidratacionStore.vasos : 0
   const mesActual = hoy.slice(0, 7)
   const registrosMesCount = registros.filter((r) => fechaSoloDia(r.fecha).startsWith(mesActual)).length
   const bannerConsejo = consejosDiarios[0] || consejosSemanales[0] || null
@@ -577,17 +587,17 @@ export default function Comida() {
 
   const onToggleVaso = (index) => {
     const n = index + 1
-    const current = hidratacionStore.fecha === hoy ? hidratacionStore.vasos : 0
+    const current = hidratacionStore.fecha === fechaVista ? hidratacionStore.vasos : 0
     if (n <= current) {
-      setHidratacionStore({ fecha: hoy, vasos: Math.max(0, n - 1) })
+      setHidratacionStore({ fecha: fechaVista, vasos: Math.max(0, n - 1) })
     } else {
-      setHidratacionStore({ fecha: hoy, vasos: Math.min(8, n) })
+      setHidratacionStore({ fecha: fechaVista, vasos: Math.min(8, n) })
     }
   }
 
   const onAdd250ml = () => {
-    const current = hidratacionStore.fecha === hoy ? hidratacionStore.vasos : 0
-    setHidratacionStore({ fecha: hoy, vasos: Math.min(8, current + 1) })
+    const current = hidratacionStore.fecha === fechaVista ? hidratacionStore.vasos : 0
+    setHidratacionStore({ fecha: fechaVista, vasos: Math.min(8, current + 1) })
   }
 
   const caloriasActivas = Math.round(contextoDia?.caloriasQuemadas || 0)
@@ -597,6 +607,8 @@ export default function Comida() {
       <div className="container app-page-container comida-container">
         <ComidaTitanium
           hoy={hoy}
+          fechaVista={fechaVista}
+          onShiftDia={shiftDiaComida}
           rachaDias={rachaDias}
           caloriasHoy={caloriasHoy}
           proteinasHoy={proteinasHoy}
