@@ -10,6 +10,11 @@ export function normalizeStorageValue(value, initialValue) {
   return value
 }
 
+/** Siempre devuelve array (objetos sueltos en la nube no rompen `.filter`). */
+export function asArray(value, fallback = []) {
+  return Array.isArray(value) ? value : fallback
+}
+
 export function useLocalStorage(key, initialValue) {
   const [value, setValue] = useState(() => {
     try {
