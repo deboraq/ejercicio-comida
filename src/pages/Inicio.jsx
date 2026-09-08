@@ -14,6 +14,7 @@ import { getConsejos, buildContextoDia, buildContextoSemana } from '../utils/con
 import { getRachaDias, getUltimosNDias } from '../utils/estadisticas'
 import { SUPLEMENTOS } from '../utils/suplementos'
 import { MOMENTOS_COMIDA } from '../utils/comidaMomentos'
+import { buildPerfilCorporal } from '../utils/composicion'
 import { asArray } from '../hooks/useLocalStorage'
 
 const LABEL_TIPO_CONSEJO = {
