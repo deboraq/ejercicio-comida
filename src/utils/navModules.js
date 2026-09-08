@@ -91,5 +91,5 @@ export function defaultFallbackPath(profile, roleNavMap) {
       return k === 'inicio' ? '/' : `/${k}`
     }
   }
-  return '/login'
+  return '/config'
 }

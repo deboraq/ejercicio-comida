@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -14,10 +14,9 @@ export default function Login() {
   const [confirmar, setConfirmar] = useState('')
   const [enviado, setEnviado] = useState(false)
 
-  if (user) {
-    navigate('/', { replace: true })
-    return null
-  }
+  useEffect(() => {
+    if (user) navigate('/', { replace: true })
+  }, [user, navigate])
 
   const handleLogin = async (e) => {
     e.preventDefault()

@@ -31,7 +31,7 @@ function readSidebarCollapsed() {
 
 function AppRoutes() {
   const location = useLocation()
-  const { user, isConfigured } = useAuth()
+  const { user, loading: authLoading, isConfigured } = useAuth()
   const { profile, loading: profileLoading } = useMyProfile()
   const { roleNavMap } = useRoleNav()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -76,6 +76,16 @@ function AppRoutes() {
       document.body.style.overflow = ''
     }
   }, [mobileNavOpen])
+
+  if (isConfigured && authLoading) {
+    return (
+      <div className="app-layout app-layout--boot">
+        <div className="app-boot-screen">
+          <p className="mb-0">Cargando sesión…</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

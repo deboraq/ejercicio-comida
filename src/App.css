@@ -92,6 +92,18 @@ body {
   background: transparent;
 }
 
+.app-layout--boot {
+  align-items: center;
+  justify-content: center;
+  background: var(--app-bg);
+}
+
+.app-boot-screen {
+  padding: 2rem 1.5rem;
+  color: var(--app-muted);
+  font-size: 0.95rem;
+}
+
 .app-shell {
   display: flex;
   flex: 1;
