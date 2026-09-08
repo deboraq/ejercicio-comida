@@ -397,7 +397,7 @@ Después, en **Profe → + Vincular nuevo alumno**, usá tu propio correo y debe
 
 Flujo: el alumno se registra (se crea su fila en `profiles` automáticamente). Si ya existía en Auth sin perfil, el profe puede vincularlo igual — la app completa el perfil al buscar por correo. Un **administrador** (cuenta con `role = admin` en `profiles` y fila en `admin_accounts`, sincronizado por el SQL del punto 6; el **primer** admin se asigna con el `UPDATE` del final porque en el SQL Editor `auth.uid()` es null) marca quiénes son **entrenadores** (`profe`) desde la pantalla **Admin**. Cada entrenador entra a **Profe**, ve los avisos del admin, vincula alumnos por correo y envía rutinas. El alumno abre **Rutina → Asignadas** con la sesión iniciada y verá la rutina nueva.
 
-**Opcional — Panel Profe con actividad del alumno:** para que el entrenador vea cumplimiento semanal, última carga y feed en vivo (lectura de `rutinaPesos`, `comida`, `ejercicios` del alumno), ejecutá además:
+**Supervisión Profe (user_data)** — para que el panel muestre rutina/comida/ejercicios reales de alumnos vinculados, ejecutá en SQL Editor:
 
 ```sql
 drop policy if exists "user_data_select_teacher_linked" on public.user_data;
@@ -409,9 +409,54 @@ create policy "user_data_select_teacher_linked"
       where ts.teacher_id = auth.uid() and ts.student_id = user_data.user_id
     )
   );
+
+create or replace function public.fetch_linked_students_user_data(p_student_ids uuid[])
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_role text;
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null or p_student_ids is null or array_length(p_student_ids, 1) is null then
+    return '{}'::jsonb;
+  end if;
+
+  select role into v_role from public.profiles where id = v_uid;
+  if v_role not in ('profe', 'admin') then
+    return '{}'::jsonb;
+  end if;
+
+  return coalesce(
+    (
+      select jsonb_object_agg(s.student_id::text, s.payload)
+      from (
+        select ud.user_id as student_id,
+          jsonb_object_agg(ud.key, ud.value) as payload
+        from public.user_data ud
+        where ud.user_id = any(p_student_ids)
+          and ud.key in ('rutinaPesos', 'comida', 'ejercicios', 'rutinasAsignadas')
+          and exists (
+            select 1 from public.teacher_students ts
+            where ts.teacher_id = v_uid and ts.student_id = ud.user_id
+          )
+        group by ud.user_id
+      ) s
+    ),
+    '{}'::jsonb
+  );
+end;
+$$;
+
+revoke all on function public.fetch_linked_students_user_data(uuid[]) from public;
+grant execute on function public.fetch_linked_students_user_data(uuid[]) to authenticated;
 ```
 
-Solo lectura: el entrenador no puede modificar los datos del alumno.
+Solo lectura: el entrenador no puede modificar los datos del alumno. Si el alumno registró rutina hoy pero Profe sigue en «Inactivo», revisá que este SQL esté aplicado y que el alumno tenga sesión iniciada al guardar (los datos van a `user_data` en Supabase).
+
+**Opcional (legacy)** — política RLS sola (sin RPC):
 
 6. **Administrador y mensajes a entrenadores** (ejecutá en SQL Editor si ya aplicaste el punto 5). Si ves `infinite recursion detected in policy for relation "profiles"`, re-ejecutá este bloque entero: las políticas de admin ya **no** leen `profiles` dentro de condiciones sobre `profiles`, sino la tabla `admin_accounts`.
 

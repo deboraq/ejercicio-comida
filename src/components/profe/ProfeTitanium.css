@@ -276,6 +276,22 @@
 
 .pf-info-banner a { color: #93c5fd; }
 
+.pf-info-banner--warn {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+}
+
+.pf-info-banner--warn .pf-info-ico {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+}
+
+.pf-btn-vincular--sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.68rem;
+}
+
 .pf-info-ico {
   width: 1.35rem;
   height: 1.35rem;

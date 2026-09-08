@@ -599,6 +599,8 @@ export default function ProfeTitanium({
   historialTick,
   setHistorialTick,
   esAdmin,
+  userDataSyncWarn = false,
+  onRefreshAlumnos,
 }) {
   const [tab, setTab] = useState('alumnos')
   const [modalVincular, setModalVincular] = useState(false)
@@ -732,6 +734,19 @@ export default function ProfeTitanium({
           </p>
           <button type="button" className="pf-info-close" aria-label="Cerrar aviso" onClick={() => setBannerCerrado(true)}>
             ×
+          </button>
+        </div>
+      )}
+
+      {userDataSyncWarn && (
+        <div className="pf-info-banner pf-info-banner--warn">
+          <span className="pf-info-ico" aria-hidden>!</span>
+          <p className="mb-2">
+            No se pudo leer la actividad real de tus alumnos en la nube. Ejecutá en Supabase el bloque{' '}
+            <strong>Supervisión Profe (user_data)</strong> de SUPABASE.md (política RLS + función RPC).
+          </p>
+          <button type="button" className="pf-btn-vincular pf-btn-vincular--sm" onClick={() => onRefreshAlumnos?.()}>
+            Reintentar sync
           </button>
         </div>
       )}
