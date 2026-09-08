@@ -1,22 +1,18 @@
 import { useMemo, useEffect } from 'react'
 import { useStorage } from '../../hooks/useStorage'
+import { applyProfeCatalogoSeedSync, catalogoItemNormalizado } from '../../utils/profeCatalogo'
 
 function nuevoEj() {
   return { id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, nombre: '', notas: '' }
 }
 
-/** Solo nombre + notas en UI y al guardar (ignora series/reps heredadas de versiones viejas). */
-function catalogoItemNormalizado(raw) {
-  if (!raw || typeof raw !== 'object' || !raw.id) return null
-  return {
-    id: raw.id,
-    nombre: raw.nombre != null ? String(raw.nombre) : '',
-    notas: raw.notas != null ? String(raw.notas) : '',
-  }
-}
-
 export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
   const [items, setItems] = useStorage('profeCatalogoEjercicios', [])
+  const [, setCatalogoMeta] = useStorage('profeCatalogoMeta', { seedVersion: 0 })
+
+  useEffect(() => {
+    applyProfeCatalogoSeedSync(setItems, setCatalogoMeta)
+  }, [setItems, setCatalogoMeta])
 
   useEffect(() => {
     setItems((prev) => {
@@ -111,8 +107,8 @@ export default function ProfeCatalogoEjercicios({ busqueda = '' }) {
 
       {lista.length === 0 ? (
         <div className="pf-empty-state">
-          <p className="mb-2">Todavía no hay ejercicios</p>
-          <p className="pf-muted mb-3">Creá al menos uno para poder armar rutinas.</p>
+          <p className="mb-2">Cargando biblioteca inicial…</p>
+          <p className="pf-muted mb-3">Si no aparece nada, tocá el botón para crear ejercicios manualmente.</p>
           <button type="button" className="pf-btn pf-btn--primary pf-btn--sm" onClick={agregar}>
             Crear el primero
           </button>

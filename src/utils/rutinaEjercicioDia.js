@@ -101,13 +101,13 @@ export function ejercicioDiaAJson(e) {
 
 export const MUSCLE_KEYWORDS = [
   { key: 'Calentamiento', re: /bici|el[ií]ptic[oa]|cinta|cardio|calentamiento|spinning|movilidad/i },
-  { key: 'Espalda', re: /espalda|jal[oó]n|dominada|pull.?up|dorsal|deadlift|peso muerto|face\s*pull|(?:^|[^a-záéíóú])remo(?:\s|$| con| unilateral)/i },
-  { key: 'Pecho', re: /pecho|press banca|bench|aperturas|push.?up|pectoral|fondos en paralelas/i },
-  { key: 'Piernas', re: /sentadilla|squat|prensa|femoral|cu[aá]driceps|gemelo|zancada|hip thrust|gl[uú]teo|goblet/i },
-  { key: 'Hombros', re: /hombro|militar|elevaci[oó]n(?:es)?\s*lateral(?:es)?|delto|desarrollo|encogimiento|face\s*pull/i },
-  { key: 'Bíceps', re: /b[ií]ceps|curl(?!\s*femoral)/i },
-  { key: 'Tríceps', re: /tr[ií]ceps|extensi[oó]n(?!\s*de\s*cu[aá])|press franc[eé]s|fondos(?!\s*en\s*paralelas)/i },
-  { key: 'Core', re: /abdomen|core|plancha|crunch|piernas? elev/i },
+  { key: 'Espalda', re: /espalda|jal[oó]n|dominada|pull.?up|dorsal|deadlift|peso muerto|face\s*pull|(?:^|[^a-záéíóú])remo(?:\s|$| con| unilateral)|trapecio|serrato/i },
+  { key: 'Pecho', re: /pecho|press banca|bench|aperturas|push.?up|pectoral|fondos en paralelas|flexi[oó]n|flexo|apertura/i },
+  { key: 'Piernas', re: /sentadilla|squat|prensa|femoral|cu[aá]driceps|gemelo|zancada|hip thrust|gl[uú]teo|goblet|estocada|multisalto|salto|unipodal|cono|fg[\s-]|pierna|adductor|abductor|lunges?|step.?up/i },
+  { key: 'Hombros', re: /hombro|militar|elevaci[oó]n(?:es)?\s*lateral(?:es)?|delto|desarrollo|encogimiento|face\s*pull|press.*hombro|arnold|lateral/i },
+  { key: 'Bíceps', re: /b[ií]ceps|curl(?!\s*femoral)|martillo|predicador|scott/i },
+  { key: 'Tríceps', re: /tr[ií]ceps|extensi[oó]n(?!\s*de\s*cu[aá])|press franc[eé]s|fondos(?!\s*en\s*paralelas)|patada|polea.*tr[ií]ceps/i },
+  { key: 'Core', re: /abdomen|abdominal|rueda|core|plancha|crunch|piernas? elev|lateral.*plancha|oblicuo|antirotaci[oó]n|dead\s*bug|pallof|giro/i },
 ]
 
 export const FILTROS_BIBLIOTECA = [
@@ -120,6 +120,9 @@ export const FILTROS_BIBLIOTECA = [
   { id: 'Core', label: 'Core' },
   { id: 'Cardio', label: 'Cardio' },
 ]
+
+/** Opciones editables de grupo muscular en plantillas / plan. */
+export const GRUPOS_MUSCULARES_OPCIONES = [...MUSCLE_KEYWORDS.map((m) => m.key), 'Otro']
 
 /** Infiera un grupo muscular a partir del nombre (o del campo explícito). */
 export function inferirGrupoMuscular(nombreOItem) {

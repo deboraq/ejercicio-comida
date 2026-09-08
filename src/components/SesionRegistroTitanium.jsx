@@ -85,6 +85,42 @@ function registroHechoParaSerie(ya, serieNum) {
   return null
 }
 
+function buildPayloadSerie(it, serieNum, d, notaEjercicio = '') {
+  const reps = String(d.repeticiones || '').trim()
+  if (!reps) return null
+  const nota = String(notaEjercicio || '').trim()
+  const notaParts = []
+  if (d.rpe) notaParts.push(`RPE ${d.rpe}`)
+  if (nota) notaParts.push(nota)
+  return {
+    ejercicio: it.nombre,
+    series: 1,
+    serieNum,
+    repeticiones: reps,
+    pesoKg: d.pesoKg,
+    rpe: d.rpe !== '' && d.rpe != null ? Number(d.rpe) : undefined,
+    notas: notaParts.join(' · '),
+  }
+}
+
+function seriesPendientes(ya, nSeries) {
+  return Array.from({ length: nSeries }, (_, i) => i + 1).filter((s) => !registroHechoParaSerie(ya, s))
+}
+
+function seriesHechasDe(ya, nSeries) {
+  let count = 0
+  for (let s = 1; s <= nSeries; s += 1) {
+    if (registroHechoParaSerie(ya, s)) count = s
+    else break
+  }
+  return count
+}
+
+function esPesoCorporalNombre(nombre) {
+  return /plancha|elevaciones? de piernas|peso\s*corporal|abdominal|core/i.test(nombre)
+    && !/mancuerna|barra|kg/i.test(nombre)
+}
+
 function esCalentamientoItem(it) {
   const musculo = it?.grupoMuscular || etiquetaMusculo(it?.nombre)
   return musculo === 'Calentamiento'
@@ -184,6 +220,7 @@ export default function SesionRegistroTitanium({
   onEliminarRegistros,
   ocultarProgreso = false,
   onAnadirEjercicioExtra,
+  diaTono = 0,
 }) {
   const planItems = useMemo(
     () => (ejercicios || []).map(itemEjercicioDiaNormalizado).filter(Boolean),
@@ -285,24 +322,59 @@ export default function SesionRegistroTitanium({
     setDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), ...patch } }))
   }
 
+  const guardarUnaOVarias = (lista) => {
+    if (!lista?.length) return
+    if (lista.length === 1) onGuardarSerie(lista[0])
+    else if (onGuardarSeries) onGuardarSeries(lista)
+    else lista.forEach((s) => onGuardarSerie(s))
+  }
+
   const guardarSerie = (it, serieNum) => {
     const key = `${it.nombre}::${serieNum}`
     const d = drafts[key] || {}
-    const reps = String(d.repeticiones || '').trim()
-    if (!reps) return
-    const nota = (notas[it.nombre] || '').trim()
-    const notaParts = []
-    if (d.rpe) notaParts.push(`RPE ${d.rpe}`)
-    if (nota) notaParts.push(nota)
-    onGuardarSerie({
-      ejercicio: it.nombre,
-      series: 1,
-      serieNum,
-      repeticiones: reps,
-      pesoKg: d.pesoKg,
-      rpe: d.rpe !== '' && d.rpe != null ? Number(d.rpe) : undefined,
-      notas: notaParts.join(' · '),
-    })
+    const payload = buildPayloadSerie(it, serieNum, d, notas[it.nombre])
+    if (!payload) return
+    onGuardarSerie(payload)
+  }
+
+  const guardarTodasMismoPeso = (it, pendientes, serieRef) => {
+    const dRef = drafts[`${it.nombre}::${serieRef}`] || {}
+    const repsRef = String(dRef.repeticiones || '').trim()
+    if (!repsRef) return
+    const nota = notas[it.nombre] || ''
+    const lista = pendientes
+      .map((serieNum) => {
+        const d = drafts[`${it.nombre}::${serieNum}`] || {}
+        return buildPayloadSerie(it, serieNum, {
+          pesoKg: dRef.pesoKg,
+          repeticiones: String(d.repeticiones || repsRef).trim(),
+          rpe: dRef.rpe,
+        }, nota)
+      })
+      .filter(Boolean)
+    guardarUnaOVarias(lista)
+  }
+
+  const deshacerUltimaSerieEjercicio = (it, nSeries) => {
+    const ya = regsPorEjercicio[it.nombre] || []
+    const hechas = seriesHechasDe(ya, nSeries)
+    if (hechas < 1) return
+    const reg = registroHechoParaSerie(ya, hechas)
+    if (reg?.id) onEliminarRegistro(reg.id)
+  }
+
+  const completarSerieActualEjercicio = (it, serieNum) => {
+    guardarSerie(it, serieNum)
+  }
+
+  const completarTodasSeriesEjercicio = (it, nSeries) => {
+    const ya = regsPorEjercicio[it.nombre] || []
+    const pendientes = seriesPendientes(ya, nSeries)
+    if (pendientes.length >= 2) {
+      guardarTodasMismoPeso(it, pendientes, pendientes[0])
+    } else if (pendientes.length === 1) {
+      guardarSerie(it, pendientes[0])
+    }
   }
 
   const renderTablaEjercicio = (it, idxNum) => {
@@ -318,7 +390,6 @@ export default function SesionRegistroTitanium({
       if (legacy) return true
       return ya.length >= nSeries && nSeries > 0
     })()
-    const kcal = ya.reduce((s, r) => s + caloriasQuemadasRegistroRutina(r, pesoCfg), 0)
     const rm = rmEstimado(hist, ya)
     const rango = rangoPesoHistorial(hist, ya)
     const titulo = nombreDisplayEjercicio(it.nombre)
@@ -335,42 +406,39 @@ export default function SesionRegistroTitanium({
           )).join(' · ')
 
       return (
-        <article key={it.nombre} className={`fp-ex fp-ex--done${esWarm ? ' is-warm' : ''}`}>
-          <div className="fp-ex-done-inner">
+        <article key={it.nombre} className={`fp-ex fp-ex--done fp-ex--compact${esWarm ? ' is-warm' : ''}`}>
+          <div className="fp-ex-done-inner fp-ex-done-inner--compact">
             <span className="fp-ex-done-ico" aria-hidden><IconCheck /></span>
             <div className="fp-ex-done-body">
               <div className="fp-ex-done-top">
                 <span className="fp-ex-idx">{esWarm ? '0.' : `${idxNum}.`}</span>
                 <strong>{titulo}</strong>
-                <span className="fp-badge-done">Completado</span>
-                <span className="fp-badge-soft">{labelTipo}</span>
+                <span className="fp-badge-done">OK</span>
+                {!esWarm ? <span className="fp-badge-soft">{labelTipo}</span> : null}
               </div>
               <p className="fp-ex-done-sum mb-0">{resumen}</p>
             </div>
-            <div className="fp-ex-done-side">
-              <div className="fp-kcal-box">~{Math.max(kcal, esWarm ? 45 : kcal || 0)} kcal quemadas</div>
-              <div className="fp-ex-done-actions">
-                {!esWarm && (
-                  <button
-                    type="button"
-                    className="fp-ex-done-icon"
-                    onClick={() => setExpandidos((p) => ({ ...p, [it.nombre]: true }))}
-                    aria-label="Editar series"
-                    title="Editar series"
-                  >
-                    <IconPencil />
-                  </button>
-                )}
+            <div className="fp-ex-done-actions">
+              {!esWarm && (
                 <button
                   type="button"
-                  className="fp-ex-done-icon is-danger"
-                  onClick={() => limpiarRegistrosEjercicio(it.nombre)}
-                  aria-label="Quitar ejercicio"
-                  title="Quitar"
+                  className="fp-ex-done-icon"
+                  onClick={() => setExpandidos((p) => ({ ...p, [it.nombre]: true }))}
+                  aria-label="Editar series"
+                  title="Editar series"
                 >
-                  <IconTrash />
+                  <IconPencil />
                 </button>
-              </div>
+              )}
+              <button
+                type="button"
+                className="fp-ex-done-icon is-danger"
+                onClick={() => limpiarRegistrosEjercicio(it.nombre)}
+                aria-label="Quitar ejercicio"
+                title="Quitar"
+              >
+                <IconTrash />
+              </button>
             </div>
           </div>
         </article>
@@ -380,23 +448,17 @@ export default function SesionRegistroTitanium({
     // Calentamiento: una sola acción, sin tabla de series
     if (esWarm) {
       return (
-        <article key={it.nombre} className="fp-ex fp-ex--warm">
-          <div className="fp-ex-head">
+        <article key={it.nombre} className="fp-ex fp-ex--warm fp-ex--compact">
+          <div className="fp-ex-head fp-ex-head--compact">
             <span className="fp-ex-num">0</span>
             <div className="fp-ex-head-main">
               <div className="fp-ex-title-row">
                 <h3 className="fp-ex-title">{titulo}</h3>
                 <span className="fp-musculo">{musculo}</span>
               </div>
-              <p className="fp-ex-obj mb-0">
-                Objetivo:{' '}
-                <strong>
-                  {it.repeticiones?.trim() || 'Calentamiento dinámico · zona 2 + movilidad'}
-                </strong>
-              </p>
             </div>
           </div>
-          <div className="fp-warm-box">
+          <div className="fp-warm-box fp-warm-box--compact">
             <div className="fp-nota-box">
               <IconPencil />
               <input
@@ -420,22 +482,27 @@ export default function SesionRegistroTitanium({
                 })
               }}
             >
-              <IconCheck /> Marcar calentamiento hecho
+              <IconCheck /> Marcar calentamiento
             </button>
           </div>
         </article>
       )
     }
 
-    const primeraPendiente = Array.from({ length: nSeries }, (_, i) => i + 1).find(
-      (s) => !registroHechoParaSerie(ya, s)
-    )
+    const hechas = seriesHechasDe(ya, nSeries)
+    const serieActual = Math.min(hechas + 1, nSeries)
+    const completaSeries = hechas >= nSeries
+    const pendientes = seriesPendientes(ya, nSeries)
+    const d = drafts[`${it.nombre}::${serieActual}`] || { pesoKg: '', repeticiones: '', rpe: '' }
+    const ant = anteriorPorSerie(hist, serieActual)
+    const resumenHecho = resumenRondasSs(ya)
+    const esPesoCorporal = esPesoCorporalNombre(it.nombre)
     const hechosSeries = ya.filter((r) => r.serieNum != null).length || ya.length
     const puedeQuitarSerie = nSeries > Math.max(1, hechosSeries)
 
     return (
-      <article key={it.nombre} className="fp-ex">
-        <div className="fp-ex-head">
+      <article key={it.nombre} className="fp-ex fp-ex--compact">
+        <div className="fp-ex-head fp-ex-head--compact">
           <span className="fp-ex-num">{idxNum}</span>
           <div className="fp-ex-head-main">
             <div className="fp-ex-title-row">
@@ -458,123 +525,124 @@ export default function SesionRegistroTitanium({
           )}
         </div>
 
-        <div className="fp-table-wrap">
-          <table className="fp-table">
-            <thead>
-              <tr>
-                <th>Serie</th>
-                <th>Anterior</th>
-                <th>Carga (kg)</th>
-                <th>Repeticiones</th>
-                <th>RPE / Esfuerzo</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: nSeries }, (_, i) => {
-                const serieNum = i + 1
-                const hecho = registroHechoParaSerie(ya, serieNum)
-                const ant = anteriorPorSerie(hist, serieNum)
-                const key = `${it.nombre}::${serieNum}`
-                const d = drafts[key] || { pesoKg: '', repeticiones: '', rpe: '' }
-                const esActiva = !hecho && primeraPendiente === serieNum
+        <div className="fp-ex-serie-block">
+          <div className={`fp-ex-serie-row${completaSeries ? ' is-done' : ''}`}>
+            <span className="fp-ex-serie-label">
+              {completaSeries ? 'Series' : `Serie ${serieActual}`}
+            </span>
+            <span className="fp-ex-serie-ant" title="Sesión anterior">
+              Ant.: {formatoAnterior(ant)}
+            </span>
+            <div className="fp-ex-serie-log">
+              {completaSeries ? (
+                <span className="fp-ex-serie-done-txt">{resumenHecho || `${hechas} series hechas`}</span>
+              ) : esPesoCorporal && !d.pesoKg ? (
+                <div className="fp-ss-pill fp-ss-pill--edit">
+                  <input
+                    type="text"
+                    value={d.repeticiones}
+                    onChange={(e) => patchDraft(it.nombre, serieActual, { repeticiones: e.target.value })}
+                    placeholder="reps"
+                    aria-label="Repeticiones"
+                  />
+                  <select
+                    value={d.rpe ?? ''}
+                    onChange={(e) => patchDraft(it.nombre, serieActual, { rpe: e.target.value })}
+                    aria-label="RPE"
+                    className="fp-ex-serie-rpe"
+                  >
+                    <option value="">RPE</option>
+                    {RPE_OPTS.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="fp-ss-pill fp-ss-pill--edit">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={d.pesoKg}
+                    onChange={(e) => patchDraft(it.nombre, serieActual, { pesoKg: e.target.value })}
+                    placeholder="kg"
+                    aria-label="Peso kg"
+                  />
+                  <input
+                    type="text"
+                    value={d.repeticiones}
+                    onChange={(e) => patchDraft(it.nombre, serieActual, { repeticiones: e.target.value })}
+                    placeholder="reps"
+                    aria-label="Repeticiones"
+                  />
+                  <select
+                    value={d.rpe ?? ''}
+                    onChange={(e) => patchDraft(it.nombre, serieActual, { rpe: e.target.value })}
+                    aria-label="RPE"
+                    className="fp-ex-serie-rpe"
+                  >
+                    <option value="">RPE</option>
+                    {RPE_OPTS.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
 
-                if (hecho) {
-                  const rpe = rpeDeRegistro(hecho)
-                  return (
-                    <tr key={serieNum} className="fp-row is-done">
-                      <td className="fp-td-num">{serieNum}</td>
-                      <td className="fp-td-prev">{formatoAnterior(ant)}</td>
-                      <td>
-                        <span className="fp-cell-box">{hecho.pesoKg != null ? `${hecho.pesoKg} kg` : '—'}</span>
-                      </td>
-                      <td>
-                        <span className="fp-cell-box">{hecho.repeticiones} reps</span>
-                      </td>
-                      <td>
-                        {rpe != null ? <span className="fp-rpe-pill">RPE {rpe}</span> : '—'}
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="fp-estado-hecho"
-                          onClick={() => onEliminarRegistro(hecho.id)}
-                          title="Desmarcar serie"
-                        >
-                          <IconCheck /> Hecho
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                }
+          {resumenHecho && !completaSeries ? (
+            <span className="fp-ss-hint fp-ss-hint--done">{resumenHecho}</span>
+          ) : null}
 
-                return (
-                  <tr key={serieNum} className={esActiva ? 'fp-row is-active' : 'fp-row is-pending'}>
-                    <td className="fp-td-num">{serieNum}</td>
-                    <td className="fp-td-prev">{formatoAnterior(ant)}</td>
-                    <td>
-                      {esActiva ? (
-                        <label className="fp-field">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.5"
-                            value={d.pesoKg}
-                            onChange={(e) => patchDraft(it.nombre, serieNum, { pesoKg: e.target.value })}
-                          />
-                          <em>kg</em>
-                        </label>
-                      ) : <span className="fp-cell-box is-empty">—</span>}
-                    </td>
-                    <td>
-                      {esActiva ? (
-                        <label className="fp-field">
-                          <input
-                            type="text"
-                            value={d.repeticiones}
-                            onChange={(e) => patchDraft(it.nombre, serieNum, { repeticiones: e.target.value })}
-                          />
-                          <em>reps</em>
-                        </label>
-                      ) : <span className="fp-cell-box is-empty">—</span>}
-                    </td>
-                    <td>
-                      {esActiva ? (
-                        <label className="fp-rpe-select">
-                          <select
-                            value={d.rpe ?? ''}
-                            onChange={(e) => patchDraft(it.nombre, serieNum, { rpe: e.target.value })}
-                          >
-                            <option value="">Sin RPE</option>
-                            {RPE_OPTS.map((n) => (
-                              <option key={n} value={n}>RPE {n}</option>
-                            ))}
-                          </select>
-                        </label>
-                      ) : <span className="fp-td-prev">—</span>}
-                    </td>
-                    <td>
-                      {esActiva ? (
-                        <button
-                          type="button"
-                          className="fp-btn-save"
-                          onClick={() => guardarSerie(it, serieNum)}
-                          disabled={!String(d.repeticiones || '').trim()}
-                        >
-                          Guardar Serie
-                        </button>
-                      ) : (
-                        <span className="fp-estado-pend">Pendiente</span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <div className="fp-ex-serie-foot">
+            <span className="fp-ss-rondas">
+              Series completadas: <strong>{hechas} de {nSeries}</strong>
+            </span>
+            <div className="fp-ss-foot-actions">
+              {hechas > 0 && (
+                <button
+                  type="button"
+                  className="fp-ss-undo"
+                  onClick={() => deshacerUltimaSerieEjercicio(it, nSeries)}
+                >
+                  Deshacer última serie
+                </button>
+              )}
+              {!completaSeries && pendientes.length >= 2 && (
+                <button
+                  type="button"
+                  className="fp-ss-ronda-btn is-ghost"
+                  onClick={() => completarTodasSeriesEjercicio(it, nSeries)}
+                  disabled={!String(d.repeticiones || '').trim()}
+                >
+                  Completar {pendientes.length} series
+                </button>
+              )}
+              {!completaSeries && (
+                <button
+                  type="button"
+                  className="fp-ss-ronda-btn"
+                  onClick={() => completarSerieActualEjercicio(it, serieActual)}
+                  disabled={!String(d.repeticiones || '').trim()}
+                >
+                  Completar Serie {serieActual}
+                </button>
+              )}
+              {expandido && completaSeries && (
+                <button
+                  type="button"
+                  className="fp-ss-undo"
+                  onClick={() => setExpandidos((p) => ({ ...p, [it.nombre]: false }))}
+                >
+                  Comprimir
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="fp-ex-foot">
+        <div className="fp-ex-foot fp-ex-foot--compact">
           <div className="fp-nota-box">
             <IconPencil />
             <input
@@ -693,13 +761,6 @@ export default function SesionRegistroTitanium({
     setSsRondas((p) => ({ ...p, [bloque.id]: Math.max(0, hechas - 1) }))
   }
 
-  const guardarUnaOVarias = (lista) => {
-    if (!lista?.length) return
-    if (lista.length === 1) onGuardarSerie(lista[0])
-    else if (onGuardarSeries) onGuardarSeries(lista)
-    else lista.forEach((s) => onGuardarSerie(s))
-  }
-
   /** Un click marca/desmarca TODAS las vueltas de ese ejercicio en la superserie. */
   const toggleEjercicioSs = (bloque, it, label) => {
     const vueltas = vueltasDeBloque(bloque)
@@ -775,39 +836,23 @@ export default function SesionRegistroTitanium({
   const renderSuperserieItem = (it, label, idx, bloque, rondaActual) => {
     const vueltas = vueltasDeBloque(bloque)
     const ya = regsPorEjercicio[it.nombre] || []
-    const hist = historialDe(historialPorEjercicio, it.nombre)
-    const ant = anteriorPorSerie(hist, rondaActual)
     const draftKey = `${bloque.id}::${it.nombre}::${rondaActual}`
     const d = draftSsDe(bloque.id, it, rondaActual)
     const checked = ejercicioSsCompleto(it, vueltas)
     const parcial = !checked && ya.length > 0
-    const esPesoCorporal = /plancha|elevaciones? de piernas|peso\s*corporal|abdominal|core/i.test(it.nombre)
-      && !/mancuerna|barra|kg/i.test(it.nombre)
-    const cargaPlan = it.carga?.trim() ? ` · Sugerido: ${it.carga}` : ''
-    const hintExtra = ant?.pesoKg != null ? ` (ref. sesión ant.: ${ant.pesoKg} kg)` : ''
+    const esPesoCorporal = esPesoCorporalNombre(it.nombre)
     const rondasHechasTxt = resumenRondasSs(ya)
 
     return (
-      <div key={it.nombre} className={`fp-ss-item${checked ? ' is-done' : ''}${parcial ? ' is-partial' : ''}`}>
-        {idx > 0 && <p className="fp-ss-join">↓ Combinado de inmediato con:</p>}
-        <div className="fp-ss-row">
+      <div key={it.nombre} className={`fp-ss-item fp-ss-item--compact${checked ? ' is-done' : ''}${parcial ? ' is-partial' : ''}`}>
+        {idx > 0 && <p className="fp-ss-join">↓ Sin pausa</p>}
+        <div className="fp-ss-row fp-ss-row--compact">
           <span className="fp-ss-dot" aria-hidden />
-          <div className="fp-ss-copy">
-            <span className="fp-ss-label">Ejercicio {label}</span>
-            <strong className="fp-ss-name">{nombreDisplayEjercicio(it.nombre)}</strong>
-            <span className="fp-ss-hint">
-              {vueltas} vueltas × {it.repeticiones || '10'} reps sugeridas{cargaPlan}{hintExtra}
-            </span>
-            {rondasHechasTxt ? (
-              <span className="fp-ss-hint fp-ss-hint--done">{rondasHechasTxt}</span>
-            ) : null}
-            {!checked ? (
-              <span className="fp-ss-hint fp-ss-hint--round">Ronda {rondaActual}: cargá el peso de esta vuelta</span>
-            ) : null}
-          </div>
-          <div className="fp-ss-log">
+          <span className="fp-ss-label-inline">{label}</span>
+          <strong className="fp-ss-name">{nombreDisplayEjercicio(it.nombre)}</strong>
+          <div className="fp-ss-log fp-ss-log--compact">
             {esPesoCorporal && !d.pesoKg ? (
-              <span className="fp-ss-pill">Peso Corporal</span>
+              <span className="fp-ss-pill">PC</span>
             ) : (
               <div className="fp-ss-pill fp-ss-pill--edit">
                 <input
@@ -819,10 +864,9 @@ export default function SesionRegistroTitanium({
                     ...p,
                     [draftKey]: { ...d, pesoKg: e.target.value },
                   }))}
-                  placeholder="—"
+                  placeholder="kg"
                   aria-label="Peso kg"
                 />
-                <span>kg ×</span>
                 <input
                   type="text"
                   value={d.repeticiones}
@@ -830,10 +874,9 @@ export default function SesionRegistroTitanium({
                     ...p,
                     [draftKey]: { ...d, repeticiones: e.target.value },
                   }))}
-                  placeholder="—"
+                  placeholder="reps"
                   aria-label="Repeticiones"
                 />
-                <span>reps</span>
               </div>
             )}
             <button
@@ -848,6 +891,7 @@ export default function SesionRegistroTitanium({
             </button>
           </div>
         </div>
+        {rondasHechasTxt ? <span className="fp-ss-hint fp-ss-hint--done">{rondasHechasTxt}</span> : null}
       </div>
     )
   }
@@ -867,7 +911,7 @@ export default function SesionRegistroTitanium({
   })()
 
   return (
-    <div className="fp-sesion">
+    <div className={`fp-sesion fp-sesion--compact fp-sesion--tone-${Number(diaTono) % 6}`}>
       {!ocultarProgreso && (
         <div className="fp-progress">
           <div className="fp-progress-top">
@@ -889,28 +933,22 @@ export default function SesionRegistroTitanium({
       {bloques.map((bloque) => {
         if (bloque.tipo === 'superserie') {
           const vueltas = vueltasDeBloque(bloque)
-          const labels = bloque.items.map((_, i) => `${bloque.label}${i + 1}`)
           const hechas = rondasHechasBloque(bloque)
           const rondaActual = Math.min(hechas + 1, vueltas)
           const completa = hechas >= vueltas
-          const labelJoin = labels.length >= 2 ? `${labels[0]} y ${labels[1]}` : labels[0]
           const expandido = Boolean(ssExpandidos[bloque.id])
           const nombres = bloque.items.map((it) => nombreDisplayEjercicio(it.nombre)).join(' + ')
-          const kcalSs = bloque.items.reduce((sum, it) => {
-            const ya = regsPorEjercicio[it.nombre] || []
-            return sum + ya.reduce((s, r) => s + caloriasQuemadasRegistroRutina(r, pesoCfg), 0)
-          }, 0)
 
           if (completa && !expandido) {
             return (
-              <article key={bloque.id} className="fp-ex fp-ex--done fp-ss--done">
-                <div className="fp-ex-done-inner">
+              <article key={bloque.id} className="fp-ex fp-ex--done fp-ex--compact fp-ss--done">
+                <div className="fp-ex-done-inner fp-ex-done-inner--compact">
                   <span className="fp-ex-done-ico" aria-hidden><IconCheck /></span>
                   <div className="fp-ex-done-body">
                     <div className="fp-ex-done-top">
-                      <span className="fp-ss-badge fp-ss-badge--sm"><IconBolt /> Superserie {bloque.label}</span>
+                      <span className="fp-ss-badge fp-ss-badge--sm"><IconBolt /> SS {bloque.label}</span>
                       <strong>{nombres}</strong>
-                      <span className="fp-badge-done">Completado</span>
+                      <span className="fp-badge-done">OK</span>
                     </div>
                     <p className="fp-ex-done-sum mb-0">
                       {vueltas} vueltas · {bloque.items.map((it) => {
@@ -921,28 +959,25 @@ export default function SesionRegistroTitanium({
                       }).filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <div className="fp-ex-done-side">
-                    <div className="fp-kcal-box">~{Math.max(kcalSs, 40)} kcal quemadas</div>
-                    <div className="fp-ex-done-actions">
-                      <button
-                        type="button"
-                        className="fp-ex-done-icon"
-                        onClick={() => setSsExpandidos((p) => ({ ...p, [bloque.id]: true }))}
-                        aria-label="Editar superserie"
-                        title="Editar"
-                      >
-                        <IconPencil />
-                      </button>
-                      <button
-                        type="button"
-                        className="fp-ex-done-icon is-danger"
-                        onClick={() => limpiarSuperserie(bloque)}
-                        aria-label="Quitar superserie"
-                        title="Quitar"
-                      >
-                        <IconTrash />
-                      </button>
-                    </div>
+                  <div className="fp-ex-done-actions">
+                    <button
+                      type="button"
+                      className="fp-ex-done-icon"
+                      onClick={() => setSsExpandidos((p) => ({ ...p, [bloque.id]: true }))}
+                      aria-label="Editar superserie"
+                      title="Editar"
+                    >
+                      <IconPencil />
+                    </button>
+                    <button
+                      type="button"
+                      className="fp-ex-done-icon is-danger"
+                      onClick={() => limpiarSuperserie(bloque)}
+                      aria-label="Quitar superserie"
+                      title="Quitar"
+                    >
+                      <IconTrash />
+                    </button>
                   </div>
                 </div>
               </article>
@@ -950,15 +985,10 @@ export default function SesionRegistroTitanium({
           }
 
           return (
-            <div key={bloque.id} className="fp-ss">
-              <div className="fp-ss-head">
-                <span className="fp-ss-badge"><IconBolt /> Superserie {bloque.label}</span>
-                <p className="fp-ss-copy-line mb-0">
-                  {vueltas} Vueltas continuas sin descanso entre {labelJoin}
-                </p>
-                <span className="fp-ss-rest">
-                  Descanso post-ronda: {bloque.descansoPostRonda || 90} seg
-                </span>
+            <div key={bloque.id} className="fp-ss fp-ss--compact">
+              <div className="fp-ss-head fp-ss-head--compact">
+                <span className="fp-ss-badge"><IconBolt /> SS {bloque.label}</span>
+                <span className="fp-ss-rest">{vueltas} vueltas · descanso {bloque.descansoPostRonda || 90}s</span>
               </div>
               <div className="fp-ss-track">
                 {bloque.items.map((it, idx) =>

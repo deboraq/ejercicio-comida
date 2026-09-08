@@ -8,12 +8,11 @@ import { formatearFecha, fechaToISO, fechaSoloDia, caloriasQuemadasRegistroRutin
 import { getRangoPorPeriodo } from '../utils/estadisticas'
 import { descargarRutinaPdf } from '../utils/rutinaPdf'
 import {
-  nombreDeEjercicioDiaItem,
   itemEjercicioDiaNormalizado,
-  etiquetaPlanEjercicio,
   nombresEjerciciosDia,
   inferirGruposMuscularesDia,
   ejercicioDiaAJson,
+  inferirGrupoMuscular,
   parseNumSeriesPlan,
   siguienteLabelSuperserie,
   nombresEjercicioCoinciden,
@@ -21,6 +20,7 @@ import {
 import SesionRegistroTitanium from '../components/SesionRegistroTitanium'
 import ArmarPlanTitanium from '../components/ArmarPlanTitanium'
 import ProgresoCargasTitanium from '../components/ProgresoCargasTitanium'
+import RutinasAsignadasTitanium from '../components/RutinasAsignadasTitanium'
 import { AppNotificacionesCampana } from '../context/AppNotificationsContext'
 
 function crearDia(num) {
@@ -169,6 +169,10 @@ export default function Rutina() {
         .filter(Boolean),
     [diaParaRegistrar?.id, diaParaRegistrar?.ejercicios]
   )
+  const tonoDiaRegistro = useMemo(() => {
+    const i = dias.findIndex((d) => d.id === diaSeleccionado)
+    return (i >= 0 ? i : 0) % 6
+  }, [dias, diaSeleccionado])
 
   useEffect(() => {
     if (dias.length > 0) {
@@ -194,6 +198,17 @@ export default function Rutina() {
     }
     setRutinasAsignadas((prev) => (Array.isArray(prev) ? prev.filter((x) => x.id !== r.id) : []))
   }, [setRutinasAsignadas])
+
+  const copiarAsignadaAMisRutinas = useCallback(
+    (r) => {
+      const clon = clonarRutinaParaMisRutinas(r)
+      setRutinas((list) => [...(list || []), clon])
+      setRutinaActivaId(clon.id)
+      setOrigenRutinas('propias')
+      window.alert(`«${clon.nombre}» quedó en Mis rutinas y está activa. Ahí podés registrar pesos y editarla.`)
+    },
+    [setRutinas, setRutinaActivaId, setOrigenRutinas],
+  )
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
@@ -306,21 +321,70 @@ export default function Rutina() {
     })
   }
 
-  const añadirEjercicioAlDia = (nombre, series = '', repeticiones = '') => {
-    const n = String(nombre || '').trim()
+  const añadirEjercicioAlDia = (nombreOrItem, series = '', repeticiones = '') => {
+    let n = ''
+    let notas = ''
+    let grupoMuscular = ''
+    if (nombreOrItem != null && typeof nombreOrItem === 'object') {
+      n = String(nombreOrItem.nombre || '').trim()
+      notas = String(nombreOrItem.notas || '').trim()
+      grupoMuscular = String(nombreOrItem.categoria || nombreOrItem.grupoMuscular || '').trim()
+    } else {
+      n = String(nombreOrItem || '').trim()
+    }
     if (!n) return
     const ya = nombresEjerciciosDia({ ejercicios: diaActual?.ejercicios })
-    if (ya.includes(n)) return
+    if (ya.some((x) => x.toLowerCase() === n.toLowerCase())) return
     const s = String(series || '').trim()
     const rps = String(repeticiones || '').trim()
-    const item = s || rps ? { nombre: n, ...(s ? { series: s } : {}), ...(rps ? { repeticiones: rps } : {}) } : n
+    const g = grupoMuscular || inferirGrupoMuscular(n)
+    const raw = {
+      nombre: n,
+      ...(s ? { series: s } : {}),
+      ...(rps ? { repeticiones: rps } : {}),
+      ...(notas ? { notas } : {}),
+      ...(g && g !== 'Otro' ? { grupoMuscular: g } : {}),
+    }
+    const item =
+      Object.keys(raw).length === 1 && raw.nombre
+        ? raw.nombre
+        : ejercicioDiaAJson(raw) ?? n
     actualizarRutina((r) => ({
       ...r,
       dias: r.dias.map((d) =>
-        d.id === diaEditando
-          ? { ...d, ejercicios: [...(d.ejercicios || []), item] }
-          : d
+        d.id === diaEditando ? { ...d, ejercicios: [...(d.ejercicios || []), item] } : d,
       ),
+    }))
+  }
+
+  const añadirEjerciciosCatalogoAlDia = (pickedItems) => {
+    if (!pickedItems?.length || !diaEditando) return
+    actualizarRutina((r) => ({
+      ...r,
+      dias: r.dias.map((d) => {
+        if (d.id !== diaEditando) return d
+        const ya = new Set(
+          nombresEjerciciosDia(d).map((x) => String(x).trim().toLowerCase()),
+        )
+        const nuevos = []
+        for (const c of pickedItems) {
+          const n = String(c?.nombre || '').trim()
+          if (!n) continue
+          const key = n.toLowerCase()
+          if (ya.has(key)) continue
+          const g = String(c.categoria || '').trim() || inferirGrupoMuscular(n)
+          const raw = {
+            nombre: n,
+            notas: String(c.notas || '').trim(),
+            ...(g && g !== 'Otro' ? { grupoMuscular: g } : {}),
+          }
+          const item = ejercicioDiaAJson(raw) ?? n
+          nuevos.push(item)
+          ya.add(key)
+        }
+        if (!nuevos.length) return d
+        return { ...d, ejercicios: [...(d.ejercicios || []), ...nuevos] }
+      }),
     }))
   }
 
@@ -346,6 +410,21 @@ export default function Rutina() {
         if (fromIdx < 0 || fromIdx >= ejercicios.length || toIdx < 0 || toIdx >= ejercicios.length) return d
         const [item] = ejercicios.splice(fromIdx, 1)
         ejercicios.splice(toIdx, 0, item)
+        return { ...d, ejercicios }
+      }),
+    }))
+  }
+
+  const duplicarEjercicioEnDia = (idx) => {
+    actualizarRutina((r) => ({
+      ...r,
+      dias: r.dias.map((d) => {
+        if (d.id !== diaEditando) return d
+        const ejercicios = [...(d.ejercicios || [])]
+        const it = itemEjercicioDiaNormalizado(ejercicios[idx])
+        if (!it) return d
+        const copy = ejercicioDiaAJson({ ...it }) ?? it.nombre
+        ejercicios.splice(idx + 1, 0, copy)
         return { ...d, ejercicios }
       }),
     }))
@@ -892,8 +971,10 @@ export default function Rutina() {
             onRenombrarDia={renombrarDia}
             onQuitarDia={quitarDia}
             onAñadirEjercicio={añadirEjercicioAlDia}
+            onAñadirEjerciciosCatalogo={añadirEjerciciosCatalogoAlDia}
             onQuitarEjercicio={quitarEjercicioDelDiaPorIdx}
             onGuardarEjercicio={guardarEjercicioPlan}
+            onDuplicarEjercicio={duplicarEjercicioEnDia}
             onReordenar={reordenarEjercicioDelDia}
             onVincularSuperserie={vincularSuperserie}
             onDesvincularSuperserie={desvincularSuperserie}
@@ -970,7 +1051,7 @@ export default function Rutina() {
                 {(() => {
                   const { hechos, total, pct, kcal } = progresoSesion
                   return (
-                    <div className="rut-day-progress">
+                    <div className={`rut-day-progress rut-day-progress--tone-${tonoDiaRegistro}`}>
                       <div className="rut-day-progress-top">
                         <p className="mb-0">
                           Progreso de la sesión:{' '}
@@ -1001,6 +1082,7 @@ export default function Rutina() {
               ) : (
                 <SesionRegistroTitanium
                   key={`${diaSeleccionado}-${fechaInput}`}
+                  diaTono={tonoDiaRegistro}
                   ejercicios={ejerciciosParaCargar}
                   registrosDeEstaSesion={registrosDeEstaSesion}
                   historialPorEjercicio={historialPorEjercicio}
@@ -1227,14 +1309,11 @@ export default function Rutina() {
         )}
         </>
         ) : (
-          <VistaRutinasAsignadas
+          <RutinasAsignadasTitanium
             rutinasAsignadas={Array.isArray(rutinasAsignadas) ? rutinasAsignadas : []}
-            setRutinasAsignadas={setRutinasAsignadas}
-            setRutinas={setRutinas}
-            setRutinaActivaId={setRutinaActivaId}
-            setOrigenRutinas={setOrigenRutinas}
             syncRutinasNube={syncRutinasNube}
-            onQuitarAsignada={quitarAsignadaHandler}
+            onCopiar={copiarAsignadaAMisRutinas}
+            onQuitar={quitarAsignadaHandler}
             onRefreshAssignments={() => setAssignmentsRefreshTick((n) => n + 1)}
           />
         )}
@@ -1338,104 +1417,6 @@ function HistorialFechaPicker({ value, onChange, hoy, fechasConDatos }) {
         </div>
       </div>
     </div>
-  )
-}
-
-function VistaRutinasAsignadas({
-  rutinasAsignadas,
-  setRutinasAsignadas,
-  setRutinas,
-  setRutinaActivaId,
-  setOrigenRutinas,
-  syncRutinasNube,
-  onQuitarAsignada,
-  onRefreshAssignments,
-}) {
-  const copiarAMisRutinas = (r) => {
-    const clon = clonarRutinaParaMisRutinas(r)
-    setRutinas((list) => [...(list || []), clon])
-    setRutinaActivaId(clon.id)
-    setOrigenRutinas('propias')
-    window.alert(`«${clon.nombre}» quedó en Mis rutinas y está activa. Ahí podés registrar pesos y editarla.`)
-  }
-
-  return (
-    <>
-      <div className="box mb-4 py-3">
-        <h2 className="title is-6 mb-2">Rutinas que te mandó tu entrenador</h2>
-        <p className="is-size-7 has-text-grey mb-3">
-          Acá solo ves <strong>plantillas</strong> que te envió tu entrenador desde <strong>Profe</strong> (con tu cuenta
-          iniciada). Para anotar pesos y entrenos, usá <strong>Copiar a mis rutinas</strong> y después andá a{' '}
-          <strong>Mis rutinas → Registrar</strong>.
-        </p>
-        {syncRutinasNube && (
-          <button type="button" className="button is-light is-small mb-0" onClick={() => onRefreshAssignments?.()}>
-            Actualizar desde la nube
-          </button>
-        )}
-      </div>
-
-      {rutinasAsignadas.length === 0 ? (
-        <div className="box py-4 mb-4 has-text-centered">
-          <p className="is-size-7 has-text-grey mb-2">
-            Todavía no hay rutinas acá.
-            {syncRutinasNube
-              ? ' Tu entrenador tiene que tenerte vinculado por correo y enviarte una rutina desde su pestaña Profe.'
-              : ' Iniciá sesión para sincronizar con la nube.'}
-          </p>
-          {syncRutinasNube && (
-            <p className="is-size-7 has-text-grey mb-0">Podés tocar «Actualizar desde la nube» arriba si acaban de enviarte una.</p>
-          )}
-        </div>
-      ) : (
-        <ul className="mb-4" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {rutinasAsignadas.map((r) => (
-            <li key={r.id} className="box py-3 mb-3 rutina-asignada-card">
-              <div className="is-flex is-justify-content-space-between is-align-items-flex-start is-flex-wrap-wrap" style={{ gap: '0.5rem' }}>
-                <div>
-                  <h3 className="title is-6 mb-1">{r.nombre}</h3>
-                  {r._asignacion && (
-                    <p className="is-size-7 has-text-grey mb-0">
-                      Asignada por <strong>{r._asignacion.por}</strong>
-                      {r._asignacion.fecha ? ` · ${r._asignacion.fecha}` : ''}
-                    </p>
-                  )}
-                  {!r._asignacion && (
-                    <p className="is-size-7 has-text-grey mb-0">Importada a mano (no viene del servidor).</p>
-                  )}
-                </div>
-                <div className="is-flex is-flex-wrap-wrap" style={{ gap: '0.35rem' }}>
-                  <button type="button" className="button is-link is-small" onClick={() => copiarAMisRutinas(r)}>
-                    Copiar a mis rutinas
-                  </button>
-                  <button type="button" className="button is-small is-light" onClick={() => onQuitarAsignada(r)}>
-                    Quitar
-                  </button>
-                </div>
-              </div>
-              <ul className="mt-3 mb-0 pl-4" style={{ listStyle: 'disc' }}>
-                {(r.dias || []).map((d) => (
-                  <li key={d.id} className="mb-2">
-                    <strong className="is-size-7">{d.nombre}</strong>
-                    {(d.ejercicios || []).length === 0 ? (
-                      <p className="is-size-7 has-text-grey mb-0">Sin ejercicios en la plantilla.</p>
-                    ) : (
-                      <ul className="mt-1 mb-0 pl-3" style={{ listStyle: 'circle' }}>
-                        {(d.ejercicios || []).map((ex, ei) => (
-                          <li key={`${nombreDeEjercicioDiaItem(ex)}-${ei}`} className="is-size-7">
-                            {etiquetaPlanEjercicio(ex)}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
-      )}
-    </>
   )
 }
 

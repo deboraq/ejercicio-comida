@@ -10,6 +10,8 @@ import {
   filtrarAlumnos,
   inicialesAlumno,
   avatarToneClass,
+  alumnoCardIdentityClass,
+  alumnoIdentityIndex,
 } from '../../utils/profeAlumnosSnapshot'
 import { AppNotificacionesCampana } from '../../context/AppNotificationsContext'
 import {
@@ -20,7 +22,6 @@ import {
   toggleChecklistItem,
 } from '../../utils/profeNotas'
 import ProfeMensajesFeedback from './ProfeMensajesFeedback'
-import ProfeCatalogoEjercicios from './ProfeCatalogoEjercicios'
 import ProfeRutinasWorkshop from './ProfeRutinasWorkshop'
 import ProfeHistorialAsignaciones from './ProfeHistorialAsignaciones'
 import './ProfeTitanium.css'
@@ -29,7 +30,7 @@ const TABS = [
   { id: 'alumnos', label: 'Supervisión & Alumnos', Icon: IconUsers },
   { id: 'historial', label: 'Rutinas Asignadas & Envíos', Icon: IconClipboard },
   { id: 'mensajes', label: 'Mensajes y Feedback', Icon: IconMessage },
-  { id: 'plantillas', label: 'Plantillas & Catálogo', Icon: IconTemplate },
+  { id: 'plantillas', label: 'Plantillas de Entrenamiento', Icon: IconTemplate },
 ]
 
 function IconUsers({ className }) {
@@ -135,11 +136,15 @@ function FeedItemRow({ item }) {
   return (
     <li className="pf-feed-item">
       <span
-        className="pf-feed-avatar"
-        style={{
-          background: `${item.avatarColor || '#3b82f6'}30`,
-          color: item.avatarColor || '#93c5fd',
-        }}
+        className={['pf-feed-avatar', item.avatarTone].filter(Boolean).join(' ')}
+        style={
+          item.avatarTone
+            ? undefined
+            : {
+                background: `${item.avatarColor || '#3b82f6'}30`,
+                color: item.avatarColor || '#93c5fd',
+              }
+        }
       >
         {item.initials || '?'}
       </span>
@@ -226,15 +231,20 @@ function rolAlumnoLabel(alumno) {
   return null
 }
 
-function AlumnoCard({ alumno, onEditarRutina, onVerFicha, onToast }) {
+function AlumnoCard({ alumno, onEditarRutina, onVerFicha, onToast, sinDatosNube = false }) {
   const s = alumno.snapshot || {}
   const ini = inicialesAlumno(alumno.fullName, alumno.email)
-  const avatarTone = avatarToneClass(alumno.email || alumno.studentId)
+  const idx =
+    typeof alumno.identityIndex === 'number'
+      ? alumno.identityIndex
+      : alumnoIdentityIndex(alumno.studentId || alumno.email)
+  const avatarTone = avatarToneClass(idx)
+  const identityClass = alumnoCardIdentityClass(idx)
   const tone = s.estadoTone || 'blue'
   const rolLabel = rolAlumnoLabel(alumno)
 
   return (
-    <article className={`pf-alumno-card pf-alumno-card--${tone}`}>
+    <article className={`pf-alumno-card ${identityClass}`}>
       <header className="pf-alumno-head">
         <div className="pf-alumno-id">
           <span className="pf-alumno-avatar-wrap">
@@ -251,6 +261,11 @@ function AlumnoCard({ alumno, onEditarRutina, onVerFicha, onToast }) {
             </p>
             <div className="pf-alumno-badges">
               <span className={`pf-badge pf-badge--${tone}`}>{s.estadoLabel || 'Al día'}</span>
+              {sinDatosNube ? (
+                <span className="pf-badge pf-badge--warn" title="No hay actividad en Supabase. El alumno debe guardar con su sesión iniciada.">
+                  Sin datos en nube
+                </span>
+              ) : null}
               {rolLabel ? <span className="pf-badge pf-badge--role">{rolLabel}</span> : null}
             </div>
           </div>
@@ -304,7 +319,7 @@ function AlumnoCard({ alumno, onEditarRutina, onVerFicha, onToast }) {
   )
 }
 
-function SidebarEnvio({ students, teacherId, feedItems, onToast, onEnviado, preselectStudentId }) {
+function SidebarEnvio({ students, teacherId, feedItems, onToast, onEnviado, preselectStudentId, showNotes = true, envioStats = null }) {
   const [plantillas] = useStorage('profePlantillasRutina', [])
   const [notasPrivadas, setNotasPrivadas] = useStorage('profeNotasPrivadas', [])
   const [alumnoId, setAlumnoId] = useState(preselectStudentId || '')
@@ -467,6 +482,31 @@ function SidebarEnvio({ students, teacherId, feedItems, onToast, onEnviado, pres
         </button>
       </section>
 
+      {envioStats ? (
+        <section className="pf-panel pf-panel--metrics">
+          <header className="pf-panel-head">
+            <h2 className="pf-panel-title mb-0">Métricas de Sincronización</h2>
+          </header>
+          <div className="pf-metrics-grid">
+            <div className="pf-metric pf-metric--green">
+              <span className="pf-metric-lbl">Tasa Apertura</span>
+              <strong className="pf-metric-val">{envioStats.tasaApertura}%</strong>
+              <span className="pf-metric-sub">Envíos abiertos o con cargas</span>
+            </div>
+            <div className="pf-metric">
+              <span className="pf-metric-lbl">Envíos Totales</span>
+              <strong className="pf-metric-val">{envioStats.enviosTotales}</strong>
+              <span className="pf-metric-sub">{envioStats.enviosSemana} esta semana</span>
+            </div>
+            <div className="pf-metric pf-metric--blue">
+              <span className="pf-metric-lbl">En progreso</span>
+              <strong className="pf-metric-val">{envioStats.conteos?.activo ?? 0}</strong>
+              <span className="pf-metric-sub">{envioStats.conteos?.completado ?? 0} completados</span>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <section className="pf-panel pf-panel--feed">
         <header className="pf-feed-head">
           <div className="pf-feed-head-left">
@@ -486,6 +526,7 @@ function SidebarEnvio({ students, teacherId, feedItems, onToast, onEnviado, pres
         )}
       </section>
 
+      {showNotes ? (
       <section className="pf-panel pf-panel--notes pf-panel--notes-purple">
         <header className="pf-notes-head">
           <div className="pf-notes-head-left">
@@ -518,6 +559,7 @@ function SidebarEnvio({ students, teacherId, feedItems, onToast, onEnviado, pres
           </ul>
         )}
       </section>
+      ) : null}
 
       {modalNota && (
         <div className="pf-modal" role="dialog" aria-modal="true" aria-labelledby="pf-modal-nota-title">
@@ -602,10 +644,28 @@ export default function ProfeTitanium({
   userDataSyncWarn = false,
   onRefreshAlumnos,
 }) {
-  const [tab, setTab] = useState('alumnos')
+  const TAB_STORAGE_KEY = 'profe-titanium-tab'
+  const [tab, setTabState] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(TAB_STORAGE_KEY)
+      if (saved && TABS.some((t) => t.id === saved)) return saved
+    } catch {
+      /* noop */
+    }
+    return 'alumnos'
+  })
+  const setTab = (id) => {
+    setTabState(id)
+    try {
+      sessionStorage.setItem(TAB_STORAGE_KEY, id)
+    } catch {
+      /* noop */
+    }
+  }
   const [modalVincular, setModalVincular] = useState(false)
   const [preselectStudentId, setPreselectStudentId] = useState('')
   const [bannerCerrado, setBannerCerrado] = useState(false)
+  const [envioStats, setEnvioStats] = useState(null)
 
   const conteos = useMemo(() => contarPorFiltro(alumnosEnriquecidos), [alumnosEnriquecidos])
   const alumnosFiltrados = useMemo(
@@ -639,8 +699,13 @@ export default function ProfeTitanium({
     setModalVincular(false)
   }
 
+  const refrescarSupervision = () => {
+    setHistorialTick?.((n) => n + 1)
+    onRefreshAlumnos?.()
+  }
+
   return (
-    <div className="pf-root">
+    <div className={`pf-root${tab === 'plantillas' ? ' pf-root--plantillas-ws' : ''}`}>
       <div className="pf-topbar">
         <p className="pf-breadcrumb mb-0">
           <span className="pf-breadcrumb-brand">Fitness Pro</span>
@@ -658,7 +723,7 @@ export default function ProfeTitanium({
         </div>
       </div>
 
-      <header className="pf-header">
+      <header className={`pf-header${tab === 'plantillas' ? ' pf-header--compact' : ''}`}>
         <div className="pf-header-main">
           <div className="pf-coach-row">
             <span className="pf-coach-avatar" aria-hidden>🧑‍🏫</span>
@@ -742,8 +807,9 @@ export default function ProfeTitanium({
         <div className="pf-info-banner pf-info-banner--warn">
           <span className="pf-info-ico" aria-hidden>!</span>
           <p className="mb-2">
-            No se pudo leer la actividad real de tus alumnos en la nube. Ejecutá en Supabase el bloque{' '}
+            No se pudo leer la actividad de tus alumnos en Supabase. Ejecutá en el SQL Editor el bloque{' '}
             <strong>Supervisión Profe (user_data)</strong> de SUPABASE.md (política RLS + función RPC).
+            También verificá que el alumno guarde pesos <strong>con su propia sesión iniciada</strong> (no la del profe).
           </p>
           <button type="button" className="pf-btn-vincular pf-btn-vincular--sm" onClick={() => onRefreshAlumnos?.()}>
             Reintentar sync
@@ -794,15 +860,24 @@ export default function ProfeTitanium({
                 <p className="pf-muted pf-panel">No hay alumnos que coincidan con la búsqueda o el filtro.</p>
               ) : (
                 <div className="pf-alumnos-list">
-                  {alumnosFiltrados.map((a) => (
+                  {alumnosFiltrados.map((a) => {
+                    const ud = userDataMap[a.studentId] || {}
+                    const sinDatosNube =
+                      !userDataSyncWarn &&
+                      !['rutinaPesos', 'comida', 'ejercicios'].some(
+                        (k) => Array.isArray(ud[k]) && ud[k].length > 0,
+                      )
+                    return (
                     <AlumnoCard
                       key={a.linkId}
                       alumno={a}
+                      sinDatosNube={sinDatosNube}
                       onEditarRutina={irEditarRutina}
                       onVerFicha={() => onToast?.({ msg: 'Ficha detallada del alumno próximamente.' })}
                       onToast={onToast}
                     />
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -817,9 +892,52 @@ export default function ProfeTitanium({
             />
           </div>
         </div>
+      ) : tab === 'historial' ? (
+        <div className="pf-alumnos-view pf-historial-view">
+          <div className="pf-filter-bar">
+            <div className="pf-search">
+              <IconSearch className="pf-search-ico" />
+              <input
+                type="search"
+                value={busqueda}
+                onChange={(e) => setBusqueda?.(e.target.value)}
+                placeholder="Buscar por alumno, correo o plantilla…"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
+          <div className="pf-layout">
+            <div className="pf-main">
+              <ProfeHistorialAsignaciones
+                key={historialTick}
+                teacherId={user?.id}
+                students={students}
+                userDataMap={userDataMap}
+                busqueda={busqueda}
+                refreshTick={historialTick}
+                onToast={onToast}
+                onReenviado={() => setHistorialTick?.((n) => n + 1)}
+                onStatsChange={setEnvioStats}
+                onForzarSync={refrescarSupervision}
+              />
+            </div>
+
+            <SidebarEnvio
+              students={students}
+              teacherId={user?.id}
+              feedItems={feedItems}
+              onToast={onToast}
+              onEnviado={() => setHistorialTick?.((n) => n + 1)}
+              preselectStudentId={preselectStudentId}
+              showNotes={false}
+              envioStats={envioStats}
+            />
+          </div>
+        </div>
       ) : (
-        <div className="pf-tab-view">
-          {(tab === 'historial' || tab === 'mensajes' || tab === 'plantillas') && (
+        <div className={`pf-tab-view${tab === 'plantillas' ? ' pf-tab-view--plantillas-ws' : ''}`}>
+          {(tab === 'mensajes') && (
             <div className="pf-filter-bar pf-filter-bar--tab">
               <div className="pf-search">
                 <IconSearch className="pf-search-ico" />
@@ -827,33 +945,15 @@ export default function ProfeTitanium({
                   type="search"
                   value={busqueda}
                   onChange={(e) => setBusqueda?.(e.target.value)}
-                  placeholder={
-                    tab === 'historial'
-                      ? 'Buscar por alumno, correo o plantilla…'
-                      : tab === 'mensajes'
-                        ? 'Filtrar mensajes o feedback…'
-                        : 'Buscar plantilla o ejercicio del catálogo…'
-                  }
+                  placeholder="Filtrar mensajes o feedback…"
                   autoComplete="off"
                 />
               </div>
             </div>
           )}
 
-          <div className="pf-layout pf-layout--full">
+          <div className={`pf-layout pf-layout--full${tab === 'plantillas' ? ' pf-layout--plantillas-ws' : ''}`}>
             <div className="pf-main">
-              {tab === 'historial' && (
-                <ProfeHistorialAsignaciones
-                  key={historialTick}
-                  teacherId={user?.id}
-                  students={students}
-                  userDataMap={userDataMap}
-                  busqueda={busqueda}
-                  onToast={onToast}
-                  onReenviado={() => setHistorialTick?.((n) => n + 1)}
-                />
-              )}
-
               {tab === 'mensajes' && (
                 <ProfeMensajesFeedback
                   adminMessages={adminMessages}
@@ -864,18 +964,13 @@ export default function ProfeTitanium({
               )}
 
               {tab === 'plantillas' && (
-                <div className="pf-plantillas-wrap">
-                  <ProfeRutinasWorkshop
-                    students={students}
-                    teacherId={user?.id}
-                    busqueda={busqueda}
-                    onToast={onToast}
-                    onEnviado={() => setHistorialTick?.((n) => n + 1)}
-                  />
-                  <div className="pf-plantillas-extra">
-                    <ProfeCatalogoEjercicios busqueda={busqueda} />
-                  </div>
-                </div>
+                <ProfeRutinasWorkshop
+                  students={students}
+                  teacherId={user?.id}
+                  busqueda={busqueda}
+                  onToast={onToast}
+                  onEnviado={() => setHistorialTick?.((n) => n + 1)}
+                />
               )}
             </div>
           </div>

@@ -14,7 +14,7 @@ import {
   fetchLatestAssignmentsByStudent,
 } from '../lib/profeDb'
 import { fechaToISO } from '../utils/calorias'
-import { buildAlumnoSnapshot, FILTRO_ALUMNO } from '../utils/profeAlumnosSnapshot'
+import { buildAlumnoSnapshot, buildAlumnoIdentityMap, FILTRO_ALUMNO } from '../utils/profeAlumnosSnapshot'
 import ProfeTitanium from '../components/profe/ProfeTitanium'
 import '../components/profe/ProfeTitanium.css'
 import ModuleGateCard from '../components/ModuleGateCard'
@@ -134,7 +134,13 @@ export default function Profe() {
       if (document.visibilityState === 'visible') setHistorialTick((n) => n + 1)
     }
     document.addEventListener('visibilitychange', refrescar)
-    return () => document.removeEventListener('visibilitychange', refrescar)
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') setHistorialTick((n) => n + 1)
+    }, 20000)
+    return () => {
+      document.removeEventListener('visibilitychange', refrescar)
+      window.clearInterval(interval)
+    }
   }, [user?.id, puedeEntrenar, students.length])
 
   const qProfe = busquedaProfe.trim().toLowerCase()
@@ -155,12 +161,15 @@ export default function Profe() {
     })
   }, [adminVistaRows, qProfe])
 
+  const identityMap = useMemo(() => buildAlumnoIdentityMap(students), [students])
+
   const alumnosEnriquecidos = useMemo(
     () =>
-      students.map((s) =>
-        buildAlumnoSnapshot(s, userDataMap[s.studentId] || {}, assignmentsMap[s.studentId], hoy),
-      ),
-    [students, userDataMap, assignmentsMap, hoy],
+      students.map((s) => ({
+        ...buildAlumnoSnapshot(s, userDataMap[s.studentId] || {}, assignmentsMap[s.studentId], hoy),
+        identityIndex: identityMap.get(s.studentId) ?? 0,
+      })),
+    [students, userDataMap, assignmentsMap, hoy, identityMap],
   )
 
   const vincularAlumno = async () => {
@@ -308,7 +317,7 @@ export default function Profe() {
     )
   }
 
-  if (profileLoading) {
+  if (profileLoading && !profile) {
     return (
       <section className="section py-2 profe-page profe-titanium">
         <div className="container app-page-container profe-container">

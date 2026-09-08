@@ -90,12 +90,17 @@ export default function Ejercicios() {
   const [filtroHasta, setFiltroHasta] = useState('')
   const [filtrosOpen, setFiltrosOpen] = useState(false)
   const [editandoId, setEditandoId] = useState(null)
-  const [histLimit, setHistLimit] = useState(12)
+  const [histLimit, setHistLimit] = useState(7)
+  const [diasExpandidos, setDiasExpandidos] = useState(() => new Set())
   const [formAbierto, setFormAbierto] = useState(false)
 
   useEffect(() => {
     if (!tipoAdmiteKilometros(tipo) && modoMedida === 'km') setModoMedida('minutos')
   }, [tipo, modoMedida])
+
+  useEffect(() => {
+    setDiasExpandidos(new Set())
+  }, [filtroTexto, filtroCategoria, filtroDesde, filtroHasta])
 
   useEffect(() => {
     if (!formAbierto) return
@@ -232,6 +237,15 @@ export default function Ejercicios() {
   const eliminar = (id) => {
     if (editandoId === id) cerrarFormulario()
     setEjercicios((prev) => prev.filter((e) => e.id !== id))
+  }
+
+  const toggleDiaHistorial = (fecha) => {
+    setDiasExpandidos((prev) => {
+      const next = new Set(prev)
+      if (next.has(fecha)) next.delete(fecha)
+      else next.add(fecha)
+      return next
+    })
   }
 
   const ajustarDuracion = (delta) => {
@@ -509,25 +523,27 @@ export default function Ejercicios() {
                 onChange={(e) => setFiltroTexto(e.target.value)}
               />
             </div>
-            <div className="ej-hist-cats">
-              {CATEGORIAS_FILTRO.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  className={`ej-hist-cat-chip${filtroCategoria === cat ? ' is-active' : ''}`}
-                  onClick={() => setFiltroCategoria(cat)}
-                >
-                  {cat}
-                </button>
-              ))}
+            <div className="ej-hist-filters-row">
+              <div className="ej-hist-cats" role="group" aria-label="Filtrar por categoría">
+                {CATEGORIAS_FILTRO.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    className={`ej-rapido-chip ej-filter-chip${filtroCategoria === cat ? ' is-active' : ''}`}
+                    onClick={() => setFiltroCategoria(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className={`ej-export-btn ej-hist-filtros-btn${filtrosOpen ? ' is-active' : ''}`}
+                onClick={() => setFiltrosOpen((v) => !v)}
+              >
+                ☰ Filtros
+              </button>
             </div>
-            <button
-              type="button"
-              className={`ej-hist-filtros-btn${filtrosOpen ? ' is-active' : ''}`}
-              onClick={() => setFiltrosOpen((v) => !v)}
-            >
-              ☰ Filtros
-            </button>
           </div>
 
           {filtrosOpen && (
@@ -550,6 +566,7 @@ export default function Ejercicios() {
                   setFiltroCategoria('Todos')
                   setFiltroDesde('')
                   setFiltroHasta('')
+                  setDiasExpandidos(new Set())
                 }}
               >
                 Limpiar filtros
@@ -566,39 +583,60 @@ export default function Ejercicios() {
             </div>
           ) : (
             <div className="ej-hist-list">
-              {fechasVisibles.map((fecha) => (
-                <section key={fecha} className="ej-hist-dia">
-                  <h3 className="ej-hist-dia-titulo">{tituloDiaHistorial(fecha)}</h3>
-                  <ul className="ej-hist-items">
-                    {porFecha[fecha].map((e) => {
-                      const ui = getIconoActividad(e.tipo, e.nombre)
-                      const kcal = caloriasEjercicioRegistro(e, pesoKg)
-                      return (
-                        <li key={e.id} className="ej-hist-item">
-                          <span className={`ej-hist-icon ej-hist-icon--${ui.tone}`} aria-hidden>{ui.icon}</span>
-                          <div className="ej-hist-body">
-                            <strong className="ej-hist-nombre">{e.nombre}</strong>
-                            <span className={`ej-hist-cat ej-hist-cat--${ui.tone}`}>{getCategoriaTipo(e.tipo)}</span>
-                            {e.notas ? <p className="ej-hist-notas mb-0">{e.notas}</p> : null}
-                          </div>
-                          <div className="ej-hist-stats">
-                            <span>{e.duracion} min</span>
-                            <span className="ej-hist-kcal">~{kcal} kcal</span>
-                          </div>
-                          <div className="ej-hist-actions">
-                            <button type="button" className="ej-hist-edit" onClick={() => iniciarEdicion(e)} aria-label="Editar">
-                              ✏️
-                            </button>
-                            <button type="button" className="ej-hist-delete" onClick={() => eliminar(e.id)} aria-label="Eliminar">
-                              ×
-                            </button>
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </section>
-              ))}
+              {fechasVisibles.map((fecha) => {
+                const lista = porFecha[fecha]
+                const abierto = diasExpandidos.has(fecha)
+                const totalMin = lista.reduce((s, e) => s + (Number(e.duracion) || 0), 0)
+                const totalKcal = lista.reduce((s, e) => s + caloriasEjercicioRegistro(e, pesoKg), 0)
+                return (
+                  <section key={fecha} className={`ej-hist-dia${abierto ? ' is-open' : ''}`}>
+                    <button
+                      type="button"
+                      className="ej-hist-dia-toggle"
+                      onClick={() => toggleDiaHistorial(fecha)}
+                      aria-expanded={abierto}
+                    >
+                      <span className="ej-hist-dia-toggle-main">
+                        <span className="ej-hist-chevron" aria-hidden />
+                        <span className="ej-hist-dia-titulo">{tituloDiaHistorial(fecha)}</span>
+                      </span>
+                      <span className="ej-hist-dia-tag">
+                        {lista.length} sesión{lista.length !== 1 ? 'es' : ''} · {totalMin} min · ~{totalKcal} kcal
+                      </span>
+                    </button>
+                    {abierto && (
+                      <ul className="ej-hist-items">
+                        {lista.map((e) => {
+                          const ui = getIconoActividad(e.tipo, e.nombre)
+                          const kcal = caloriasEjercicioRegistro(e, pesoKg)
+                          return (
+                            <li key={e.id} className="ej-hist-item">
+                              <span className={`ej-hist-icon ej-hist-icon--${ui.tone}`} aria-hidden>{ui.icon}</span>
+                              <div className="ej-hist-body">
+                                <strong className="ej-hist-nombre">{e.nombre}</strong>
+                                <span className={`ej-hist-cat ej-hist-cat--${ui.tone}`}>{getCategoriaTipo(e.tipo)}</span>
+                                {e.notas ? <p className="ej-hist-notas mb-0">{e.notas}</p> : null}
+                              </div>
+                              <div className="ej-hist-stats">
+                                <span>{e.duracion} min</span>
+                                <span className="ej-hist-kcal">~{kcal} kcal</span>
+                              </div>
+                              <div className="ej-hist-actions">
+                                <button type="button" className="ej-hist-edit" onClick={() => iniciarEdicion(e)} aria-label="Editar">
+                                  ✏️
+                                </button>
+                                <button type="button" className="ej-hist-delete" onClick={() => eliminar(e.id)} aria-label="Eliminar">
+                                  ×
+                                </button>
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </section>
+                )
+              })}
             </div>
           )}
 
