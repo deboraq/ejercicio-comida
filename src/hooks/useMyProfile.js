@@ -18,8 +18,8 @@ export function useMyProfile() {
       return
     }
     let cancelled = false
-    setLoading(true)
     setProfileError(null)
+    if (tick === 0) setLoading(true)
     fetchMyProfile(user.id).then(({ data, error }) => {
       if (cancelled) return
       const errMsg = error?.message

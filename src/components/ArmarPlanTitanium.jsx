@@ -1,18 +1,22 @@
-import { useMemo, useState, useRef } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import { useStorage } from '../hooks/useStorage'
 import {
   itemEjercicioDiaNormalizado,
-  nombreDisplayPlan,
   inferirGruposMuscularesDia,
   inferirGrupoMuscular,
-  esCalentamientoPlan,
-  agruparPlanEnBloques,
   resumenPlanDia,
-  FILTROS_BIBLIOTECA,
-  matchFiltroBiblioteca,
+  GRUPOS_MUSCULARES_OPCIONES,
 } from '../utils/rutinaEjercicioDia'
-import { buscarEjercicios } from '../utils/rutinaEjercicios'
-
-const SS_OPTIONS = ['', 'A', 'B', 'C', 'D']
+import { grupoMuscularTone } from './profe/profeCatalogoUi'
+import {
+  applyProfeCatalogoSeedSync,
+  buscarSugerenciasCatalogo,
+  catalogoItemNormalizado,
+  getCategoriaCatalogo,
+} from '../utils/profeCatalogo'
+import ProfeCatalogoPickerModal from './profe/ProfeCatalogoPickerModal'
+import CatalogoEjercicioSuggest from './profe/CatalogoEjercicioSuggest'
+import './profe/ProfeTitanium.css'
 
 function IconChevronUp({ size = 16 }) {
   return (
@@ -61,20 +65,37 @@ const DIST_COLORS = {
   Otro: '#64748b',
 }
 
-function badgeMusculo(grupo) {
-  if (!grupo || grupo === 'Otro') return null
-  if (grupo === 'Calentamiento') return 'Calentamiento Activo'
-  if (grupo === 'Espalda') return 'Espalda / Dorsal'
-  if (grupo === 'Piernas') return 'Piernas / Cuádriceps'
-  if (grupo === 'Bíceps') return 'Bíceps / Flexores'
-  if (grupo === 'Tríceps') return 'Tríceps'
-  return grupo
-}
-
 function formatVolumen(kg) {
   if (!kg || kg <= 0) return '—'
   if (kg >= 1000) return `~${(kg / 1000).toFixed(1)}k kg`
   return `~${Math.round(kg)} kg`
+}
+
+function normalizarNombrePlan(n) {
+  return String(n || '').trim().toLocaleUpperCase('es')
+}
+
+function rowPlan(e) {
+  const it = itemEjercicioDiaNormalizado(e)
+  if (!it) return null
+  const raw = typeof e === 'object' && e ? e : {}
+  return {
+    ...it,
+    descansoPostRonda:
+      it.descansoPostRonda ||
+      (raw.descansoPostRonda != null ? String(raw.descansoPostRonda) : '') ||
+      (raw.descanso != null ? String(raw.descanso) : ''),
+    carga: it.carga || (raw.carga != null ? String(raw.carga) : ''),
+    grupoMuscular: it.grupoMuscular || inferirGrupoMuscular(it.nombre),
+    notas: it.notas || (raw.notas != null ? String(raw.notas).trim() : ''),
+  }
+}
+
+function grupoMuscularDisplay(row) {
+  const inferido = inferirGrupoMuscular(row?.nombre)
+  const guardado = String(row?.grupoMuscular || '').trim()
+  if (guardado && guardado !== 'Otro' && GRUPOS_MUSCULARES_OPCIONES.includes(guardado)) return guardado
+  return GRUPOS_MUSCULARES_OPCIONES.includes(inferido) ? inferido : 'Otro'
 }
 
 /**
@@ -88,114 +109,172 @@ export default function ArmarPlanTitanium({
   ejerciciosDelDia,
   origenEditable = true,
   onAñadirDia,
-  onDuplicarDia: _onDuplicarDia,
+  onDuplicarDia,
   onMoverDia,
   onRenombrarDia,
   onQuitarDia,
   onAñadirEjercicio,
+  onAñadirEjerciciosCatalogo,
   onQuitarEjercicio,
   onGuardarEjercicio,
+  onDuplicarEjercicio,
   onReordenar,
   onVincularSuperserie,
   onDesvincularSuperserie,
   onExportarPdf,
+  onToast,
 }) {
   const [busqueda, setBusqueda] = useState('')
-  const [filtro, setFiltro] = useState('Todos')
-  const [editIdx, setEditIdx] = useState(null)
-  const [draft, setDraft] = useState(null)
-  const [notasAbiertas, setNotasAbiertas] = useState({})
-  const [drag, setDrag] = useState(null)
-  const dragRef = useRef(null)
-  const listRef = useRef(null)
+  const [suggestOpen, setSuggestOpen] = useState(false)
+  const [suggestIdx, setSuggestIdx] = useState(-1)
+  const [catalogoAbierto, setCatalogoAbierto] = useState(false)
+  const [catalogo, setCatalogo] = useStorage('profeCatalogoEjercicios', [])
+  const [, setCatalogoMeta] = useStorage('profeCatalogoMeta', { seedVersion: 0 })
+  const [favoritos, setFavoritos] = useStorage('profeCatalogoFavoritos', [])
+  const [categoriasCustom, setCategoriasCustom] = useStorage('profeCatalogoCategorias', [])
+
+  useEffect(() => {
+    applyProfeCatalogoSeedSync(setCatalogo, setCatalogoMeta)
+  }, [setCatalogo, setCatalogoMeta])
+
+  const listC = useMemo(
+    () =>
+      (Array.isArray(catalogo) ? catalogo : [])
+        .map((c) => catalogoItemNormalizado(c))
+        .filter(Boolean)
+        .filter((c) => String(c.nombre || '').trim()),
+    [catalogo],
+  )
+  const listCOrdenado = useMemo(
+    () =>
+      [...listC].sort((a, b) =>
+        String(a.nombre || '').localeCompare(String(b.nombre || ''), undefined, { sensitivity: 'base' }),
+      ),
+    [listC],
+  )
+
+  const sugerencias = useMemo(
+    () => buscarSugerenciasCatalogo(listCOrdenado, busqueda, { limit: 8 }),
+    [listCOrdenado, busqueda],
+  )
+
+  const sugerenciasTotal = sugerencias.length + (busqueda.trim() ? 1 : 0)
+
+  const diaIdx = useMemo(() => dias.findIndex((d) => d.id === diaActual?.id), [dias, diaActual?.id])
+
+  const filasDelDia = useMemo(
+    () => (ejerciciosDelDia || []).map(rowPlan).filter(Boolean),
+    [ejerciciosDelDia],
+  )
 
   const enfoque = useMemo(
     () => inferirGruposMuscularesDia(ejerciciosDelDia) || 'Sin enfoque',
     [ejerciciosDelDia]
   )
   const resumen = useMemo(() => resumenPlanDia(ejerciciosDelDia), [ejerciciosDelDia])
-  const bloques = useMemo(() => agruparPlanEnBloques(ejerciciosDelDia), [ejerciciosDelDia])
 
-  const catalogo = useMemo(() => {
-    const base = busqueda.trim() ? buscarEjercicios(busqueda) : buscarEjercicios('')
-    return base.filter((n) => matchFiltroBiblioteca(n, filtro)).slice(0, 10)
-  }, [busqueda, filtro])
-
-  const displayNum = (idx, it) => {
-    if (esCalentamientoPlan(it)) return 0
-    let n = 0
-    for (let i = 0; i <= idx; i += 1) {
-      const cur = itemEjercicioDiaNormalizado(ejerciciosDelDia[i])
-      if (!cur) continue
-      if (esCalentamientoPlan(cur)) continue
-      n += 1
-    }
-    return n
+  const abrirCatalogo = () => {
+    applyProfeCatalogoSeedSync(setCatalogo, setCatalogoMeta)
+    setCatalogoAbierto(true)
   }
 
-  const iniciarEdit = (idx) => {
-    const it = itemEjercicioDiaNormalizado(ejerciciosDelDia[idx])
-    if (!it) return
-    setEditIdx(idx)
-    setDraft({
-      nombre: it.nombre,
-      series: it.series,
-      repeticiones: it.repeticiones,
-      superserie: it.superserie || '',
-      descansoPostRonda: it.descansoPostRonda || '',
-      grupoMuscular: it.grupoMuscular || inferirGrupoMuscular(it),
-      carga: it.carga || '',
-      notas: it.notas || '',
+  const agregarPersonalizado = (nombreRaw) => {
+    const n = String(nombreRaw ?? busqueda).trim() || window.prompt('Nombre del ejercicio personalizado')
+    if (n?.trim()) {
+      onAñadirEjercicio(n.trim())
+      setBusqueda('')
+      setSuggestOpen(false)
+      setSuggestIdx(-1)
+    }
+  }
+
+  const agregarDesdeCatalogo = (item) => {
+    if (!item?.nombre) return
+    onAñadirEjercicio({
+      nombre: String(item.nombre).trim(),
+      notas: String(item.notas || '').trim(),
+      categoria: getCategoriaCatalogo(item),
     })
+    setBusqueda('')
+    setSuggestOpen(false)
+    setSuggestIdx(-1)
+    onToast?.({ msg: `«${item.nombre}» sumado al día.` })
   }
 
-  const cancelarEdit = () => {
-    setEditIdx(null)
-    setDraft(null)
+  const onBusquedaChange = (value) => {
+    setBusqueda(value)
+    setSuggestOpen(Boolean(String(value).trim()))
+    setSuggestIdx(-1)
   }
 
-  const guardarEdit = () => {
-    if (editIdx == null || !draft?.nombre?.trim()) return
-    onGuardarEjercicio(editIdx, draft)
-    cancelarEdit()
-  }
-
-  const idxDesdePuntero = (clientY) => {
-    const list = listRef.current
-    if (!list) return null
-    const rows = [...list.querySelectorAll('[data-plan-idx]')]
-    if (!rows.length) return null
-    for (const row of rows) {
-      const rect = row.getBoundingClientRect()
-      if (clientY < rect.top + rect.height / 2) return Number(row.dataset.planIdx)
+  const onBusquedaKeyDown = (e) => {
+    if (!busqueda.trim()) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSuggestOpen(true)
+      setSuggestIdx((i) => (i + 1) % sugerenciasTotal)
+      return
     }
-    return Number(rows[rows.length - 1].dataset.planIdx)
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSuggestOpen(true)
+      setSuggestIdx((i) => (i <= 0 ? sugerenciasTotal - 1 : i - 1))
+      return
+    }
+    if (e.key === 'Escape') {
+      setSuggestOpen(false)
+      setSuggestIdx(-1)
+      return
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (suggestIdx >= 0 && suggestIdx < sugerencias.length) {
+        agregarDesdeCatalogo(sugerencias[suggestIdx])
+        return
+      }
+      if (suggestIdx === sugerencias.length || sugerencias.length === 0) {
+        agregarPersonalizado(busqueda)
+        return
+      }
+      if (sugerencias.length === 1) {
+        agregarDesdeCatalogo(sugerencias[0])
+      }
+    }
   }
 
-  const onPointerDown = (e, idx) => {
-    if (!origenEditable || editIdx != null) return
-    if (e.button != null && e.button !== 0) return
-    e.preventDefault()
-    dragRef.current = { fromIdx: idx, overIdx: idx }
-    setDrag({ fromIdx: idx, overIdx: idx })
-    e.currentTarget.setPointerCapture?.(e.pointerId)
+  const patchEjercicioCampo = (idx, campo, valor) => {
+    const prev = rowPlan(ejerciciosDelDia[idx])
+    if (!prev) return
+    const next = {
+      ...prev,
+      [campo]: campo === 'nombre' ? normalizarNombrePlan(valor) : valor,
+    }
+    if (campo === 'nombre') {
+      const guardado = String(prev.grupoMuscular || '').trim()
+      if (!guardado || guardado === 'Otro') {
+        const sugerido = inferirGrupoMuscular(next.nombre)
+        if (sugerido !== 'Otro') next.grupoMuscular = sugerido
+      }
+    }
+    onGuardarEjercicio?.(idx, next)
   }
 
-  const onPointerMove = (e) => {
-    const state = dragRef.current
-    if (!state) return
-    const overIdx = idxDesdePuntero(e.clientY)
-    if (overIdx == null || overIdx === state.overIdx) return
-    state.overIdx = overIdx
-    setDrag({ fromIdx: state.fromIdx, overIdx })
+  const aplicarCategoriasSugeridas = () => {
+    let n = 0
+    filasDelDia.forEach((row, idx) => {
+      const guardado = String(row.grupoMuscular || '').trim()
+      if (guardado && guardado !== 'Otro') return
+      const sugerido = inferirGrupoMuscular(row.nombre)
+      if (sugerido === 'Otro') return
+      onGuardarEjercicio?.(idx, { ...row, grupoMuscular: sugerido })
+      n += 1
+    })
+    onToast?.({ msg: n ? `Categorías sugeridas en ${n} ejercicio${n === 1 ? '' : 's'}.` : 'No había categorías para inferir.' })
   }
 
-  const onPointerUp = () => {
-    const state = dragRef.current
-    if (!state) return
-    onReordenar(state.fromIdx, state.overIdx)
-    dragRef.current = null
-    setDrag(null)
+  const reordenarEjercicioDrag = (desde, hasta) => {
+    if (desde == null || hasta == null || desde === hasta) return
+    onReordenar?.(desde, hasta)
   }
 
   const promptRenombrar = (d) => {
@@ -210,217 +289,173 @@ export default function ArmarPlanTitanium({
     return enf ? `Día ${di + 1}: ${enf}` : `Día ${di + 1}`
   }
 
-  const renderCard = (it, idx, { enSs = false, ssLabel = '' } = {}) => {
-    const editando = editIdx === idx
-    const warm = esCalentamientoPlan(it)
-    const num = displayNum(idx, it)
-    const musculo = badgeMusculo(it.grupoMuscular || inferirGrupoMuscular(it))
-    const isDragging = drag?.fromIdx === idx
-    const isDrop = drag && drag.overIdx === idx && drag.fromIdx !== idx
-    const notasOpen = notasAbiertas[idx]
+  const diaTone = (diaIdx >= 0 ? diaIdx : 0) % 6
 
-    if (editando && draft) {
-      return (
-        <div
-          key={`edit-${idx}`}
-          data-plan-idx={idx}
-          className="ap-ex-card ap-ex-card--edit"
-        >
-          <div className="ap-edit-head">
-            <span className="ap-edit-badge">{num}</span>
-            <div>
-              <p className="ap-edit-kicker mb-0">Modo edición rápida</p>
-              <p className="ap-edit-hint mb-0">Modificando parámetros de ejecución</p>
-            </div>
-          </div>
-          <div className="ap-edit-name-row">
-            <input
-              className="ap-input ap-input--grow"
-              type="text"
-              value={draft.nombre}
-              onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))}
-              placeholder="Nombre del ejercicio"
-              autoFocus
-            />
-            <span className="ap-pill ap-pill--muted">
-              {badgeMusculo(draft.grupoMuscular || inferirGrupoMuscular(draft.nombre)) || 'Sin grupo'}
-            </span>
-          </div>
-          <div className="ap-edit-grid">
-            <label className="ap-field">
-              <span>Series</span>
-              <input
-                className="ap-input"
-                type="text"
-                inputMode="numeric"
-                value={draft.series}
-                onChange={(e) => setDraft((d) => ({ ...d, series: e.target.value }))}
-                placeholder="3"
-              />
-            </label>
-            <label className="ap-field">
-              <span>Reps</span>
-              <input
-                className="ap-input"
-                type="text"
-                value={draft.repeticiones}
-                onChange={(e) => setDraft((d) => ({ ...d, repeticiones: e.target.value }))}
-                placeholder="8-10 o 8+8"
-              />
-            </label>
-            <label className="ap-field">
-              <span>Superserie</span>
-              <select
-                className="ap-input"
-                value={draft.superserie}
-                onChange={(e) => setDraft((d) => ({ ...d, superserie: e.target.value }))}
-              >
-                <option value="">Sin superserie</option>
-                {SS_OPTIONS.filter(Boolean).map((L) => (
-                  <option key={L} value={L}>Superserie {L}</option>
-                ))}
-              </select>
-            </label>
-            <label className="ap-field">
-              <span>Descanso ronda (seg)</span>
-              <input
-                className="ap-input"
-                type="text"
-                inputMode="numeric"
-                value={draft.descansoPostRonda}
-                onChange={(e) => setDraft((d) => ({ ...d, descansoPostRonda: e.target.value }))}
-                placeholder="90"
-                disabled={!draft.superserie}
-              />
-            </label>
-            <label className="ap-field ap-field--span2">
-              <span>Carga sugerida</span>
-              <input
-                className="ap-input"
-                type="text"
-                value={draft.carga}
-                onChange={(e) => setDraft((d) => ({ ...d, carga: e.target.value }))}
-                placeholder="25 - 30 kg"
-              />
-            </label>
-            <label className="ap-field ap-field--span2">
-              <span>Grupo muscular</span>
-              <select
-                className="ap-input"
-                value={draft.grupoMuscular || ''}
-                onChange={(e) => setDraft((d) => ({ ...d, grupoMuscular: e.target.value }))}
-              >
-                <option value="">Auto</option>
-                {['Calentamiento', 'Pecho', 'Espalda', 'Piernas', 'Hombros', 'Bíceps', 'Tríceps', 'Core'].map((g) => (
-                  <option key={g} value={g}>{g}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label className="ap-field">
-            <span>Notas técnicas</span>
-            <textarea
-              className="ap-input ap-textarea"
-              rows={2}
-              value={draft.notas}
-              onChange={(e) => setDraft((d) => ({ ...d, notas: e.target.value }))}
-              placeholder="Palmas mirando hacia ti, foco en retracción escapular…"
-            />
-          </label>
-          <div className="ap-edit-actions">
-            <button type="button" className="ap-btn ap-btn--ghost" onClick={cancelarEdit}>Cancelar</button>
-            <button
-              type="button"
-              className="ap-btn ap-btn--primary"
-              disabled={!draft.nombre.trim()}
-              onClick={guardarEdit}
-            >
-              Guardar cambios
-            </button>
-          </div>
-        </div>
-      )
-    }
+  const renderFilaEjercicio = (row, idx) => {
+    const prev = filasDelDia[idx - 1]
+    const grupoVal = grupoMuscularDisplay(row)
+    const payload = JSON.stringify({ idx })
+    const enSs = Boolean(row.superserie)
+    const esPrimeroSs = enSs && (!prev || prev.superserie !== row.superserie)
+    const esContinuacionSs = enSs && prev?.superserie === row.superserie
+    const showVincular = origenEditable && !enSs && idx < filasDelDia.length - 1
+    const ro = !origenEditable
 
     return (
-      <div
-        key={`${it.nombre}-${idx}`}
-        data-plan-idx={idx}
-        className={`ap-ex-card${warm ? ' is-warm' : ''}${enSs ? ' is-ss-item' : ''}${isDragging ? ' is-dragging' : ''}${isDrop ? ' is-drop' : ''}`}
-      >
-        <button
-          type="button"
-          className="ap-drag"
-          aria-label={`Arrastrar ${it.nombre}`}
-          disabled={!origenEditable}
-          onPointerDown={(e) => onPointerDown(e, idx)}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-        >
-          ⠿
-        </button>
-        <span className={`ap-num${warm ? ' is-warm' : ''}`}>{num}</span>
-        <div className="ap-ex-body">
-          <div className="ap-ex-top">
-            <div className="ap-ex-title-row">
-              <h4 className="ap-ex-title">{nombreDisplayPlan(it.nombre)}</h4>
-              {musculo && (
-                <span className={`ap-pill${warm ? ' ap-pill--warm' : ' ap-pill--muted'}`}>{musculo}</span>
-              )}
-            </div>
-                            {origenEditable && (
-              <div className="ap-ex-actions">
-                <button type="button" className="ap-ico" onClick={() => iniciarEdit(idx)} title="Editar" aria-label="Editar"><IconPencil size={14} /></button>
-                <button type="button" className="ap-ico is-danger" onClick={() => onQuitarEjercicio(idx)} title="Quitar" aria-label="Quitar"><IconClose size={14} /></button>
-              </div>
-            )}
+      <li key={`ap-ex-${idx}`} className="ap-ws-exercise-item">
+        {esContinuacionSs ? (
+          <div className="ap-ss-link">
+            <span>+ Sin descanso intermedio</span>
           </div>
-          <div className="ap-metrics">
-            {(it.series || it.repeticiones) ? (
-              <span className="ap-metric ap-metric--blue">
-                {it.series && it.repeticiones
-                  ? `${it.series} × ${it.repeticiones}${/reps?/i.test(it.repeticiones) ? '' : ' reps'}`
-                  : it.series
-                    ? `${it.series} series`
-                    : `${it.repeticiones} reps`}
-              </span>
-            ) : warm ? (
-              <span className="ap-metric-muted">Sin series/reps sugeridas adicionales</span>
-            ) : (
-              <span className="ap-metric-muted">Sin series/reps</span>
-            )}
-            {it.carga ? <span className="ap-metric">Carga: {it.carga}</span> : null}
-            {enSs && it.descansoPostRonda ? (
-              <span className="ap-metric ap-metric--violet">Descanso: al terminar ronda ({it.descansoPostRonda}s)</span>
-            ) : !enSs && it.descansoPostRonda ? (
-              <span className="ap-metric">Descanso: {it.descansoPostRonda}s</span>
+        ) : null}
+        {esPrimeroSs ? (
+          <div className="ap-ss-inline-head">
+            <span className="ap-ss-badge">⚡ SUPERSERIE {row.superserie}</span>
+            {row.descansoPostRonda ? (
+              <span className="ap-ss-meta">Descanso fin de ronda: {row.descansoPostRonda}s</span>
             ) : null}
-            {enSs && ssLabel ? <span className="ap-metric ap-metric--violet">SS {ssLabel}</span> : null}
+            {origenEditable ? (
+              <button type="button" className="pf-ws-link-btn" onClick={() => onDesvincularSuperserie(row.superserie)}>
+                Desvincular
+              </button>
+            ) : null}
           </div>
-          {it.notas ? (
-            <div className="ap-notas">
+        ) : null}
+        <div
+          className={`pf-ws-exercise-row pf-ws-exercise-row--tone-${diaTone}${enSs ? ' is-ss-row' : ''}`}
+          draggable={origenEditable}
+          onDragStart={(e) => {
+            if (!origenEditable) return
+            e.dataTransfer.setData('application/x-ap-plan-ej', payload)
+            e.dataTransfer.setData('text/plain', payload)
+            e.dataTransfer.effectAllowed = 'move'
+          }}
+          onDragOver={(e) => {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = 'move'
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            let data
+            try {
+              data = JSON.parse(e.dataTransfer.getData('application/x-ap-plan-ej') || '{}')
+            } catch {
+              return
+            }
+            if (typeof data.idx === 'number') reordenarEjercicioDrag(data.idx, idx)
+          }}
+        >
+          <span className="pf-ws-drag" title="Arrastrar para reordenar" aria-hidden>
+            ::
+          </span>
+          <span className="pf-ws-exercise-index">{idx + 1}</span>
+          <div className="pf-ws-exercise-info">
+            <input
+              className="pf-ws-exercise-name"
+              value={row.nombre}
+              readOnly={ro}
+              disabled={ro}
+              onChange={(e) => patchEjercicioCampo(idx, 'nombre', e.target.value)}
+              placeholder="Nombre del ejercicio"
+              title={row.nombre || 'Nombre del ejercicio'}
+            />
+            <label className="pf-ws-exercise-comment">
+              <span className="pf-ws-exercise-comment-label">Comentario</span>
+              <input
+                type="text"
+                value={row.notas || ''}
+                readOnly={ro}
+                disabled={ro}
+                onChange={(e) => patchEjercicioCampo(idx, 'notas', e.target.value)}
+                placeholder="Técnica, ritmo, variantes…"
+              />
+            </label>
+          </div>
+          <div className="pf-ws-exercise-fields">
+            <label className="pf-ws-field-box pf-ws-field-box--muscle">
+              <span>Grupo</span>
+              <select
+                className={`pf-ws-muscle-select pf-ws-muscle--${grupoMuscularTone(grupoVal)}`}
+                value={grupoVal}
+                disabled={ro}
+                onChange={(e) => patchEjercicioCampo(idx, 'grupoMuscular', e.target.value)}
+                aria-label="Grupo muscular"
+              >
+                {GRUPOS_MUSCULARES_OPCIONES.map((g) => (
+                  <option key={g} value={g}>
+                    {g.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="pf-ws-field-box">
+              <span>Series</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={row.series || ''}
+                readOnly={ro}
+                disabled={ro}
+                onChange={(e) => patchEjercicioCampo(idx, 'series', e.target.value)}
+                placeholder="4"
+              />
+            </label>
+            <label className="pf-ws-field-box">
+              <span>Rango</span>
+              <input
+                type="text"
+                value={row.repeticiones || ''}
+                readOnly={ro}
+                disabled={ro}
+                onChange={(e) => patchEjercicioCampo(idx, 'repeticiones', e.target.value)}
+                placeholder="6 - 8"
+              />
+            </label>
+            <label className="pf-ws-field-box">
+              <span>Descanso</span>
+              <input
+                type="text"
+                value={row.descansoPostRonda || ''}
+                readOnly={ro}
+                disabled={ro}
+                onChange={(e) => patchEjercicioCampo(idx, 'descansoPostRonda', e.target.value)}
+                placeholder="120s"
+              />
+            </label>
+            <label className="pf-ws-field-box">
+              <span>Carga</span>
+              <input
+                type="text"
+                value={row.carga || ''}
+                readOnly={ro}
+                disabled={ro}
+                onChange={(e) => patchEjercicioCampo(idx, 'carga', e.target.value)}
+                placeholder="25 kg"
+              />
+            </label>
+          </div>
+          {origenEditable ? (
+            <div className="pf-ws-exercise-actions">
+              <button type="button" className="pf-ws-icon-btn" title="Duplicar fila" onClick={() => onDuplicarEjercicio?.(idx)}>
+                ⧉
+              </button>
               <button
                 type="button"
-                className="ap-notas-toggle"
-                onClick={() => setNotasAbiertas((p) => ({ ...p, [idx]: !p[idx] }))}
+                className="pf-ws-icon-btn pf-ws-icon-btn--danger"
+                title="Quitar ejercicio"
+                onClick={() => onQuitarEjercicio(idx)}
               >
-                {notasOpen ? 'Ocultar notas' : 'Ver notas técnicas'}
+                ×
               </button>
-              {notasOpen && <p className="ap-notas-text">“{it.notas}”</p>}
             </div>
           ) : null}
-          {origenEditable && !enSs && idx < ejerciciosDelDia.length - 1 && !it.superserie && (
-            <button
-              type="button"
-              className="ap-link-ss"
-              onClick={() => onVincularSuperserie(idx)}
-            >
-              ⚡ Vincular en superserie con el siguiente
-            </button>
-          )}
         </div>
-      </div>
+        {showVincular ? (
+          <button type="button" className="ap-link-ss" onClick={() => onVincularSuperserie(idx)}>
+            ⚡ Vincular en superserie con el siguiente
+          </button>
+        ) : null}
+      </li>
     )
   }
 
@@ -431,7 +466,9 @@ export default function ArmarPlanTitanium({
           <div className="ap-panel-head">
             <div>
               <h2 className="ap-title">Armá tu plan</h2>
-              <p className="ap-sub">Días con enfoque, ejercicios estructurados y superseries visuales.</p>
+              <p className="ap-sub">
+                Días, catálogo de gym, superseries, resumen y distribución muscular — como en plantillas del profe.
+              </p>
             </div>
             {origenEditable && (
               <button type="button" className="ap-btn ap-btn--primary" onClick={onAñadirDia}>
@@ -453,7 +490,7 @@ export default function ArmarPlanTitanium({
                     className="ap-day-main"
                     role="tab"
                     aria-selected={activo}
-                    onClick={() => { setDiaEditando(d.id); cancelarEdit() }}
+                    onClick={() => setDiaEditando(d.id)}
                   >
                     <div className="ap-day-top">
                       <span className="ap-day-label">Día {di + 1}</span>
@@ -469,6 +506,9 @@ export default function ArmarPlanTitanium({
                       <button type="button" className="ap-day-tool" disabled={di === dias.length - 1} onClick={() => onMoverDia(d.id, 1)} title="Bajar" aria-label="Bajar">
                         <IconChevronDown />
                       </button>
+                      <button type="button" className="ap-day-tool" onClick={() => onDuplicarDia?.(d.id)} title="Duplicar día" aria-label="Duplicar día">
+                        <span className="ap-day-tool-txt">⧉</span>
+                      </button>
                       <button type="button" className="ap-day-tool" onClick={() => promptRenombrar(d)} title="Renombrar" aria-label="Renombrar">
                         <IconPencil />
                       </button>
@@ -477,7 +517,7 @@ export default function ArmarPlanTitanium({
                       </button>
                     </div>
                   ) : (
-                    <button type="button" className="ap-day-edit-link" onClick={() => { setDiaEditando(d.id); cancelarEdit() }}>
+                    <button type="button" className="ap-day-edit-link" onClick={() => setDiaEditando(d.id)}>
                       Editar
                     </button>
                   )}
@@ -486,146 +526,100 @@ export default function ArmarPlanTitanium({
             })}
           </div>
 
-          {origenEditable && (
-            <div className="ap-add">
-              <p className="ap-add-label">Agregar ejercicio a {diaActual?.nombre || 'este día'}</p>
-              <div className="ap-add-row">
-                <div className="ap-search">
-                  <span aria-hidden>🔍</span>
-                  <input
-                    type="text"
-                    value={busqueda}
-                    onChange={(e) => setBusqueda(e.target.value)}
-                    placeholder="Buscar ejercicio en la biblioteca (ej. Press banca, Sentadilla…)"
-                    autoComplete="off"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && busqueda.trim()) {
-                        e.preventDefault()
-                        const pick = catalogo[0] || busqueda.trim()
-                        onAñadirEjercicio(pick)
-                        setBusqueda('')
-                      }
-                    }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="ap-btn ap-btn--ghost"
-                  onClick={() => {
-                    const n = window.prompt('Nombre del ejercicio personalizado')
-                    if (n?.trim()) {
-                      onAñadirEjercicio(n.trim())
-                      setBusqueda('')
-                    }
-                  }}
-                >
-                  + Crear personalizado
-                </button>
-              </div>
-              <div className="ap-filters" role="group" aria-label="Filtros musculares">
-                {FILTROS_BIBLIOTECA.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    className={`ap-filter${filtro === f.id ? ' is-active' : ''}`}
-                    onClick={() => setFiltro(f.id)}
-                  >
-                    {f.label}
+          {origenEditable ? (
+            <div className={`ap-ws-block pf-ws-exercise-panel pf-ws-day-tone-${diaTone}`}>
+              <p className="ap-add-label mb-2">
+                Agregar ejercicios al {diaActual?.nombre || `Día ${diaIdx + 1}`}
+              </p>
+              <div className="pf-ws-exercise-toolbar">
+                <div className="pf-ws-exercise-toolbar-top">
+                  <div className="pf-ws-exercise-search-wrap">
+                    <span className="pf-ws-search-icon" aria-hidden>
+                      ⌕
+                    </span>
+                    <input
+                      type="search"
+                      className="pf-ws-exercise-search"
+                      value={busqueda}
+                      onChange={(e) => onBusquedaChange(e.target.value)}
+                      onFocus={() => busqueda.trim() && setSuggestOpen(true)}
+                      onBlur={() => window.setTimeout(() => setSuggestOpen(false), 120)}
+                      onKeyDown={onBusquedaKeyDown}
+                      placeholder="Buscar ejercicio del catálogo (ej. Press banca…)"
+                      autoComplete="off"
+                      role="combobox"
+                      aria-expanded={suggestOpen && Boolean(busqueda.trim())}
+                      aria-autocomplete="list"
+                    />
+                    <CatalogoEjercicioSuggest
+                      open={suggestOpen}
+                      query={busqueda}
+                      items={sugerencias}
+                      highlightIdx={suggestIdx}
+                      onPick={agregarDesdeCatalogo}
+                      onAddCustom={agregarPersonalizado}
+                      variant="pf"
+                    />
+                  </div>
+                  <button type="button" className="pf-btn pf-btn--outline pf-btn--sm pf-ws-btn-catalog" onClick={abrirCatalogo}>
+                    <span className="pf-ws-btn-icon" aria-hidden>
+                      ▦
+                    </span>
+                    Ver catálogo
                   </button>
-                ))}
+                  <button type="button" className="pf-btn pf-btn--primary pf-btn--sm pf-ws-btn-custom" onClick={() => agregarPersonalizado()}>
+                    + Personalizado
+                  </button>
+                </div>
+                <p className="pf-ws-catalog-collapsed-hint mb-0">
+                  Escribí para ver sugerencias del catálogo. Tocá una o usá <strong>+ Personalizado</strong> / Enter para el
+                  nombre que escribiste. La biblioteca completa está en <strong>Ver catálogo</strong>.
+                </p>
               </div>
-              {(busqueda.trim() || filtro !== 'Todos') && catalogo.length > 0 && (
-                <ul className="ap-suggest">
-                  {catalogo.map((ex) => (
-                    <li key={ex}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onAñadirEjercicio(ex)
-                          setBusqueda('')
-                        }}
-                      >
-                        <span>+ {ex}</span>
-                        <span className="ap-suggest-g">{inferirGrupoMuscular(ex)}</span>
+
+              <div className="pf-ws-exercise-list-head">
+                <span>
+                  Lista de ejercicios cargados ({filasDelDia.length} en {diaActual?.nombre || `Día ${diaIdx + 1}`})
+                </span>
+                <span className="pf-ws-exercise-list-hint">
+                  Arrastrá desde <strong>::</strong> para reordenar
+                  {origenEditable ? (
+                    <>
+                      {' '}
+                      ·{' '}
+                      <button type="button" className="pf-ws-link-btn" onClick={aplicarCategoriasSugeridas}>
+                        Aplicar categorías sugeridas
                       </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {busqueda.trim() && catalogo.length === 0 && (
-                <button
-                  type="button"
-                  className="ap-btn ap-btn--ghost ap-btn--sm"
-                  onClick={() => {
-                    onAñadirEjercicio(busqueda.trim())
-                    setBusqueda('')
-                  }}
-                >
-                  + Agregar “{busqueda.trim()}”
-                </button>
-              )}
-            </div>
-          )}
+                    </>
+                  ) : null}
+                </span>
+              </div>
 
-          <div className="ap-list-head">
-            <h3 className="ap-list-title">
-              {tituloDia(diaActual || { nombre: 'Día' }, dias.findIndex((d) => d.id === diaActual?.id))}
-              <span className="ap-list-count"> · {ejerciciosDelDia.length} ejercicio{ejerciciosDelDia.length !== 1 ? 's' : ''}</span>
-            </h3>
-            <span className="ap-list-hint">arrastrá ⠿ para ordenar</span>
-          </div>
-
-          {ejerciciosDelDia.length === 0 ? (
-            <div className="ap-empty">
-              <p className="mb-0">Todavía no hay ejercicios en este día.</p>
-              <p className="ap-empty-sub mb-0">Buscá arriba o creá uno personalizado.</p>
+              {filasDelDia.length === 0 ? (
+                <div className="pf-ws-exercise-empty">
+                  <p className="pf-ws-exercise-empty-title">Sin ejercicios en este día</p>
+                  <p className="pf-ws-exercise-empty-text">
+                    Abrí <strong>Ver catálogo</strong> para elegir ejercicios o tocá <strong>+ Personalizado</strong>.
+                  </p>
+                </div>
+              ) : (
+                <ul className="pf-ws-exercise-list">{filasDelDia.map((row, idx) => renderFilaEjercicio(row, idx))}</ul>
+              )}
             </div>
           ) : (
-            <div className={`ap-list${drag ? ' is-dragging' : ''}`} ref={listRef}>
-              {bloques.map((bloque) => {
-                if (bloque.tipo === 'superserie') {
-                  const descanso = bloque.descansoPostRonda || '90'
-                  return (
-                    <div key={bloque.id} className="ap-ss">
-                      <div className="ap-ss-head">
-                        <span className="ap-ss-badge">⚡ SUPERSERIE {bloque.label}</span>
-                        <span className="ap-ss-meta">
-                          Ejercicios combinados sin pausa intermedia · Descanso fin de ronda: <strong>{descanso} seg</strong>
-                        </span>
-                        {origenEditable && (
-                          <div className="ap-ss-actions">
-                            <button
-                              type="button"
-                              className="ap-btn ap-btn--ghost ap-btn--sm"
-                              onClick={() => iniciarEdit(bloque.indices[0])}
-                            >
-                              Editar ronda
-                            </button>
-                            <button
-                              type="button"
-                              className="ap-btn ap-btn--ghost ap-btn--sm"
-                              onClick={() => onDesvincularSuperserie(bloque.label)}
-                            >
-                              Desvincular
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      {bloque.items.map((it, i) => (
-                        <div key={`${bloque.id}-${i}`}>
-                          {renderCard(it, bloque.indices[i], { enSs: true, ssLabel: bloque.label })}
-                          {i < bloque.items.length - 1 && (
-                            <div className="ap-ss-link">
-                              <span>+ Sin descanso intermedio</span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )
-                }
-                return renderCard(bloque.items[0], bloque.indices[0])
-              })}
+            <div className={`ap-ws-block pf-ws-exercise-panel ap-ws-readonly pf-ws-day-tone-${diaTone}`}>
+              <div className="pf-ws-exercise-list-head">
+                <span>
+                  Lista de ejercicios ({filasDelDia.length} en {diaActual?.nombre || `Día ${diaIdx + 1}`})
+                </span>
+              </div>
+              {filasDelDia.length === 0 ? (
+                <div className="pf-ws-exercise-empty">
+                  <p className="pf-ws-exercise-empty-title mb-0">Sin ejercicios en este día</p>
+                </div>
+              ) : (
+                <ul className="pf-ws-exercise-list">{filasDelDia.map((row, idx) => renderFilaEjercicio(row, idx))}</ul>
+              )}
             </div>
           )}
         </div>
@@ -703,6 +697,26 @@ export default function ArmarPlanTitanium({
           )}
         </div>
       </aside>
+
+      <ProfeCatalogoPickerModal
+        open={catalogoAbierto}
+        dayLabel={diaActual?.nombre || `Día ${diaIdx + 1}`}
+        dayTone={diaIdx >= 0 ? diaIdx : 0}
+        items={listCOrdenado}
+        setItems={setCatalogo}
+        favoritos={favoritos}
+        setFavoritos={setFavoritos}
+        categoriasCustom={categoriasCustom}
+        setCategoriasCustom={setCategoriasCustom}
+        initialQ={busqueda.trim()}
+        onClose={() => setCatalogoAbierto(false)}
+        onApply={(picked) => {
+          if (picked?.length) onAñadirEjerciciosCatalogo?.(picked)
+          setCatalogoAbierto(false)
+          setBusqueda('')
+        }}
+        onToast={onToast}
+      />
     </div>
   )
 }

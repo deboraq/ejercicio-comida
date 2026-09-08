@@ -17,18 +17,56 @@ export function inicialesAlumno(fullName, email) {
   return src.slice(0, 2).toUpperCase()
 }
 
-export function colorAvatar(seed = '') {
-  const colors = ['#8b5cf6', '#f97316', '#10b981', '#3b82f6', '#ec4899', '#64748b']
-  let h = 0
-  for (let i = 0; i < seed.length; i += 1) h = (h + seed.charCodeAt(i) * 17) % colors.length
-  return colors[h]
+const ALUMNO_IDENTITY_COUNT = 6
+
+/** Índice estable 0–5 (djb2) priorizando studentId para evitar colisiones entre emails parecidos. */
+export function alumnoIdentityIndex(seed = '') {
+  const s = String(seed || '')
+  let h = 5381
+  for (let i = 0; i < s.length; i += 1) h = ((h << 5) + h) ^ s.charCodeAt(i)
+  return Math.abs(h) % ALUMNO_IDENTITY_COUNT
+}
+
+const ALUMNO_IDENTITY_HEX = ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#14b8a6']
+
+function resolveIdentityIndex(seedOrIndex) {
+  return typeof seedOrIndex === 'number' ? seedOrIndex : alumnoIdentityIndex(seedOrIndex)
+}
+
+/** Mapa studentId → índice único entre los alumnos visibles (sin repetir color en la lista). */
+export function buildAlumnoIdentityMap(students = []) {
+  const map = new Map()
+  const used = new Set()
+  const sorted = [...students].sort((a, b) =>
+    String(a.studentId || a.email || '').localeCompare(String(b.studentId || b.email || '')),
+  )
+  for (const s of sorted) {
+    const key = s.studentId || s.email
+    if (!key) continue
+    let idx = alumnoIdentityIndex(key)
+    let bump = 0
+    while (used.has(idx) && bump < ALUMNO_IDENTITY_COUNT) {
+      idx = (idx + 1) % ALUMNO_IDENTITY_COUNT
+      bump += 1
+    }
+    used.add(idx)
+    map.set(s.studentId, idx)
+  }
+  return map
+}
+
+export function colorAvatar(seedOrIndex = '') {
+  return ALUMNO_IDENTITY_HEX[resolveIdentityIndex(seedOrIndex)]
 }
 
 /** Clase CSS de tono para avatar con degradado (0–5). */
-export function avatarToneClass(seed = '') {
-  let h = 0
-  for (let i = 0; i < seed.length; i += 1) h = (h + seed.charCodeAt(i) * 17) % 6
-  return `pf-avatar-tone-${h}`
+export function avatarToneClass(seedOrIndex = '') {
+  return `pf-avatar-tone-${resolveIdentityIndex(seedOrIndex)}`
+}
+
+/** Clase CSS de identidad visual para tarjeta de alumno (0–5). */
+export function alumnoCardIdentityClass(seedOrIndex = '') {
+  return `pf-alumno-tone-${resolveIdentityIndex(seedOrIndex)}`
 }
 
 function ultimoRegistroRutina(regs) {
@@ -149,8 +187,13 @@ export function buildFeedActividad(alumnosConSnapshot, userDataMap = {}, hoy = f
     const rutinaPesos = Array.isArray(ud.rutinaPesos) ? ud.rutinaPesos : []
     const comida = Array.isArray(ud.comida) ? ud.comida : []
     const ejercicios = Array.isArray(ud.ejercicios) ? ud.ejercicios : []
+    const idx =
+      typeof alumno.identityIndex === 'number'
+        ? alumno.identityIndex
+        : alumnoIdentityIndex(alumno.studentId || alumno.email)
     const initials = inicialesAlumno(alumno.fullName, alumno.email)
-    const avatarColor = colorAvatar(alumno.email || alumno.studentId)
+    const avatarColor = colorAvatar(idx)
+    const avatarTone = avatarToneClass(idx)
 
     const ultR = ultimoRegistroRutina(rutinaPesos.filter((r) => fechaSoloDia(r.fecha) === hoy))
     if (ultR) {
@@ -159,6 +202,7 @@ export function buildFeedActividad(alumnosConSnapshot, userDataMap = {}, hoy = f
         id: `r_${alumno.studentId}_${ultR.id}`,
         initials,
         avatarColor,
+        avatarTone,
         segments: [
           { text: nombre, bold: true },
           { text: ' completó ' },
@@ -178,6 +222,7 @@ export function buildFeedActividad(alumnosConSnapshot, userDataMap = {}, hoy = f
         id: `c_${alumno.studentId}_${comidasHoy.length}`,
         initials,
         avatarColor,
+        avatarTone,
         segments: [
           { text: nombre, bold: true },
           { text: ' registró almuerzo: ' },
@@ -194,6 +239,7 @@ export function buildFeedActividad(alumnosConSnapshot, userDataMap = {}, hoy = f
         id: `rev_${alumno.studentId}`,
         initials,
         avatarColor,
+        avatarTone,
         segments: [
           { text: nombre, bold: true },
           { text: ' requiere revisión de cargas en la rutina asignada.' },
@@ -212,6 +258,7 @@ export function buildFeedActividad(alumnosConSnapshot, userDataMap = {}, hoy = f
         id: `e_${alumno.studentId}_${ejHoy.length}`,
         initials,
         avatarColor,
+        avatarTone,
         segments: [
           { text: nombre, bold: true },
           { text: ' registró ' },

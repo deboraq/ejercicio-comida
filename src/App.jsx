@@ -69,6 +69,7 @@ function AppRoutes() {
 
   useEffect(() => {
     setMobileNavOpen(false)
+    document.body.style.overflow = ''
   }, [location.pathname])
 
   useEffect(() => {

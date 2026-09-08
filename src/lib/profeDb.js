@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { mergeStorageArrays } from '../hooks/useLocalStorage'
 import { normalizeRoleNavMap } from '../utils/navModules'
 
 const NAV_ROLES = ['alumno', 'profe', 'admin']
@@ -257,6 +258,15 @@ export async function createRoutineAssignment(teacherId, studentId, title, paylo
   })
 }
 
+/** Re-sincroniza un envío existente (no crea fila duplicada). */
+export async function updateRoutineAssignment(assignmentId, { title, payload } = {}) {
+  if (!supabase || !assignmentId) return { error: new Error('Sin cliente') }
+  const patch = { created_at: new Date().toISOString() }
+  if (title != null) patch.title = title || 'Rutina'
+  if (payload != null) patch.payload = payload
+  return supabase.from('routine_assignments').update(patch).eq('id', assignmentId).select().maybeSingle()
+}
+
 export async function listAssignmentsForStudent(studentId) {
   if (!supabase || !studentId) return { data: [], error: null }
   return supabase
@@ -303,37 +313,69 @@ function mapUserDataRows(rows) {
   return out
 }
 
+function mergeUserDataBuckets(a = {}, b = {}) {
+  const out = {}
+  for (const k of SNAPSHOT_USER_DATA_KEYS) {
+    const va = normalizeUserDataEntry(k, a[k])
+    const vb = normalizeUserDataEntry(k, b[k])
+    if (Array.isArray(va) || Array.isArray(vb)) {
+      out[k] = mergeStorageArrays(
+        Array.isArray(va) ? va : [],
+        Array.isArray(vb) ? vb : [],
+      )
+    } else {
+      out[k] = vb ?? va
+    }
+  }
+  return out
+}
+
+function bucketHasActivity(bucket = {}) {
+  return SNAPSHOT_USER_DATA_KEYS.some((k) => Array.isArray(bucket[k]) && bucket[k].length > 0)
+}
+
 /** Datos de actividad de alumnos vinculados (RPC o política RLS en user_data). */
 export async function fetchLinkedStudentsUserData(studentIds) {
   if (!supabase || !studentIds?.length) return { data: {}, error: null, needsPolicy: false }
 
-  const { data: rpcData, error: rpcError } = await supabase.rpc('fetch_linked_students_user_data', {
+  let rpcOut = {}
+  let rpcError = null
+
+  const { data: rpcData, error: rpcErr } = await supabase.rpc('fetch_linked_students_user_data', {
     p_student_ids: studentIds,
   })
-
-  if (!rpcError && rpcData != null && typeof rpcData === 'object') {
-    const out = {}
+  rpcError = rpcErr
+  if (!rpcErr && rpcData != null && typeof rpcData === 'object') {
     for (const id of studentIds) {
       const raw = rpcData[id] ?? rpcData[String(id)]
       const bucket = {}
       for (const k of SNAPSHOT_USER_DATA_KEYS) {
         bucket[k] = normalizeUserDataEntry(k, raw?.[k])
       }
-      out[id] = bucket
+      rpcOut[id] = bucket
     }
-    return { data: out, error: null, needsPolicy: false }
   }
 
-  const { data, error } = await supabase
+  const { data: fallbackRows, error: fallbackError } = await supabase
     .from('user_data')
     .select('user_id, key, value')
     .in('user_id', studentIds)
     .in('key', SNAPSHOT_USER_DATA_KEYS)
 
-  const out = mapUserDataRows(data)
-  if (error) return { data: out, error, needsPolicy: true }
+  const fallbackOut = mapUserDataRows(fallbackRows)
+  const out = {}
+  for (const id of studentIds) {
+    out[id] = mergeUserDataBuckets(rpcOut[id], fallbackOut[id])
+  }
 
-  return { data: out, error: null, needsPolicy: false }
+  const hasAnyData = studentIds.some((id) => bucketHasActivity(out[id]))
+  const needsPolicy = (Boolean(rpcError) || Boolean(fallbackError)) && !hasAnyData
+
+  return {
+    data: out,
+    error: rpcError || fallbackError || null,
+    needsPolicy,
+  }
 }
 
 /** Última rutina enviada por alumno (mapa student_id → fila). */
@@ -354,8 +396,7 @@ export async function deleteRoutineAssignment(assignmentId) {
 
 /** Convierte filas de la BD a ítems de `rutinasAsignadas` (con assignmentId para sync). */
 export function assignmentsToRutinasItems(rows, teacherLabelById) {
-  const base = Date.now()
-  return (rows || []).map((row, idx) => {
+  return (rows || []).map((row) => {
     const diasRaw = row.payload?.dias
     const diasArr = Array.isArray(diasRaw) && diasRaw.length > 0 ? diasRaw : [{ nombre: 'Día 1', ejercicios: [] }]
     const dias = diasArr.map((d, i) => {
@@ -383,7 +424,7 @@ export function assignmentsToRutinasItems(rows, teacherLabelById) {
     const label = teacherLabelById[row.teacher_id] || 'Entrenador'
     const fecha = (row.created_at || '').slice(0, 10) || new Date().toISOString().slice(0, 10)
     return {
-      id: `cloud_${row.id}_${base}_${idx}`,
+      id: `cloud_${row.id}`,
       nombre: row.title || 'Rutina asignada',
       dias,
       _asignacion: {

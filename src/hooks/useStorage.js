@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useLocalStorage, normalizeStorageValue } from './useLocalStorage'
+import {
+  useLocalStorage,
+  normalizeStorageValue,
+  mergeStorageArrays,
+  isPrimitiveStorageArray,
+} from './useLocalStorage'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
@@ -63,13 +68,21 @@ export function useStorage(key, initialValue) {
         if (Array.isArray(initialValue)) {
           const localArr = Array.isArray(localNorm) ? localNorm : []
           const cloudArr = Array.isArray(fromCloud) ? fromCloud : []
-          if (cloudArr.length >= localArr.length) {
-            resolved = cloudArr
-          } else if (localArr.length > 0) {
-            resolved = localArr
-            await persistUserData(user.id, key, localArr)
+          if (isPrimitiveStorageArray(localArr) && isPrimitiveStorageArray(cloudArr)) {
+            let hasLocalKey = false
+            try {
+              hasLocalKey = window.localStorage.getItem(key) != null
+            } catch {
+              /* noop */
+            }
+            resolved = hasLocalKey ? localArr : cloudArr.length ? cloudArr : localArr
           } else {
-            resolved = cloudArr
+            resolved = mergeStorageArrays(localArr, cloudArr)
+          }
+          const mergedDiffersFromCloud =
+            JSON.stringify(resolved) !== JSON.stringify(cloudArr)
+          if (mergedDiffersFromCloud) {
+            await persistUserData(user.id, key, resolved)
           }
         } else {
           resolved = fromCloud
