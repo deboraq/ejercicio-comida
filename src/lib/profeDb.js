@@ -146,7 +146,7 @@ export async function findStudentIdByEmail(email, { allowSelf = false, selfUserI
       if (selfMail === norm) return { studentId: selfRow.id, error: null }
     }
   }
-  const { data, error } = await supabase.rpc('find_student_id_by_email', { p_email: (email || '').trim() })
+  const { data, error } = await supabase.rpc('find_student_id_by_email', { p_email: norm })
   if (error) return { studentId: null, error }
   return { studentId: data || null, error: null }
 }
