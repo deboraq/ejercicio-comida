@@ -778,6 +778,11 @@
   top: 0.5rem;
 }
 
+.pf-empty-gate {
+  max-width: 36rem;
+  margin-top: 0.5rem;
+}
+
 .pf-panel {
   border-radius: 14px;
   padding: 1rem 1.05rem;

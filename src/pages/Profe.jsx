@@ -1,9 +1,9 @@
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAppNotifications } from '../context/AppNotificationsContext'
+import { useMyProfile } from '../hooks/useMyProfile'
 import {
-  fetchMyProfile,
   findStudentIdByEmail,
   addTeacherStudent,
   listTeacherStudents,
@@ -22,8 +22,7 @@ import ModuleGateCard from '../components/ModuleGateCard'
 export default function Profe() {
   const { user, isConfigured } = useAuth()
   const { onToast, setAvisosAdmin, avisosAdmin } = useAppNotifications()
-  const [profile, setProfile] = useState(null)
-  const [profileLoading, setProfileLoading] = useState(true)
+  const { profile, profileError, loading: profileLoading, refresh: refreshProfile } = useMyProfile()
   const [students, setStudents] = useState([])
   const [studentsLoading, setStudentsLoading] = useState(false)
   const [emailAlumno, setEmailAlumno] = useState('')
@@ -41,19 +40,6 @@ export default function Profe() {
   /** Admin puede usar el panel del entrenador con la misma cuenta. */
   const puedeEntrenar = esProfe || esAdmin
   const hoy = fechaToISO(new Date())
-
-  const cargarPerfil = useCallback(async () => {
-    if (!user?.id) {
-      setProfile(null)
-      setProfileLoading(false)
-      return
-    }
-    setProfileLoading(true)
-    const { data, error } = await fetchMyProfile(user.id)
-    if (error) setProfile(null)
-    else setProfile(data)
-    setProfileLoading(false)
-  }, [user?.id])
 
   const cargarAvisosAdmin = useCallback(async () => {
     if (!user?.id || !esProfe) {
@@ -80,10 +66,6 @@ export default function Profe() {
     }
     setStudentsLoading(false)
   }, [user?.id, puedeEntrenar, onToast])
-
-  useEffect(() => {
-    cargarPerfil()
-  }, [cargarPerfil])
 
   useEffect(() => {
     cargarAvisosAdmin()
@@ -324,6 +306,25 @@ export default function Profe() {
     )
   }
 
+  if (!profile) {
+    return (
+      <section className="section py-2 profe-page profe-titanium">
+        <div className="container app-page-container profe-container">
+          <div className="pf-panel pf-empty-gate">
+            <h2 className="pf-panel-title mb-2">No se pudo cargar tu perfil</h2>
+            <p className="pf-muted mb-3">
+              {profileError ||
+                'Tu cuenta existe pero falta la fila en Supabase (tabla profiles). Cerrá sesión, volvé a entrar, o ejecutá el SQL de SUPABASE.md.'}
+            </p>
+            <button type="button" className="pf-btn-vincular" onClick={() => refreshProfile()}>
+              Reintentar
+            </button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   if (!puedeEntrenar) {
     return (
       <section className="section py-2 profe-page profe-titanium">
@@ -331,7 +332,8 @@ export default function Profe() {
           <div className="pf-panel pf-empty-gate">
             <h2 className="pf-panel-title mb-2">Modo entrenador</h2>
             <p className="pf-muted mb-3">
-              Pedí rol <strong>profe</strong> a quien administre la app (<Link to="/admin">Administración</Link>).
+              Tu rol actual es <strong>{profile.role || 'alumno'}</strong>. Pedí rol <strong>profe</strong> o{' '}
+              <strong>admin</strong> en <Link to="/admin">Administración</Link>.
             </p>
           </div>
         </div>
