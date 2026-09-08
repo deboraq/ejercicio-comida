@@ -34,6 +34,7 @@ export default function Profe() {
   const [filtroAlumno, setFiltroAlumno] = useState(FILTRO_ALUMNO.todos)
   const [userDataMap, setUserDataMap] = useState({})
   const [assignmentsMap, setAssignmentsMap] = useState({})
+  const [userDataSyncWarn, setUserDataSyncWarn] = useState(false)
 
   const esProfe = profile?.role === 'profe'
   const esAdmin = profile?.role === 'admin'
@@ -107,23 +108,34 @@ export default function Profe() {
     if (!user?.id || !puedeEntrenar || !students.length) {
       setUserDataMap({})
       setAssignmentsMap({})
+      setUserDataSyncWarn(false)
       return
     }
     let cancel = false
     ;(async () => {
       const ids = students.map((s) => s.studentId)
-      const [{ data: ud }, { map: am }] = await Promise.all([
+      const [{ data: ud, needsPolicy }, { map: am }] = await Promise.all([
         fetchLinkedStudentsUserData(ids),
         fetchLatestAssignmentsByStudent(user.id),
       ])
       if (cancel) return
       setUserDataMap(ud || {})
       setAssignmentsMap(am || {})
+      setUserDataSyncWarn(Boolean(needsPolicy))
     })()
     return () => {
       cancel = true
     }
   }, [user?.id, puedeEntrenar, students, historialTick])
+
+  useEffect(() => {
+    if (!user?.id || !puedeEntrenar || !students.length) return
+    const refrescar = () => {
+      if (document.visibilityState === 'visible') setHistorialTick((n) => n + 1)
+    }
+    document.addEventListener('visibilitychange', refrescar)
+    return () => document.removeEventListener('visibilitychange', refrescar)
+  }, [user?.id, puedeEntrenar, students.length])
 
   const qProfe = busquedaProfe.trim().toLowerCase()
 
@@ -364,6 +376,8 @@ export default function Profe() {
           historialTick={historialTick}
           setHistorialTick={setHistorialTick}
           esAdmin={esAdmin}
+          userDataSyncWarn={userDataSyncWarn}
+          onRefreshAlumnos={() => setHistorialTick((n) => n + 1)}
         />
       </div>
     </section>

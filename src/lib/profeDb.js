@@ -278,21 +278,62 @@ export async function listRoutineAssignmentsForTeacher(teacherId) {
 
 const SNAPSHOT_USER_DATA_KEYS = ['rutinaPesos', 'comida', 'ejercicios', 'rutinasAsignadas']
 
-/** Datos de actividad de alumnos vinculados (requiere política RLS opcional en user_data). */
+function normalizeUserDataEntry(key, value) {
+  if (value == null) return SNAPSHOT_USER_DATA_KEYS.includes(key) ? [] : null
+  let v = value
+  if (typeof v === 'string') {
+    try {
+      v = JSON.parse(v)
+    } catch {
+      v = null
+    }
+  }
+  if (SNAPSHOT_USER_DATA_KEYS.includes(key)) {
+    return Array.isArray(v) ? v : []
+  }
+  return v
+}
+
+function mapUserDataRows(rows) {
+  const out = {}
+  for (const row of rows || []) {
+    if (!out[row.user_id]) out[row.user_id] = {}
+    out[row.user_id][row.key] = normalizeUserDataEntry(row.key, row.value)
+  }
+  return out
+}
+
+/** Datos de actividad de alumnos vinculados (RPC o política RLS en user_data). */
 export async function fetchLinkedStudentsUserData(studentIds) {
-  if (!supabase || !studentIds?.length) return { data: {}, error: null }
+  if (!supabase || !studentIds?.length) return { data: {}, error: null, needsPolicy: false }
+
+  const { data: rpcData, error: rpcError } = await supabase.rpc('fetch_linked_students_user_data', {
+    p_student_ids: studentIds,
+  })
+
+  if (!rpcError && rpcData != null && typeof rpcData === 'object') {
+    const out = {}
+    for (const id of studentIds) {
+      const raw = rpcData[id] ?? rpcData[String(id)]
+      const bucket = {}
+      for (const k of SNAPSHOT_USER_DATA_KEYS) {
+        bucket[k] = normalizeUserDataEntry(k, raw?.[k])
+      }
+      out[id] = bucket
+    }
+    return { data: out, error: null, needsPolicy: false }
+  }
+
   const { data, error } = await supabase
     .from('user_data')
     .select('user_id, key, value')
     .in('user_id', studentIds)
     .in('key', SNAPSHOT_USER_DATA_KEYS)
-  if (error) return { data: {}, error }
-  const out = {}
-  for (const row of data || []) {
-    if (!out[row.user_id]) out[row.user_id] = {}
-    out[row.user_id][row.key] = row.value
-  }
-  return { data: out, error: null }
+
+  const out = mapUserDataRows(data)
+  if (error) return { data: out, error, needsPolicy: true }
+
+  return { data: out, error: null, needsPolicy: false }
 }
 
 /** Última rutina enviada por alumno (mapa student_id → fila). */
