@@ -14,6 +14,7 @@ import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import { useMyProfile } from './hooks/useMyProfile'
 import ModuleGate from './components/ModuleGate'
+import AppErrorBoundary from './components/AppErrorBoundary'
 import AppSidebar from './components/AppSidebar'
 import AppNavMenu from './components/AppNavMenu'
 import { isNavModuleBlocked } from './utils/navModules'
@@ -166,14 +167,16 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppNotificationsProvider>
-        <RoleNavProvider>
-          <div className="app-layout">
-            <AppRoutes />
-          </div>
-        </RoleNavProvider>
-      </AppNotificationsProvider>
-    </AuthProvider>
+    <AppErrorBoundary>
+      <AuthProvider>
+        <AppNotificationsProvider>
+          <RoleNavProvider>
+            <div className="app-layout">
+              <AppRoutes />
+            </div>
+          </RoleNavProvider>
+        </AppNotificationsProvider>
+      </AuthProvider>
+    </AppErrorBoundary>
   )
 }

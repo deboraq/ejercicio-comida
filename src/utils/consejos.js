@@ -124,9 +124,12 @@ export function buildContextoDia({
   pesoKg = 70,
   config = {},
 }) {
-  const comidasDia = comidas.filter((c) => fechaSoloDia(c.fecha) === fecha)
-  const ejerciciosDia = ejercicios.filter((e) => fechaSoloDia(e.fecha) === fecha)
-  const rutinaDia = registrosRutina.filter((r) => fechaSoloDia(r.fecha) === fecha)
+  const comidasArr = Array.isArray(comidas) ? comidas : []
+  const ejerciciosArr = Array.isArray(ejercicios) ? ejercicios : []
+  const rutinaArr = Array.isArray(registrosRutina) ? registrosRutina : []
+  const comidasDia = comidasArr.filter((c) => fechaSoloDia(c.fecha) === fecha)
+  const ejerciciosDia = ejerciciosArr.filter((e) => fechaSoloDia(e.fecha) === fecha)
+  const rutinaDia = rutinaArr.filter((r) => fechaSoloDia(r.fecha) === fecha)
 
   const caloriasConsumidas = comidasDia.reduce((s, r) => s + num(r.calorias), 0)
   const proteinas = comidasDia.reduce((s, r) => s + num(r.proteinas), 0)
@@ -135,10 +138,10 @@ export function buildContextoDia({
     (s, e) => s + caloriasEjercicioRegistro(e, pesoKg),
     0
   )
-  const caloriasQuemadasRutina = caloriasQuemadasRutinaDia(registrosRutina, fecha, pesoKg)
+  const caloriasQuemadasRutina = caloriasQuemadasRutinaDia(rutinaArr, fecha, pesoKg)
   const caloriasQuemadas = caloriasQuemadasEjercicio + caloriasQuemadasRutina
   const minutosEjercicio = ejerciciosDia.reduce((s, e) => s + num(e.duracion), 0)
-  const minutosRutina = minutosRutinaDia(registrosRutina, fecha)
+  const minutosRutina = minutosRutinaDia(rutinaArr, fecha)
   const minutosActividad = minutosEjercicio + minutosRutina
 
   const momentosRegistrados = new Set(

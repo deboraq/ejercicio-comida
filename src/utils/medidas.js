@@ -68,7 +68,8 @@ function diasEntreIso(desde, hasta) {
  * @param {string} [hoyIso] fecha de referencia YYYY-MM-DD
  */
 export function buildProgresoMedidas(historial = [], hoyIso) {
-  const ordenDesc = [...(historial || [])].sort((a, b) =>
+  const list = Array.isArray(historial) ? historial : []
+  const ordenDesc = [...list].sort((a, b) =>
     String(b.fecha || '').localeCompare(String(a.fecha || ''))
   )
   if (ordenDesc.length === 0) {

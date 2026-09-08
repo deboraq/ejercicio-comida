@@ -14,6 +14,7 @@ import { getConsejos, buildContextoDia, buildContextoSemana } from '../utils/con
 import { getRachaDias, getUltimosNDias } from '../utils/estadisticas'
 import { SUPLEMENTOS } from '../utils/suplementos'
 import { MOMENTOS_COMIDA } from '../utils/comidaMomentos'
+import { asArray } from '../hooks/useLocalStorage'
 
 const LABEL_TIPO_CONSEJO = {
   nutricion: 'Nutrición',
@@ -142,13 +143,24 @@ function quemadasEnFecha(ejercicios, registrosRutina, fecha, pesoKg) {
 export default function Inicio() {
   const { user, isConfigured } = useAuth()
   const { profile } = useMyProfile()
-  const [ejercicios] = useStorage('ejercicios', [])
-  const [comida] = useStorage('comida', [])
-  const [suplementos, setSuplementos] = useStorage('suplementos', [])
-  const [registrosRutina] = useStorage('rutinaPesos', [])
-  const [historialPeso] = useStorage('pesoHistorial', [])
-  const [historialMedidas] = useStorage('medidasHistorial', [])
-  const [config] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
+  const [ejerciciosRaw] = useStorage('ejercicios', [])
+  const [comidaRaw] = useStorage('comida', [])
+  const [suplementosRaw, setSuplementos] = useStorage('suplementos', [])
+  const [registrosRutinaRaw] = useStorage('rutinaPesos', [])
+  const [historialPesoRaw] = useStorage('pesoHistorial', [])
+  const [historialMedidasRaw] = useStorage('medidasHistorial', [])
+  const [configRaw] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
+
+  const ejercicios = asArray(ejerciciosRaw)
+  const comida = asArray(comidaRaw)
+  const suplementos = asArray(suplementosRaw)
+  const registrosRutina = asArray(registrosRutinaRaw)
+  const historialPeso = asArray(historialPesoRaw)
+  const historialMedidas = asArray(historialMedidasRaw)
+  const config =
+    configRaw && typeof configRaw === 'object' && !Array.isArray(configRaw)
+      ? configRaw
+      : { objetivo: 'mantener_peso', pesoKg: 70 }
 
   const hoy = fechaToISO(new Date())
   const [diaEnVista, setDiaEnVista] = useState(hoy)
@@ -177,13 +189,16 @@ export default function Inicio() {
   const ejerciciosDelDia = ejercicios.filter((e) => fechaSoloDia(e.fecha) === diaEnVista)
   const comidasDelDia = comida.filter((c) => fechaSoloDia(c.fecha) === diaEnVista)
   const suplementosDelDia = suplementos.find((s) => fechaSoloDia(s.fecha) === diaEnVista)?.items ?? []
-  const suplementosActivos = config?.suplementosActivos ?? SUPLEMENTOS.map((s) => s.id)
+  const suplementosActivos = Array.isArray(config?.suplementosActivos)
+    ? config.suplementosActivos
+    : SUPLEMENTOS.map((s) => s.id)
   const listaParaMarcar = SUPLEMENTOS.filter((s) => suplementosActivos.includes(s.id))
 
   const toggleSuplementoDia = (id) => {
     setSuplementos((prev) => {
-      const rest = prev.filter((s) => fechaSoloDia(s.fecha) !== diaEnVista)
-      const current = prev.find((s) => fechaSoloDia(s.fecha) === diaEnVista)?.items ?? []
+      const prevList = asArray(prev)
+      const rest = prevList.filter((s) => fechaSoloDia(s.fecha) !== diaEnVista)
+      const current = prevList.find((s) => fechaSoloDia(s.fecha) === diaEnVista)?.items ?? []
       const has = current.includes(id)
       const newItems = has ? current.filter((x) => x !== id) : [...current, id]
       if (newItems.length === 0) return rest
