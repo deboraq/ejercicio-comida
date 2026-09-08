@@ -181,7 +181,7 @@ export default function Profe() {
     }
     if (!studentId) {
       onToast({
-        err: 'No encontramos una cuenta con ese correo. El alumno tiene que registrarse antes.',
+        err: 'No encontramos una cuenta con ese correo. Verificá que esté bien escrito y que el alumno se haya registrado. Si ya lo hizo, pedile que entre una vez con su cuenta.',
       })
       return
     }

@@ -175,9 +175,64 @@ begin
   where lower(trim(both from coalesce(p.email, ''))) = v_norm
   limit 1;
 
+  -- Cuenta en auth.users pero sin fila en profiles (ej. se registró y no inició sesión)
+  if v_id is null then
+    select u.id into v_id
+    from auth.users u
+    where lower(trim(both from coalesce(u.email, ''))) = v_norm
+    limit 1;
+
+    if v_id is not null then
+      insert into public.profiles (id, email, full_name, role)
+      values (
+        v_id,
+        v_norm,
+        coalesce(
+          nullif(trim(both from (
+            select u2.raw_user_meta_data->>'full_name'
+            from auth.users u2 where u2.id = v_id
+          )), ''),
+          ''
+        ),
+        'alumno'
+      )
+      on conflict (id) do update
+        set email = excluded.email,
+            full_name = case
+              when coalesce(profiles.full_name, '') = '' then excluded.full_name
+              else profiles.full_name
+            end;
+    end if;
+  end if;
+
   return v_id;
 end;
 $$;
+
+-- Perfil automático al registrarse (evita depender del primer login)
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, full_name, role)
+  values (
+    new.id,
+    lower(trim(both from coalesce(new.email, ''))),
+    coalesce(new.raw_user_meta_data->>'full_name', ''),
+    'alumno'
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
 
 -- Si ya creaste teacher_students con check (teacher_id <> student_id), ejecutá también:
 -- alter table public.teacher_students drop constraint if exists teacher_students_check;
@@ -218,14 +273,129 @@ begin
   where lower(trim(both from coalesce(p.email, ''))) = v_norm
   limit 1;
 
+  if v_id is null then
+    select u.id into v_id
+    from auth.users u
+    where lower(trim(both from coalesce(u.email, ''))) = v_norm
+    limit 1;
+
+    if v_id is not null then
+      insert into public.profiles (id, email, full_name, role)
+      values (
+        v_id,
+        v_norm,
+        coalesce(
+          nullif(trim(both from (
+            select u2.raw_user_meta_data->>'full_name'
+            from auth.users u2 where u2.id = v_id
+          )), ''),
+          ''
+        ),
+        'alumno'
+      )
+      on conflict (id) do update
+        set email = excluded.email,
+            full_name = case
+              when coalesce(profiles.full_name, '') = '' then excluded.full_name
+              else profiles.full_name
+            end;
+    end if;
+  end if;
+
   return v_id;
 end;
 $$;
 ```
 
+**Si un alumno ya se registró pero el profe no lo encuentra** (ej. `daitinok.21@gmail.com`), ejecutá solo este bloque en SQL Editor — actualiza la búsqueda y crea perfiles faltantes al vincular:
+
+```sql
+create or replace function public.find_student_id_by_email(p_email text)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_role text;
+  v_id uuid;
+  v_norm text := lower(trim(both from coalesce(p_email, '')));
+begin
+  if length(v_norm) < 3 then
+    return null;
+  end if;
+
+  select role into v_role from public.profiles where id = auth.uid();
+  if v_role not in ('profe', 'admin') then
+    return null;
+  end if;
+
+  select p.id into v_id
+  from public.profiles p
+  where lower(trim(both from coalesce(p.email, ''))) = v_norm
+  limit 1;
+
+  if v_id is null then
+    select u.id into v_id
+    from auth.users u
+    where lower(trim(both from coalesce(u.email, ''))) = v_norm
+    limit 1;
+
+    if v_id is not null then
+      insert into public.profiles (id, email, full_name, role)
+      values (
+        v_id,
+        v_norm,
+        coalesce(
+          nullif(trim(both from (
+            select u2.raw_user_meta_data->>'full_name'
+            from auth.users u2 where u2.id = v_id
+          )), ''),
+          ''
+        ),
+        'alumno'
+      )
+      on conflict (id) do update
+        set email = excluded.email,
+            full_name = case
+              when coalesce(profiles.full_name, '') = '' then excluded.full_name
+              else profiles.full_name
+            end;
+    end if;
+  end if;
+
+  return v_id;
+end;
+$$;
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, full_name, role)
+  values (
+    new.id,
+    lower(trim(both from coalesce(new.email, ''))),
+    coalesce(new.raw_user_meta_data->>'full_name', ''),
+    'alumno'
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+```
+
 Después, en **Profe → + Vincular nuevo alumno**, usá tu propio correo y debería aparecer en la lista con badge «Admin + Alumna».
 
-Flujo: el alumno y el entrenador se registran e inician sesión al menos una vez (la app crea su fila en `profiles`). Un **administrador** (cuenta con `role = admin` en `profiles` y fila en `admin_accounts`, sincronizado por el SQL del punto 6; el **primer** admin se asigna con el `UPDATE` del final porque en el SQL Editor `auth.uid()` es null) marca quiénes son **entrenadores** (`profe`) desde la pantalla **Admin**. Cada entrenador entra a **Profe**, ve los avisos del admin, vincula alumnos por correo y envía rutinas. El alumno abre **Rutina → Asignadas** con la sesión iniciada y verá la rutina nueva.
+Flujo: el alumno se registra (se crea su fila en `profiles` automáticamente). Si ya existía en Auth sin perfil, el profe puede vincularlo igual — la app completa el perfil al buscar por correo. Un **administrador** (cuenta con `role = admin` en `profiles` y fila en `admin_accounts`, sincronizado por el SQL del punto 6; el **primer** admin se asigna con el `UPDATE` del final porque en el SQL Editor `auth.uid()` es null) marca quiénes son **entrenadores** (`profe`) desde la pantalla **Admin**. Cada entrenador entra a **Profe**, ve los avisos del admin, vincula alumnos por correo y envía rutinas. El alumno abre **Rutina → Asignadas** con la sesión iniciada y verá la rutina nueva.
 
 **Opcional — Panel Profe con actividad del alumno:** para que el entrenador vea cumplimiento semanal, última carga y feed en vivo (lectura de `rutinaPesos`, `comida`, `ejercicios` del alumno), ejecutá además:
 
