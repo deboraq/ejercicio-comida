@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useStorage } from '../hooks/useStorage'
 import { useAuth } from '../context/AuthContext'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
@@ -65,6 +66,7 @@ function clonarRutinaParaMisRutinas(orig) {
 
 export default function Rutina() {
   const { user, isConfigured } = useAuth()
+  const [searchParams] = useSearchParams()
   const syncRutinasNube = Boolean(user && isConfigured)
   const [rutinas, setRutinas] = useStorage('rutinas', [])
   const [rutinasAsignadas, setRutinasAsignadas] = useStorage('rutinasAsignadas', [])
@@ -98,6 +100,19 @@ export default function Rutina() {
   useEffect(() => {
     if (vista === 'calendario') setVista('registrar')
   }, [vista])
+
+  useEffect(() => {
+    const fechaParam = searchParams.get('fecha')
+    if (fechaParam && /^\d{4}-\d{2}-\d{2}$/.test(fechaParam)) {
+      setFechaInput(fechaParam)
+      setFechaHistorial(fechaParam)
+      setMesCalendario(fechaParam.slice(0, 7))
+    }
+    if (searchParams.get('fecha') || searchParams.get('iniciar') === '1') {
+      setVista('registrar')
+      setOrigenRutinas('propias')
+    }
+  }, [searchParams])
 
   const hoy = fechaToISO(new Date())
   const pesoCfg = config?.pesoKg || 70
@@ -1014,12 +1029,6 @@ export default function Rutina() {
                           : d
                       ),
                     }))
-                  }}
-                  onPausarSesion={() => {
-                    window.alert('Sesión pausada. Los registros ya quedaron guardados; podés continuar cuando quieras.')
-                  }}
-                  onGuardarSesion={() => {
-                    window.alert('Sesión guardada. Las marcas de carga se actualizaron con lo registrado hoy.')
                   }}
                 />
               )}

@@ -1,0 +1,9 @@
+Recordatorio — domingo 7 sep 2026 (Módulo Profe)
+
+□ Vincular alumno que se registró pero no dejó asociarlo al profe
+□ Plantillas de entrenamiento: revisar UX (poco claro, simplificar/editar flujo)
+□ Supervisión & Alumnos: probar listado, filtros, vincular, estados
+□ Rutinas asignadas & envíos: controlar asignación y historial
+□ Mensajes y feedback: probar envío/recepción y panel del profe
+
+Deploy subido: commit 8c3b7d5 (main) — Vercel redeploy automático.

@@ -17,17 +17,13 @@ export const OBJETIVOS = [
   { value: 'ganar_musculo', label: 'Ganar músculo', icon: '💪' },
 ]
 
-export const MOMENTOS_COMIDA = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']
-const ALIAS_MOMENTO = { Snack: 'Merienda' }
+import { MOMENTOS_COMIDA, normalizarMomento } from './comidaMomentos.js'
+
+export { MOMENTOS_COMIDA, normalizarMomento }
 
 function num(valor) {
   const n = Number(valor)
   return Number.isFinite(n) ? n : 0
-}
-
-export function normalizarMomento(comida) {
-  if (comida == null || comida === '') return ''
-  return ALIAS_MOMENTO[comida] || comida
 }
 
 function getMetas(config, pesoKg) {

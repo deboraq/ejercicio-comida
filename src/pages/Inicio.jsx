@@ -13,7 +13,7 @@ import {
 import { getConsejos, buildContextoDia, buildContextoSemana } from '../utils/consejos'
 import { getRachaDias, getUltimosNDias } from '../utils/estadisticas'
 import { SUPLEMENTOS } from '../utils/suplementos'
-import { buildPerfilCorporal } from '../utils/composicion'
+import { MOMENTOS_COMIDA } from '../utils/comidaMomentos'
 
 const LABEL_TIPO_CONSEJO = {
   nutricion: 'Nutrición',
@@ -35,14 +35,15 @@ const DIAS_CORTO = ['LU', 'MA', 'MI', 'JU', 'VI', 'SA', 'DO']
 const MEAL_ICON = {
   Desayuno: { icon: '🍳', tone: 'orange' },
   Almuerzo: { icon: '🥗', tone: 'blue' },
-  Merienda: { icon: '🍎', tone: 'red' },
-  Snack: { icon: '🍎', tone: 'red' },
+  Merienda: { icon: '🧁', tone: 'pink' },
+  Snack: { icon: '🍿', tone: 'amber' },
   Cena: { icon: '🌙', tone: 'purple' },
 }
 
 function mealStyle(tipo) {
   if (MEAL_ICON[tipo]) return MEAL_ICON[tipo]
-  if (/merienda|snack/i.test(tipo)) return MEAL_ICON.Merienda
+  if (/snack/i.test(tipo)) return MEAL_ICON.Snack
+  if (/merienda/i.test(tipo)) return MEAL_ICON.Merienda
   if (/desayuno/i.test(tipo)) return MEAL_ICON.Desayuno
   if (/almuerzo/i.test(tipo)) return MEAL_ICON.Almuerzo
   if (/cena/i.test(tipo)) return MEAL_ICON.Cena
@@ -113,7 +114,7 @@ function diasDesde(fechaISO, hoyISO) {
 }
 
 function agruparComidasDia(comidas) {
-  const orden = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']
+  const orden = MOMENTOS_COMIDA
   const map = {}
   for (const c of comidas) {
     const k = c.comida || 'Otros'
@@ -392,6 +393,13 @@ export default function Inicio() {
             <Link to="/comida" className="inicio-dash-btn inicio-dash-btn--ghost">
               <span className="inicio-dash-btn-ico inicio-dash-btn-ico--plus" aria-hidden>+</span>
               Registrar comida
+            </Link>
+            <Link
+              to={`/rutina?fecha=${encodeURIComponent(diaEnVista)}`}
+              className="inicio-dash-btn inicio-dash-btn--rutina"
+            >
+              <span className="inicio-dash-btn-ico" aria-hidden>🏋️</span>
+              Iniciar rutina gym
             </Link>
             <Link to="/ejercicios" className="inicio-dash-btn inicio-dash-btn--primary">
               <span className="inicio-dash-btn-ico" aria-hidden>▷</span>

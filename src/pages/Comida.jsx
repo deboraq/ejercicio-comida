@@ -3,18 +3,49 @@ import { useStorage } from '../hooks/useStorage'
 import { getConsejos, buildContextoDia, buildContextoSemana } from '../utils/consejos'
 import { formatearFecha, fechaToISO, fechaSoloDia } from '../utils/calorias'
 import { REFERENCIA_ALIMENTOS, buscarAlimentos } from '../utils/referenciaComidas'
+import { MOMENTOS_COMIDA, MOMENTO_ICON, normalizarMomento } from '../utils/comidaMomentos'
 import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias, getRachaDias } from '../utils/estadisticas'
 import ComidaTitanium from '../components/ComidaTitanium'
 
-const COMIDAS = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']
-const ALIAS_MOMENTO = { Snack: 'Merienda' }
-const MOMENTO_ICON = { Desayuno: '☕', Almuerzo: '🥗', Merienda: '🧁', Cena: '🍽️', Otros: '📋' }
+const COMIDAS = MOMENTOS_COMIDA
+
+function horaInputDesdeDate(date = new Date()) {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
 
 function formatearHoraRegistro(date = new Date()) {
   const h = date.getHours()
   const m = String(date.getMinutes()).padStart(2, '0')
   const suf = h >= 12 ? 'PM' : 'AM'
   return `${String(h).padStart(2, '0')}:${m} ${suf}`
+}
+
+function formatearHoraDesdeInput(hhmm) {
+  if (!hhmm || !/^\d{1,2}:\d{2}$/.test(hhmm)) return formatearHoraRegistro(new Date())
+  const [hStr, mStr] = hhmm.split(':')
+  const h = Number(hStr)
+  const m = String(mStr).padStart(2, '0')
+  const suf = h >= 12 ? 'PM' : 'AM'
+  return `${String(h).padStart(2, '0')}:${m} ${suf}`
+}
+
+function horaInputDesdeRegistro(horaStr) {
+  if (!horaStr) return horaInputDesdeDate()
+  const m = String(horaStr).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i)
+  if (!m) return horaInputDesdeDate()
+  let h = Number(m[1])
+  const min = m[2]
+  const ap = (m[3] || '').toUpperCase()
+  if (ap === 'PM' && h < 12) h += 12
+  if (ap === 'AM' && h === 12) h = 0
+  return `${String(h).padStart(2, '0')}:${min}`
+}
+
+function cantidadDesdePorciones(porciones) {
+  if (!porciones) return '1'
+  const m = String(porciones).trim().match(/^(\d+(?:[.,]\d+)?)\s*[×x]/i)
+  if (m) return m[1].replace(',', '.')
+  return '1'
 }
 
 function buscarReferenciaPorNombre(nombre) {
@@ -28,20 +59,104 @@ function buscarReferenciaPorNombre(nombre) {
   }) || null
 }
 
-function normalizarMomento(comida) {
-  if (comida == null || comida === '') return comida
-  return ALIAS_MOMENTO[comida] || comida
+function buildPendienteDesdeItem(it, comida, horaRegistro, referenciaActiva) {
+  const ref = buscarReferenciaPorNombre(it.descripcion.trim())
+  return {
+    id: crypto.randomUUID(),
+    comida,
+    hora: formatearHoraDesdeInput(horaRegistro),
+    descripcion: it.descripcion.trim(),
+    calorias: numeroFlexible(it.calorias) ?? undefined,
+    proteinas: numeroFlexible(it.proteinas) ?? undefined,
+    carbohidratos: numeroFlexible(it.carbohidratos) ?? undefined,
+    grasas: numeroFlexible(it.grasas) ?? undefined,
+    porciones: it.porciones?.trim() || undefined,
+    categoria: it._categoria || referenciaActiva?.categoria || ref?.categoria || undefined,
+  }
+}
+
+function pendientesDesdeSeleccionActual(referenciaActiva, cantidadPorciones, items, comida, horaRegistro, entradaManual, manualForm) {
+  const fromItems = items
+    .filter((it) => it.descripcion.trim())
+    .map((it) => (it.cantidad === '' || it.cantidad == null ? itemConCantidadAplicada(it, it._cantidadPrev ?? 1) : it))
+    .map((it) => buildPendienteDesdeItem(it, comida, horaRegistro, referenciaActiva))
+  if (fromItems.length) return fromItems
+  if (entradaManual && manualFormValido(manualForm)) {
+    const it = buildItemDesdeManual(manualForm, cantidadPorciones)
+    return [buildPendienteDesdeItem(it, comida, horaRegistro, null)]
+  }
+  if (referenciaActiva) {
+    const it = buildItemDesdeReferencia(referenciaActiva, cantidadPorciones)
+    return [buildPendienteDesdeItem(it, comida, horaRegistro, referenciaActiva)]
+  }
+  return []
+}
+
+function manualFormValido(form) {
+  if (!form?.descripcion?.trim()) return false
+  const cal = numeroFlexible(form.calorias)
+  return cal != null && cal >= 0
+}
+
+function buildItemDesdeManual(form, cantidad) {
+  const n = normalizarCantidad(cantidad, 1)
+  const calUnit = numeroFlexible(form.calorias) ?? 0
+  const proUnit = numeroFlexible(form.proteinas) ?? 0
+  const carUnit = numeroFlexible(form.carbohidratos) ?? 0
+  const graRaw = numeroFlexible(form.grasas)
+  const graUnit = graRaw != null
+    ? graRaw
+    : Math.max(0, redondear1((calUnit - proUnit * 4 - carUnit * 4) / 9))
+  const porcionTxt = form.porciones?.trim()
+  return {
+    id: crypto.randomUUID(),
+    descripcion: form.descripcion.trim(),
+    cantidad: n,
+    _cantidadPrev: n,
+    calorias: String(Math.round(calUnit * n)),
+    proteinas: String(redondear1(proUnit * n)),
+    carbohidratos: String(redondear1(carUnit * n)),
+    grasas: String(redondear1(graUnit * n)),
+    porciones: porcionTxt || (n === 1 ? '1 porción' : `${n} porciones`),
+    _macrosPorUnidad: { cal: calUnit, pro: proUnit, car: carUnit, gra: graUnit },
+    _categoria: 'Personalizado',
+  }
+}
+
+function previewManual(form, cantidad) {
+  if (!manualFormValido(form)) return null
+  const it = buildItemDesdeManual(form, cantidad)
+  return {
+    cal: numeroFlexibleO(it.calorias),
+    pro: numeroFlexibleO(it.proteinas),
+    car: numeroFlexibleO(it.carbohidratos),
+    gra: numeroFlexibleO(it.grasas),
+    porcion: it.porciones,
+  }
+}
+
+const MANUAL_FORM_VACIO = {
+  descripcion: '',
+  calorias: '',
+  proteinas: '',
+  carbohidratos: '',
+  grasas: '',
+  porciones: '',
+}
+
+function normalizarMomentoLocal(comida) {
+  return normalizarMomento(comida)
 }
 
 /** Agrupa los registros de un mismo día por momento del día (orden fijo + “Otros”). */
 function agruparComidasPorMomento(registrosDia) {
   const bloques = []
   for (const tipo of COMIDAS) {
-    const items = registrosDia.filter((r) => normalizarMomento(r.comida) === tipo)
+    const items = registrosDia.filter((r) => normalizarMomentoLocal(r.comida) === tipo)
     if (items.length) bloques.push({ tipo, items })
   }
   const otros = registrosDia.filter((r) => {
-    const m = normalizarMomento(r.comida)
+    const m = normalizarMomentoLocal(r.comida)
     return m == null || m === '' || !COMIDAS.includes(m)
   })
   if (otros.length) bloques.push({ tipo: 'Otros', items: otros })
@@ -186,7 +301,10 @@ function ListaComidaAgrupada({ bloques, onEliminar, onEditar }) {
               {itemsGrupo.map((r) => (
                 <li key={r.id} className="cd-hist-item-card">
                   <div className="cd-hist-item-main">
-                    <p className="cd-hist-item-nombre mb-0">{r.descripcion}</p>
+                    <p className="cd-hist-item-nombre mb-0">
+                      {r.descripcion}
+                      {r.hora && <span className="cd-hist-item-hora"> · {r.hora}</span>}
+                    </p>
                     {(r.calorias != null || r.proteinas != null || r.carbohidratos != null || r.grasas != null) && (
                       <div className="cd-hist-item-pills">
                         {r.calorias != null && (
@@ -250,6 +368,13 @@ export default function Comida() {
   const [busquedaRef, setBusquedaRef] = useState('')
   const [referenciaActiva, setReferenciaActiva] = useState(null)
   const [cantidadPorciones, setCantidadPorciones] = useState('1')
+  const [horaRegistro, setHoraRegistro] = useState(() => horaInputDesdeDate())
+  const [pendientes, setPendientes] = useState([])
+  const [modoPanel, setModoPanel] = useState('agregar')
+  const [registroEnEdicionId, setRegistroEnEdicionId] = useState(null)
+  const [panelPulse, setPanelPulse] = useState({ at: 0, modo: 'agregar' })
+  const [entradaManual, setEntradaManual] = useState(false)
+  const [manualForm, setManualForm] = useState(MANUAL_FORM_VACIO)
   const [hidratacionStore, setHidratacionStore] = useStorage('hidratacionDia', { fecha: '', vasos: 0 })
   const [periodo, setPeriodo] = useState('15_dias')
   const [desdeCustom, setDesdeCustom] = useState('')
@@ -277,23 +402,56 @@ export default function Comida() {
   }
 
   const seleccionarReferencia = (itemRef) => {
+    setEntradaManual(false)
+    setManualForm(MANUAL_FORM_VACIO)
     setReferenciaActiva(itemRef)
     setItems([])
     setBusquedaRef('')
     setCantidadPorciones('1')
   }
 
+  const iniciarEntradaManual = (nombreSugerido = '') => {
+    salirModoEdicion()
+    setReferenciaActiva(null)
+    setItems([])
+    setBusquedaRef('')
+    setEntradaManual(true)
+    setManualForm({
+      ...MANUAL_FORM_VACIO,
+      descripcion: nombreSugerido.trim(),
+    })
+    setCantidadPorciones('1')
+    setPanelPulse({ at: Date.now(), modo: 'agregar' })
+  }
+
+  const cerrarEntradaManual = () => {
+    setEntradaManual(false)
+    setManualForm(MANUAL_FORM_VACIO)
+  }
+
+  const actualizarManual = (field, value) => {
+    setManualForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const salirModoEdicion = () => {
+    setModoPanel('agregar')
+    setRegistroEnEdicionId(null)
+  }
+
   const limpiarSeleccion = () => {
     setReferenciaActiva(null)
     setItems([])
     setCantidadPorciones('1')
+    cerrarEntradaManual()
+    if (modoPanel === 'editar') salirModoEdicion()
   }
 
   const cambiarBusqueda = (value) => {
     setBusquedaRef(value)
-    if (value.trim() && referenciaActiva) {
+    if (value.trim() && (referenciaActiva || entradaManual)) {
       setReferenciaActiva(null)
       setItems([])
+      if (entradaManual) cerrarEntradaManual()
     }
   }
 
@@ -427,46 +585,90 @@ export default function Comida() {
     { cal: 0, pro: 0, car: 0, gra: 0 }
   )
 
+  const agregarALista = (e) => {
+    e?.preventDefault?.()
+    const nuevos = pendientesDesdeSeleccionActual(
+      referenciaActiva,
+      cantidadPorciones,
+      items,
+      comida,
+      horaRegistro,
+      entradaManual,
+      manualForm,
+    )
+    if (!nuevos.length) return
+    setPendientes((prev) => [...prev, ...nuevos])
+    setReferenciaActiva(null)
+    setItems([])
+    setBusquedaRef('')
+    setCantidadPorciones('1')
+    cerrarEntradaManual()
+  }
+
+  const quitarPendiente = (id) => {
+    setPendientes((prev) => prev.filter((p) => p.id !== id))
+  }
+
   const guardarComida = (e) => {
     e.preventDefault()
-    let aGuardar = items
-      .filter((it) => it.descripcion.trim())
-      .map((it) => (it.cantidad === '' || it.cantidad == null ? itemConCantidadAplicada(it, it._cantidadPrev ?? 1) : it))
-    if (aGuardar.length === 0 && referenciaActiva) {
-      aGuardar = [buildItemDesdeReferencia(referenciaActiva, cantidadPorciones)]
-    }
-    if (aGuardar.length === 0) return
-    const fecha = fechaInput || hoy
-    const hora = formatearHoraRegistro(new Date())
-    const nuevos = aGuardar.map((it) => {
-      const ref = buscarReferenciaPorNombre(it.descripcion.trim())
-      return {
-        id: crypto.randomUUID(),
+    let batch = [...pendientes]
+    if (!batch.length && modoPanel === 'editar') {
+      batch = pendientesDesdeSeleccionActual(
+        referenciaActiva,
+        cantidadPorciones,
+        items,
         comida,
-        descripcion: it.descripcion.trim(),
-        calorias: numeroFlexible(it.calorias) ?? undefined,
-        proteinas: numeroFlexible(it.proteinas) ?? undefined,
-        carbohidratos: numeroFlexible(it.carbohidratos) ?? undefined,
-        grasas: numeroFlexible(it.grasas) ?? undefined,
-        porciones: it.porciones?.trim() || undefined,
-        categoria: it._categoria || referenciaActiva?.categoria || ref?.categoria || undefined,
-        hora,
-        notas: notas.trim(),
-        fecha,
-      }
-    })
-    setRegistros([...nuevos, ...registros])
+        horaRegistro,
+        entradaManual,
+        manualForm,
+      )
+    }
+    if (!batch.length) return
+    const fecha = fechaInput || hoy
+    const notasLote = notas.trim()
+    const nuevos = batch.map((p) => ({
+      id: crypto.randomUUID(),
+      comida: p.comida,
+      descripcion: p.descripcion,
+      calorias: p.calorias,
+      proteinas: p.proteinas,
+      carbohidratos: p.carbohidratos,
+      grasas: p.grasas,
+      porciones: p.porciones,
+      categoria: p.categoria,
+      hora: p.hora,
+      notas: notasLote,
+      fecha,
+    }))
+    const base = registroEnEdicionId
+      ? registros.filter((r) => r.id !== registroEnEdicionId)
+      : registros
+    setRegistros([...nuevos, ...base])
+    setPendientes([])
     setItems([])
     setReferenciaActiva(null)
     setNotas('')
     setBusquedaRef('')
     setCantidadPorciones('1')
-    setComida('Desayuno')
+    setHoraRegistro(horaInputDesdeDate())
     setFechaInput(fecha)
+    salirModoEdicion()
+    cerrarEntradaManual()
+  }
+
+  const cancelarEdicion = () => {
+    salirModoEdicion()
+    setReferenciaActiva(null)
+    setItems([])
+    setBusquedaRef('')
+    setCantidadPorciones('1')
+    setPendientes([])
+    cerrarEntradaManual()
   }
 
   const eliminar = (id) => {
     setRegistros(registros.filter((r) => r.id !== id))
+    if (registroEnEdicionId === id) cancelarEdicion()
   }
 
   const fechaVista = fechaInput || hoy
@@ -514,9 +716,20 @@ export default function Comida() {
     { historialMedidas, hoy: fechaVista }
   )
 
-  const puedeGuardar = referenciaActiva != null || items.some((it) => it.descripcion.trim())
+  const manualValido = entradaManual && manualFormValido(manualForm)
+  const puedeAgregar = referenciaActiva != null || items.some((it) => it.descripcion.trim()) || manualValido
+  const puedeGuardar = pendientes.length > 0 || (modoPanel === 'editar' && puedeAgregar)
+
+  const totalesPendientes = pendientes.reduce(
+    (acc, p) => ({
+      cal: acc.cal + numeroFlexibleO(p.calorias),
+      pro: redondear1(acc.pro + numeroFlexibleO(p.proteinas)),
+    }),
+    { cal: 0, pro: 0 }
+  )
 
   const previewSeleccion = previewReferencia(referenciaActiva, cantidadPorciones)
+    || (entradaManual ? previewManual(manualForm, cantidadPorciones) : null)
 
   const cambiarVistaComida = (vista) => {
     setVistaComida(vista)
@@ -538,25 +751,29 @@ export default function Comida() {
     setFechaInput(fechaSoloDia(r.fecha) || hoy)
     setComida(normalizarMomento(r.comida) || 'Desayuno')
     setNotas(r.notas || '')
+    setHoraRegistro(horaInputDesdeRegistro(r.hora))
+    setPendientes([])
+    setModoPanel('editar')
+    setRegistroEnEdicionId(r.id)
     const ref = buscarReferenciaPorNombre(r.descripcion)
     if (ref) {
-      añadirDesdeReferencia(ref, '1')
+      const qty = cantidadDesdePorciones(r.porciones)
+      añadirDesdeReferencia(ref, qty)
       setBusquedaRef('')
     } else {
       setReferenciaActiva(null)
-      setItems([{
-        id: crypto.randomUUID(),
-        descripcion: r.descripcion,
-        cantidad: 1,
-        _cantidadPrev: 1,
+      setEntradaManual(true)
+      setManualForm({
+        descripcion: r.descripcion || '',
         calorias: r.calorias != null ? String(r.calorias) : '',
         proteinas: r.proteinas != null ? String(r.proteinas) : '',
         carbohidratos: r.carbohidratos != null ? String(r.carbohidratos) : '',
         grasas: r.grasas != null ? String(r.grasas) : '',
         porciones: r.porciones || '',
-      }])
+      })
+      setCantidadPorciones(cantidadDesdePorciones(r.porciones))
     }
-    requestAnimationFrame(() => document.getElementById('cd-buscar')?.focus())
+    setPanelPulse({ at: Date.now(), modo: 'editar' })
   }
 
   const toggleDiaHistorial = (fecha) => {
@@ -588,16 +805,17 @@ export default function Comida() {
   const onToggleVaso = (index) => {
     const n = index + 1
     const current = hidratacionStore.fecha === fechaVista ? hidratacionStore.vasos : 0
+    const metaVasos = 10
     if (n <= current) {
       setHidratacionStore({ fecha: fechaVista, vasos: Math.max(0, n - 1) })
     } else {
-      setHidratacionStore({ fecha: fechaVista, vasos: Math.min(8, n) })
+      setHidratacionStore({ fecha: fechaVista, vasos: Math.min(metaVasos, n) })
     }
   }
 
   const onAdd250ml = () => {
     const current = hidratacionStore.fecha === fechaVista ? hidratacionStore.vasos : 0
-    setHidratacionStore({ fecha: fechaVista, vasos: Math.min(8, current + 1) })
+    setHidratacionStore({ fecha: fechaVista, vasos: Math.min(10, current + 1) })
   }
 
   const caloriasActivas = Math.round(contextoDia?.caloriasQuemadas || 0)
@@ -627,6 +845,9 @@ export default function Comida() {
           hoyRegistros={hoyRegistros}
           comida={comida}
           setComida={setComida}
+          horaRegistro={horaRegistro}
+          setHoraRegistro={setHoraRegistro}
+          onReiniciarHora={() => setHoraRegistro(horaInputDesdeDate())}
           eliminar={eliminar}
           busquedaRef={busquedaRef}
           setBusquedaRef={cambiarBusqueda}
@@ -640,7 +861,12 @@ export default function Comida() {
           blurCantidadPorciones={blurCantidadPorciones}
           items={items}
           totalesItems={totalesItems}
+          puedeAgregar={puedeAgregar}
           puedeGuardar={puedeGuardar}
+          pendientes={pendientes}
+          totalesPendientes={totalesPendientes}
+          agregarALista={agregarALista}
+          quitarPendiente={quitarPendiente}
           añadirDesdeReferencia={añadirDesdeReferencia}
           actualizarItem={actualizarItem}
           quitarItem={quitarItem}
@@ -671,6 +897,15 @@ export default function Comida() {
           diasExpandidos={diasExpandidos}
           toggleDiaHistorial={toggleDiaHistorial}
           onEditarRegistro={editarRegistro}
+          panelPulse={panelPulse}
+          modoPanel={modoPanel}
+          onSalirEdicion={salirModoEdicion}
+          onCancelarEdicion={cancelarEdicion}
+          entradaManual={entradaManual}
+          manualForm={manualForm}
+          actualizarManual={actualizarManual}
+          iniciarEntradaManual={iniciarEntradaManual}
+          cerrarEntradaManual={cerrarEntradaManual}
           renderDiaHistorial={(lista) => (
             <ListaComidaAgrupada bloques={agruparComidasPorMomento(lista)} onEliminar={eliminar} onEditar={editarRegistro} />
           )}

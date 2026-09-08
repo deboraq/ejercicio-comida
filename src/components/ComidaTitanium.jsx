@@ -1,7 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { fechaSoloDia, fechaToISO, formatearFecha } from '../utils/calorias'
 import { REFERENCIA_ALIMENTOS } from '../utils/referenciaComidas'
+import { getRecetasSugeridasCena } from '../utils/recetasCena'
 import { getUltimosNDias, PERIODOS } from '../utils/estadisticas'
+import { META_MOMENTO_FRAC, HORA_MOMENTO_DEFAULT } from '../utils/comidaMomentos'
 import { AppNotificacionesCampana } from '../context/AppNotificationsContext'
 
 function numeroFlexibleO(valor, fallback = 0) {
@@ -20,7 +22,7 @@ const FAVORITOS = [
   { label: 'Whey Protein', emoji: '🥤', match: 'whey' },
 ]
 
-const META_MOMENTO = { Desayuno: 0.25, Almuerzo: 0.35, Merienda: 0.15, Cena: 0.25 }
+const META_MOMENTO = META_MOMENTO_FRAC
 const DIAS_CORTO = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
 
 const ETIQUETA_CATEGORIA = {
@@ -31,6 +33,10 @@ const ETIQUETA_CATEGORIA = {
   'Comidas saludables': 'Plato balanceado',
   Almuerzo: 'Plato completo',
   'Desayuno / Lácteos': 'Desayuno',
+  'Lácteos y quesos': 'Lácteos',
+  Fiambres: 'Fiambres',
+  'Snacks / Bebidas': 'Snack',
+  Personalizado: 'Personalizado',
 }
 
 function buscarReferenciaAlimento(nombre) {
@@ -44,12 +50,7 @@ function buscarReferenciaAlimento(nombre) {
   }) || null
 }
 
-const HORA_MOMENTO = {
-  Desayuno: '08:30 AM',
-  Almuerzo: '13:15 PM',
-  Merienda: '17:00 PM',
-  Cena: '21:00 PM',
-}
+const HORA_MOMENTO = HORA_MOMENTO_DEFAULT
 
 function horaDelMomento(items, tipo) {
   for (let i = items.length - 1; i >= 0; i -= 1) {
@@ -57,6 +58,13 @@ function horaDelMomento(items, tipo) {
   }
   if (items.length) return HORA_MOMENTO[tipo] || null
   return null
+}
+
+function rangoHorarioMomento(items, tipo) {
+  const horas = items.map((r) => r.hora).filter(Boolean)
+  if (!horas.length) return horaDelMomento(items, tipo)
+  if (horas.length === 1) return horas[0]
+  return `${horas[0]} – ${horas[horas.length - 1]}`
 }
 
 function subtituloAlimento(r) {
@@ -341,6 +349,8 @@ function IconWater() {
 }
 
 const LITROS_META_AGUA = 2.5
+const ML_POR_VASO = 250
+const META_VASOS_AGUA = Math.round(LITROS_META_AGUA / (ML_POR_VASO / 1000))
 
 function grasasRef(a) {
   if (a.grasas != null && Number.isFinite(Number(a.grasas))) return Number(a.grasas)
@@ -384,14 +394,14 @@ function CalorieRing({ consumed, goal }) {
   )
 }
 
-function MacroBar({ label, value, goal, color, dotClass = '' }) {
+function MacroBar({ label, value, goal, color, dotClass = '', destacado = false }) {
   const num = Number(value) || 0
   const target = Number(goal) || 0
   const pct = target > 0 ? Math.min(100, (num / target) * 100) : 0
   const rest = Math.max(0, Math.round((target - num) * 10) / 10)
 
   return (
-    <div className="cd-macro-bar">
+    <div className={`cd-macro-bar${destacado ? ' is-guide-macro' : ''}`}>
       <div className="cd-macro-bar-head">
         <span className="cd-macro-bar-label">
           <span className={`cd-macro-dot ${dotClass}`} aria-hidden />
@@ -443,9 +453,17 @@ function MacroPills({ r, compact = false }) {
   )
 }
 
-function TipNutricionista({ texto, className = '' }) {
+function TipNutricionista({
+  texto,
+  className = '',
+  recetasCena = [],
+  recetasAbiertas = false,
+  onVerRecetasCena,
+  onCerrarRecetas,
+  onElegirReceta,
+}) {
   return (
-    <section className={`cd-panel cd-tip${className ? ` ${className}` : ''}`}>
+    <section className={`cd-panel cd-tip${className ? ` ${className}` : ''}`} id="cd-recetas-cena">
       <div className="cd-tip-head">
         <span className="cd-tip-ico-box" aria-hidden>
           <IconLightning />
@@ -458,7 +476,45 @@ function TipNutricionista({ texto, className = '' }) {
         className="cd-tip-text mb-0"
         dangerouslySetInnerHTML={{ __html: resaltarTip(texto) }}
       />
-      <button type="button" className="cd-tip-link">Ver recetas sugeridas de cena ›</button>
+      <button
+        type="button"
+        className="cd-tip-link"
+        onClick={() => (recetasAbiertas ? onCerrarRecetas?.() : onVerRecetasCena?.())}
+      >
+        {recetasAbiertas ? 'Ocultar recetas sugeridas ‹' : 'Ver recetas sugeridas de cena ›'}
+      </button>
+
+      {recetasAbiertas && (
+        <div className="cd-recetas-cena">
+          <p className="cd-recetas-cena-hint mb-0">
+            Tocá un plato para cargarlo en <strong>Cena</strong> y registrarlo.
+          </p>
+          {recetasCena.length === 0 ? (
+            <p className="cd-recetas-cena-empty mb-0">No hay sugerencias por ahora. Usá el buscador con «pollo», «atún» o «ensalada».</p>
+          ) : (
+            <ul className="cd-recetas-cena-list mb-0">
+              {recetasCena.map((a) => {
+                const gra = grasasRef(a)
+                return (
+                  <li key={a._idx}>
+                    <button
+                      type="button"
+                      className="cd-recetas-cena-item"
+                      onClick={() => onElegirReceta?.(a)}
+                    >
+                      <span className="cd-recetas-cena-name">{a.nombre}</span>
+                      <span className="cd-recetas-cena-meta">
+                        {a.calorias} kcal · P {a.proteinas}g · G {gra}g
+                      </span>
+                      {a.porcion && <span className="cd-recetas-cena-porc">{a.porcion}</span>}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      )}
     </section>
   )
 }
@@ -472,11 +528,12 @@ function MealCard({
   proteinasRest,
   onAgregar,
   onEliminar,
+  onEditar,
 }) {
   const cal = items.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
-  const metaMomento = Math.round(metaKcal * (META_MOMENTO[tipo] || 0.25))
+  const metaMomento = Math.round(metaKcal * (META_MOMENTO[tipo] || 0.2))
   const vacio = items.length === 0
-  const horaConsumo = horaDelMomento(items, tipo)
+  const horaConsumo = rangoHorarioMomento(items, tipo)
 
   return (
     <article className={`cd-meal${vacio ? ' cd-meal--pending' : ' cd-meal--filled'}`}>
@@ -505,12 +562,34 @@ function MealCard({
             return (
               <li key={r.id} className="cd-meal-item">
                 <div className="cd-meal-item-text">
-                  <p className="cd-meal-item-name mb-0">{r.descripcion}</p>
+                  <p className="cd-meal-item-name mb-0">
+                    {r.descripcion}
+                    {r.hora && <span className="cd-meal-item-hora"> · {r.hora}</span>}
+                  </p>
                   {sub && <p className="cd-meal-item-sub mb-0">{sub}</p>}
                 </div>
                 <div className="cd-meal-item-right">
                   <MacroPills r={r} compact />
-                  <button type="button" className="cd-meal-del" onClick={() => onEliminar(r.id)} aria-label="Eliminar">×</button>
+                  <div className="cd-meal-actions">
+                    {onEditar && (
+                      <button
+                        type="button"
+                        className="cd-meal-act cd-meal-act--edit"
+                        onClick={() => onEditar(r)}
+                        aria-label={`Editar ${r.descripcion}`}
+                      >
+                        ✎
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="cd-meal-act cd-meal-act--del"
+                      onClick={() => onEliminar(r.id)}
+                      aria-label={`Eliminar ${r.descripcion}`}
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               </li>
             )
@@ -538,15 +617,18 @@ export default function ComidaTitanium({
   metaCarb,
   metaGrasa,
   vasos = 0,
-  metaVasos = 8,
+  metaVasos = META_VASOS_AGUA,
   caloriasActivas = 0,
   onToggleVaso,
   onAdd250ml,
-  comidas = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena'],
+  comidas = ['Desayuno', 'Almuerzo', 'Merienda', 'Snack', 'Cena'],
   momentoIcon = {},
   hoyRegistros = [],
   comida,
   setComida,
+  horaRegistro = '',
+  setHoraRegistro,
+  onReiniciarHora,
   eliminar,
   busquedaRef,
   setBusquedaRef,
@@ -560,7 +642,12 @@ export default function ComidaTitanium({
   blurCantidadPorciones,
   items = [],
   totalesItems,
+  puedeAgregar,
   puedeGuardar,
+  pendientes = [],
+  totalesPendientes,
+  agregarALista,
+  quitarPendiente,
   añadirDesdeReferencia,
   actualizarItem,
   quitarItem,
@@ -589,6 +676,16 @@ export default function ComidaTitanium({
   diasExpandidos = new Set(),
   toggleDiaHistorial,
   renderDiaHistorial,
+  onEditarRegistro,
+  panelPulse,
+  modoPanel = 'agregar',
+  onSalirEdicion,
+  onCancelarEdicion,
+  entradaManual = false,
+  manualForm = {},
+  actualizarManual,
+  iniciarEntradaManual,
+  cerrarEntradaManual,
   bannerConsejo,
   objetivo,
 }) {
@@ -596,7 +693,7 @@ export default function ComidaTitanium({
     const map = {}
     for (const m of comidas) map[m] = []
     for (const r of hoyRegistros) {
-      const m = r.comida === 'Snack' ? 'Merienda' : r.comida
+      const m = r.comida || 'Otros'
       if (map[m]) map[m].push(r)
       else if (!map.Otros) map.Otros = [r]
     }
@@ -630,28 +727,112 @@ export default function ComidaTitanium({
 
   const maxSemana = Math.max(metaKcal, ...semana.map((d) => d.cal), 1)
   const proteinasRest = Math.max(0, (Number(metaPro) || 0) - (Number(proteinasHoy) || 0))
-  const litrosConsumidos = Math.min(LITROS_META_AGUA, vasos * 0.4)
+  const litrosConsumidos = Math.min(LITROS_META_AGUA, (vasos * ML_POR_VASO) / 1000)
   const litrosConsumidosFmt = (Math.round(litrosConsumidos * 10) / 10).toFixed(1)
 
-  const agregarMomento = (momento) => {
+  const [buscadorDestacado, setBuscadorDestacado] = useState(false)
+  const [recetasCenaAbiertas, setRecetasCenaAbiertas] = useState(false)
+  const [balanceDestacado, setBalanceDestacado] = useState(false)
+  const pulseTimerRef = useRef(null)
+  const balanceTimerRef = useRef(null)
+
+  useEffect(() => () => {
+    if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
+    if (balanceTimerRef.current) clearTimeout(balanceTimerRef.current)
+  }, [])
+
+  const activarGuiaPanel = useCallback((modo = 'agregar', focusSearch = true) => {
+    setBuscadorDestacado(true)
+    if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
+    pulseTimerRef.current = setTimeout(() => setBuscadorDestacado(false), 5000)
+
+    requestAnimationFrame(() => {
+      document.getElementById('cd-agregar-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      window.setTimeout(() => {
+        if (modo === 'editar') {
+          document.querySelector('#cd-agregar-panel .cd-field--cantidad input')?.focus({ preventScroll: true })
+        } else if (focusSearch) {
+          document.getElementById('cd-buscar')?.focus({ preventScroll: true })
+        }
+      }, 320)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!panelPulse?.at) return
+    activarGuiaPanel(panelPulse.modo === 'editar' ? 'editar' : 'agregar', panelPulse.modo !== 'editar')
+  }, [panelPulse?.at, panelPulse?.modo, activarGuiaPanel])
+
+  const agregarMomento = useCallback((momento) => {
+    onSalirEdicion?.()
     setComida(momento)
-    requestAnimationFrame(() => document.getElementById('cd-buscar')?.focus())
-  }
+    onReiniciarHora?.()
+    activarGuiaPanel('agregar', true)
+  }, [setComida, onReiniciarHora, activarGuiaPanel, onSalirEdicion])
+
+  const handleEditarRegistro = useCallback((r) => {
+    onEditarRegistro?.(r)
+  }, [onEditarRegistro])
+
+  const recetasCena = useMemo(
+    () => getRecetasSugeridasCena({
+      proteinasRestantes: proteinasRest,
+      caloriasRestantes: Math.max(0, (Number(metaKcal) || 0) - (Number(caloriasHoy) || 0)),
+      limite: 6,
+    }),
+    [proteinasRest, metaKcal, caloriasHoy]
+  )
+
+  const verRecetasCena = useCallback(() => {
+    setComida('Cena')
+    cerrarEntradaManual?.()
+    setRecetasCenaAbiertas(true)
+    requestAnimationFrame(() => {
+      document.getElementById('cd-recetas-cena')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }, [setComida, cerrarEntradaManual])
+
+  const elegirRecetaCena = useCallback((item) => {
+    seleccionarReferencia(item)
+    setComida('Cena')
+    setRecetasCenaAbiertas(false)
+    activarGuiaPanel('agregar', false)
+  }, [seleccionarReferencia, setComida, activarGuiaPanel])
 
   const agregarFavorito = (match) => {
     const item = REFERENCIA_ALIMENTOS.find((a) => a.nombre.toLowerCase().includes(match))
     if (item) seleccionarReferencia(item)
   }
 
-  const totalPreview = previewSeleccion || (puedeGuardar && items.length ? totalesItems : null)
+  const totalPreview = previewSeleccion || (puedeAgregar && items.length ? totalesItems : null)
 
-  const verDesglose = () => {
-    document.getElementById('cd-balance')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
+  const focoProteinaInsight = Boolean(
+    bannerConsejo && (
+      bannerConsejo.tipo === 'nutricion'
+      || bannerConsejo.tipo === 'recuperacion'
+      || /prote[ií]na/i.test(bannerConsejo.texto || '')
+    )
+  )
+
+  const verDesglose = useCallback(() => {
+    setVistaComida?.('hoy')
+    setBalanceDestacado(true)
+    if (balanceTimerRef.current) clearTimeout(balanceTimerRef.current)
+    balanceTimerRef.current = setTimeout(() => setBalanceDestacado(false), 5000)
+
+    window.setTimeout(() => {
+      document.getElementById('cd-balance')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 120)
+  }, [setVistaComida])
+
+  const etiquetaBtnDesglose = focoProteinaInsight
+    ? 'Ver proteínas del día ↓'
+    : 'Ver balance y macros ↓'
 
   const etiquetaSecundaria = ETIQUETA_OBJETIVO[objetivo] || null
   const diaActivo = fechaVista || hoy
   const puedeIrSiguiente = diaActivo < hoy
+  const enEdicion = modoPanel === 'editar'
 
   return (
     <div className="cd-root">
@@ -712,8 +893,15 @@ export default function ComidaTitanium({
               dangerouslySetInnerHTML={{ __html: resaltarTextoInsight(bannerConsejo.texto) }}
             />
           </div>
-          <button type="button" className="cd-insight-btn" onClick={verDesglose}>
-            Ver desglose
+          <button
+            type="button"
+            className="cd-insight-btn"
+            onClick={verDesglose}
+            aria-label={focoProteinaInsight
+              ? 'Ir al balance diario y resaltar proteínas consumidas'
+              : 'Ir al balance diario con calorías y macronutrientes'}
+          >
+            {etiquetaBtnDesglose}
           </button>
         </div>
       )}
@@ -742,7 +930,18 @@ export default function ComidaTitanium({
         <div className="cd-main">
           {vistaComida === 'hoy' ? (
             <>
-          <section id="cd-balance" className="cd-panel cd-balance">
+          <section
+            id="cd-balance"
+            className={`cd-panel cd-balance${balanceDestacado ? ' is-guide-pulse' : ''}`}
+          >
+            {balanceDestacado && (
+              <div className="cd-balance-guide" role="status" aria-live="polite">
+                <span className="cd-balance-guide-dot" aria-hidden />
+                {focoProteinaInsight
+                  ? 'Acá ves cuánta proteína llevás hoy y cuánto te falta para la meta'
+                  : 'Acá ves calorías, proteínas, carbohidratos y grasas del día'}
+              </div>
+            )}
             <div className="cd-balance-head">
               <div>
                 <h2 className="cd-panel-title mb-0">Tu Balance Diario</h2>
@@ -756,8 +955,15 @@ export default function ComidaTitanium({
               <div className="cd-ring-wrap">
                 <CalorieRing consumed={caloriasHoy} goal={metaKcal} />
               </div>
-              <div className="cd-macros-col">
-                <MacroBar label="Proteínas" dotClass="cd-macro-dot--p" value={proteinasHoy} goal={metaPro} color="#38bdf8" />
+              <div id="cd-macros" className="cd-macros-col">
+                <MacroBar
+                  label="Proteínas"
+                  dotClass="cd-macro-dot--p"
+                  value={proteinasHoy}
+                  goal={metaPro}
+                  color="#38bdf8"
+                  destacado={balanceDestacado && focoProteinaInsight}
+                />
                 <MacroBar label="Carbohidratos" dotClass="cd-macro-dot--c" value={carbosHoy} goal={metaCarb} color="#f59e0b" />
                 <MacroBar label="Grasas Totales" dotClass="cd-macro-dot--g" value={grasasHoy} goal={metaGrasa} color="#ec4899" />
               </div>
@@ -769,7 +975,7 @@ export default function ComidaTitanium({
               <div className="cd-water-copy">
                 <span className="cd-water-label">Hidratación Diaria</span>
                 <p className="cd-water-stats mb-0">
-                  {vasos} de {metaVasos} vasos consumidos ({litrosConsumidosFmt}L / {LITROS_META_AGUA}L Meta)
+                  {vasos} de {metaVasos} vasos de {ML_POR_VASO} ml ({litrosConsumidosFmt}L / {LITROS_META_AGUA}L Meta)
                 </p>
               </div>
               <div className="cd-water-glasses">
@@ -800,11 +1006,20 @@ export default function ComidaTitanium({
                 proteinasRest={proteinasRest}
                 onAgregar={agregarMomento}
                 onEliminar={eliminar}
+                onEditar={handleEditarRegistro}
               />
             ))}
           </div>
 
-          <TipNutricionista texto={tipNutricion} className="cd-tip--mobile" />
+          <TipNutricionista
+            texto={tipNutricion}
+            className="cd-tip--mobile"
+            recetasCena={recetasCena}
+            recetasAbiertas={recetasCenaAbiertas}
+            onVerRecetasCena={verRecetasCena}
+            onCerrarRecetas={() => setRecetasCenaAbiertas(false)}
+            onElegirReceta={elegirRecetaCena}
+          />
 
           <button type="button" className="cd-hist-quick" onClick={() => setVistaComida?.('historial')}>
             <span className="cd-hist-quick-label">Historial de Registros de Nutrición</span>
@@ -836,7 +1051,28 @@ export default function ComidaTitanium({
         </div>
 
         <aside className="cd-aside">
-          <section className="cd-panel cd-search-panel">
+          <section
+            id="cd-agregar-panel"
+            className={`cd-panel cd-search-panel${buscadorDestacado ? ' is-guide-pulse' : ''}${enEdicion ? ' is-guide-edit' : ''}`}
+          >
+            {(buscadorDestacado || enEdicion) && (
+              <div
+                className={`cd-add-guide${enEdicion && !buscadorDestacado ? ' cd-add-guide--static' : ''}`}
+                role="status"
+                aria-live="polite"
+              >
+                <span className="cd-add-guide-dot" aria-hidden />
+                {enEdicion ? (
+                  <>
+                    Modificá acá — ajustá <strong>momento, hora o cantidad</strong> y tocá <strong>Guardar cambios</strong>
+                  </>
+                ) : (
+                  <>
+                    Agregá acá — buscá el alimento y guardalo en <strong>{comida}</strong>
+                  </>
+                )}
+              </div>
+            )}
             <div className="cd-search-head">
               <div className="cd-search-head-ico" aria-hidden>
                 <IconSearchPanel />
@@ -873,7 +1109,23 @@ export default function ComidaTitanium({
               )}
             </div>
 
-            {referenciaActiva && (
+            <div className="cd-manual-toggle-wrap">
+              {!entradaManual ? (
+                <button
+                  type="button"
+                  className="cd-manual-toggle"
+                  onClick={() => iniciarEntradaManual?.(busquedaRef.trim())}
+                >
+                  + Alimento no listado — cargar manual
+                </button>
+              ) : (
+                <button type="button" className="cd-manual-toggle cd-manual-toggle--back" onClick={() => cerrarEntradaManual?.()}>
+                  ← Volver al buscador
+                </button>
+              )}
+            </div>
+
+            {referenciaActiva && !entradaManual && (
               <div className="cd-ref-selected">
                 <div className="cd-ref-selected-main">
                   <strong className="cd-ref-selected-name">{referenciaActiva.nombre}</strong>
@@ -885,10 +1137,19 @@ export default function ComidaTitanium({
               </div>
             )}
 
-            {busquedaRef.trim().length >= 1 && !referenciaActiva && (
+            {busquedaRef.trim().length >= 1 && !referenciaActiva && !entradaManual && (
               <div className="cd-ref-list">
                 {resultadosBusqueda.length === 0 ? (
-                  <p className="cd-search-empty mb-0">Sin resultados. Probá otra palabra.</p>
+                  <div className="cd-search-empty-wrap">
+                    <p className="cd-search-empty mb-0">Sin resultados. Probá otra palabra.</p>
+                    <button
+                      type="button"
+                      className="cd-manual-from-search"
+                      onClick={() => iniciarEntradaManual?.(busquedaRef.trim())}
+                    >
+                      Cargar «{busquedaRef.trim()}» manualmente
+                    </button>
+                  </div>
                 ) : (
                   resultadosBusqueda.slice(0, 6).map((a) => {
                     const selected = referenciaActiva?._idx === a._idx
@@ -915,18 +1176,113 @@ export default function ComidaTitanium({
               </div>
             )}
 
-            <div className="cd-add-block">
-              <h3 className="cd-add-title">Añadir Seleccionado</h3>
+            {entradaManual && (
+              <div className="cd-manual-form">
+                <p className="cd-manual-hint mb-0">
+                  Completá nombre y calorías (macros opcionales). Después usá momento, hora y cantidad abajo.
+                </p>
+                <label className="cd-field cd-field--full">
+                  <span>Nombre del alimento</span>
+                  <input
+                    type="text"
+                    value={manualForm.descripcion || ''}
+                    onChange={(e) => actualizarManual?.('descripcion', e.target.value)}
+                    placeholder="Ej: milanesa casera, budín de la abuela…"
+                  />
+                </label>
+                <div className="cd-manual-macros">
+                  <label className="cd-field">
+                    <span>Kcal *</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={manualForm.calorias ?? ''}
+                      onChange={(e) => actualizarManual?.('calorias', e.target.value)}
+                      placeholder="120"
+                    />
+                  </label>
+                  <label className="cd-field">
+                    <span>Prot. (g)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={manualForm.proteinas ?? ''}
+                      onChange={(e) => actualizarManual?.('proteinas', e.target.value)}
+                      placeholder="0"
+                    />
+                  </label>
+                  <label className="cd-field">
+                    <span>Carb. (g)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={manualForm.carbohidratos ?? ''}
+                      onChange={(e) => actualizarManual?.('carbohidratos', e.target.value)}
+                      placeholder="0"
+                    />
+                  </label>
+                  <label className="cd-field">
+                    <span>Grasa (g)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={manualForm.grasas ?? ''}
+                      onChange={(e) => actualizarManual?.('grasas', e.target.value)}
+                      placeholder="auto"
+                    />
+                  </label>
+                </div>
+                <label className="cd-field cd-field--full">
+                  <span>Porción / detalle (opcional)</span>
+                  <input
+                    type="text"
+                    value={manualForm.porciones || ''}
+                    onChange={(e) => actualizarManual?.('porciones', e.target.value)}
+                    placeholder="Ej: 1 plato, 200 g, 2 rebanadas…"
+                  />
+                </label>
+              </div>
+            )}
+
+            <div
+              className={`cd-add-block${(buscadorDestacado || enEdicion) ? ' is-guide-inner' : ''}${enEdicion && !buscadorDestacado ? ' is-guide-inner--static' : ''}`}
+            >
+              <div className="cd-add-title-row">
+                <h3 className="cd-add-title mb-0">
+                  {enEdicion ? 'Modificar seleccionado' : entradaManual ? 'Cargar alimento manual' : 'Añadir Seleccionado'}
+                </h3>
+                {enEdicion && (
+                  <button type="button" className="cd-add-cancel" onClick={() => onCancelarEdicion?.()}>
+                    Cancelar
+                  </button>
+                )}
+              </div>
               <div className="cd-add-fields">
                 <label className="cd-field cd-field--momento">
                   <span>Momento</span>
-                  <div className="cd-select-wrap">
-                    <select value={comida} onChange={(e) => setComida(e.target.value)}>
-                      {comidas.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                  <div className="cd-momento-hora-row">
+                    <div className="cd-select-wrap">
+                      <select value={comida} onChange={(e) => setComida(e.target.value)}>
+                        {comidas.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div className="cd-hora-pick" title={`Hora: ${horaRegistro || 'ahora'}`}>
+                      <span className="cd-hora-pick-ico" aria-hidden>🕐</span>
+                      <input
+                        type="time"
+                        className="cd-hora-pick-input"
+                        value={horaRegistro}
+                        aria-label={`Hora del registro, ${horaRegistro || 'hora actual'}`}
+                        onChange={(e) => setHoraRegistro?.(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </label>
-                <label className="cd-field">
+                <label className="cd-field cd-field--cantidad">
                   <span>Porción / Cantidad</span>
                   <input
                     type="number"
@@ -942,7 +1298,7 @@ export default function ComidaTitanium({
 
               {totalPreview && (
                 <div className="cd-add-total">
-                  <span className="cd-add-total-lbl">Total a computar:</span>
+                  <span className="cd-add-total-lbl">{enEdicion ? 'Total modificado:' : 'Total a agregar:'}</span>
                   <div className="cd-add-total-vals">
                     <strong>{totalPreview.cal} kcal</strong>
                     <span className="cd-add-total-sep" aria-hidden />
@@ -951,14 +1307,62 @@ export default function ComidaTitanium({
                 </div>
               )}
 
-              <button
-                type="button"
-                className="cd-btn cd-btn--save cd-btn--full"
-                disabled={!puedeGuardar}
-                onClick={(e) => guardarComida(e)}
-              >
-                Guardar en el historial
-              </button>
+              {pendientes.length > 0 && (
+                <div className="cd-pending">
+                  <div className="cd-pending-head">
+                    <span className="cd-pending-title">Lista ({pendientes.length})</span>
+                    {totalesPendientes && (
+                      <span className="cd-pending-total">
+                        {totalesPendientes.cal} kcal · P {totalesPendientes.pro}g
+                      </span>
+                    )}
+                  </div>
+                  <ul className="cd-pending-list mb-0">
+                    {pendientes.map((p) => (
+                      <li key={p.id} className="cd-pending-item">
+                        <div className="cd-pending-main">
+                          <strong className="cd-pending-name">{p.descripcion}</strong>
+                          <span className="cd-pending-meta">
+                            {p.comida}
+                            {p.hora && <> · {p.hora}</>}
+                            {' · '}
+                            {numeroFlexibleO(p.calorias)} kcal
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="cd-pending-del"
+                          aria-label={`Quitar ${p.descripcion}`}
+                          onClick={() => quitarPendiente?.(p.id)}
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="cd-add-actions">
+                <button
+                  type="button"
+                  className="cd-btn cd-btn--ghost cd-btn--full"
+                  disabled={!puedeAgregar}
+                  onClick={(e) => agregarALista?.(e)}
+                >
+                  + Agregar a la lista
+                </button>
+                <button
+                  type="button"
+                  className="cd-btn cd-btn--save cd-btn--full"
+                  disabled={!puedeGuardar}
+                  onClick={(e) => guardarComida(e)}
+                >
+                  {enEdicion
+                    ? (pendientes.length > 1 ? `Guardar ${pendientes.length} cambios` : 'Guardar cambios')
+                    : (pendientes.length > 1 ? `Guardar ${pendientes.length} alimentos` : 'Guardar en el historial')}
+                </button>
+              </div>
             </div>
 
             <div className="cd-fav">
@@ -999,7 +1403,15 @@ export default function ComidaTitanium({
             </div>
           </section>
 
-          <TipNutricionista texto={tipNutricion} className="cd-tip--aside" />
+          <TipNutricionista
+            texto={tipNutricion}
+            className="cd-tip--aside"
+            recetasCena={recetasCena}
+            recetasAbiertas={recetasCenaAbiertas}
+            onVerRecetasCena={verRecetasCena}
+            onCerrarRecetas={() => setRecetasCenaAbiertas(false)}
+            onElegirReceta={elegirRecetaCena}
+          />
         </aside>
       </div>
     </div>
