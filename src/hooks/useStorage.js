@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useLocalStorage } from './useLocalStorage'
+import { useLocalStorage, normalizeStorageValue } from './useLocalStorage'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
@@ -15,7 +15,8 @@ export function useStorage(key, initialValue) {
   const valueRef = useRef(localVal)
 
   const value = user && cloudLoaded ? cloudVal : localVal
-  valueRef.current = value
+  const safeValue = normalizeStorageValue(value, initialValue)
+  valueRef.current = safeValue
 
   useEffect(() => {
     if (!user || !isConfigured || !supabase) {
@@ -34,9 +35,9 @@ export function useStorage(key, initialValue) {
       if (cancelled) return
       if (error) {
         console.error('Error loading user_data:', error)
-        setCloudVal(localVal)
+        setCloudVal(normalizeStorageValue(localVal, initialValue))
       } else {
-        setCloudVal(data?.value != null ? data.value : initialValue)
+        setCloudVal(normalizeStorageValue(data?.value != null ? data.value : initialValue, initialValue))
       }
       setCloudLoaded(true)
     }
@@ -67,5 +68,5 @@ export function useStorage(key, initialValue) {
     [user?.id, isConfigured, cloudLoaded, key]
   )
 
-  return [value, setValue]
+  return [safeValue, setValue]
 }
