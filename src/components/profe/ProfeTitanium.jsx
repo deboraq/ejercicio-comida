@@ -27,10 +27,10 @@ import ProfeHistorialAsignaciones from './ProfeHistorialAsignaciones'
 import './ProfeTitanium.css'
 
 const TABS = [
-  { id: 'alumnos', label: 'Supervisión & Alumnos', Icon: IconUsers },
-  { id: 'historial', label: 'Rutinas Asignadas & Envíos', Icon: IconClipboard },
-  { id: 'mensajes', label: 'Mensajes y Feedback', Icon: IconMessage },
-  { id: 'plantillas', label: 'Plantillas de Entrenamiento', Icon: IconTemplate },
+  { id: 'alumnos', label: 'Supervisión & Alumnos', shortLabel: 'Alumnos', Icon: IconUsers },
+  { id: 'historial', label: 'Rutinas Asignadas & Envíos', shortLabel: 'Envíos', Icon: IconClipboard },
+  { id: 'mensajes', label: 'Mensajes y Feedback', shortLabel: 'Mensajes', Icon: IconMessage },
+  { id: 'plantillas', label: 'Plantillas de Entrenamiento', shortLabel: 'Plantillas', Icon: IconTemplate },
 ]
 
 function IconUsers({ className }) {
@@ -715,7 +715,8 @@ export default function ProfeTitanium({
         <div className="pf-topbar-actions">
           <span className="pf-cloud-badge">Supervisión Cloud Activa</span>
           <button type="button" className="pf-btn-vincular" onClick={() => setModalVincular(true)}>
-            + Vincular nuevo alumno
+            <span className="pf-vincular-label pf-vincular-label--long">+ Vincular nuevo alumno</span>
+            <span className="pf-vincular-label pf-vincular-label--short">+ Vincular alumno</span>
           </button>
           <div className="pf-campana">
             <AppNotificacionesCampana />
@@ -778,7 +779,8 @@ export default function ProfeTitanium({
             onClick={() => setTab(t.id)}
           >
             <TabIcon className="pf-tab-ico" />
-            {t.label}
+            <span className="pf-tab-label pf-tab-label--long">{t.label}</span>
+            <span className="pf-tab-label pf-tab-label--short">{t.shortLabel}</span>
             {t.id === 'alumnos' && (
               <span className="pf-tab-count">{conteos.total}</span>
             )}

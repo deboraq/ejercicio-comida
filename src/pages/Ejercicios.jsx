@@ -364,9 +364,9 @@ export default function Ejercicios() {
       })
     }
 
-    // Primero los presets fijos (evita “Pádel” + “padel”)
-    for (const r of RAPIDOS_BASE) pushUnique(r)
+    // Prioridad: lo que más registra el usuario; presets solo rellenan hasta 4
     for (const t of top) pushUnique(t)
+    for (const r of RAPIDOS_BASE) pushUnique(r)
     return out
   }, [ejercicios])
 

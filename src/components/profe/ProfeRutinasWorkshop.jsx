@@ -850,28 +850,36 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
           <nav className="pf-ws-breadcrumb" aria-label="Ruta">
             <span>Módulo Profe</span>
             <span className="pf-ws-breadcrumb-sep">›</span>
-            <span className="pf-ws-breadcrumb-current">Plantillas de Entrenamiento</span>
+            <span className="pf-ws-breadcrumb-current pf-ws-breadcrumb-current--long">Plantillas de Entrenamiento</span>
+            <span className="pf-ws-breadcrumb-current pf-ws-breadcrumb-current--short">Plantillas</span>
           </nav>
-          <span className="pf-ws-header-sep" aria-hidden />
-          <span className="pf-ws-topbar-pill pf-ws-topbar-pill--active">Workspace Todo-en-Uno</span>
-          <span className="pf-ws-topbar-pill pf-ws-topbar-pill--save">
-            <span className="pf-ws-autosave-dot" aria-hidden />
-            Autoguardado en la nube
-          </span>
-          <span className="pf-ws-header-spacer" aria-hidden />
-          <button
-            type="button"
-            className="pf-ws-btn-import"
-            onClick={() => onToast?.({ msg: 'Importar plantilla desde JSON próximamente.' })}
-          >
-            <svg className="pf-ws-btn-import-ico" viewBox="0 0 20 20" fill="none" aria-hidden>
-              <path d="M10 3v10M6 7l4-4 4 4M4 14h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Importar plantilla
-          </button>
-          <button type="button" className="pf-ws-btn-new" onClick={agregarPlantilla}>
-            + Nueva Plantilla
-          </button>
+          <div className="pf-ws-header-meta">
+            <span className="pf-ws-header-sep" aria-hidden />
+            <span className="pf-ws-topbar-pill pf-ws-topbar-pill--active">Workspace Todo-en-Uno</span>
+            <span className="pf-ws-topbar-pill pf-ws-topbar-pill--save">
+              <span className="pf-ws-autosave-dot" aria-hidden />
+              <span className="pf-ws-autosave-label pf-ws-autosave-label--long">Autoguardado en la nube</span>
+              <span className="pf-ws-autosave-label pf-ws-autosave-label--short">Autoguardado</span>
+            </span>
+          </div>
+          <div className="pf-ws-header-actions">
+            <button
+              type="button"
+              className="pf-ws-btn-import"
+              aria-label="Importar plantilla"
+              onClick={() => onToast?.({ msg: 'Importar plantilla desde JSON próximamente.' })}
+            >
+              <svg className="pf-ws-btn-import-ico" viewBox="0 0 20 20" fill="none" aria-hidden>
+                <path d="M10 3v10M6 7l4-4 4 4M4 14h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="pf-ws-btn-import-label pf-ws-btn-import-label--long">Importar plantilla</span>
+              <span className="pf-ws-btn-import-label pf-ws-btn-import-label--short">Importar</span>
+            </button>
+            <button type="button" className="pf-ws-btn-new" onClick={agregarPlantilla}>
+              <span className="pf-ws-btn-new-label pf-ws-btn-new-label--long">+ Nueva Plantilla</span>
+              <span className="pf-ws-btn-new-label pf-ws-btn-new-label--short">+ Nueva</span>
+            </button>
+          </div>
         </header>
 
         <section className="pf-ws-flow" aria-label="Flujo rápido del entrenador">
@@ -1462,7 +1470,8 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                         className="pf-ws-footer-btn pf-ws-footer-btn--secondary"
                         onClick={descartarCambios}
                       >
-                        Descartar cambios
+                        <span className="pf-ws-footer-btn-label pf-ws-footer-btn-label--long">Descartar cambios</span>
+                        <span className="pf-ws-footer-btn-label pf-ws-footer-btn-label--short">Descartar</span>
                       </button>
                       <button
                         type="button"
@@ -1470,7 +1479,8 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                         onClick={guardarEditor}
                         disabled={!editorDirty}
                       >
-                        Guardar borrador
+                        <span className="pf-ws-footer-btn-label pf-ws-footer-btn-label--long">Guardar borrador</span>
+                        <span className="pf-ws-footer-btn-label pf-ws-footer-btn-label--short">Guardar</span>
                       </button>
                       <button
                         type="button"
@@ -1488,7 +1498,8 @@ export default function ProfeRutinasWorkshop({ students, teacherId, busqueda = '
                           <path d="M10 8.25v3.5" stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" />
                           <circle cx="10" cy="13.75" r="0.75" fill="currentColor" />
                         </svg>
-                        Publicar y Asignar
+                        <span className="pf-ws-footer-btn-label pf-ws-footer-btn-label--long">Publicar y Asignar</span>
+                        <span className="pf-ws-footer-btn-label pf-ws-footer-btn-label--short">Publicar</span>
                       </button>
                     </div>
                   </div>
