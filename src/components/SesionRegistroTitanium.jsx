@@ -126,6 +126,48 @@ function esCalentamientoItem(it) {
   return musculo === 'Calentamiento'
 }
 
+/** Reps/segundos embebidos en el nombre del ejercicio (p. ej. "…: 45 a 60 segundos"). */
+function repsDesdeNombre(nombre) {
+  const n = String(nombre || '')
+  const rangoSeg = n.match(/(\d+\s*(?:a|–|-)\s*\d+\s*seg(?:undos?)?)/i)
+  if (rangoSeg) return rangoSeg[1].trim()
+  const rangoReps = n.match(/(\d+\s*(?:a|–|-)\s*\d+)\s*rep(?:eticiones?)?/i)
+  if (rangoReps) return rangoReps[1].trim()
+  const soloSeg = n.match(/:\s*(\d+\s*seg(?:undos?)?)/i)
+  if (soloSeg) return soloSeg[1].trim()
+  const soloReps = n.match(/:\s*(\d+)\s*rep(?:eticiones?)?/i)
+  if (soloReps) return soloReps[1].trim()
+  return ''
+}
+
+function repsPlanDefault(it, ant, esWarm = false) {
+  const fromPlan = it.repeticiones?.trim()
+  if (fromPlan) return fromPlan.replace(/\s*reps?/i, '').trim()
+  if (ant?.repeticiones) {
+    return String(ant.repeticiones).replace(/\s*reps?/i, '').trim()
+  }
+  const fromNombre = repsDesdeNombre(it.nombre)
+  if (fromNombre) return fromNombre
+  if (esWarm) return '1'
+  return '10'
+}
+
+function draftEfectivoEjercicio(it, serieNum, drafts, historialPorEjercicio) {
+  const key = `${it.nombre}::${serieNum}`
+  const stored = drafts[key] || {}
+  const hist = historialDe(historialPorEjercicio, it.nombre)
+  const ant = anteriorPorSerie(hist, serieNum)
+  const esWarm = esCalentamientoItem(it)
+  const repsDefault = repsPlanDefault(it, ant, esWarm)
+  return {
+    pesoKg: stored.pesoKg != null && stored.pesoKg !== ''
+      ? stored.pesoKg
+      : pesoKgSugerido(it, hist, serieNum),
+    repeticiones: String(stored.repeticiones ?? '').trim() || repsDefault,
+    rpe: stored.rpe ?? '',
+  }
+}
+
 function nombreDisplayEjercicio(nombre) {
   return String(nombre || '')
     .replace(/^\s*\d+\s*[-–.)]\s*/, '')
@@ -267,7 +309,7 @@ export default function SesionRegistroTitanium({
             const ant = anteriorPorSerie(hist, s)
             next[key] = {
               pesoKg: pesoKgSugerido(it, hist, s),
-              repeticiones: (it.repeticiones?.trim() || ant?.repeticiones || (esWarm ? '1' : '')).replace(/\s*reps?/i, ''),
+              repeticiones: repsPlanDefault(it, ant, esWarm),
               rpe: '',
             }
           }
@@ -330,21 +372,20 @@ export default function SesionRegistroTitanium({
   }
 
   const guardarSerie = (it, serieNum) => {
-    const key = `${it.nombre}::${serieNum}`
-    const d = drafts[key] || {}
+    const d = draftEfectivoEjercicio(it, serieNum, drafts, historialPorEjercicio)
     const payload = buildPayloadSerie(it, serieNum, d, notas[it.nombre])
     if (!payload) return
     onGuardarSerie(payload)
   }
 
   const guardarTodasMismoPeso = (it, pendientes, serieRef) => {
-    const dRef = drafts[`${it.nombre}::${serieRef}`] || {}
+    const dRef = draftEfectivoEjercicio(it, serieRef, drafts, historialPorEjercicio)
     const repsRef = String(dRef.repeticiones || '').trim()
     if (!repsRef) return
     const nota = notas[it.nombre] || ''
     const lista = pendientes
       .map((serieNum) => {
-        const d = drafts[`${it.nombre}::${serieNum}`] || {}
+        const d = draftEfectivoEjercicio(it, serieNum, drafts, historialPorEjercicio)
         return buildPayloadSerie(it, serieNum, {
           pesoKg: dRef.pesoKg,
           repeticiones: String(d.repeticiones || repsRef).trim(),
@@ -493,8 +534,9 @@ export default function SesionRegistroTitanium({
     const serieActual = Math.min(hechas + 1, nSeries)
     const completaSeries = hechas >= nSeries
     const pendientes = seriesPendientes(ya, nSeries)
-    const d = drafts[`${it.nombre}::${serieActual}`] || { pesoKg: '', repeticiones: '', rpe: '' }
+    const d = draftEfectivoEjercicio(it, serieActual, drafts, historialPorEjercicio)
     const ant = anteriorPorSerie(hist, serieActual)
+    const repsObjetivo = repsPlanDefault(it, ant, esWarm)
     const resumenHecho = resumenRondasSs(ya)
     const esPesoCorporal = esPesoCorporalNombre(it.nombre)
     const hechosSeries = ya.filter((r) => r.serieNum != null).length || ya.length
@@ -512,7 +554,7 @@ export default function SesionRegistroTitanium({
             <p className="fp-ex-obj mb-0">
               Objetivo:{' '}
               <strong>
-                {nSeries} series × {it.repeticiones || '8–10'} reps
+                {nSeries} series × {repsObjetivo} reps
                 {rango ? ` con ${rango}` : rm != null ? ` · foco en ${Math.max(0, rm - 7)}–${rm} kg` : ''}
               </strong>
             </p>
@@ -527,12 +569,14 @@ export default function SesionRegistroTitanium({
 
         <div className="fp-ex-serie-block">
           <div className={`fp-ex-serie-row${completaSeries ? ' is-done' : ''}`}>
-            <span className="fp-ex-serie-label">
-              {completaSeries ? 'Series' : `Serie ${serieActual}`}
-            </span>
-            <span className="fp-ex-serie-ant" title="Sesión anterior">
-              Ant.: {formatoAnterior(ant)}
-            </span>
+            <div className="fp-ex-serie-copy">
+              <span className="fp-ex-serie-label">
+                {completaSeries ? 'Series' : `Serie ${serieActual}`}
+              </span>
+              <span className="fp-ex-serie-ant" title="Sesión anterior">
+                Ant.: {formatoAnterior(ant)}
+              </span>
+            </div>
             <div className="fp-ex-serie-log">
               {completaSeries ? (
                 <span className="fp-ex-serie-done-txt">{resumenHecho || `${hechas} series hechas`}</span>
@@ -614,7 +658,6 @@ export default function SesionRegistroTitanium({
                   type="button"
                   className="fp-ss-ronda-btn is-ghost"
                   onClick={() => completarTodasSeriesEjercicio(it, nSeries)}
-                  disabled={!String(d.repeticiones || '').trim()}
                 >
                   Completar {pendientes.length} series
                 </button>
@@ -624,7 +667,6 @@ export default function SesionRegistroTitanium({
                   type="button"
                   className="fp-ss-ronda-btn"
                   onClick={() => completarSerieActualEjercicio(it, serieActual)}
-                  disabled={!String(d.repeticiones || '').trim()}
                 >
                   Completar Serie {serieActual}
                 </button>
@@ -727,14 +769,14 @@ export default function SesionRegistroTitanium({
     if (regActual) {
       return ssDrafts[draftKey] || {
         pesoKg: regActual.pesoKg != null ? String(regActual.pesoKg) : '',
-        repeticiones: String(regActual.repeticiones || it.repeticiones || '10').replace(/\s*reps?/i, ''),
+        repeticiones: String(regActual.repeticiones || repsPlanDefault(it, null, false)).replace(/\s*reps?/i, ''),
       }
     }
     const hist = historialDe(historialPorEjercicio, it.nombre)
     const ant = anteriorPorSerie(hist, ronda)
     return ssDrafts[draftKey] || {
       pesoKg: pesoKgSugerido(it, hist, ronda),
-      repeticiones: (it.repeticiones || ant?.repeticiones || '10').toString().replace(/\s*reps?/i, ''),
+      repeticiones: repsPlanDefault(it, ant, false),
     }
   }
 
@@ -848,8 +890,10 @@ export default function SesionRegistroTitanium({
         {idx > 0 && <p className="fp-ss-join">↓ Sin pausa</p>}
         <div className="fp-ss-row fp-ss-row--compact">
           <span className="fp-ss-dot" aria-hidden />
-          <span className="fp-ss-label-inline">{label}</span>
-          <strong className="fp-ss-name">{nombreDisplayEjercicio(it.nombre)}</strong>
+          <div className="fp-ss-copy fp-ss-copy--compact">
+            <span className="fp-ss-label-inline">{label}</span>
+            <strong className="fp-ss-name">{nombreDisplayEjercicio(it.nombre)}</strong>
+          </div>
           <div className="fp-ss-log fp-ss-log--compact">
             {esPesoCorporal && !d.pesoKg ? (
               <span className="fp-ss-pill">PC</span>

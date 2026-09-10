@@ -22,6 +22,7 @@ import ArmarPlanTitanium from '../components/ArmarPlanTitanium'
 import ProgresoCargasTitanium from '../components/ProgresoCargasTitanium'
 import RutinasAsignadasTitanium from '../components/RutinasAsignadasTitanium'
 import { AppNotificacionesCampana } from '../context/AppNotificationsContext'
+import { nuevoIdRegistro } from '../utils/ids'
 
 function crearDia(num) {
   return { id: `d${Date.now()}_${num}`, nombre: `Día ${num}`, ejercicios: [] }
@@ -517,7 +518,7 @@ export default function Rutina() {
       const repsStr = typeof repeticiones === 'string' ? repeticiones.trim() : String(repeticiones ?? '').trim()
       const kcalM = kcalManual !== '' && kcalManual != null && Number(kcalManual) > 0 ? Math.round(Number(kcalManual)) : undefined
       const row = {
-        id: crypto.randomUUID(),
+        id: nuevoIdRegistro(),
         fecha,
         rutinaId: rutinaIdActual,
         diaRutinaId: diaSeleccionado,
@@ -861,7 +862,8 @@ export default function Rutina() {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
                   <path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M5 21h14" />
                 </svg>
-                Exportar PDF
+                <span className="rut-btn-label rut-btn-label--long">Exportar PDF</span>
+                <span className="rut-btn-label rut-btn-label--short">PDF</span>
               </button>
 
               <div className="rut-campana">
@@ -882,7 +884,8 @@ export default function Rutina() {
                     <path d="M5 13l4 4L19 7" />
                   </svg>
                 </span>
-                Registrar Sesión (Hoy)
+                <span className="rut-tab-label rut-tab-label--long">Registrar Sesión (Hoy)</span>
+                <span className="rut-tab-label rut-tab-label--short">Registrar (Hoy)</span>
               </button>
               <button
                 type="button"
@@ -900,7 +903,8 @@ export default function Rutina() {
                   <path d="M4 19V5M4 19h16" strokeLinecap="round" />
                   <path d="m7 15 3.5-4.5L14 13l4-6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                Progreso & Cargas
+                <span className="rut-tab-label rut-tab-label--long">Progreso & Cargas</span>
+                <span className="rut-tab-label rut-tab-label--short">Progreso & Cargas</span>
               </button>
             </nav>
 

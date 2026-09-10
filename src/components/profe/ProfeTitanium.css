@@ -63,8 +63,496 @@
     var(--pf-bg);
 }
 
-.app-topbar--profe {
-  display: none;
+@media (max-width: 1023px) {
+  .app-topbar--profe {
+    display: flex !important;
+    justify-content: flex-start;
+  }
+
+  .main-content--profe {
+    padding-top: max(0.65rem, env(safe-area-inset-top, 0px)) !important;
+    overflow-x: hidden !important;
+  }
+
+  .profe-page.profe-titanium.section {
+    padding-top: 0 !important;
+    margin-top: -0.15rem;
+  }
+
+  .profe-page.profe-titanium .profe-container.app-page-container {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding-left: max(0.85rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.85rem, env(safe-area-inset-right, 0px));
+  }
+
+  .profe-page.profe-titanium .pf-topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: 0.45rem;
+    padding: 0 0 0.35rem;
+    box-sizing: border-box;
+    align-items: center;
+  }
+
+  .profe-page.profe-titanium .pf-breadcrumb {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    min-height: 2.35rem;
+    margin: 0;
+    padding: 0 0 0 3.2rem;
+    font-size: clamp(1rem, 4.2vw, 1.2rem);
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .profe-page.profe-titanium .pf-breadcrumb-brand {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-breadcrumb-dot {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-breadcrumb-active {
+    color: #e2e8f0;
+  }
+
+  .profe-page.profe-titanium .pf-topbar-actions {
+    display: contents;
+  }
+
+  .profe-page.profe-titanium .pf-cloud-badge {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-vincular-label--long {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-vincular-label--short {
+    display: inline;
+  }
+
+  .profe-page.profe-titanium .pf-root {
+    gap: 0.55rem;
+  }
+
+  .profe-page.profe-titanium .pf-btn-vincular {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    min-height: 2.45rem;
+    justify-content: center;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .profe-page.profe-titanium .pf-campana {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+    position: static;
+    transform: none;
+    flex-shrink: 0;
+    display: inline-flex;
+  }
+
+  .profe-page.profe-titanium .pf-campana .app-notif-campana-btn,
+  .profe-page.profe-titanium .pf-campana .button {
+    width: 2.35rem !important;
+    min-width: 2.35rem !important;
+    height: 2.35rem !important;
+    min-height: 2.35rem !important;
+    padding: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .profe-page.profe-titanium .pf-header {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    padding: 0.85rem 0.95rem;
+  }
+
+  .profe-page.profe-titanium .pf-subtitle {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-coach-meta {
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  .profe-page.profe-titanium .pf-title {
+    font-size: clamp(1.05rem, 4.5vw, 1.35rem);
+  }
+
+  .profe-page.profe-titanium .pf-header-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.4rem;
+    width: 100%;
+  }
+
+  .profe-page.profe-titanium .pf-kpi {
+    min-width: 0;
+    padding: 0.45rem 0.35rem;
+  }
+
+  .profe-page.profe-titanium .pf-kpi-val {
+    font-size: clamp(1rem, 4vw, 1.25rem);
+  }
+
+  .profe-page.profe-titanium .pf-kpi-lbl {
+    font-size: 0.58rem;
+  }
+
+  .profe-page.profe-titanium .pf-tab-label--long {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-tab-label--short {
+    display: inline;
+  }
+
+  .profe-page.profe-titanium .pf-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+    border-bottom: none;
+    padding: 0.28rem;
+    border-radius: 12px;
+    border: 1px solid var(--pf-border);
+    background: rgba(10, 16, 32, 0.55);
+  }
+
+  .profe-page.profe-titanium .pf-tab {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.35rem;
+    justify-content: center;
+    text-align: center;
+    padding: 0.48rem 0.35rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font-size: 0.72rem;
+    line-height: 1.15;
+    white-space: normal;
+  }
+
+  .profe-page.profe-titanium .pf-tab.is-active {
+    background: rgba(139, 92, 246, 0.14);
+    border-color: rgba(167, 139, 250, 0.35);
+    color: #ddd6fe;
+  }
+
+  .profe-page.profe-titanium .pf-tab.is-active::after {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-tab-ico {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-info-banner {
+    font-size: 0.74rem;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .profe-page.profe-titanium .pf-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+    padding: 0.65rem;
+  }
+
+  .profe-page.profe-titanium .pf-search {
+    width: 100%;
+  }
+
+  .profe-page.profe-titanium .pf-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    padding-bottom: 0.15rem;
+    scrollbar-width: none;
+  }
+
+  .profe-page.profe-titanium .pf-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-chip {
+    flex-shrink: 0;
+  }
+
+  .profe-page.profe-titanium .pf-layout {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .profe-page.profe-titanium .pf-btn,
+  .profe-page.profe-titanium .pf-btn-vincular,
+  .profe-page.profe-titanium .pf-tab,
+  .profe-page.profe-titanium .pf-chip,
+  .profe-page.profe-titanium .pf-alumno-actions .pf-btn {
+    touch-action: manipulation;
+  }
+
+  .profe-page.profe-titanium .pf-ws {
+    gap: 0.55rem;
+    padding-top: 0;
+  }
+
+  .profe-page.profe-titanium .pf-ws-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 0.35rem 0.45rem;
+    overflow: visible;
+    padding: 0 0 0.25rem;
+    margin-left: 0.45rem;
+  }
+
+  .profe-page.profe-titanium .pf-ws-breadcrumb {
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    min-width: 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #e2e8f0;
+    white-space: nowrap;
+  }
+
+  .profe-page.profe-titanium .pf-ws-breadcrumb > span:first-child,
+  .profe-page.profe-titanium .pf-ws-breadcrumb .pf-ws-breadcrumb-sep {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-ws-breadcrumb-current--long {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-ws-breadcrumb-current--short {
+    display: inline;
+    color: #e2e8f0;
+    font-weight: 700;
+  }
+
+  .profe-page.profe-titanium .pf-ws-header-meta {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    width: auto;
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+
+  .profe-page.profe-titanium .pf-ws-header-sep {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-ws-topbar-pill--active {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-ws-topbar-pill--save {
+    padding: 0.16rem 0.42rem;
+    font-size: 0.56rem;
+  }
+
+  .profe-page.profe-titanium .pf-ws-autosave-label--long {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-ws-autosave-label--short {
+    display: inline;
+  }
+
+  .profe-page.profe-titanium .pf-ws-header-actions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+    align-items: stretch;
+  }
+
+  .profe-page.profe-titanium .pf-ws-btn-import,
+  .profe-page.profe-titanium .pf-ws-btn-new {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.15rem;
+    justify-content: center;
+    font-size: 0.7rem;
+  }
+
+  .profe-page.profe-titanium .pf-ws-btn-import-label--long,
+  .profe-page.profe-titanium .pf-ws-btn-new-label--long {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-ws-btn-import-label--short {
+    display: inline;
+  }
+
+  .profe-page.profe-titanium .pf-ws-btn-new-label--short {
+    display: inline;
+  }
+
+  .profe-page.profe-titanium .pf-ws-footer {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .profe-page.profe-titanium .pf-ws-footer-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+    min-height: unset;
+  }
+
+  .profe-page.profe-titanium .pf-ws-footer-summary {
+    flex: unset;
+    width: 100%;
+  }
+
+  .profe-page.profe-titanium .pf-ws-footer-summary-block {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.2rem 0.35rem;
+  }
+
+  .profe-page.profe-titanium .pf-ws-footer-summary-label,
+  .profe-page.profe-titanium .pf-ws-footer-summary-line {
+    grid-column: unset;
+    grid-row: unset;
+    padding-top: 0;
+  }
+
+  .profe-page.profe-titanium .pf-ws-footer-actions {
+    width: 100%;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+    flex-wrap: unset;
+    justify-content: stretch;
+  }
+
+  .profe-page.profe-titanium .pf-ws-footer-btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.4rem;
+    height: auto;
+    padding: 0.55rem 0.45rem;
+    font-size: 0.68rem;
+  }
+
+  .profe-page.profe-titanium .pf-ws-footer-btn--publish {
+    grid-column: 1 / -1;
+    order: -1;
+    min-height: 2.5rem;
+    font-size: 0.72rem;
+  }
+
+  .profe-page.profe-titanium .pf-ws-footer-btn-label--long {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-ws-footer-btn-label--short {
+    display: inline;
+  }
+
+  .profe-page.profe-titanium .pf-ws-footer-btn,
+  .profe-page.profe-titanium .pf-ws-btn-import,
+  .profe-page.profe-titanium .pf-ws-btn-new {
+    touch-action: manipulation;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-topbar--profe {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-topbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.2rem 0.15rem 0.45rem;
+  }
+
+  .profe-page.profe-titanium .pf-breadcrumb {
+    grid-column: unset;
+    grid-row: unset;
+    padding: 0;
+    font-size: 0.8rem;
+    font-weight: normal;
+    min-height: unset;
+  }
+
+  .profe-page.profe-titanium .pf-breadcrumb-brand,
+  .profe-page.profe-titanium .pf-breadcrumb-dot {
+    display: inline;
+  }
+
+  .profe-page.profe-titanium .pf-breadcrumb-active {
+    color: #93c5fd;
+    font-weight: 650;
+  }
+
+  .profe-page.profe-titanium .pf-topbar-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+    gap: 0.55rem;
+    flex-shrink: 0;
+  }
+
+  .profe-page.profe-titanium .pf-cloud-badge {
+    display: inline-flex;
+  }
+
+  .profe-page.profe-titanium .pf-vincular-label--long {
+    display: inline;
+  }
+
+  .profe-page.profe-titanium .pf-vincular-label--short {
+    display: none;
+  }
+
+  .profe-page.profe-titanium .pf-btn-vincular {
+    grid-column: unset;
+    grid-row: unset;
+    width: auto;
+    min-height: unset;
+  }
+
+  .profe-page.profe-titanium .pf-campana {
+    grid-column: unset;
+    grid-row: unset;
+    justify-self: unset;
+    align-self: unset;
+  }
 }
 
 .pf-root {
@@ -144,6 +632,10 @@
 
 .pf-btn-vincular:hover {
   filter: brightness(1.06);
+}
+
+.pf-vincular-label--short {
+  display: none;
 }
 
 .pf-campana .app-notif-campana-btn {
@@ -393,6 +885,10 @@
   border-radius: 999px;
   background: #fbbf24;
   box-shadow: 0 0 6px rgba(251, 191, 36, 0.5);
+}
+
+.pf-tab-label--short {
+  display: none;
 }
 
 /* —— Layout —— */
@@ -2177,14 +2673,8 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   padding: 0.15rem 0 0.35rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.pf-ws-header::-webkit-scrollbar {
-  display: none;
 }
 
 .pf-ws-breadcrumb {
@@ -2202,6 +2692,13 @@
   font-weight: 650;
 }
 
+.pf-ws-breadcrumb-current--short,
+.pf-ws-autosave-label--short,
+.pf-ws-btn-import-label--short,
+.pf-ws-btn-new-label--short {
+  display: none;
+}
+
 .pf-ws-breadcrumb-sep {
   opacity: 0.45;
 }
@@ -2213,9 +2710,19 @@
   flex-shrink: 0;
 }
 
-.pf-ws-header-spacer {
-  flex: 1 1 auto;
-  min-width: 0.35rem;
+.pf-ws-header-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.pf-ws-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .pf-ws-topbar-pill {
@@ -4225,6 +4732,10 @@
   opacity: 0.95;
 }
 
+.pf-ws-footer-btn-label--short {
+  display: none;
+}
+
 .pf-ws-template-badges {
   display: flex;
   flex-wrap: wrap;
@@ -4461,10 +4972,6 @@
     flex-wrap: wrap;
   }
 
-  .pf-ws-header-spacer {
-    display: none;
-  }
-
   .pf-ws-flow-head {
     flex-direction: column;
   }
@@ -4497,7 +5004,21 @@
 
   .pf-ws-footer-actions {
     width: 100%;
-    justify-content: flex-end;
+    margin-left: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+    justify-content: stretch;
+  }
+
+  .pf-ws-footer-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pf-ws-footer-btn--publish {
+    grid-column: 1 / -1;
+    order: -1;
   }
 
   .pf-ws-exercise-row {
@@ -4644,6 +5165,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+}
+
+.pf-cat-tool-label--short {
+  display: none;
 }
 
 .pf-cat-pick-layout {
@@ -5139,6 +5664,171 @@
   border-color: transparent !important;
   color: #fff !important;
   box-shadow: 0 8px 20px rgba(var(--cat-a1), 0.35) !important;
+}
+
+@media (max-width: 1023px) {
+  .pf-cat-pick-modal.is-active {
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+  }
+
+  .app-layout .pf-cat-pick-modal .modal-card.pf-cat-pick-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 100dvh !important;
+    height: 100dvh;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+  }
+
+  .pf-cat-pick-head {
+    padding: max(0.65rem, env(safe-area-inset-top, 0px)) 0.75rem 0.65rem !important;
+    align-items: flex-start;
+    gap: 0.65rem;
+  }
+
+  .pf-cat-pick-head > div:first-child {
+    flex: 1;
+    min-width: 0;
+    padding-right: 0.25rem;
+  }
+
+  .pf-cat-pick-title {
+    font-size: 0.95rem !important;
+  }
+
+  .pf-cat-pick-sub {
+    font-size: 0.68rem;
+    line-height: 1.4;
+    max-width: 100%;
+  }
+
+  .pf-cat-pick-body {
+    padding: 0.65rem 0.75rem 0.75rem !important;
+    overflow-x: hidden;
+  }
+
+  .pf-cat-pick-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.45rem;
+  }
+
+  .pf-cat-pick-search-wrap {
+    flex: unset;
+    width: 100%;
+  }
+
+  .pf-cat-pick-toolbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+    width: 100%;
+  }
+
+  .pf-cat-pick-toolbar-actions .pf-btn:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .pf-cat-pick-toolbar-actions .pf-btn {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .pf-cat-tool-label--long {
+    display: none;
+  }
+
+  .pf-cat-tool-label--short {
+    display: inline;
+  }
+
+  .pf-cat-pick-layout {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .pf-cat-pick-cats {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: none;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .pf-cat-pick-cats::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pf-cat-pick-cat-row {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  .pf-cat-pick-cat-row .pf-cat-pick-cat {
+    min-width: 6.25rem;
+  }
+
+  .pf-cat-pick-cat-tools {
+    display: none;
+  }
+
+  .pf-cat-pick-main {
+    min-height: 12rem;
+    max-height: none;
+  }
+
+  .pf-cat-pick-main-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+  }
+
+  .pf-cat-pick-main-hint {
+    font-size: 0.58rem;
+    line-height: 1.35;
+  }
+
+  .pf-cat-pick-row {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    gap: 0.25rem;
+  }
+
+  .pf-cat-pick-item {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.4rem;
+    padding: 0.4rem 0.45rem;
+  }
+
+  .pf-cat-pick-tag {
+    display: none;
+  }
+
+  .pf-cat-pick-item-note {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .pf-cat-pick-foot {
+    padding: 0.65rem 0.75rem max(0.65rem, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .pf-cat-pick-add-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-cat-pick-field--half {
+    grid-column: auto;
+  }
 }
 
 @media (max-width: 768px) {

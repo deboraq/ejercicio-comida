@@ -308,10 +308,12 @@ export default function ProfeCatalogoPickerModal({
                 className={`pf-btn pf-btn--sm${panelAgregar ? ' pf-btn--primary' : ' pf-btn--outline'}`}
                 onClick={() => setPanelAgregar((v) => !v)}
               >
-                + Agregar ejercicio
+                <span className="pf-cat-tool-label pf-cat-tool-label--long">+ Agregar ejercicio</span>
+                <span className="pf-cat-tool-label pf-cat-tool-label--short">+ Agregar</span>
               </button>
               <button type="button" className="pf-btn pf-btn--outline pf-btn--sm" onClick={seleccionarVisibles}>
-                Marcar visibles
+                <span className="pf-cat-tool-label pf-cat-tool-label--long">Marcar visibles</span>
+                <span className="pf-cat-tool-label pf-cat-tool-label--short">Marcar todos</span>
               </button>
               <button
                 type="button"

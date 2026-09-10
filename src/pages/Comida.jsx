@@ -6,6 +6,7 @@ import { REFERENCIA_ALIMENTOS, buscarAlimentos } from '../utils/referenciaComida
 import { MOMENTOS_COMIDA, MOMENTO_ICON, normalizarMomento } from '../utils/comidaMomentos'
 import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias, getRachaDias } from '../utils/estadisticas'
 import ComidaTitanium from '../components/ComidaTitanium'
+import { nuevoIdRegistro } from '../utils/ids'
 
 const COMIDAS = MOMENTOS_COMIDA
 
@@ -62,7 +63,7 @@ function buscarReferenciaPorNombre(nombre) {
 function buildPendienteDesdeItem(it, comida, horaRegistro, referenciaActiva) {
   const ref = buscarReferenciaPorNombre(it.descripcion.trim())
   return {
-    id: crypto.randomUUID(),
+    id: nuevoIdRegistro(),
     comida,
     hora: formatearHoraDesdeInput(horaRegistro),
     descripcion: it.descripcion.trim(),
@@ -109,7 +110,7 @@ function buildItemDesdeManual(form, cantidad) {
     : Math.max(0, redondear1((calUnit - proUnit * 4 - carUnit * 4) / 9))
   const porcionTxt = form.porciones?.trim()
   return {
-    id: crypto.randomUUID(),
+    id: nuevoIdRegistro(),
     descripcion: form.descripcion.trim(),
     cantidad: n,
     _cantidadPrev: n,
@@ -165,7 +166,7 @@ function agruparComidasPorMomento(registrosDia) {
 
 function crearItemVacio() {
   return {
-    id: crypto.randomUUID(),
+    id: nuevoIdRegistro(),
     descripcion: '',
     cantidad: 1,
     _cantidadPrev: 1,
@@ -196,7 +197,7 @@ function buildItemDesdeReferencia(itemRef, cantidad) {
   const base = { cal: itemRef.calorias, pro: itemRef.proteinas, car: itemRef.carbohidratos, gra }
   const porcionRef = itemRef.porcion || 'porción'
   return {
-    id: crypto.randomUUID(),
+    id: nuevoIdRegistro(),
     descripcion: itemRef.nombre,
     cantidad: n,
     _cantidadPrev: n,
@@ -627,7 +628,7 @@ export default function Comida() {
     const fecha = fechaInput || hoy
     const notasLote = notas.trim()
     const nuevos = batch.map((p) => ({
-      id: crypto.randomUUID(),
+      id: nuevoIdRegistro(),
       comida: p.comida,
       descripcion: p.descripcion,
       calorias: p.calorias,

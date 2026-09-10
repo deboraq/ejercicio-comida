@@ -741,7 +741,30 @@ export default function ComidaTitanium({
     if (balanceTimerRef.current) clearTimeout(balanceTimerRef.current)
   }, [])
 
+  const esVistaMobile = useCallback(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches,
+    []
+  )
+
   const activarGuiaPanel = useCallback((modo = 'agregar', focusSearch = true) => {
+    if (esVistaMobile()) {
+      if (modo !== 'editar') {
+        setBuscadorDestacado(true)
+        if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
+        pulseTimerRef.current = setTimeout(() => setBuscadorDestacado(false), 3500)
+      }
+
+      requestAnimationFrame(() => {
+        document.getElementById('cd-add-block')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        if (modo === 'editar') {
+          window.setTimeout(() => {
+            document.querySelector('#cd-agregar-panel .cd-field--cantidad input')?.focus({ preventScroll: true })
+          }, 280)
+        }
+      })
+      return
+    }
+
     setBuscadorDestacado(true)
     if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
     pulseTimerRef.current = setTimeout(() => setBuscadorDestacado(false), 5000)
@@ -756,7 +779,7 @@ export default function ComidaTitanium({
         }
       }, 320)
     })
-  }, [])
+  }, [esVistaMobile])
 
   useEffect(() => {
     if (!panelPulse?.at) return
@@ -836,43 +859,70 @@ export default function ComidaTitanium({
 
   return (
     <div className="cd-root">
-      <header className="cd-header">
-        <div className="cd-header-left">
-          <div className="cd-title-row">
-            <h1 className="cd-title mb-0">Nutrición y Comidas</h1>
-            {rachaDias > 0 && (
-              <span className="cd-streak-badge">Día {rachaDias} en Racha 🔥</span>
-            )}
+      <div className="cd-header-shell">
+        <header className="cd-header">
+          <div className="cd-header-left">
+            <div className="cd-title-row">
+              <h1 className="cd-title mb-0">
+                <span className="cd-title-text">Nutrición y Comidas</span>
+              </h1>
+              {rachaDias > 0 && (
+                <span className="cd-streak-badge cd-streak-badge--header">
+                  <span className="cd-streak-label cd-streak-label--long">Día {rachaDias} en Racha 🔥</span>
+                  <span className="cd-streak-label cd-streak-label--short">{rachaDias} días 🔥</span>
+                </span>
+              )}
+            </div>
+            <p className="cd-subtitle mb-0">
+              Resumen calórico, balance de macronutrientes y registro en tiempo real
+            </p>
           </div>
-          <p className="cd-subtitle mb-0">
-            Resumen calórico, balance de macronutrientes y registro en tiempo real
-          </p>
-        </div>
-        <div className="cd-header-actions">
-          <div className="cd-date-nav" aria-label="Fecha del día">
-            <button type="button" className="cd-date-arrow" aria-label="Día anterior" onClick={() => onShiftDia?.(-1)}>‹</button>
-            <span className="cd-date-inner">
-              <IconCalendar />
-              {formatearFechaNav(diaActivo)}
-            </span>
-            <button
-              type="button"
-              className="cd-date-arrow"
-              aria-label="Día siguiente"
-              onClick={() => onShiftDia?.(1)}
-              disabled={!puedeIrSiguiente}
-            >
-              ›
+          <div className="cd-header-actions">
+            <div className="cd-date-nav" aria-label="Fecha del día">
+              <button type="button" className="cd-date-arrow" aria-label="Día anterior" onClick={() => onShiftDia?.(-1)}>‹</button>
+              <span className="cd-date-inner">
+                <IconCalendar />
+                {formatearFechaNav(diaActivo)}
+              </span>
+              <button
+                type="button"
+                className="cd-date-arrow"
+                aria-label="Día siguiente"
+                onClick={() => onShiftDia?.(1)}
+                disabled={!puedeIrSiguiente}
+              >
+                ›
+              </button>
+            </div>
+            <button type="button" className="cd-btn cd-btn--primary" onClick={() => agregarMomento(comida || 'Desayuno')}>
+              <span className="cd-btn-label cd-btn-label--long">+ Registrar comida rápida</span>
+              <span className="cd-btn-label cd-btn-label--short">+ Comida rápida</span>
             </button>
+            <div className="cd-campana">
+              <AppNotificacionesCampana />
+            </div>
           </div>
-          <button type="button" className="cd-btn cd-btn--primary" onClick={() => agregarMomento(comida || 'Desayuno')}>
-            + Registrar comida rápida
+        </header>
+        <nav className="cd-module-tabs" aria-label="Vista de nutrición">
+          <button
+            type="button"
+            className={`cd-module-tab${vistaComida === 'hoy' ? ' is-active' : ''}`}
+            onClick={() => setVistaComida?.('hoy')}
+          >
+            Registro de Hoy
           </button>
-          <div className="cd-campana">
-            <AppNotificacionesCampana />
-          </div>
-        </div>
-      </header>
+          <button
+            type="button"
+            className={`cd-module-tab${vistaComida === 'historial' ? ' is-active' : ''}`}
+            onClick={() => setVistaComida?.('historial')}
+          >
+            Historial Completo
+            {registrosMesCount > 0 && (
+              <span className="cd-module-tab-badge">{registrosMesCount}</span>
+            )}
+          </button>
+        </nav>
+      </div>
 
       {bannerConsejo?.texto && (
         <div className="cd-insight">
@@ -905,26 +955,6 @@ export default function ComidaTitanium({
           </button>
         </div>
       )}
-
-      <nav className="cd-module-tabs" aria-label="Vista de nutrición">
-        <button
-          type="button"
-          className={`cd-module-tab${vistaComida === 'hoy' ? ' is-active' : ''}`}
-          onClick={() => setVistaComida?.('hoy')}
-        >
-          Registro de Hoy
-        </button>
-        <button
-          type="button"
-          className={`cd-module-tab${vistaComida === 'historial' ? ' is-active' : ''}`}
-          onClick={() => setVistaComida?.('historial')}
-        >
-          Historial Completo
-          {registrosMesCount > 0 && (
-            <span className="cd-module-tab-badge">{registrosMesCount}</span>
-          )}
-        </button>
-      </nav>
 
       <div className={`cd-layout${vistaComida === 'historial' ? ' cd-layout--historial' : ''}`}>
         <div className="cd-main">
@@ -1020,12 +1050,6 @@ export default function ComidaTitanium({
             onCerrarRecetas={() => setRecetasCenaAbiertas(false)}
             onElegirReceta={elegirRecetaCena}
           />
-
-          <button type="button" className="cd-hist-quick" onClick={() => setVistaComida?.('historial')}>
-            <span className="cd-hist-quick-label">Historial de Registros de Nutrición</span>
-            <span className="cd-hist-quick-meta">{registrosMesCount} registros acumulados este mes</span>
-            <span className="cd-hist-quick-cta">Ver historial completo ›</span>
-          </button>
             </>
           ) : (
             <HistorialPanel
@@ -1249,6 +1273,7 @@ export default function ComidaTitanium({
             )}
 
             <div
+              id="cd-add-block"
               className={`cd-add-block${(buscadorDestacado || enEdicion) ? ' is-guide-inner' : ''}${enEdicion && !buscadorDestacado ? ' is-guide-inner--static' : ''}`}
             >
               <div className="cd-add-title-row">

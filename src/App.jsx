@@ -17,6 +17,8 @@ import ModuleGate from './components/ModuleGate'
 import AppErrorBoundary from './components/AppErrorBoundary'
 import AppSidebar from './components/AppSidebar'
 import AppNavMenu from './components/AppNavMenu'
+import AppMenuToggle from './components/AppMenuToggle'
+import { AppMobileNavProvider } from './context/AppMobileNavContext'
 import { isNavModuleBlocked } from './utils/navModules'
 import './App.css'
 
@@ -90,6 +92,7 @@ function AppRoutes() {
   }
 
   return (
+    <AppMobileNavProvider open={mobileNavOpen} setOpen={setMobileNavOpen}>
     <div
       className={`app-shell${isAuthPage ? ' app-shell--auth' : ''}${sidebarCollapsed ? ' app-shell--sidebar-collapsed' : ''}`}
     >
@@ -120,15 +123,7 @@ function AppRoutes() {
       <div className="app-shell-main">
         {!isAuthPage && (
           <header className={`app-topbar${location.pathname === '/' ? ' app-topbar--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' app-topbar--rutina' : ''}${location.pathname.startsWith('/comida') ? ' app-topbar--comida' : ''}${location.pathname.startsWith('/ejercicios') ? ' app-topbar--ejercicios' : ''}${location.pathname.startsWith('/profe') ? ' app-topbar--profe' : ''}`}>
-            <button
-              type="button"
-              className="app-menu-toggle"
-              aria-label={mobileNavOpen ? 'Cerrar menú' : 'Abrir menú'}
-              aria-expanded={mobileNavOpen}
-              onClick={() => setMobileNavOpen((open) => !open)}
-            >
-              <span /><span /><span />
-            </button>
+            <AppMenuToggle />
             {location.pathname !== '/' && !location.pathname.startsWith('/rutina') && !location.pathname.startsWith('/comida') && !location.pathname.startsWith('/ejercicios') && !location.pathname.startsWith('/profe') && (
               <p className="app-topbar-title mb-0">
                 {location.pathname.startsWith('/comida') && 'Comida'}
@@ -163,6 +158,7 @@ function AppRoutes() {
         </main>
       </div>
     </div>
+    </AppMobileNavProvider>
   )
 }
 
