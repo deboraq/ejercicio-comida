@@ -855,6 +855,7 @@ export default function ComidaTitanium({
   }
 
   const totalPreview = previewSeleccion || (puedeAgregar && items.length ? totalesItems : null)
+  const itemMacrosEditable = !entradaManual && items.length === 1 && items[0]?.descripcion?.trim() ? items[0] : null
 
   const focoProteinaInsight = Boolean(
     bannerConsejo && (
@@ -1185,7 +1186,9 @@ export default function ComidaTitanium({
                 <div className="cd-ref-selected-main">
                   <strong className="cd-ref-selected-name">{referenciaActiva.nombre}</strong>
                   <span className="cd-ref-selected-meta">
-                    {referenciaActiva.calorias} kcal · P {referenciaActiva.proteinas}g
+                    {items.length === 1 && items[0]?.calorias
+                      ? `${numeroFlexibleO(items[0].calorias)} kcal · P ${numeroFlexibleO(items[0].proteinas)}g · C ${numeroFlexibleO(items[0].carbohidratos)}g · G ${numeroFlexibleO(items[0].grasas)}g`
+                      : `${referenciaActiva.calorias} kcal · P ${referenciaActiva.proteinas}g`}
                   </span>
                 </div>
                 <button type="button" className="cd-ref-selected-del" onClick={limpiarSeleccion} aria-label="Quitar selección">×</button>
@@ -1352,6 +1355,52 @@ export default function ComidaTitanium({
                 </label>
               </div>
 
+              {itemMacrosEditable && (
+                <div className="cd-add-macros">
+                  <p className="cd-add-macros-hint mb-0">Ajustá kcal y macros para esta porción antes de agregar.</p>
+                  <label className="cd-field">
+                    <span>Kcal</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={itemMacrosEditable.calorias ?? ''}
+                      onChange={(e) => actualizarItem?.(itemMacrosEditable.id, 'calorias', e.target.value)}
+                    />
+                  </label>
+                  <label className="cd-field">
+                    <span>Prot. (g)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={itemMacrosEditable.proteinas ?? ''}
+                      onChange={(e) => actualizarItem?.(itemMacrosEditable.id, 'proteinas', e.target.value)}
+                    />
+                  </label>
+                  <label className="cd-field">
+                    <span>Carb. (g)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={itemMacrosEditable.carbohidratos ?? ''}
+                      onChange={(e) => actualizarItem?.(itemMacrosEditable.id, 'carbohidratos', e.target.value)}
+                    />
+                  </label>
+                  <label className="cd-field">
+                    <span>Grasa (g)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={itemMacrosEditable.grasas ?? ''}
+                      onChange={(e) => actualizarItem?.(itemMacrosEditable.id, 'grasas', e.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
+
               {totalPreview && (
                 <div className="cd-add-total">
                   <span className="cd-add-total-lbl">{enEdicion ? 'Total modificado:' : 'Total a agregar:'}</span>
@@ -1359,6 +1408,18 @@ export default function ComidaTitanium({
                     <strong>{totalPreview.cal} kcal</strong>
                     <span className="cd-add-total-sep" aria-hidden />
                     <span className="cd-add-total-pro">P {totalPreview.pro}g</span>
+                    {totalPreview.car != null && (
+                      <>
+                        <span className="cd-add-total-sep" aria-hidden />
+                        <span className="cd-add-total-car">C {totalPreview.car}g</span>
+                      </>
+                    )}
+                    {totalPreview.gra != null && (
+                      <>
+                        <span className="cd-add-total-sep" aria-hidden />
+                        <span className="cd-add-total-gra">G {totalPreview.gra}g</span>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

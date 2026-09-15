@@ -14529,6 +14529,59 @@ select.ap-input {
   }
 }
 
+.cd-add-macros {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0.65rem 0 0.75rem;
+  align-items: end;
+  padding: 0.65rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  background:
+    linear-gradient(155deg, rgba(59, 130, 246, 0.1), transparent 55%),
+    rgba(13, 19, 34, 0.55);
+}
+
+.cd-add-macros-hint {
+  grid-column: 1 / -1;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.cd-add-macros .cd-field {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.cd-add-macros .cd-field > span {
+  display: block;
+  min-height: 1.05rem;
+  line-height: 1.05rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cd-add-macros .cd-field input[type='number'] {
+  min-height: 2.35rem;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.cd-add-macros .cd-field input[type='number']::-webkit-outer-spin-button,
+.cd-add-macros .cd-field input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+@media (min-width: 520px) {
+  .cd-add-macros {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 .cd-ref-card {
   appearance: none;
   width: 100%;
@@ -14685,6 +14738,18 @@ select.ap-input {
   font-size: 0.82rem;
   font-weight: 750;
   color: #60a5fa;
+}
+
+.cd-add-total-car {
+  font-size: 0.82rem;
+  font-weight: 750;
+  color: #fbbf24;
+}
+
+.cd-add-total-gra {
+  font-size: 0.82rem;
+  font-weight: 750;
+  color: #f472b6;
 }
 
 .cd-pending {
