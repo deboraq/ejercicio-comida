@@ -182,6 +182,10 @@ function HistorialPanel({
   diasExpandidos,
   toggleDiaHistorial,
   renderDiaHistorial,
+  onExportarExcel,
+  onExportarCsv,
+  onExportarJson,
+  totalExport = 0,
 }) {
   const diasConRegistros = diasHistorial.length
 
@@ -197,6 +201,25 @@ function HistorialPanel({
             <p className="cd-hist-module-sub mb-0">{registrosMesCount} registros acumulados este mes</p>
           </div>
         </div>
+        {(onExportarExcel || onExportarCsv || onExportarJson) && (
+          <div className="cd-hist-export buttons are-small mb-0">
+            {onExportarExcel && (
+              <button type="button" className="button is-link is-light" onClick={onExportarExcel}>
+                ↓ Excel ({totalExport})
+              </button>
+            )}
+            {onExportarCsv && (
+              <button type="button" className="button is-light" onClick={onExportarCsv}>
+                ↓ CSV
+              </button>
+            )}
+            {onExportarJson && (
+              <button type="button" className="button is-light" onClick={onExportarJson}>
+                ↓ JSON
+              </button>
+            )}
+          </div>
+        )}
       </header>
 
       <div className="cd-hist-filter-card">
@@ -676,6 +699,10 @@ export default function ComidaTitanium({
   diasExpandidos = new Set(),
   toggleDiaHistorial,
   renderDiaHistorial,
+  onExportarExcel,
+  onExportarCsv,
+  onExportarJson,
+  totalExport = 0,
   onEditarRegistro,
   panelPulse,
   modoPanel = 'agregar',
@@ -1070,6 +1097,10 @@ export default function ComidaTitanium({
               diasExpandidos={diasExpandidos}
               toggleDiaHistorial={toggleDiaHistorial}
               renderDiaHistorial={renderDiaHistorial}
+              onExportarExcel={onExportarExcel}
+              onExportarCsv={onExportarCsv}
+              onExportarJson={onExportarJson}
+              totalExport={totalExport}
             />
           )}
         </div>

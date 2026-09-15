@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { fechaToISO, fechaSoloDia, formatearFecha } from '../utils/calorias'
 import {
   CAMPOS_MEDIDAS,
@@ -15,7 +15,7 @@ import SeguimientoCaja from './SeguimientoCaja'
  * @param {Array} historial
  * @param {function} setHistorial
  */
-export default function MedidasSeguimiento({ historial, setHistorial }) {
+export default function MedidasSeguimiento({ historial, setHistorial, variant = 'default' }) {
   const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
   const [notasInput, setNotasInput] = useState('')
   const [valores, setValores] = useState(() =>
@@ -54,6 +54,19 @@ export default function MedidasSeguimiento({ historial, setHistorial }) {
   }, [serieGraf])
 
   const ultima = listaOrdenDesc[0]
+
+  useEffect(() => {
+    if (variant !== 'titanium' || !ultima) return
+    const vals = valoresDeToma(ultima)
+    setValores((prev) => {
+      const next = { ...prev }
+      for (const { key } of CAMPOS_MEDIDAS) {
+        if (vals[key] != null) next[key] = String(vals[key])
+      }
+      return next
+    })
+  }, [variant, ultima?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const resumenCerrado = ultima
     ? `Última toma: ${formatearFecha(ultima.fecha)} · ${Object.keys(valoresDeToma(ultima)).length} medidas`
     : 'Todavía no hay tomas'
@@ -90,18 +103,9 @@ export default function MedidasSeguimiento({ historial, setHistorial }) {
     setHistorial((prev) => (prev || []).filter((x) => x.id !== id))
   }
 
-  return (
-    <SeguimientoCaja
-      id="medidas-seguimiento"
-      titulo="Medidas corporales"
-      resumen={resumenCerrado}
-      ctaCerrado="Registrar medidas"
-    >
-      <p className="config-hint mb-3">
-        Circunferencias en <strong>cm</strong>. Podés dejar campos vacíos. Medí siempre en el mismo punto y horario.
-      </p>
-
-      <form onSubmit={guardar} className="mb-4">
+  const formularioMedidas = (
+    <form onSubmit={guardar} className={variant === 'titanium' ? '' : 'mb-4'}>
+      {variant !== 'titanium' && (
         <div className="columns is-mobile is-multiline mb-2">
           <div className="column is-half">
             <label className="label is-size-7">Fecha</label>
@@ -123,34 +127,86 @@ export default function MedidasSeguimiento({ historial, setHistorial }) {
             />
           </div>
         </div>
+      )}
 
-        <div className="medidas-campos-grid mb-3">
-          {CAMPOS_MEDIDAS.map((c) => (
-            <div key={c.key} className="medidas-campo">
-              <label className="label is-size-7 mb-1" htmlFor={`medida-${c.key}`} title={c.hint}>
-                {c.label} <span className="has-text-grey">(cm)</span>
-              </label>
-              <input
-                id={`medida-${c.key}`}
-                className="input is-small"
-                type="number"
-                min="1"
-                max="300"
-                step="0.1"
-                inputMode="decimal"
-                value={valores[c.key]}
-                onChange={(e) => setCampo(c.key, e.target.value)}
-                placeholder="—"
-                title={c.hint}
-              />
-            </div>
-          ))}
+      <div className={variant === 'titanium' ? 'cfg-ti-medidas-grid' : 'medidas-campos-grid mb-3'}>
+        {CAMPOS_MEDIDAS.map((c) => (
+          <div key={c.key} className={variant === 'titanium' ? 'cfg-ti-field mb-0' : 'medidas-campo'}>
+            <label
+              className={variant === 'titanium' ? 'cfg-ti-label' : 'label is-size-7 mb-1'}
+              htmlFor={`medida-${c.key}`}
+              title={c.hint}
+            >
+              {c.label}{variant === 'titanium' ? '' : <> <span className="has-text-grey">(cm)</span></>}
+            </label>
+            <input
+              id={`medida-${c.key}`}
+              className={variant === 'titanium' ? 'cfg-ti-input input' : 'input is-small'}
+              type="number"
+              min="1"
+              max="300"
+              step="0.1"
+              inputMode="decimal"
+              value={valores[c.key]}
+              onChange={(e) => setCampo(c.key, e.target.value)}
+              placeholder="—"
+              title={c.hint}
+            />
+          </div>
+        ))}
+      </div>
+
+      {variant === 'titanium' && (
+        <div className="cfg-ti-field">
+          <label className="cfg-ti-label">Notas (opcional)</label>
+          <input
+            className="cfg-ti-input input"
+            type="text"
+            value={notasInput}
+            onChange={(e) => setNotasInput(e.target.value)}
+            placeholder="Ej: ayunas, mismo lado siempre…"
+          />
         </div>
+      )}
 
-        <button type="submit" className="button is-link is-small is-fullwidth">
-          Guardar medidas
-        </button>
-      </form>
+      <button
+        type="submit"
+        className={variant === 'titanium' ? 'cfg-ti-btn-block' : 'button is-link is-small is-fullwidth'}
+      >
+        {variant === 'titanium' ? 'Guardar medidas corporales' : 'Guardar medidas'}
+      </button>
+    </form>
+  )
+
+  if (variant === 'titanium') {
+    return (
+      <article className="cfg-ti-card cfg-ti-card--teal" id="medidas-seguimiento">
+        <header className="cfg-ti-card-head">
+          <div>
+            <h2 className="cfg-ti-card-title">Medidas corporales</h2>
+            <p className="cfg-ti-card-sub">
+              {ultima ? `Última toma: ${formatearFecha(ultima.fecha)}` : 'Circunferencias en centímetros'}
+            </p>
+          </div>
+          <span className="cfg-ti-unit-badge">cm</span>
+        </header>
+        {formularioMedidas}
+      </article>
+    )
+  }
+
+  return (
+    <SeguimientoCaja
+      id="medidas-seguimiento"
+      titulo="Medidas corporales"
+      resumen={resumenCerrado}
+      ctaCerrado="Registrar medidas"
+    >
+      <p className="config-hint mb-3">
+        Circunferencias en <strong>cm</strong>. Podés dejar campos vacíos. Medí siempre en el mismo punto y horario.
+      </p>
+
+      {formularioMedidas}
 
       <div className="is-flex is-align-items-center is-justify-content-space-between is-flex-wrap-wrap mb-2" style={{ gap: '0.5rem' }}>
         <h3 className="title is-7 mb-0 has-text-grey">Evolución</h3>
