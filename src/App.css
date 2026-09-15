@@ -180,6 +180,10 @@ body {
     padding-top: max(0.65rem, env(safe-area-inset-top, 0px)) !important;
   }
 
+  .main-content--config {
+    padding-top: max(0.65rem, env(safe-area-inset-top, 0px)) !important;
+  }
+
   .inicio-page.section {
     padding-top: 0 !important;
   }
@@ -761,16 +765,26 @@ body {
 
   .main-content--rutina,
   .main-content--comida,
-  .main-content--ejercicios {
+  .main-content--ejercicios,
+  .main-content--config {
     padding-top: 0.5rem;
     padding-bottom: 0;
   }
 }
 
+.main-content--config {
+  background:
+    radial-gradient(circle at 6% 0%, rgba(59, 130, 246, 0.14), transparent 26rem),
+    radial-gradient(circle at 94% 4%, rgba(139, 92, 246, 0.1), transparent 22rem),
+    radial-gradient(circle at 50% 100%, rgba(16, 185, 129, 0.08), transparent 28rem),
+    #0d1322;
+}
+
 @media (max-width: 1023px) {
   .main-content--rutina,
   .main-content--comida,
-  .main-content--ejercicios {
+  .main-content--ejercicios,
+  .main-content--config {
     padding-bottom: 0;
   }
 }
@@ -11069,6 +11083,11 @@ select.ap-input {
   align-items: flex-end;
 }
 
+.pc-export {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .pc-ex-line {
   display: flex;
   align-items: center;
@@ -13804,6 +13823,12 @@ select.ap-input {
   align-items: flex-start;
   gap: 0.65rem;
   min-width: 0;
+}
+
+.cd-hist-export {
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .cd-hist-module-ico {

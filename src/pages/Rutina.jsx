@@ -23,6 +23,7 @@ import ProgresoCargasTitanium from '../components/ProgresoCargasTitanium'
 import RutinasAsignadasTitanium from '../components/RutinasAsignadasTitanium'
 import { AppNotificacionesCampana } from '../context/AppNotificationsContext'
 import { nuevoIdRegistro } from '../utils/ids'
+import { exportarGymCsv, exportarGymExcel, exportarGymJson } from '../utils/exportData'
 
 function crearDia(num) {
   return { id: `d${Date.now()}_${num}`, nombre: `Día ${num}`, ejercicios: [] }
@@ -783,6 +784,10 @@ export default function Rutina() {
     }
   }
 
+  const avisoSinSeriesGym = () => {
+    window.alert('No hay entrenamientos de gym registrados para exportar todavía.')
+  }
+
   return (
     <section className="section py-2 rutina-titanium rutina-layout">
       <div className="rutina-chrome">
@@ -950,6 +955,19 @@ export default function Rutina() {
                 )
               ),
             ]}
+            totalExport={registros.length}
+            onExportarExcel={() => {
+              if (!registros.length) return avisoSinSeriesGym()
+              exportarGymExcel(registros)
+            }}
+            onExportarCsv={() => {
+              if (!registros.length) return avisoSinSeriesGym()
+              exportarGymCsv(registros)
+            }}
+            onExportarJson={() => {
+              if (!registros.length) return avisoSinSeriesGym()
+              exportarGymJson(registros, rutinas, rutinaActivaId)
+            }}
             onAplicarSugerencia={({ ejercicio, carga }) => {
               setVista('registrar')
               window.alert(

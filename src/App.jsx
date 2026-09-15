@@ -122,7 +122,7 @@ function AppRoutes() {
       )}
       <div className="app-shell-main">
         {!isAuthPage && (
-          <header className={`app-topbar${location.pathname === '/' ? ' app-topbar--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' app-topbar--rutina' : ''}${location.pathname.startsWith('/comida') ? ' app-topbar--comida' : ''}${location.pathname.startsWith('/ejercicios') ? ' app-topbar--ejercicios' : ''}${location.pathname.startsWith('/profe') ? ' app-topbar--profe' : ''}`}>
+          <header className={`app-topbar${location.pathname === '/' ? ' app-topbar--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' app-topbar--rutina' : ''}${location.pathname.startsWith('/comida') ? ' app-topbar--comida' : ''}${location.pathname.startsWith('/ejercicios') ? ' app-topbar--ejercicios' : ''}${location.pathname.startsWith('/profe') ? ' app-topbar--profe' : ''}${location.pathname.startsWith('/config') ? ' app-topbar--config' : ''}`}>
             <AppMenuToggle />
             {location.pathname !== '/' && !location.pathname.startsWith('/rutina') && !location.pathname.startsWith('/comida') && !location.pathname.startsWith('/ejercicios') && !location.pathname.startsWith('/profe') && (
               <p className="app-topbar-title mb-0">
@@ -136,7 +136,7 @@ function AppRoutes() {
             {location.pathname !== '/' && !location.pathname.startsWith('/rutina') && !location.pathname.startsWith('/comida') && !location.pathname.startsWith('/ejercicios') && !location.pathname.startsWith('/profe') && <AppNotificacionesCampana />}
           </header>
         )}
-        <main className={`main-content${location.pathname === '/' ? ' main-content--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' main-content--rutina' : ''}${location.pathname.startsWith('/comida') ? ' main-content--comida' : ''}${location.pathname.startsWith('/ejercicios') ? ' main-content--ejercicios' : ''}${location.pathname.startsWith('/profe') ? ' main-content--profe' : ''}`}>
+        <main className={`main-content${location.pathname === '/' ? ' main-content--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' main-content--rutina' : ''}${location.pathname.startsWith('/comida') ? ' main-content--comida' : ''}${location.pathname.startsWith('/ejercicios') ? ' main-content--ejercicios' : ''}${location.pathname.startsWith('/profe') ? ' main-content--profe' : ''}${location.pathname.startsWith('/config') ? ' main-content--config' : ''}`}>
           <Routes>
             <Route path="/" element={<ModuleGate module="inicio" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Inicio /></ModuleGate>} />
             <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Ejercicios /></ModuleGate>} />

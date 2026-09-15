@@ -7,6 +7,7 @@ import { MOMENTOS_COMIDA, MOMENTO_ICON, normalizarMomento } from '../utils/comid
 import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias, getRachaDias } from '../utils/estadisticas'
 import ComidaTitanium from '../components/ComidaTitanium'
 import { nuevoIdRegistro } from '../utils/ids'
+import { exportarComidasCsv, exportarComidasExcel, exportarComidasJson } from '../utils/exportData'
 
 const COMIDAS = MOMENTOS_COMIDA
 
@@ -821,6 +822,10 @@ export default function Comida() {
 
   const caloriasActivas = Math.round(contextoDia?.caloriasQuemadas || 0)
 
+  const avisoSinComidas = () => {
+    window.alert('No hay comidas registradas para exportar todavía.')
+  }
+
   return (
     <section className="section py-2 comida-page comida-titanium">
       <div className="container app-page-container comida-container">
@@ -910,6 +915,19 @@ export default function Comida() {
           renderDiaHistorial={(lista) => (
             <ListaComidaAgrupada bloques={agruparComidasPorMomento(lista)} onEliminar={eliminar} onEditar={editarRegistro} />
           )}
+          totalExport={registros.length}
+          onExportarExcel={() => {
+            if (!registros.length) return avisoSinComidas()
+            exportarComidasExcel(registros)
+          }}
+          onExportarCsv={() => {
+            if (!registros.length) return avisoSinComidas()
+            exportarComidasCsv(registros)
+          }}
+          onExportarJson={() => {
+            if (!registros.length) return avisoSinComidas()
+            exportarComidasJson(registros)
+          }}
         />
       </div>
     </section>

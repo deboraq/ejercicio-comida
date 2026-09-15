@@ -12,6 +12,7 @@ export default function PesoSeguimiento({
   onActualizarPesoConfig,
   pesoActualKg,
   defaultOpen = false,
+  variant = 'default',
 }) {
   const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
   const [pesoInput, setPesoInput] = useState('')
@@ -117,33 +118,23 @@ export default function PesoSeguimiento({
     setMensaje(null)
   }
 
-  return (
-    <SeguimientoCaja
-      id="peso-seguimiento"
-      titulo="Peso corporal"
-      resumen={resumenCerrado}
-      ctaCerrado="Modificar / registrar"
-      defaultOpen={defaultOpen}
-    >
-      <p className="config-hint mb-3">
-        Acá podés <strong>cambiar tu peso</strong> o registrar un pesaje nuevo. El último valor se usa en IMC, calorías y consejos.
-      </p>
-
-      <form onSubmit={guardarMedicion} className="config-form-registro mb-4">
-        <div className="config-form-row">
-          <div className="field mb-0">
-            <label className="label is-size-7">Fecha</label>
+  const formulario = (
+    <>
+      <form onSubmit={guardarMedicion} className={variant === 'titanium' ? 'cfg-ti-peso-form' : 'config-form-registro mb-4'}>
+        <div className={variant === 'titanium' ? 'cfg-ti-form-row' : 'config-form-row'}>
+          <div className={variant === 'titanium' ? 'cfg-ti-field mb-0' : 'field mb-0'}>
+            <label className={variant === 'titanium' ? 'cfg-ti-label' : 'label is-size-7'}>Fecha</label>
             <input
-              className="input"
+              className={variant === 'titanium' ? 'cfg-ti-input input' : 'input'}
               type="date"
               value={fechaInput}
               onChange={(e) => setFechaInput(e.target.value)}
             />
           </div>
-          <div className="field mb-0">
-            <label className="label is-size-7">Peso (kg)</label>
+          <div className={variant === 'titanium' ? 'cfg-ti-field mb-0' : 'field mb-0'}>
+            <label className={variant === 'titanium' ? 'cfg-ti-label' : 'label is-size-7'}>Peso (kg)</label>
             <input
-              className="input"
+              className={variant === 'titanium' ? 'cfg-ti-input input' : 'input'}
               type="number"
               min="0.1"
               max="400"
@@ -159,21 +150,74 @@ export default function PesoSeguimiento({
             />
           </div>
         </div>
-        <div className="field mt-3 mb-3">
-          <label className="label is-size-7">Notas (opcional)</label>
+        <div className={variant === 'titanium' ? 'cfg-ti-field' : 'field mt-3 mb-3'}>
+          <label className={variant === 'titanium' ? 'cfg-ti-label' : 'label is-size-7'}>Notas (opcional)</label>
           <input
-            className="input"
+            className={variant === 'titanium' ? 'cfg-ti-input input' : 'input'}
             type="text"
             value={notasInput}
             onChange={(e) => setNotasInput(e.target.value)}
             placeholder="Ej: ayunas, después del entreno…"
           />
         </div>
-        <button type="submit" className="button is-link is-fullwidth">
+        <button
+          type="submit"
+          className={variant === 'titanium' ? 'cfg-ti-btn-block' : 'button is-link is-fullwidth'}
+        >
           {pesoActual != null ? 'Guardar / actualizar peso' : 'Guardar peso'}
         </button>
-        {mensaje && <p className="is-size-7 has-text-success mt-2 mb-0">{mensaje}</p>}
+        {mensaje && (
+          <p className={variant === 'titanium' ? 'cfg-ti-msg-ok' : 'is-size-7 has-text-success mt-2 mb-0'}>{mensaje}</p>
+        )}
       </form>
+
+      {variant === 'titanium' && ultima ? (
+        <div className="cfg-ti-pill">
+          <span>
+            <strong>{ultima.pesoKg} kg</strong>
+            <span className="cfg-ti-pill-tag ml-2">Actual</span>
+            <span className="has-text-grey ml-2">{formatearFecha(ultima.fecha)}</span>
+          </span>
+          <button
+            type="button"
+            className="cfg-ti-pill-del"
+            onClick={() => eliminar(ultima.id)}
+            aria-label="Eliminar pesaje"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
+    </>
+  )
+
+  if (variant === 'titanium') {
+    return (
+      <article className="cfg-ti-card cfg-ti-card--blue" id="peso-seguimiento">
+        <header className="cfg-ti-card-head">
+          <div>
+            <h2 className="cfg-ti-card-title">Peso corporal &amp; Registro</h2>
+            <p className="cfg-ti-card-sub">Registrá tu peso para actualizar IMC y metas calóricas.</p>
+          </div>
+        </header>
+        {formulario}
+      </article>
+    )
+  }
+
+  return (
+    <SeguimientoCaja
+      id="peso-seguimiento"
+      titulo="Peso corporal"
+      resumen={resumenCerrado}
+      ctaCerrado="Modificar / registrar"
+      defaultOpen={defaultOpen}
+    >
+      <p className="config-hint mb-3">
+        Acá podés <strong>cambiar tu peso</strong> o registrar un pesaje nuevo. El último valor se usa en IMC, calorías y consejos.
+      </p>
+
+      {formulario}
 
       {escalaGraf ? (
         <div className="peso-graf-wrap mb-4">
