@@ -407,7 +407,7 @@ export default function Comida() {
     setEntradaManual(false)
     setManualForm(MANUAL_FORM_VACIO)
     setReferenciaActiva(itemRef)
-    setItems([])
+    setItems([buildItemDesdeReferencia(itemRef, 1)])
     setBusquedaRef('')
     setCantidadPorciones('1')
   }
@@ -730,8 +730,19 @@ export default function Comida() {
     { cal: 0, pro: 0 }
   )
 
-  const previewSeleccion = previewReferencia(referenciaActiva, cantidadPorciones)
-    || (entradaManual ? previewManual(manualForm, cantidadPorciones) : null)
+  const previewSeleccion = (() => {
+    if (items.some((it) => it.descripcion.trim())) {
+      return {
+        cal: totalesItems.cal,
+        pro: totalesItems.pro,
+        car: totalesItems.car,
+        gra: totalesItems.gra,
+      }
+    }
+    if (entradaManual) return previewManual(manualForm, cantidadPorciones)
+    if (referenciaActiva) return previewReferencia(referenciaActiva, cantidadPorciones)
+    return null
+  })()
 
   const cambiarVistaComida = (vista) => {
     setVistaComida(vista)
