@@ -15,6 +15,7 @@
  */
 
 import { sinAcentos } from './calorias.js'
+import { PLAN_ALIMENTICIO_ALIMENTOS } from '../data/planAlimenticioComidas.js'
 
 /** Expande términos de búsqueda (query → variantes). */
 const QUERY_EXPAND = {
@@ -49,6 +50,15 @@ const QUERY_EXPAND = {
   fiambre: ['embutido', 'embutidos', 'jamon', 'jamón'],
   chocolate: ['chocolates', 'golosina', 'golosinas', 'dulce', 'cacao'],
   golosina: ['golosinas', 'caramelos', 'chocolate'],
+  cereal: ['cereales', 'all bran', 'granola sin azucar'],
+  cereales: ['cereal', 'desayuno plan'],
+  ensalada: ['ensaladas', 'hortalizas', 'verduras'],
+  plan: ['tmv', 'plan alimenticio', 'plan alimentario'],
+  tmv: ['plan', 'plan alimenticio'],
+  omelette: ['tortilla huevo', 'huevo'],
+  wok: ['salteado', 'verduras salteadas'],
+  merluza: ['pescado', 'filete merluza'],
+  mermelada: ['mermelada light', 'bc light'],
 }
 
 export const REFERENCIA_ALIMENTOS = [
@@ -773,6 +783,8 @@ export const REFERENCIA_ALIMENTOS = [
   { categoria: "Snacks / Bebidas", nombre: "Tortilla de maíz (1 unidad)", calorias: 65, proteinas: 2, carbohidratos: 14, grasas: 0.1, porcion: "1 tortilla" },
   { categoria: "Snacks / Bebidas", nombre: "Vino tinto (1 copa)", calorias: 125, proteinas: 0, carbohidratos: 4, grasas: 0, porcion: "1 copa" },
   { categoria: "Snacks / Bebidas", nombre: "Zumo natural (1 vaso)", calorias: 110, proteinas: 1, carbohidratos: 26, grasas: 0.2, porcion: "1 vaso" },
+
+  ...PLAN_ALIMENTICIO_ALIMENTOS,
 
 ]
 

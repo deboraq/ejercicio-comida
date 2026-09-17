@@ -5,6 +5,12 @@ import { getRecetasSugeridasCena } from '../utils/recetasCena'
 import { getUltimosNDias, PERIODOS } from '../utils/estadisticas'
 import { META_MOMENTO_FRAC, HORA_MOMENTO_DEFAULT } from '../utils/comidaMomentos'
 import { AppNotificacionesCampana } from '../context/AppNotificationsContext'
+import {
+  COMIDA_FAVORITOS_SUGERIDOS,
+  resolverFavoritosComida,
+  esFavoritoComida,
+  emojiComida,
+} from '../utils/comidaFavoritos'
 
 function numeroFlexibleO(valor, fallback = 0) {
   const n = parseFloat(String(valor ?? '').replace(',', '.'))
@@ -15,12 +21,10 @@ function redondear1(n) {
   return Math.round(n * 10) / 10
 }
 
-const FAVORITOS = [
-  { label: 'Pollo 150g', emoji: '🍗', match: 'pechuga de pollo' },
-  { label: '2 Huevos duros', emoji: '🥚', match: 'huevo duro' },
-  { label: 'Banana', emoji: '🍌', match: 'banana' },
-  { label: 'Whey Protein', emoji: '🥤', match: 'whey' },
-]
+function etiquetaCortaAlimento(nombre = '') {
+  const base = String(nombre).replace(/\s*\([^)]*\)\s*$/, '').trim()
+  return base.length > 28 ? `${base.slice(0, 26)}…` : base
+}
 
 const META_MOMENTO = META_MOMENTO_FRAC
 const DIAS_CORTO = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
@@ -37,6 +41,10 @@ const ETIQUETA_CATEGORIA = {
   Fiambres: 'Fiambres',
   'Snacks / Bebidas': 'Snack',
   Personalizado: 'Personalizado',
+  'Plan alimenticio': 'Plan TMV',
+  'Plan alimenticio / Ensaladas': 'Ensalada plan',
+  'Plan alimenticio / Recetas': 'Receta plan',
+  'Plan alimenticio / Platos': 'Plato plan',
 }
 
 function buscarReferenciaAlimento(nombre) {
@@ -715,6 +723,8 @@ export default function ComidaTitanium({
   cerrarEntradaManual,
   bannerConsejo,
   objetivo,
+  comidaFavoritos = [],
+  onToggleFavoritoComida,
 }) {
   const itemsPorMomento = useMemo(() => {
     const map = {}
@@ -782,10 +792,10 @@ export default function ComidaTitanium({
       }
 
       requestAnimationFrame(() => {
-        document.getElementById('cd-add-block')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        document.getElementById('cd-agregar-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
         if (modo === 'editar') {
           window.setTimeout(() => {
-            document.querySelector('#cd-agregar-panel .cd-field--cantidad input')?.focus({ preventScroll: true })
+            document.querySelector('#cd-agregar-panel .cd-qty-field input')?.focus({ preventScroll: true })
           }, 280)
         }
       })
@@ -800,7 +810,7 @@ export default function ComidaTitanium({
       document.getElementById('cd-agregar-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       window.setTimeout(() => {
         if (modo === 'editar') {
-          document.querySelector('#cd-agregar-panel .cd-field--cantidad input')?.focus({ preventScroll: true })
+          document.querySelector('#cd-agregar-panel .cd-qty-field input')?.focus({ preventScroll: true })
         } else if (focusSearch) {
           document.getElementById('cd-buscar')?.focus({ preventScroll: true })
         }
@@ -849,10 +859,33 @@ export default function ComidaTitanium({
     activarGuiaPanel('agregar', false)
   }, [seleccionarReferencia, setComida, activarGuiaPanel])
 
-  const agregarFavorito = (match) => {
-    const item = REFERENCIA_ALIMENTOS.find((a) => a.nombre.toLowerCase().includes(match))
+  const agregarFavorito = (matchOrItem) => {
+    if (matchOrItem && typeof matchOrItem === 'object' && matchOrItem.nombre) {
+      seleccionarReferencia(matchOrItem)
+      return
+    }
+    const item = REFERENCIA_ALIMENTOS.find((a) => a.nombre.toLowerCase().includes(String(matchOrItem || '').toLowerCase()))
     if (item) seleccionarReferencia(item)
   }
+
+  const favoritosUsuario = useMemo(
+    () => resolverFavoritosComida(comidaFavoritos),
+    [comidaFavoritos],
+  )
+
+  const favoritosSugeridos = useMemo(
+    () => resolverFavoritosComida(COMIDA_FAVORITOS_SUGERIDOS),
+    [],
+  )
+
+  const chipsFavoritos = favoritosUsuario.length ? favoritosUsuario : favoritosSugeridos
+  const mostrandoSugeridos = !favoritosUsuario.length
+
+  const toggleFavorito = useCallback((nombre, e) => {
+    e?.stopPropagation?.()
+    e?.preventDefault?.()
+    onToggleFavoritoComida?.(nombre)
+  }, [onToggleFavoritoComida])
 
   const totalPreview = previewSeleccion || (puedeAgregar && items.length ? totalesItems : null)
   const itemMacrosEditable = !entradaManual && items.length === 1 && items[0]?.descripcion?.trim() ? items[0] : null
@@ -1123,18 +1156,28 @@ export default function ComidaTitanium({
                     Modificá acá — ajustá <strong>momento, hora o cantidad</strong> y tocá <strong>Guardar cambios</strong>
                   </>
                 ) : (
-                  <>
-                    Agregá acá — buscá el alimento y guardalo en <strong>{comida}</strong>
-                  </>
+                  <>Buscá el alimento y agregalo a <strong>{comida}</strong></>
                 )}
               </div>
             )}
-            <div className="cd-search-head">
-              <div className="cd-search-head-ico" aria-hidden>
-                <IconSearchPanel />
+
+            <div className="cd-add-momento-row">
+              <span className="cd-add-momento-lbl">Momento</span>
+              <div className="cd-select-wrap cd-add-momento-select">
+                <select value={comida} onChange={(e) => setComida(e.target.value)} aria-label="Momento del día">
+                  {comidas.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
-              <h2 className="cd-search-title mb-0">Buscador de Alimentos</h2>
-              <span className="cd-search-verified">Base verificada</span>
+              <div className="cd-hora-pick" title={`Hora: ${horaRegistro || 'ahora'}`}>
+                <span className="cd-hora-pick-ico" aria-hidden>🕐</span>
+                <input
+                  type="time"
+                  className="cd-hora-pick-input"
+                  value={horaRegistro}
+                  aria-label={`Hora del registro, ${horaRegistro || 'hora actual'}`}
+                  onChange={(e) => setHoraRegistro?.(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="cd-search-wrap">
@@ -1191,7 +1234,48 @@ export default function ComidaTitanium({
                       : `${referenciaActiva.calorias} kcal · P ${referenciaActiva.proteinas}g`}
                   </span>
                 </div>
+                {onToggleFavoritoComida && (
+                  <button
+                    type="button"
+                    className={`cd-fav-star${esFavoritoComida(comidaFavoritos, referenciaActiva.nombre) ? ' is-on' : ''}`}
+                    aria-label={esFavoritoComida(comidaFavoritos, referenciaActiva.nombre) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                    onClick={(e) => toggleFavorito(referenciaActiva.nombre, e)}
+                  >
+                    {esFavoritoComida(comidaFavoritos, referenciaActiva.nombre) ? '★' : '☆'}
+                  </button>
+                )}
                 <button type="button" className="cd-ref-selected-del" onClick={limpiarSeleccion} aria-label="Quitar selección">×</button>
+                <div className="cd-ref-action-row">
+                  <label className="cd-qty-field">
+                    <span>Cant.</span>
+                    <input
+                      type="number"
+                      min="0.25"
+                      max="99"
+                      step="0.25"
+                      value={cantidadPorciones}
+                      onChange={(e) => setCantidadPorciones(e.target.value)}
+                      onBlur={blurCantidadPorciones}
+                      aria-label="Cantidad de porciones"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="cd-btn cd-btn--primary cd-btn--add-inline"
+                    disabled={!puedeAgregar}
+                    onClick={(e) => agregarALista?.(e)}
+                  >
+                    Agregar
+                  </button>
+                </div>
+                {totalPreview && !enEdicion && (
+                  <p className="cd-ref-total-preview mb-0">
+                    Total: <strong>{totalPreview.cal} kcal</strong>
+                    {' · '}P {totalPreview.pro}g
+                    {totalPreview.car != null && <> · C {totalPreview.car}g</>}
+                    {totalPreview.gra != null && <> · G {totalPreview.gra}g</>}
+                  </p>
+                )}
               </div>
             )}
 
@@ -1212,22 +1296,34 @@ export default function ComidaTitanium({
                   resultadosBusqueda.slice(0, 6).map((a) => {
                     const selected = referenciaActiva?._idx === a._idx
                     const gra = grasasRef(a)
+                    const esFav = esFavoritoComida(comidaFavoritos, a.nombre)
                     return (
-                      <button
-                        key={a._idx}
-                        type="button"
-                        className={`cd-ref-card${selected ? ' is-selected' : ''}`}
-                        onClick={() => seleccionarReferencia(a)}
-                      >
-                        <div className="cd-ref-card-top">
-                          <strong className="cd-ref-card-name">{a.nombre}</strong>
-                          <span className="cd-ref-card-kcal">{a.calorias} kcal</span>
-                        </div>
-                        <p className="cd-ref-card-macros mb-0">
-                          P: {a.proteinas}g • C: {a.carbohidratos}g • G: {gra}g
-                        </p>
-                        {a.porcion && <span className="cd-ref-card-porc">{a.porcion}</span>}
-                      </button>
+                      <div key={a._idx} className={`cd-ref-card-wrap${selected ? ' is-selected' : ''}`}>
+                        <button
+                          type="button"
+                          className={`cd-ref-card${selected ? ' is-selected' : ''}`}
+                          onClick={() => seleccionarReferencia(a)}
+                        >
+                          <div className="cd-ref-card-top">
+                            <strong className="cd-ref-card-name">{a.nombre}</strong>
+                            <span className="cd-ref-card-kcal">{a.calorias} kcal</span>
+                          </div>
+                          <p className="cd-ref-card-macros mb-0">
+                            P: {a.proteinas}g • C: {a.carbohidratos}g • G: {gra}g
+                          </p>
+                          {a.porcion && <span className="cd-ref-card-porc">{a.porcion}</span>}
+                        </button>
+                        {onToggleFavoritoComida && (
+                          <button
+                            type="button"
+                            className={`cd-fav-star${esFav ? ' is-on' : ''}`}
+                            aria-label={esFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                            onClick={(e) => toggleFavorito(a.nombre, e)}
+                          >
+                            {esFav ? '★' : '☆'}
+                          </button>
+                        )}
+                      </div>
                     )
                   })
                 )}
@@ -1237,7 +1333,7 @@ export default function ComidaTitanium({
             {entradaManual && (
               <div className="cd-manual-form">
                 <p className="cd-manual-hint mb-0">
-                  Completá nombre y calorías (macros opcionales). Después usá momento, hora y cantidad abajo.
+                  Completá los datos del alimento y tocá <strong>Agregar</strong>.
                 </p>
                 <label className="cd-field cd-field--full">
                   <span>Nombre del alimento</span>
@@ -1306,43 +1402,10 @@ export default function ComidaTitanium({
               </div>
             )}
 
-            <div
-              id="cd-add-block"
-              className={`cd-add-block${(buscadorDestacado || enEdicion) ? ' is-guide-inner' : ''}${enEdicion && !buscadorDestacado ? ' is-guide-inner--static' : ''}`}
-            >
-              <div className="cd-add-title-row">
-                <h3 className="cd-add-title mb-0">
-                  {enEdicion ? 'Modificar seleccionado' : entradaManual ? 'Cargar alimento manual' : 'Añadir Seleccionado'}
-                </h3>
-                {enEdicion && (
-                  <button type="button" className="cd-add-cancel" onClick={() => onCancelarEdicion?.()}>
-                    Cancelar
-                  </button>
-                )}
-              </div>
-              <div className="cd-add-fields">
-                <label className="cd-field cd-field--momento">
-                  <span>Momento</span>
-                  <div className="cd-momento-hora-row">
-                    <div className="cd-select-wrap">
-                      <select value={comida} onChange={(e) => setComida(e.target.value)}>
-                        {comidas.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-                    <div className="cd-hora-pick" title={`Hora: ${horaRegistro || 'ahora'}`}>
-                      <span className="cd-hora-pick-ico" aria-hidden>🕐</span>
-                      <input
-                        type="time"
-                        className="cd-hora-pick-input"
-                        value={horaRegistro}
-                        aria-label={`Hora del registro, ${horaRegistro || 'hora actual'}`}
-                        onChange={(e) => setHoraRegistro?.(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </label>
-                <label className="cd-field cd-field--cantidad">
-                  <span>Porción / Cantidad</span>
+            {entradaManual && (
+              <div className="cd-ref-action-row cd-ref-action-row--manual">
+                <label className="cd-qty-field">
+                  <span>Cant.</span>
                   <input
                     type="number"
                     min="0.25"
@@ -1351,9 +1414,53 @@ export default function ComidaTitanium({
                     value={cantidadPorciones}
                     onChange={(e) => setCantidadPorciones(e.target.value)}
                     onBlur={blurCantidadPorciones}
+                    aria-label="Cantidad de porciones"
                   />
                 </label>
+                <button
+                  type="button"
+                  className="cd-btn cd-btn--primary cd-btn--add-inline"
+                  disabled={!puedeAgregar}
+                  onClick={(e) => agregarALista?.(e)}
+                >
+                  Agregar
+                </button>
               </div>
+            )}
+
+            {(enEdicion || pendientes.length > 0 || itemMacrosEditable) && (
+            <div
+              id="cd-add-block"
+              className={`cd-add-block${(buscadorDestacado || enEdicion) ? ' is-guide-inner' : ''}${enEdicion && !buscadorDestacado ? ' is-guide-inner--static' : ''}`}
+            >
+              <div className="cd-add-title-row">
+                <h3 className="cd-add-title mb-0">
+                  {enEdicion ? 'Guardar cambios' : pendientes.length > 0 ? 'Lista para guardar' : 'Confirmar'}
+                </h3>
+                {enEdicion && (
+                  <button type="button" className="cd-add-cancel" onClick={() => onCancelarEdicion?.()}>
+                    Cancelar
+                  </button>
+                )}
+              </div>
+
+              {enEdicion && (
+                <div className="cd-ref-action-row cd-ref-action-row--edit">
+                  <label className="cd-qty-field">
+                    <span>Cant.</span>
+                    <input
+                      type="number"
+                      min="0.25"
+                      max="99"
+                      step="0.25"
+                      value={cantidadPorciones}
+                      onChange={(e) => setCantidadPorciones(e.target.value)}
+                      onBlur={blurCantidadPorciones}
+                      aria-label="Cantidad de porciones"
+                    />
+                  </label>
+                </div>
+              )}
 
               {itemMacrosEditable && (
                 <div className="cd-add-macros">
@@ -1401,9 +1508,9 @@ export default function ComidaTitanium({
                 </div>
               )}
 
-              {totalPreview && (
+              {totalPreview && enEdicion && (
                 <div className="cd-add-total">
-                  <span className="cd-add-total-lbl">{enEdicion ? 'Total modificado:' : 'Total a agregar:'}</span>
+                  <span className="cd-add-total-lbl">Total modificado:</span>
                   <div className="cd-add-total-vals">
                     <strong>{totalPreview.cal} kcal</strong>
                     <span className="cd-add-total-sep" aria-hidden />
@@ -1463,14 +1570,6 @@ export default function ComidaTitanium({
               <div className="cd-add-actions">
                 <button
                   type="button"
-                  className="cd-btn cd-btn--ghost cd-btn--full"
-                  disabled={!puedeAgregar}
-                  onClick={(e) => agregarALista?.(e)}
-                >
-                  + Agregar a la lista
-                </button>
-                <button
-                  type="button"
                   className="cd-btn cd-btn--save cd-btn--full"
                   disabled={!puedeGuardar}
                   onClick={(e) => guardarComida(e)}
@@ -1481,16 +1580,42 @@ export default function ComidaTitanium({
                 </button>
               </div>
             </div>
+            )}
 
             <div className="cd-fav">
-              <p className="cd-fav-label mb-0">Frecuentes / Favoritos</p>
+              <p className="cd-fav-label mb-0">
+                {mostrandoSugeridos ? 'Frecuentes sugeridos' : 'Mis favoritos'}
+                {!mostrandoSugeridos && onToggleFavoritoComida && (
+                  <span className="cd-fav-hint"> · Tocá ☆ en el buscador para agregar más</span>
+                )}
+              </p>
               <div className="cd-fav-chips">
-                {FAVORITOS.map((f) => (
-                  <button key={f.label} type="button" className="cd-fav-chip" onClick={() => agregarFavorito(f.match)}>
-                    <span className="cd-fav-emoji" aria-hidden>{f.emoji}</span>
-                    {f.label}
-                  </button>
-                ))}
+                {chipsFavoritos.map((item) => {
+                  const esFav = esFavoritoComida(comidaFavoritos, item.nombre)
+                  return (
+                    <div key={item.nombre} className="cd-fav-chip-wrap">
+                      <button
+                        type="button"
+                        className="cd-fav-chip"
+                        onClick={() => agregarFavorito(item)}
+                        title={item.nombre}
+                      >
+                        <span className="cd-fav-emoji" aria-hidden>{emojiComida(item.nombre)}</span>
+                        {etiquetaCortaAlimento(item.nombre)}
+                      </button>
+                      {!mostrandoSugeridos && esFav && onToggleFavoritoComida && (
+                        <button
+                          type="button"
+                          className="cd-fav-chip-star is-on"
+                          aria-label={`Quitar ${item.nombre} de favoritos`}
+                          onClick={(e) => toggleFavorito(item.nombre, e)}
+                        >
+                          ★
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </section>

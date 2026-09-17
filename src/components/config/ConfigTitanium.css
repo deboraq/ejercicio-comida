@@ -9,9 +9,8 @@
   --cfg-muted: #94a3b8;
   --cfg-text: #e2e8f0;
   background:
-    radial-gradient(circle at 6% 0%, rgba(59, 130, 246, 0.16), transparent 26rem),
-    radial-gradient(circle at 94% 4%, rgba(139, 92, 246, 0.12), transparent 22rem),
-    radial-gradient(circle at 50% 100%, rgba(16, 185, 129, 0.1), transparent 28rem),
+    radial-gradient(circle at 6% 0%, rgba(59, 130, 246, 0.08), transparent 26rem),
+    radial-gradient(circle at 94% 4%, rgba(139, 92, 246, 0.06), transparent 22rem),
     var(--cfg-bg);
   min-height: 100%;
   padding-bottom: 2rem;
@@ -72,37 +71,85 @@
 
 .cfg-ti-card {
   padding: 1rem 1.1rem;
+  background: #151b2b;
+  border: 1px solid #243044;
 }
 
-.cfg-ti-card--blue {
-  background: var(--app-grad-blue);
-  border: 1px solid var(--app-grad-border-blue);
+/* Acento superior fino: distingue secciones sin teñir toda la tarjeta */
+.cfg-ti-card--blue,
+.cfg-ti-card--teal,
+.cfg-ti-card--violet,
+.cfg-ti-card--amber,
+.cfg-ti-card--indigo,
+.cfg-ti-card--panel,
+.cfg-ti-card--rose,
+.cfg-ti-card--green,
+.cfg-ti-card--sky {
+  background: #151b2b;
+  border-color: #243044;
 }
 
-.cfg-ti-card--teal {
-  background: var(--app-grad-teal);
-  border: 1px solid var(--app-grad-border-teal);
+.cfg-ti-card--blue::before,
+.cfg-ti-card--teal::before,
+.cfg-ti-card--violet::before,
+.cfg-ti-card--amber::before,
+.cfg-ti-card--indigo::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 16px 16px 0 0;
+  z-index: 2;
+  pointer-events: none;
 }
 
-.cfg-ti-card--violet {
-  background: var(--app-grad-violet);
-  border: 1px solid var(--app-grad-border-violet);
+.cfg-ti-card--blue::before {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.85), rgba(59, 130, 246, 0.15));
 }
 
-.cfg-ti-card--amber {
-  background: var(--app-grad-amber);
-  border: 1px solid var(--app-grad-border-amber);
+.cfg-ti-card--teal::before {
+  background: linear-gradient(90deg, rgba(45, 212, 191, 0.85), rgba(45, 212, 191, 0.15));
 }
 
-.cfg-ti-card--green {
-  background: var(--app-grad-green);
-  border: 1px solid var(--app-grad-border-green);
+.cfg-ti-card--violet::before {
+  background: linear-gradient(90deg, rgba(167, 139, 250, 0.85), rgba(139, 92, 246, 0.15));
 }
+
+.cfg-ti-card--amber::before {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.8), rgba(251, 191, 36, 0.12));
+}
+
+.cfg-ti-card--indigo::before {
+  background: linear-gradient(90deg, rgba(129, 140, 248, 0.85), rgba(99, 102, 241, 0.15));
+}
+
+.cfg-ti-card--blue .cfg-ti-card-title::before,
+.cfg-ti-card--teal .cfg-ti-card-title::before,
+.cfg-ti-card--violet .cfg-ti-card-title::before,
+.cfg-ti-card--amber .cfg-ti-card-title::before,
+.cfg-ti-card--indigo .cfg-ti-card-title::before {
+  content: '';
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  margin-right: 0.45rem;
+  vertical-align: 0.05em;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.cfg-ti-card--blue .cfg-ti-card-title::before { background: #60a5fa; box-shadow: 0 0 8px rgba(96, 165, 250, 0.55); }
+.cfg-ti-card--teal .cfg-ti-card-title::before { background: #2dd4bf; box-shadow: 0 0 8px rgba(45, 212, 191, 0.45); }
+.cfg-ti-card--violet .cfg-ti-card-title::before { background: #a78bfa; box-shadow: 0 0 8px rgba(167, 139, 250, 0.45); }
+.cfg-ti-card--amber .cfg-ti-card-title::before { background: #fbbf24; box-shadow: 0 0 8px rgba(251, 191, 36, 0.4); }
+.cfg-ti-card--indigo .cfg-ti-card-title::before { background: #818cf8; box-shadow: 0 0 8px rgba(129, 140, 248, 0.45); }
 
 /* Profile hero */
 .cfg-ti-hero {
-  background: var(--app-grad-accent);
-  border: 1px solid var(--app-grad-border-blue);
+  background: #151b2b;
+  border: 1px solid #243044;
   padding: 1.15rem 1.25rem;
   margin-bottom: 1rem;
 }
@@ -175,9 +222,9 @@
 }
 
 .cfg-ti-badge--profe {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.24), rgba(5, 150, 105, 0.1));
-  color: #a7f3d0;
-  border-color: rgba(16, 185, 129, 0.35);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.24), rgba(79, 70, 229, 0.1));
+  color: #c7d2fe;
+  border-color: rgba(99, 102, 241, 0.35);
 }
 
 .cfg-ti-email {
@@ -192,7 +239,7 @@
   gap: 0.35rem;
   margin-top: 0.45rem;
   font-size: 0.75rem;
-  color: #6ee7b7;
+  color: #93c5fd;
 }
 
 .cfg-ti-hero-actions {
@@ -397,60 +444,33 @@
   transform: translateY(-1px);
 }
 
-.cfg-ti-objetivo-tile--bajar_peso {
-  background:
-    linear-gradient(155deg, rgba(59, 130, 246, 0.22), transparent 55%),
-    linear-gradient(320deg, rgba(56, 189, 248, 0.1), transparent 50%),
-    #121826;
-}
-
-.cfg-ti-objetivo-tile--mantener_peso {
-  background:
-    linear-gradient(155deg, rgba(45, 212, 191, 0.2), transparent 55%),
-    linear-gradient(320deg, rgba(20, 184, 166, 0.1), transparent 50%),
-    #121826;
-}
-
-.cfg-ti-objetivo-tile--aumentar_peso {
-  background:
-    linear-gradient(155deg, rgba(251, 191, 36, 0.2), transparent 55%),
-    linear-gradient(320deg, rgba(245, 158, 11, 0.1), transparent 50%),
-    #121826;
-}
-
+.cfg-ti-objetivo-tile--bajar_peso,
+.cfg-ti-objetivo-tile--mantener_peso,
+.cfg-ti-objetivo-tile--aumentar_peso,
 .cfg-ti-objetivo-tile--ganar_musculo {
-  background:
-    linear-gradient(155deg, rgba(139, 92, 246, 0.22), transparent 55%),
-    linear-gradient(320deg, rgba(124, 58, 237, 0.1), transparent 50%),
-    #121826;
+  background: #121826;
 }
 
 .cfg-ti-objetivo-tile.is-active {
-  filter: saturate(1.08) brightness(1.04);
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35), 0 10px 22px rgba(59, 130, 246, 0.14);
+  filter: none;
+  box-shadow: var(--app-grad-inset), 0 8px 20px rgba(0, 0, 0, 0.16);
 }
 
 .cfg-ti-objetivo-tile--bajar_peso.is-active {
-  border-color: rgba(96, 165, 250, 0.85);
-  background:
-    linear-gradient(155deg, rgba(59, 130, 246, 0.34), transparent 55%),
-    linear-gradient(320deg, rgba(56, 189, 248, 0.16), transparent 50%),
-    #0f172a;
+  border-color: rgba(96, 165, 250, 0.55);
 }
 
 .cfg-ti-objetivo-tile--mantener_peso.is-active {
-  border-color: rgba(45, 212, 191, 0.85);
-  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.35), 0 10px 22px rgba(20, 184, 166, 0.12);
+  border-color: rgba(45, 212, 191, 0.5);
 }
 
 .cfg-ti-objetivo-tile--aumentar_peso.is-active {
-  border-color: rgba(251, 191, 36, 0.85);
-  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.35), 0 10px 22px rgba(245, 158, 11, 0.12);
+  border-color: rgba(251, 146, 60, 0.5);
 }
 
 .cfg-ti-objetivo-tile--ganar_musculo.is-active {
-  border-color: rgba(167, 139, 250, 0.85);
-  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.35), 0 10px 22px rgba(139, 92, 246, 0.12);
+  border-color: rgba(167, 139, 250, 0.55);
+  box-shadow: var(--app-grad-inset), 0 8px 20px rgba(0, 0, 0, 0.16);
 }
 
 .cfg-ti-objetivo-tile.is-active::after {
@@ -539,9 +559,9 @@
   font-weight: 700;
   padding: 0.15rem 0.45rem;
   border-radius: 6px;
-  background: linear-gradient(135deg, rgba(45, 212, 191, 0.2), rgba(13, 148, 136, 0.08));
-  color: #99f6e4;
-  border: 1px solid rgba(45, 212, 191, 0.3);
+  background: rgba(148, 163, 184, 0.1);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .cfg-ti-label {
@@ -588,11 +608,6 @@
   filter: brightness(1.06);
 }
 
-.cfg-ti-card--teal .cfg-ti-btn-block {
-  background: linear-gradient(135deg, #0d9488 0%, #14b8a6 55%, #2dd4bf 100%);
-  box-shadow: 0 8px 18px rgba(13, 148, 136, 0.22);
-}
-
 .cfg-ti-pill {
   display: flex;
   align-items: center;
@@ -632,6 +647,100 @@
   color: #fca5a5;
 }
 
+.cfg-ti-peso-historial {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.cfg-ti-peso-historial-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.cfg-ti-peso-historial-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  font-size: 0.78rem;
+}
+
+.cfg-ti-peso-historial-fecha {
+  color: var(--cfg-muted);
+  margin-left: 0.45rem;
+}
+
+.cfg-ti-peso-historial-nota {
+  font-size: 0.72rem;
+  color: var(--cfg-muted);
+  margin-top: 0.2rem;
+}
+
+.cfg-ti-medidas-historial-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.cfg-ti-medidas-historial-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.cfg-ti-medidas-historial-head {
+  font-size: 0.78rem;
+}
+
+.cfg-ti-medidas-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.cfg-ti-medidas-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  color: #cbd5e1;
+}
+
+.cfg-ti-medidas-chip strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+.cfg-ti-medidas-chip-delta {
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.cfg-ti-medidas-chip-delta.is-down {
+  color: #34d399;
+}
+
+.cfg-ti-medidas-chip-delta.is-up {
+  color: #fb923c;
+}
+
 .cfg-ti-medidas-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -656,36 +765,30 @@
 .cfg-ti-kpi {
   padding: 0.65rem 0.7rem;
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid rgba(148, 163, 184, 0.14);
   box-shadow: var(--app-grad-inset);
-}
-
-.cfg-ti-kpi--green {
   background:
-    linear-gradient(155deg, rgba(16, 185, 129, 0.24), transparent 58%),
-    rgba(15, 23, 42, 0.65);
-  border-color: rgba(16, 185, 129, 0.28);
+    linear-gradient(155deg, rgba(59, 130, 246, 0.08), transparent 58%),
+    rgba(15, 23, 42, 0.55);
 }
 
-.cfg-ti-kpi--blue {
-  background:
-    linear-gradient(155deg, rgba(59, 130, 246, 0.24), transparent 58%),
-    rgba(15, 23, 42, 0.65);
-  border-color: rgba(59, 130, 246, 0.28);
-}
-
-.cfg-ti-kpi--teal {
-  background:
-    linear-gradient(155deg, rgba(45, 212, 191, 0.22), transparent 58%),
-    rgba(15, 23, 42, 0.65);
-  border-color: rgba(45, 212, 191, 0.28);
-}
-
+.cfg-ti-kpi--green,
+.cfg-ti-kpi--blue,
+.cfg-ti-kpi--teal,
+.cfg-ti-kpi--indigo,
 .cfg-ti-kpi--violet {
-  background:
-    linear-gradient(155deg, rgba(139, 92, 246, 0.24), transparent 58%),
-    rgba(15, 23, 42, 0.65);
-  border-color: rgba(139, 92, 246, 0.28);
+  background: rgba(15, 23, 42, 0.55);
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.cfg-ti-kpi-note {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  margin-top: 0.15rem;
+}
+
+.cfg-ti-kpi-note--purple {
+  color: #94a3b8;
 }
 
 .cfg-ti-kpi-label {
@@ -702,16 +805,6 @@
   font-size: 1.05rem;
   font-weight: 800;
   color: #fff;
-}
-
-.cfg-ti-kpi-note {
-  font-size: 0.68rem;
-  color: var(--cfg-green);
-  margin-top: 0.15rem;
-}
-
-.cfg-ti-kpi-note--purple {
-  color: #c4b5fd;
 }
 
 .cfg-ti-perfil-grid {
@@ -733,10 +826,8 @@
 .cfg-ti-sugerencia {
   padding: 0.75rem 0.85rem;
   border-radius: 12px;
-  background:
-    linear-gradient(155deg, rgba(251, 191, 36, 0.16), rgba(245, 158, 11, 0.06)),
-    rgba(15, 23, 42, 0.45);
-  border: 1px solid rgba(251, 191, 36, 0.28);
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.16);
   margin-bottom: 0.75rem;
 }
 
@@ -777,11 +868,11 @@
 .cfg-ti-supp-count {
   font-size: 0.68rem;
   font-weight: 700;
-  color: #6ee7b7;
+  color: #cbd5e1;
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
-  background: rgba(16, 185, 129, 0.14);
-  border: 1px solid rgba(16, 185, 129, 0.28);
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .cfg-ti-chips {
@@ -811,11 +902,11 @@
 
 .cfg-ti-chip.is-active {
   background:
-    linear-gradient(155deg, rgba(16, 185, 129, 0.28), rgba(5, 150, 105, 0.1)),
+    linear-gradient(155deg, rgba(59, 130, 246, 0.24), rgba(37, 99, 235, 0.08)),
     rgba(15, 23, 42, 0.45);
-  border-color: rgba(16, 185, 129, 0.5);
-  color: #6ee7b7;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12);
+  border-color: rgba(96, 165, 250, 0.42);
+  color: #bfdbfe;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
 }
 
 .cfg-ti-chip--add {
@@ -881,7 +972,7 @@
 
 .cfg-ti-msg-ok {
   font-size: 0.72rem;
-  color: var(--cfg-green);
+  color: #93c5fd;
   margin-top: 0.35rem;
 }
 

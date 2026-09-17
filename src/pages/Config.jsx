@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useStorage } from '../hooks/useStorage'
 import { useAuth } from '../context/AuthContext'
@@ -7,6 +7,9 @@ import { updateMyFullName } from '../lib/profeDb'
 import { OBJETIVOS } from '../utils/consejos'
 import { SUPLEMENTOS } from '../utils/suplementos'
 import { buildPerfilCorporal, SEXOS, NIVELES_ACTIVIDAD } from '../utils/composicion'
+import { normalizarPesoHistorial, sembrarPesoDesdeConfig } from '../utils/pesoStorage'
+import { normalizarMedidasHistorial } from '../utils/medidasStorage'
+import { asArray } from '../hooks/useLocalStorage'
 import PesoSeguimiento from '../components/PesoSeguimiento'
 import MedidasSeguimiento from '../components/MedidasSeguimiento'
 import SeguimientoCaja from '../components/SeguimientoCaja'
@@ -67,8 +70,16 @@ export default function Config() {
   }
 
   const nombreDistintoAlGuardado = nombrePerfil.trim() !== (profile?.full_name || '').trim()
-  const [historialPeso, setHistorialPeso] = useStorage('pesoHistorial', [])
-  const [historialMedidas, setHistorialMedidas] = useStorage('medidasHistorial', [])
+  const [historialPesoRaw, setHistorialPeso] = useStorage('pesoHistorial', [])
+  const historialPeso = useMemo(
+    () => normalizarPesoHistorial(asArray(historialPesoRaw)),
+    [historialPesoRaw],
+  )
+  const [historialMedidasRaw, setHistorialMedidas] = useStorage('medidasHistorial', [])
+  const historialMedidas = useMemo(
+    () => normalizarMedidasHistorial(asArray(historialMedidasRaw)),
+    [historialMedidasRaw],
+  )
   const [comidas] = useStorage('comida', [])
   const [rutinaPesos] = useStorage('rutinaPesos', [])
   const [rutinas] = useStorage('rutinas', [])
@@ -111,6 +122,26 @@ export default function Config() {
   const setMetaProteina = (v) => setConfig((c) => ({ ...c, metaProteina: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
   const setMetaCarbohidratos = (v) => setConfig((c) => ({ ...c, metaCarbohidratos: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
   const setMetaGrasa = (v) => setConfig((c) => ({ ...c, metaGrasa: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
+
+  useEffect(() => {
+    const normalizado = normalizarPesoHistorial(historialPesoRaw)
+    if (JSON.stringify(normalizado) !== JSON.stringify(historialPesoRaw)) {
+      setHistorialPeso(normalizado)
+    }
+  }, [historialPesoRaw, setHistorialPeso])
+
+  useEffect(() => {
+    if (normalizarPesoHistorial(historialPesoRaw).length > 0) return
+    const sembrado = sembrarPesoDesdeConfig(historialPesoRaw, config)
+    if (sembrado.length > 0) setHistorialPeso(sembrado)
+  }, [historialPesoRaw, config?.pesoKg, setHistorialPeso])
+
+  useEffect(() => {
+    const normalizado = normalizarMedidasHistorial(historialMedidasRaw)
+    if (JSON.stringify(normalizado) !== JSON.stringify(historialMedidasRaw)) {
+      setHistorialMedidas(normalizado)
+    }
+  }, [historialMedidasRaw, setHistorialMedidas])
 
   useEffect(() => {
     if (!historialPeso?.length) return
@@ -521,7 +552,7 @@ export default function Config() {
                   <p className="cfg-ti-autosave mb-0">Guarda solo</p>
                 </article>
 
-                <article className="cfg-ti-card cfg-ti-card--green" id="suplementos-config">
+                <article className="cfg-ti-card cfg-ti-card--indigo" id="suplementos-config">
                   <div className="cfg-ti-supp-head">
                     <h2 className="cfg-ti-card-title mb-0">Suplementos activos</h2>
                     <span className="cfg-ti-supp-count">{suplementosActivos.length} seleccionados</span>

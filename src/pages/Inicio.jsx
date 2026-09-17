@@ -15,6 +15,8 @@ import { getRachaDias, getUltimosNDias } from '../utils/estadisticas'
 import { SUPLEMENTOS } from '../utils/suplementos'
 import { MOMENTOS_COMIDA } from '../utils/comidaMomentos'
 import { buildPerfilCorporal } from '../utils/composicion'
+import { normalizarPesoHistorial } from '../utils/pesoStorage'
+import { normalizarMedidasHistorial } from '../utils/medidasStorage'
 import { asArray } from '../hooks/useLocalStorage'
 
 const LABEL_TIPO_CONSEJO = {
@@ -156,8 +158,8 @@ export default function Inicio() {
   const comida = asArray(comidaRaw)
   const suplementos = asArray(suplementosRaw)
   const registrosRutina = asArray(registrosRutinaRaw)
-  const historialPeso = asArray(historialPesoRaw)
-  const historialMedidas = asArray(historialMedidasRaw)
+  const historialPeso = normalizarPesoHistorial(asArray(historialPesoRaw))
+  const historialMedidas = normalizarMedidasHistorial(asArray(historialMedidasRaw))
   const config =
     configRaw && typeof configRaw === 'object' && !Array.isArray(configRaw)
       ? configRaw
@@ -500,7 +502,7 @@ export default function Inicio() {
           <article className="box inicio-kpi-card">
             <div className="inicio-kpi-top">
               <p className="inicio-kpi-label">Calorías quemadas</p>
-              <span className="inicio-kpi-icon inicio-kpi-icon--green" aria-hidden>🔥</span>
+              <span className="inicio-kpi-icon inicio-kpi-icon--orange" aria-hidden>🔥</span>
             </div>
             <p className="inicio-kpi-value">
               {Math.round(caloriasQuemadasDia).toLocaleString('es-AR')}
