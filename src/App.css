@@ -2668,6 +2668,69 @@ body {
   }
 }
 
+/* Config — mismo encabezado móvil que Ejercicios */
+.app-topbar--config .app-topbar-title { display: none; }
+
+@media (min-width: 1024px) {
+  .app-topbar--config {
+    display: none;
+  }
+}
+
+.cfg-ti-page.section {
+  padding-top: 0.35rem;
+  padding-bottom: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .cfg-ti-page.section {
+    padding-top: 0.75rem;
+  }
+}
+
+@media (max-width: 1023px) {
+  .cfg-ti-page.section {
+    padding-top: 0 !important;
+  }
+
+  .cfg-ti-page .ti-page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+    margin-bottom: 1rem !important;
+  }
+
+  .cfg-ti-page .ti-page-header-main {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .cfg-ti-page .ti-page-header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .cfg-ti-page .ti-page-title {
+    margin: 0 0 0.25rem;
+    padding-left: 3.2rem;
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+    font-size: clamp(1.25rem, 5vw, 1.55rem);
+    line-height: 1.2;
+    color: #fff;
+  }
+
+  .cfg-ti-page .ti-page-subtitle {
+    margin: 0;
+    padding-left: 0;
+    font-size: 0.84rem;
+    line-height: 1.4;
+  }
+}
+
 .ejercicios-page.section {
   padding-top: 0.35rem;
   padding-bottom: 1.25rem;

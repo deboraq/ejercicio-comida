@@ -13,6 +13,7 @@ import { asArray } from '../hooks/useLocalStorage'
 import PesoSeguimiento from '../components/PesoSeguimiento'
 import MedidasSeguimiento from '../components/MedidasSeguimiento'
 import SeguimientoCaja from '../components/SeguimientoCaja'
+import PageHeader from '../components/PageHeader'
 import {
   exportarComidasCsv,
   exportarComidasExcel,
@@ -208,17 +209,16 @@ export default function Config() {
   const inicialAvatar = nombreMostrado.charAt(0).toUpperCase()
 
   return (
-    <section className="section py-4 config-page cfg-ti-page">
+    <section className="section config-page cfg-ti-page">
       <div className="container app-page-container">
-        <p className="cfg-ti-kicker mb-0">Panel principal / Configuración</p>
-        <h1 className="cfg-ti-title">
-          {esProfe && !profileLoading ? 'Tu cuenta' : 'Configuración'}
-        </h1>
-        <p className="cfg-ti-sub">
-          {esProfe && !profileLoading
-            ? 'Ajustá tu perfil y sesión en la nube.'
-            : 'Perfil, objetivos y seguimiento corporal en un solo lugar.'}
-        </p>
+        <PageHeader
+          title={esProfe && !profileLoading ? 'Tu cuenta' : 'Configuración'}
+          subtitle={
+            esProfe && !profileLoading
+              ? 'Ajustá tu perfil y sesión en la nube.'
+              : 'Perfil, objetivos y seguimiento corporal en un solo lugar.'
+          }
+        />
 
         {cargandoPerfilNube && (
           <p className="cfg-ti-sub mb-4">Cargando tu perfil…</p>

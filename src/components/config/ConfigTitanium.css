@@ -262,16 +262,6 @@
     padding-right: max(0.85rem, env(safe-area-inset-right)) !important;
   }
 
-  .cfg-ti-kicker {
-    padding-left: 2.85rem;
-    line-height: 1.35;
-  }
-
-  .cfg-ti-title,
-  .cfg-ti-sub {
-    padding-left: 0;
-  }
-
   .cfg-ti-hero {
     padding: 1rem 0.95rem;
   }
