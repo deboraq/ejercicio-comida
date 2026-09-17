@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { fechaToISO, fechaSoloDia, formatearFecha } from '../utils/calorias'
+import { normalizarPesoHistorial } from '../utils/pesoStorage'
 import SeguimientoCaja from './SeguimientoCaja'
 
 /**
@@ -100,7 +101,7 @@ export default function PesoSeguimiento({
           ...lista,
         ]
       }
-      return next
+      return normalizarPesoHistorial(next)
     })
     onActualizarPesoConfig?.(redondeado)
     setMensaje(`Peso actualizado a ${redondeado} kg.`)
@@ -111,12 +112,39 @@ export default function PesoSeguimiento({
 
   const eliminar = (id) => {
     setHistorial((prev) => {
-      const next = (prev || []).filter((x) => x.id !== id)
+      const next = normalizarPesoHistorial((prev || []).filter((x) => x.id !== id))
       syncConfigDesdeLista(next)
       return next
     })
     setMensaje(null)
   }
+
+  const historialTitanium =
+    variant === 'titanium' && listaOrdenDesc.length > 0 ? (
+      <div className="cfg-ti-peso-historial">
+        <p className="cfg-ti-label mb-2">Historial</p>
+        <ul className="cfg-ti-peso-historial-list mb-0">
+          {listaOrdenDesc.map((m, idx) => (
+            <li key={m.id} className="cfg-ti-peso-historial-item">
+              <div>
+                <strong>{m.pesoKg} kg</strong>
+                {idx === 0 ? <span className="cfg-ti-pill-tag ml-2">Actual</span> : null}
+                <span className="cfg-ti-peso-historial-fecha">{formatearFecha(m.fecha)}</span>
+                {m.notas ? <p className="cfg-ti-peso-historial-nota mb-0">{m.notas}</p> : null}
+              </div>
+              <button
+                type="button"
+                className="cfg-ti-pill-del"
+                onClick={() => eliminar(m.id)}
+                aria-label="Eliminar pesaje"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null
 
   const formulario = (
     <>
@@ -171,23 +199,7 @@ export default function PesoSeguimiento({
         )}
       </form>
 
-      {variant === 'titanium' && ultima ? (
-        <div className="cfg-ti-pill">
-          <span>
-            <strong>{ultima.pesoKg} kg</strong>
-            <span className="cfg-ti-pill-tag ml-2">Actual</span>
-            <span className="has-text-grey ml-2">{formatearFecha(ultima.fecha)}</span>
-          </span>
-          <button
-            type="button"
-            className="cfg-ti-pill-del"
-            onClick={() => eliminar(ultima.id)}
-            aria-label="Eliminar pesaje"
-          >
-            ×
-          </button>
-        </div>
-      ) : null}
+      {historialTitanium}
     </>
   )
 

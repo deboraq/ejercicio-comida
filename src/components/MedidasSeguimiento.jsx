@@ -8,6 +8,7 @@ import {
   deltaCampo,
   formatDeltaCm,
 } from '../utils/medidas'
+import { normalizarMedidasHistorial } from '../utils/medidasStorage'
 import SeguimientoCaja from './SeguimientoCaja'
 
 /**
@@ -87,21 +88,101 @@ export default function MedidasSeguimiento({ historial, setHistorial, variant = 
       return
     }
     const fecha = fechaSoloDia(fechaInput) || fechaToISO(new Date())
-    const nuevo = {
-      id: crypto.randomUUID(),
-      fecha,
-      notas: (notasInput || '').trim(),
-      ...parseados,
+    const notas = (notasInput || '').trim()
+
+    setHistorial((prev) => {
+      const lista = prev || []
+      const idxHoy = lista.findIndex((x) => fechaSoloDia(x.fecha) === fecha)
+      let next
+      if (idxHoy >= 0) {
+        next = lista.map((x, i) =>
+          i === idxHoy
+            ? { ...x, ...parseados, notas: notas || x.notas || '' }
+            : x
+        )
+      } else {
+        next = [
+          {
+            id: crypto.randomUUID(),
+            fecha,
+            notas,
+            ...parseados,
+          },
+          ...lista,
+        ]
+      }
+      return normalizarMedidasHistorial(next)
+    })
+
+    if (variant === 'titanium') {
+      setValores((prev) => {
+        const next = { ...prev }
+        for (const { key } of CAMPOS_MEDIDAS) {
+          next[key] = parseados[key] != null ? String(parseados[key]) : ''
+        }
+        return next
+      })
+    } else {
+      setValores(Object.fromEntries(CAMPOS_MEDIDAS.map((c) => [c.key, ''])))
     }
-    setHistorial((prev) => [nuevo, ...(prev || [])])
-    setValores(Object.fromEntries(CAMPOS_MEDIDAS.map((c) => [c.key, ''])))
     setNotasInput('')
     setFechaInput(fechaToISO(new Date()))
   }
 
   const eliminar = (id) => {
-    setHistorial((prev) => (prev || []).filter((x) => x.id !== id))
+    setHistorial((prev) => normalizarMedidasHistorial((prev || []).filter((x) => x.id !== id)))
   }
+
+  const historialTitanium =
+    variant === 'titanium' && listaOrdenDesc.length > 0 ? (
+      <div className="cfg-ti-peso-historial">
+        <p className="cfg-ti-label mb-2">Historial</p>
+        <ul className="cfg-ti-peso-historial-list mb-0">
+          {listaOrdenDesc.map((toma, idx) => {
+            const vals = valoresDeToma(toma)
+            const anterior = listaOrdenDesc[idx + 1]
+            return (
+              <li key={toma.id} className="cfg-ti-medidas-historial-item">
+                <div className="cfg-ti-medidas-historial-main">
+                  <p className="cfg-ti-medidas-historial-head mb-1">
+                    <strong>{formatearFecha(toma.fecha)}</strong>
+                    {idx === 0 ? <span className="cfg-ti-pill-tag ml-2">Actual</span> : null}
+                    <span className="cfg-ti-peso-historial-fecha">
+                      {Object.keys(vals).length} medida{Object.keys(vals).length !== 1 ? 's' : ''}
+                    </span>
+                  </p>
+                  <div className="cfg-ti-medidas-chips">
+                    {CAMPOS_MEDIDAS.filter((c) => vals[c.key] != null).map((c) => {
+                      const d = anterior ? deltaCampo(toma, anterior, c.key) : null
+                      return (
+                        <span key={c.key} className="cfg-ti-medidas-chip">
+                          <span>{c.label}</span>
+                          <strong>{vals[c.key]}</strong>
+                          {d != null && (
+                            <span className={`cfg-ti-medidas-chip-delta ${d <= 0 ? 'is-down' : 'is-up'}`}>
+                              {formatDeltaCm(d)}
+                            </span>
+                          )}
+                        </span>
+                      )
+                    })}
+                  </div>
+                  {toma.notas ? <p className="cfg-ti-peso-historial-nota mb-0">{toma.notas}</p> : null}
+                </div>
+                <button
+                  type="button"
+                  className="cfg-ti-pill-del"
+                  onClick={() => eliminar(toma.id)}
+                  aria-label="Eliminar toma de medidas"
+                >
+                  ×
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+    ) : null
 
   const formularioMedidas = (
     <form onSubmit={guardar} className={variant === 'titanium' ? '' : 'mb-4'}>
@@ -191,6 +272,7 @@ export default function MedidasSeguimiento({ historial, setHistorial, variant = 
           <span className="cfg-ti-unit-badge">cm</span>
         </header>
         {formularioMedidas}
+        {historialTitanium}
       </article>
     )
   }

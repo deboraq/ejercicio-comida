@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   useLocalStorage,
   normalizeStorageValue,
@@ -38,7 +38,36 @@ export function useStorage(key, initialValue) {
     localValRef.current = localVal
   }, [localVal])
 
-  const value = user && cloudLoaded ? cloudVal : localVal
+  const value = useMemo(() => {
+    if (!user || !cloudLoaded) return localVal
+
+    if (Array.isArray(initialValue)) {
+      const localArr = Array.isArray(localVal) ? localVal : []
+      const cloudArr = Array.isArray(cloudVal) ? cloudVal : []
+      if (isPrimitiveStorageArray(localArr) && isPrimitiveStorageArray(cloudArr)) {
+        let hasLocalKey = false
+        try {
+          hasLocalKey = window.localStorage.getItem(key) != null
+        } catch {
+          /* noop */
+        }
+        if (hasLocalKey && localArr.length > 0) return localArr
+        return cloudArr.length ? cloudArr : localArr
+      }
+      return mergeStorageArrays(localArr, cloudArr)
+    }
+
+    if (initialValue !== null && typeof initialValue === 'object') {
+      const localObj =
+        localVal !== null && typeof localVal === 'object' && !Array.isArray(localVal) ? localVal : initialValue
+      const cloudObj =
+        cloudVal !== null && typeof cloudVal === 'object' && !Array.isArray(cloudVal) ? cloudVal : initialValue
+      return { ...cloudObj, ...localObj }
+    }
+
+    return cloudVal ?? localVal
+  }, [user, cloudLoaded, localVal, cloudVal, initialValue, key])
+
   const safeValue = normalizeStorageValue(value, initialValue)
   valueRef.current = safeValue
 
@@ -84,6 +113,32 @@ export function useStorage(key, initialValue) {
           if (mergedDiffersFromCloud) {
             await persistUserData(user.id, key, resolved)
           }
+        } else if (initialValue !== null && typeof initialValue === 'object') {
+          let hasLocalKey = false
+          try {
+            hasLocalKey = window.localStorage.getItem(key) != null
+          } catch {
+            /* noop */
+          }
+          const cloudMissing = data?.value == null
+          const cloudIsInitial = JSON.stringify(fromCloud) === JSON.stringify(initialValue)
+          const localIsInitial = JSON.stringify(localNorm) === JSON.stringify(initialValue)
+
+          if (cloudMissing || cloudIsInitial) {
+            if (hasLocalKey && !localIsInitial) {
+              resolved = localNorm
+              await persistUserData(user.id, key, resolved)
+            } else {
+              resolved = cloudMissing ? localNorm : fromCloud
+            }
+          } else {
+            resolved = hasLocalKey && !localIsInitial
+              ? { ...fromCloud, ...localNorm }
+              : fromCloud
+            if (JSON.stringify(resolved) !== JSON.stringify(fromCloud)) {
+              await persistUserData(user.id, key, resolved)
+            }
+          }
         } else {
           resolved = fromCloud
         }
@@ -108,11 +163,11 @@ export function useStorage(key, initialValue) {
       const normalized = normalizeStorageValue(next, initialValue)
       setLocalVal(normalized)
       if (user && isConfigured && supabase) {
-        if (cloudLoaded) setCloudVal(normalized)
+        setCloudVal(normalized)
         persistUserData(user.id, key, normalized)
       }
     },
-    [user?.id, isConfigured, cloudLoaded, key, initialValue],
+    [user?.id, isConfigured, key, initialValue],
   )
 
   return [safeValue, setValue]

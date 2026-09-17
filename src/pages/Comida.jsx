@@ -8,6 +8,10 @@ import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias, getRach
 import ComidaTitanium from '../components/ComidaTitanium'
 import { nuevoIdRegistro } from '../utils/ids'
 import { exportarComidasCsv, exportarComidasExcel, exportarComidasJson } from '../utils/exportData'
+import { toggleFavoritoComida } from '../utils/comidaFavoritos'
+import { vasosHidratacionDia, actualizarVasosHidratacion } from '../utils/hidratacionStorage'
+import { normalizarMedidasHistorial } from '../utils/medidasStorage'
+import { asArray } from '../hooks/useLocalStorage'
 
 const COMIDAS = MOMENTOS_COMIDA
 
@@ -361,8 +365,10 @@ export default function Comida() {
   const [registros, setRegistros] = useStorage('comida', [])
   const [ejercicios] = useStorage('ejercicios', [])
   const [registrosRutina] = useStorage('rutinaPesos', [])
-  const [historialMedidas] = useStorage('medidasHistorial', [])
+  const [historialMedidasRaw] = useStorage('medidasHistorial', [])
+  const historialMedidas = normalizarMedidasHistorial(asArray(historialMedidasRaw))
   const [config] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
+  const [comidaFavoritos, setComidaFavoritos] = useStorage('comidaFavoritos', [])
   const [comida, setComida] = useState('Desayuno')
   const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
   const [notas, setNotas] = useState('')
@@ -377,7 +383,7 @@ export default function Comida() {
   const [panelPulse, setPanelPulse] = useState({ at: 0, modo: 'agregar' })
   const [entradaManual, setEntradaManual] = useState(false)
   const [manualForm, setManualForm] = useState(MANUAL_FORM_VACIO)
-  const [hidratacionStore, setHidratacionStore] = useStorage('hidratacionDia', { fecha: '', vasos: 0 })
+  const [hidratacionStore, setHidratacionStore] = useStorage('hidratacionDia', {})
   const [periodo, setPeriodo] = useState('15_dias')
   const [desdeCustom, setDesdeCustom] = useState('')
   const [hastaCustom, setHastaCustom] = useState('')
@@ -801,7 +807,7 @@ export default function Comida() {
   const diasHistorial = Object.entries(porFechaEnRango)
     .sort(([a], [b]) => b.localeCompare(a))
   const rachaDias = getRachaDias(registros, hoy)
-  const vasosHoy = hidratacionStore.fecha === fechaVista ? hidratacionStore.vasos : 0
+  const vasosHoy = vasosHidratacionDia(hidratacionStore, fechaVista)
   const mesActual = hoy.slice(0, 7)
   const registrosMesCount = registros.filter((r) => fechaSoloDia(r.fecha).startsWith(mesActual)).length
   const bannerConsejo = consejosDiarios[0] || consejosSemanales[0] || null
@@ -817,18 +823,15 @@ export default function Comida() {
 
   const onToggleVaso = (index) => {
     const n = index + 1
-    const current = hidratacionStore.fecha === fechaVista ? hidratacionStore.vasos : 0
+    const current = vasosHidratacionDia(hidratacionStore, fechaVista)
     const metaVasos = 10
-    if (n <= current) {
-      setHidratacionStore({ fecha: fechaVista, vasos: Math.max(0, n - 1) })
-    } else {
-      setHidratacionStore({ fecha: fechaVista, vasos: Math.min(metaVasos, n) })
-    }
+    const next = n <= current ? Math.max(0, n - 1) : Math.min(metaVasos, n)
+    setHidratacionStore((prev) => actualizarVasosHidratacion(prev, fechaVista, next))
   }
 
   const onAdd250ml = () => {
-    const current = hidratacionStore.fecha === fechaVista ? hidratacionStore.vasos : 0
-    setHidratacionStore({ fecha: fechaVista, vasos: Math.min(10, current + 1) })
+    const current = vasosHidratacionDia(hidratacionStore, fechaVista)
+    setHidratacionStore((prev) => actualizarVasosHidratacion(prev, fechaVista, Math.min(10, current + 1)))
   }
 
   const caloriasActivas = Math.round(contextoDia?.caloriasQuemadas || 0)
@@ -939,6 +942,8 @@ export default function Comida() {
             if (!registros.length) return avisoSinComidas()
             exportarComidasJson(registros)
           }}
+          comidaFavoritos={comidaFavoritos}
+          onToggleFavoritoComida={(nombre) => toggleFavoritoComida(setComidaFavoritos, nombre)}
         />
       </div>
     </section>
