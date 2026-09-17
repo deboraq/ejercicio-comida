@@ -773,8 +773,7 @@ body {
   .main-content--comida,
   .main-content--ejercicios,
   .main-content--config {
-    padding-top: 0.5rem;
-    padding-bottom: 0;
+    padding-top: max(0.65rem, env(safe-area-inset-top, 0px)) !important;
   }
 }
 
