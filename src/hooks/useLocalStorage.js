@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 /** Evita pantalla en blanco si localStorage o la nube devolvieron un tipo distinto al esperado. */
 export function normalizeStorageValue(value, initialValue) {
@@ -55,16 +55,28 @@ export function mergeStorageArrays(localArr = [], cloudArr = [], idKey = 'id') {
 }
 
 export function useLocalStorage(key, initialValue) {
-  const [value, setValue] = useState(() => {
+  const readStored = useCallback(() => {
     try {
       const item = window.localStorage.getItem(key)
       return item ? normalizeStorageValue(JSON.parse(item), initialValue) : initialValue
     } catch {
       return initialValue
     }
-  })
+  }, [key, initialValue])
+
+  const [value, setValue] = useState(readStored)
+  const skipWriteRef = useRef(false)
 
   useEffect(() => {
+    skipWriteRef.current = true
+    setValue(readStored())
+  }, [readStored])
+
+  useEffect(() => {
+    if (skipWriteRef.current) {
+      skipWriteRef.current = false
+      return
+    }
     try {
       window.localStorage.setItem(key, JSON.stringify(value))
     } catch (e) {
