@@ -55,14 +55,18 @@ export function mergeStorageArrays(localArr = [], cloudArr = [], idKey = 'id') {
 }
 
 export function useLocalStorage(key, initialValue) {
+  const initialRef = useRef(initialValue)
+
   const readStored = useCallback(() => {
     try {
       const item = window.localStorage.getItem(key)
-      return item ? normalizeStorageValue(JSON.parse(item), initialValue) : initialValue
+      return item
+        ? normalizeStorageValue(JSON.parse(item), initialRef.current)
+        : initialRef.current
     } catch {
-      return initialValue
+      return initialRef.current
     }
-  }, [key, initialValue])
+  }, [key])
 
   const [value, setValue] = useState(readStored)
   const skipWriteRef = useRef(false)
