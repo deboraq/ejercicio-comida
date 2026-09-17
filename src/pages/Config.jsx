@@ -229,7 +229,7 @@ export default function Config() {
             <div className="cfg-ti-hero-top">
               <div className="cfg-ti-hero-main">
                 <div className="cfg-ti-avatar" aria-hidden>{inicialAvatar}</div>
-                <div>
+                <div className="cfg-ti-hero-meta">
                   <p className="cfg-ti-hero-name mb-0">{nombreMostrado}</p>
                   <div className="cfg-ti-badges">
                     {isConfigured && !profileLoading && profile?.role === 'admin' && (

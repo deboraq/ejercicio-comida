@@ -166,6 +166,11 @@
   display: flex;
   gap: 0.85rem;
   min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.cfg-ti-hero-meta {
+  min-width: 0;
   flex: 1;
 }
 
@@ -230,7 +235,8 @@
 .cfg-ti-email {
   font-size: 0.78rem;
   color: var(--cfg-muted);
-  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .cfg-ti-sync {
@@ -247,6 +253,60 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+  flex: 0 1 auto;
+}
+
+@media (max-width: 768px) {
+  .cfg-ti-page .app-page-container {
+    padding-left: max(0.85rem, env(safe-area-inset-left)) !important;
+    padding-right: max(0.85rem, env(safe-area-inset-right)) !important;
+  }
+
+  .cfg-ti-kicker {
+    padding-left: 2.85rem;
+    line-height: 1.35;
+  }
+
+  .cfg-ti-title,
+  .cfg-ti-sub {
+    padding-left: 0;
+  }
+
+  .cfg-ti-hero {
+    padding: 1rem 0.95rem;
+  }
+
+  .cfg-ti-hero-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+  }
+
+  .cfg-ti-hero-main {
+    flex: 1 1 auto;
+  }
+
+  .cfg-ti-hero-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cfg-ti-hero-actions .cfg-ti-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 2.65rem;
+  }
+
+  .cfg-ti-name-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cfg-ti-name-row .cfg-ti-btn-primary {
+    width: 100%;
+    min-height: 2.65rem;
+  }
 }
 
 .cfg-ti-btn {
