@@ -168,12 +168,20 @@ export default function App() {
       <AuthProvider>
         <AppNotificationsProvider>
           <RoleNavProvider>
-            <div className="app-layout">
-              <AppRoutes />
-            </div>
+            <AuthSessionShell />
           </RoleNavProvider>
         </AppNotificationsProvider>
       </AuthProvider>
     </AppErrorBoundary>
+  )
+}
+
+/** Remonta la app al cambiar de usuario para no mezclar datos en memoria. */
+function AuthSessionShell() {
+  const { user } = useAuth()
+  return (
+    <div className="app-layout" key={user?.id ?? 'guest'}>
+      <AppRoutes />
+    </div>
   )
 }

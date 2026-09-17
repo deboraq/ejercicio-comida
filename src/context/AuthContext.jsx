@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { ensureMyProfile } from '../lib/profeDb'
+import { markLegacyStorageOwner } from '../utils/storageKeys'
 
 const AuthContext = createContext(null)
 
@@ -15,11 +16,15 @@ export function AuthProvider({ children }) {
       return
     }
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
+      const u = session?.user ?? null
+      if (u?.id) markLegacyStorageOwner(u.id)
+      setUser(u)
       setLoading(false)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+      const u = session?.user ?? null
+      if (u?.id) markLegacyStorageOwner(u.id)
+      setUser(u)
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -98,6 +103,7 @@ export function AuthProvider({ children }) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setAuthError(mensajeAuth(error))
+      else if (data?.user?.id) markLegacyStorageOwner(data.user.id)
       return { data, error }
     } catch (err) {
       const msg = mensajeAuth(err)
