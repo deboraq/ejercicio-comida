@@ -1,9 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import {
-  useLocalStorage,
-  normalizeStorageValue,
-  mergeStorageArrays,
-} from './useLocalStorage'
+import { useLocalStorage, normalizeStorageValue, mergeStorageArrays } from './useLocalStorage'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
@@ -11,6 +7,7 @@ import {
   markLegacyStorageOwner,
   resolveUserLocalStorage,
 } from '../utils/storageKeys'
+import { mergeCloudAndLocal, shouldUploadMerged } from '../utils/storageMerge'
 
 function persistUserData(userId, key, value) {
   if (!supabase || !userId) return Promise.resolve({ error: null })
@@ -26,17 +23,9 @@ function persistUserData(userId, key, value) {
     })
 }
 
-function mergeArraysForStorage(localArr, cloudArr) {
-  return mergeStorageArrays(localArr, cloudArr)
-}
-
-function cloudIsInitialObject(fromCloud, initial) {
-  return JSON.stringify(fromCloud) === JSON.stringify(initial)
-}
-
 /**
- * Almacenamiento por clave: si hay usuario y Supabase está configurado, usa la nube (user_data)
- * y localStorage aislado por user_id; si no, usa solo localStorage global (modo offline).
+ * Almacenamiento por clave: con sesión + Supabase, la nube es la fuente de verdad entre dispositivos.
+ * Tercer valor: `cloudReady` — esperalo antes de sembrar datos automáticos (peso, etc.).
  */
 export function useStorage(key, initialValue) {
   const initialRef = useRef(initialValue)
@@ -44,7 +33,7 @@ export function useStorage(key, initialValue) {
   const localKey = scopedStorageKey(key, user?.id)
   const [localVal, setLocalVal] = useLocalStorage(localKey, initialRef.current)
   const [cloudVal, setCloudVal] = useState(null)
-  const [cloudLoaded, setCloudLoaded] = useState(false)
+  const [cloudReady, setCloudReady] = useState(false)
   const valueRef = useRef(localVal)
   const localValRef = useRef(localVal)
   const initial = initialRef.current
@@ -54,98 +43,58 @@ export function useStorage(key, initialValue) {
   }, [localVal])
 
   const value = useMemo(() => {
-    if (!user || !cloudLoaded) return localVal
-
-    if (Array.isArray(initial)) {
-      const localArr = Array.isArray(localVal) ? localVal : []
-      const cloudArr = Array.isArray(cloudVal) ? cloudVal : []
-      return mergeArraysForStorage(localArr, cloudArr)
-    }
-
-    if (initial !== null && typeof initial === 'object') {
-      const localObj =
-        localVal !== null && typeof localVal === 'object' && !Array.isArray(localVal) ? localVal : initial
-      const cloudObj =
-        cloudVal !== null && typeof cloudVal === 'object' && !Array.isArray(cloudVal) ? cloudVal : initial
-      return { ...cloudObj, ...localObj }
-    }
-
+    if (!user || !isConfigured || !cloudReady) return localVal
     return cloudVal ?? localVal
-  }, [user, cloudLoaded, localVal, cloudVal, initial])
+  }, [user, isConfigured, cloudReady, localVal, cloudVal])
 
   const safeValue = normalizeStorageValue(value, initial)
   valueRef.current = safeValue
 
   useEffect(() => {
-    if (!user?.id) return
-    const merged = resolveUserLocalStorage(key, user.id, initial, mergeStorageArrays)
-    localValRef.current = merged
-    setLocalVal((prev) => (JSON.stringify(prev) === JSON.stringify(merged) ? prev : merged))
-  }, [user?.id, key, initial, setLocalVal])
-
-  useEffect(() => {
     if (!user || !isConfigured || !supabase) {
-      setCloudLoaded(false)
+      setCloudReady(false)
       setCloudVal(null)
       return
     }
+
     let cancelled = false
-    setCloudLoaded(false)
+    setCloudReady(false)
     setCloudVal(null)
 
     const load = async () => {
-      const localNorm = resolveUserLocalStorage(key, user.id, initial, mergeStorageArrays)
-      if (cancelled) return
-      localValRef.current = localNorm
-      setLocalVal((prev) => (JSON.stringify(prev) === JSON.stringify(localNorm) ? prev : localNorm))
-
       const { data, error } = await supabase
         .from('user_data')
         .select('value')
         .eq('user_id', user.id)
         .eq('key', key)
         .maybeSingle()
+
       if (cancelled) return
 
-      let resolved = localNorm
+      const localNorm = resolveUserLocalStorage(key, user.id, initial, mergeStorageArrays)
+      const fromCloud = normalizeStorageValue(data?.value != null ? data.value : null, initial)
 
       if (error) {
         console.error('Error loading user_data:', error)
-      } else {
-        const fromCloud = normalizeStorageValue(data?.value != null ? data.value : null, initial)
-        if (Array.isArray(initial)) {
-          const localArr = Array.isArray(localNorm) ? localNorm : []
-          const cloudArr = Array.isArray(fromCloud) ? fromCloud : []
-          resolved = mergeArraysForStorage(localArr, cloudArr)
-          if (JSON.stringify(resolved) !== JSON.stringify(cloudArr)) {
-            await persistUserData(user.id, key, resolved)
-          }
-        } else if (initial !== null && typeof initial === 'object') {
-          const cloudObj =
-            fromCloud !== null && typeof fromCloud === 'object' && !Array.isArray(fromCloud) ? fromCloud : initial
-          const localObj =
-            localNorm !== null && typeof localNorm === 'object' && !Array.isArray(localNorm) ? localNorm : initial
-          const localIsInitial = JSON.stringify(localObj) === JSON.stringify(initial)
-          const cloudHasData = data?.value != null && !cloudIsInitialObject(fromCloud, initial)
-          resolved = localIsInitial
-            ? cloudHasData
-              ? cloudObj
-              : localObj
-            : { ...cloudObj, ...localObj }
-          if (JSON.stringify(resolved) !== JSON.stringify(fromCloud)) {
-            await persistUserData(user.id, key, resolved)
-          }
-        } else {
-          resolved = fromCloud ?? localNorm
-        }
+      }
+
+      let resolved = mergeCloudAndLocal(key, localNorm, fromCloud, initial)
+
+      if (
+        !error &&
+        shouldUploadMerged(key, resolved, fromCloud, initial, data?.value != null)
+      ) {
+        await persistUserData(user.id, key, resolved)
       }
 
       if (cancelled) return
+
       setCloudVal(resolved)
-      setCloudLoaded(true)
       localValRef.current = resolved
       setLocalVal((prev) => (JSON.stringify(prev) === JSON.stringify(resolved) ? prev : resolved))
+      setCloudReady(true)
     }
+
     load()
     return () => {
       cancelled = true
@@ -161,14 +110,16 @@ export function useStorage(key, initialValue) {
       const normalized = normalizeStorageValue(next, initial)
       setLocalVal(normalized)
       localValRef.current = normalized
+      setCloudVal(normalized)
+
       if (user?.id) markLegacyStorageOwner(user.id)
-      if (user && isConfigured && supabase) {
-        setCloudVal(normalized)
+
+      if (user && isConfigured && supabase && cloudReady) {
         persistUserData(user.id, key, normalized)
       }
     },
-    [user?.id, isConfigured, key, initial, setLocalVal],
+    [user?.id, isConfigured, key, initial, setLocalVal, cloudReady],
   )
 
-  return [safeValue, setValue]
+  return [safeValue, setValue, cloudReady]
 }

@@ -71,12 +71,12 @@ export default function Config() {
   }
 
   const nombreDistintoAlGuardado = nombrePerfil.trim() !== (profile?.full_name || '').trim()
-  const [historialPesoRaw, setHistorialPeso] = useStorage('pesoHistorial', [])
+  const [historialPesoRaw, setHistorialPeso, pesoCloudReady] = useStorage('pesoHistorial', [])
   const historialPeso = useMemo(
     () => normalizarPesoHistorial(asArray(historialPesoRaw)),
     [historialPesoRaw],
   )
-  const [historialMedidasRaw, setHistorialMedidas] = useStorage('medidasHistorial', [])
+  const [historialMedidasRaw, setHistorialMedidas, medidasCloudReady] = useStorage('medidasHistorial', [])
   const historialMedidas = useMemo(
     () => normalizarMedidasHistorial(asArray(historialMedidasRaw)),
     [historialMedidasRaw],
@@ -125,24 +125,27 @@ export default function Config() {
   const setMetaGrasa = (v) => setConfig((c) => ({ ...c, metaGrasa: v === '' ? '' : String(Math.max(0, parseInt(v, 10) || 0)) }))
 
   useEffect(() => {
+    if (!pesoCloudReady) return
     const normalizado = normalizarPesoHistorial(historialPesoRaw)
     if (JSON.stringify(normalizado) !== JSON.stringify(historialPesoRaw)) {
       setHistorialPeso(normalizado)
     }
-  }, [historialPesoRaw, setHistorialPeso])
+  }, [pesoCloudReady, historialPesoRaw, setHistorialPeso])
 
   useEffect(() => {
+    if (!pesoCloudReady || isConfigured) return
     if (normalizarPesoHistorial(historialPesoRaw).length > 0) return
     const sembrado = sembrarPesoDesdeConfig(historialPesoRaw, config)
     if (sembrado.length > 0) setHistorialPeso(sembrado)
-  }, [historialPesoRaw, config?.pesoKg, setHistorialPeso])
+  }, [pesoCloudReady, isConfigured, historialPesoRaw, config?.pesoKg, setHistorialPeso])
 
   useEffect(() => {
+    if (!medidasCloudReady) return
     const normalizado = normalizarMedidasHistorial(historialMedidasRaw)
     if (JSON.stringify(normalizado) !== JSON.stringify(historialMedidasRaw)) {
       setHistorialMedidas(normalizado)
     }
-  }, [historialMedidasRaw, setHistorialMedidas])
+  }, [medidasCloudReady, historialMedidasRaw, setHistorialMedidas])
 
   useEffect(() => {
     if (!historialPeso?.length) return
