@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ProfileProvider } from './context/ProfileContext'
 import { AppNotificationsProvider, AppNotificacionesCampana } from './context/AppNotificationsContext'
 import { RoleNavProvider, useRoleNav } from './context/RoleNavContext'
 import Inicio from './pages/Inicio'
@@ -164,11 +165,13 @@ export default function App() {
   return (
     <AppErrorBoundary>
       <AuthProvider>
+        <ProfileProvider>
         <AppNotificationsProvider>
           <RoleNavProvider>
             <AuthSessionShell />
           </RoleNavProvider>
         </AppNotificationsProvider>
+        </ProfileProvider>
       </AuthProvider>
     </AppErrorBoundary>
   )

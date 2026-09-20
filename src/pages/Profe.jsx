@@ -55,17 +55,21 @@ export default function Profe() {
   const cargarAlumnos = useCallback(async () => {
     if (!user?.id || !puedeEntrenar) {
       setStudents([])
+      setStudentsLoading(false)
       return
     }
     setStudentsLoading(true)
-    const { students: list, error } = await listTeacherStudents(user.id)
-    if (error) {
-      onToast({ err: error.message || 'No se pudieron cargar los alumnos.' })
-      setStudents([])
-    } else {
-      setStudents(list)
+    try {
+      const { students: list, error } = await listTeacherStudents(user.id)
+      if (error) {
+        onToast({ err: error.message || 'No se pudieron cargar los alumnos.' })
+        setStudents([])
+      } else {
+        setStudents(list)
+      }
+    } finally {
+      setStudentsLoading(false)
     }
-    setStudentsLoading(false)
   }, [user?.id, puedeEntrenar, onToast])
 
   useEffect(() => {
@@ -322,6 +326,13 @@ export default function Profe() {
       <section className="section py-2 profe-page profe-titanium">
         <div className="container app-page-container profe-container">
           <p className="pf-muted mb-0">Cargando perfil…</p>
+          <p className="pf-muted is-size-7 mt-2 mb-0">
+            Si tarda más de unos segundos,{' '}
+            <button type="button" className="pf-link-btn" onClick={() => refreshProfile()}>
+              reintentá
+            </button>
+            .
+          </p>
         </div>
       </section>
     )
