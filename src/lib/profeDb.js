@@ -4,6 +4,22 @@ import { normalizeRoleNavMap } from '../utils/navModules'
 
 const NAV_ROLES = ['alumno', 'profe', 'admin']
 
+const SUPABASE_QUERY_TIMEOUT_MS = 12000
+
+function withSupabaseTimeout(promise, label, ms = SUPABASE_QUERY_TIMEOUT_MS) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`Tiempo agotado (${label})`)), ms)
+    }),
+  ])
+}
+
+function rowFromRpcPayload(rpcData) {
+  const row = Array.isArray(rpcData) ? rpcData[0] : rpcData
+  return row?.id ? row : null
+}
+
 /** Asegura fila en `profiles` (requiere SQL de SUPABASE.md). No pisa `role` si ya existe. */
 export async function ensureMyProfile(user) {
   if (!supabase || !user?.id) return { ok: false }
@@ -28,18 +44,46 @@ export async function ensureMyProfile(user) {
   }
 }
 
+async function fetchMyProfileViaRpc() {
+  const { data: rpcData, error: rpcError } = await withSupabaseTimeout(
+    supabase.rpc('get_my_profile'),
+    'perfil rpc',
+  )
+  if (rpcError) return { data: null, error: rpcError }
+  const row = rowFromRpcPayload(rpcData)
+  return row ? { data: row, error: null } : { data: null, error: new Error('No se encontró tu perfil') }
+}
+
 export async function fetchMyProfile(userId) {
   if (!supabase || !userId) return { data: null, error: new Error('Sin cliente') }
-  const { data: rpcData, error: rpcError } = await supabase.rpc('get_my_profile')
-  if (!rpcError && rpcData != null) {
-    const row = Array.isArray(rpcData) ? rpcData[0] : rpcData
-    if (row?.id) return { data: row, error: null }
+
+  try {
+    const { data, error } = await withSupabaseTimeout(
+      supabase
+        .from('profiles')
+        .select('id, email, full_name, role, blocked_modules, nav_force_visible')
+        .eq('id', userId)
+        .maybeSingle(),
+      'perfil',
+    )
+    if (!error && data?.id) return { data, error: null }
+    if (!error && !data) return fetchMyProfileViaRpc()
+    if (error) {
+      const rpc = await fetchMyProfileViaRpc()
+      if (rpc.data) return rpc
+      return { data: null, error: error || rpc.error }
+    }
+  } catch (err) {
+    try {
+      const rpc = await fetchMyProfileViaRpc()
+      if (rpc.data) return rpc
+    } catch {
+      /* ignore segundo fallo */
+    }
+    return { data: null, error: err instanceof Error ? err : new Error(String(err)) }
   }
-  return supabase
-    .from('profiles')
-    .select('id, email, full_name, role, blocked_modules, nav_force_visible')
-    .eq('id', userId)
-    .maybeSingle()
+
+  return { data: null, error: new Error('No se encontró tu perfil') }
 }
 
 /** Menú oculto por rol (tabla `role_nav_hidden`). Si la tabla no existe, devuelve defaults normalizados. */
@@ -161,24 +205,39 @@ export async function addTeacherStudent(teacherId, studentId) {
 
 export async function listTeacherStudents(teacherId) {
   if (!supabase || !teacherId) return { students: [], error: null }
-  const { data: links, error } = await supabase
-    .from('teacher_students')
-    .select('id, student_id, created_at')
-    .eq('teacher_id', teacherId)
-    .order('created_at', { ascending: false })
-  if (error || !links?.length) return { students: [], error }
-  const ids = links.map((l) => l.student_id)
-  const { data: profs, error: e2 } = await supabase.from('profiles').select('id, email, full_name').in('id', ids)
-  if (e2) return { students: [], error: e2 }
-  const map = Object.fromEntries((profs || []).map((p) => [p.id, p]))
-  const students = links.map((l) => ({
-    linkId: l.id,
-    studentId: l.student_id,
-    email: map[l.student_id]?.email || l.student_id,
-    fullName: map[l.student_id]?.full_name || '',
-    createdAt: l.created_at,
-  }))
-  return { students, error: null }
+  try {
+    const { data: links, error } = await withSupabaseTimeout(
+      supabase
+        .from('teacher_students')
+        .select('id, student_id, created_at')
+        .eq('teacher_id', teacherId)
+        .order('created_at', { ascending: false }),
+      'alumnos',
+      15000,
+    )
+    if (error || !links?.length) return { students: [], error }
+    const ids = links.map((l) => l.student_id)
+    const { data: profs, error: e2 } = await withSupabaseTimeout(
+      supabase.from('profiles').select('id, email, full_name').in('id', ids),
+      'perfiles alumnos',
+      15000,
+    )
+    if (e2) return { students: [], error: e2 }
+    const map = Object.fromEntries((profs || []).map((p) => [p.id, p]))
+    const students = links.map((l) => ({
+      linkId: l.id,
+      studentId: l.student_id,
+      email: map[l.student_id]?.email || l.student_id,
+      fullName: map[l.student_id]?.full_name || '',
+      createdAt: l.created_at,
+    }))
+    return { students, error: null }
+  } catch (err) {
+    return {
+      students: [],
+      error: err instanceof Error ? err : new Error(String(err)),
+    }
+  }
 }
 
 export async function removeTeacherStudent(linkId) {

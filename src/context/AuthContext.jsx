@@ -40,7 +40,11 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured() || !user?.id) return
-    ensureMyProfile(user).catch(() => {})
+    ensureMyProfile(user)
+      .then(({ ok }) => {
+        if (ok) window.dispatchEvent(new Event('fitnesspro-profile-refresh'))
+      })
+      .catch(() => {})
   }, [user?.id])
 
   const signUp = async (email, password, metadata = {}) => {
