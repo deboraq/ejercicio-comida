@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { fetchMyProfile } from '../lib/profeDb'
 
@@ -9,6 +9,7 @@ export function useMyProfile() {
   const [profileError, setProfileError] = useState(null)
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
+  const lastFetchRef = useRef(0)
 
   useEffect(() => {
     if (!user?.id || !isConfigured) {
@@ -22,6 +23,7 @@ export function useMyProfile() {
     if (tick === 0) setLoading(true)
     fetchMyProfile(user.id).then(({ data, error }) => {
       if (cancelled) return
+      lastFetchRef.current = Date.now()
       const errMsg = error?.message
         ?? (!data
           ? 'No se encontró tu perfil en la nube. Ejecutá en Supabase el bloque «get_my_profile» del SUPABASE.md y recargá la página.'
@@ -39,7 +41,11 @@ export function useMyProfile() {
 
   useEffect(() => {
     const onVis = () => {
-      if (document.visibilityState === 'visible' && user?.id && isConfigured) refresh()
+      if (document.visibilityState !== 'visible' || !user?.id || !isConfigured) return
+      const idleMs = 5 * 60 * 1000
+      if (Date.now() - lastFetchRef.current < idleMs) return
+      lastFetchRef.current = Date.now()
+      refresh()
     }
     document.addEventListener('visibilitychange', onVis)
     return () => document.removeEventListener('visibilitychange', onVis)
