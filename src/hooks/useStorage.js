@@ -7,7 +7,8 @@ import {
   markLegacyStorageOwner,
   resolveUserLocalStorage,
 } from '../utils/storageKeys'
-import { mergeCloudAndLocal, shouldUploadMerged } from '../utils/storageMerge'
+import { mergeCloudAndLocal, shouldUploadMerged, isStorageInitial } from '../utils/storageMerge'
+import { normalizarSuplementosPorDia } from '../utils/suplementosStorage'
 
 function persistUserData(userId, key, value) {
   if (!supabase || !userId) return Promise.resolve({ error: null })
@@ -36,6 +37,7 @@ export function useStorage(key, initialValue) {
   const [cloudReady, setCloudReady] = useState(false)
   const valueRef = useRef(localVal)
   const localValRef = useRef(localVal)
+  const pendingCloudPersistRef = useRef(null)
   const initial = initialRef.current
 
   useEffect(() => {
@@ -71,7 +73,23 @@ export function useStorage(key, initialValue) {
 
       if (cancelled) return
 
-      const localNorm = resolveUserLocalStorage(key, user.id, initial, mergeStorageArrays)
+      const fromLs = resolveUserLocalStorage(key, user.id, initial, mergeStorageArrays)
+      const fromLive = normalizeStorageValue(localValRef.current, initial)
+      let localNorm = fromLs
+
+      if (Array.isArray(initial) && !isStorageInitial(fromLive, initial)) {
+        if (key === 'suplementos') {
+          localNorm = normalizarSuplementosPorDia(
+            mergeStorageArrays(
+              normalizarSuplementosPorDia(fromLs),
+              normalizarSuplementosPorDia(fromLive),
+            ),
+          )
+        } else {
+          localNorm = mergeStorageArrays(fromLs, fromLive)
+        }
+      }
+
       const fromCloud = normalizeStorageValue(data?.value != null ? data.value : null, initial)
 
       if (error) {
@@ -93,6 +111,12 @@ export function useStorage(key, initialValue) {
       localValRef.current = resolved
       setLocalVal((prev) => (JSON.stringify(prev) === JSON.stringify(resolved) ? prev : resolved))
       setCloudReady(true)
+
+      const pending = pendingCloudPersistRef.current
+      if (pending != null) {
+        pendingCloudPersistRef.current = null
+        persistUserData(user.id, key, pending)
+      }
     }
 
     load()
@@ -107,7 +131,11 @@ export function useStorage(key, initialValue) {
         typeof nextValueOrFn === 'function'
           ? nextValueOrFn(valueRef.current)
           : nextValueOrFn
-      const normalized = normalizeStorageValue(next, initial)
+      const normalizedRaw = normalizeStorageValue(next, initial)
+      const normalized =
+        key === 'suplementos' && Array.isArray(normalizedRaw)
+          ? normalizarSuplementosPorDia(normalizedRaw)
+          : normalizedRaw
       setLocalVal(normalized)
       localValRef.current = normalized
       setCloudVal(normalized)
@@ -115,7 +143,10 @@ export function useStorage(key, initialValue) {
       if (user?.id) markLegacyStorageOwner(user.id)
 
       if (user && isConfigured && supabase && cloudReady) {
+        pendingCloudPersistRef.current = null
         persistUserData(user.id, key, normalized)
+      } else if (user && isConfigured && supabase) {
+        pendingCloudPersistRef.current = normalized
       }
     },
     [user?.id, isConfigured, key, initial, setLocalVal, cloudReady],

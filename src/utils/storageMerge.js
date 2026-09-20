@@ -2,6 +2,7 @@ import { mergeStorageArrays } from '../hooks/useLocalStorage'
 import { normalizarHidratacionPorDia } from './hidratacionStorage'
 import { normalizarPesoHistorial } from './pesoStorage'
 import { normalizarMedidasHistorial } from './medidasStorage'
+import { normalizarSuplementosPorDia } from './suplementosStorage'
 
 export function isStorageInitial(value, initial) {
   try {
@@ -30,6 +31,14 @@ export function mergeCloudAndLocal(key, localNorm, fromCloud, initial) {
     }
     if (key === 'medidasHistorial') {
       return normalizarMedidasHistorial(mergeStorageArrays(localArr, cloudArr))
+    }
+    if (key === 'suplementos') {
+      return normalizarSuplementosPorDia(
+        mergeStorageArrays(
+          normalizarSuplementosPorDia(localArr),
+          normalizarSuplementosPorDia(cloudArr),
+        ),
+      )
     }
     return mergeStorageArrays(localArr, cloudArr)
   }

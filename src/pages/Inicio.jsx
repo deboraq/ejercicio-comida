@@ -13,6 +13,7 @@ import {
 import { getConsejos, buildContextoDia, buildContextoSemana } from '../utils/consejos'
 import { getRachaDias, getUltimosNDias } from '../utils/estadisticas'
 import { SUPLEMENTOS } from '../utils/suplementos'
+import { normalizarSuplementosPorDia } from '../utils/suplementosStorage'
 import { MOMENTOS_COMIDA } from '../utils/comidaMomentos'
 import { buildPerfilCorporal } from '../utils/composicion'
 import { normalizarPesoHistorial } from '../utils/pesoStorage'
@@ -156,7 +157,7 @@ export default function Inicio() {
 
   const ejercicios = asArray(ejerciciosRaw)
   const comida = asArray(comidaRaw)
-  const suplementos = asArray(suplementosRaw)
+  const suplementos = normalizarSuplementosPorDia(asArray(suplementosRaw))
   const registrosRutina = asArray(registrosRutinaRaw)
   const historialPeso = normalizarPesoHistorial(asArray(historialPesoRaw))
   const historialMedidas = normalizarMedidasHistorial(asArray(historialMedidasRaw))
@@ -205,7 +206,7 @@ export default function Inicio() {
       const has = current.includes(id)
       const newItems = has ? current.filter((x) => x !== id) : [...current, id]
       if (newItems.length === 0) return rest
-      return [...rest, { fecha: diaEnVista, items: newItems }]
+      return [...rest, { id: diaEnVista, fecha: diaEnVista, items: newItems }]
     })
   }
 
