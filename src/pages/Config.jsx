@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useStorage } from '../hooks/useStorage'
+import { useConfigExportData } from '../hooks/useConfigExportData'
 import { useAuth } from '../context/AuthContext'
 import { useMyProfile } from '../hooks/useMyProfile'
 import { updateMyFullName } from '../lib/profeDb'
@@ -81,11 +82,6 @@ export default function Config() {
     () => normalizarMedidasHistorial(asArray(historialMedidasRaw)),
     [historialMedidasRaw],
   )
-  const [comidas] = useStorage('comida', [])
-  const [rutinaPesos] = useStorage('rutinaPesos', [])
-  const [rutinas] = useStorage('rutinas', [])
-  const [rutinaActivaId] = useStorage('rutinaActivaId', '')
-  const [ejerciciosActividad] = useStorage('ejercicios', [])
   const [config, setConfig] = useStorage('config', {
     objetivo: 'mantener_peso',
     pesoKg: 70,
@@ -99,6 +95,17 @@ export default function Config() {
     metaGrasa: '',
     suplementosActivos: SUPLEMENTOS.map((s) => s.id),
   })
+
+  const { counts: exportCounts, loadingBundle: exportLoading, ensureBundle } = useConfigExportData()
+  const totalComidas = exportCounts.comidas
+  const totalSeriesGym = exportCounts.series
+  const totalActividad = exportCounts.actividad
+
+  const exportarConDatos = async (fn) => {
+    const data = await ensureBundle()
+    if (!data) return null
+    return data
+  }
 
   const setObjetivo = (v) => setConfig((c) => ({ ...c, objetivo: v }))
   const setAltura = (v) => {
@@ -183,9 +190,6 @@ export default function Config() {
   }
 
   const suplementosActivos = config.suplementosActivos ?? SUPLEMENTOS.map((s) => s.id)
-  const totalComidas = Array.isArray(comidas) ? comidas.length : 0
-  const totalSeriesGym = Array.isArray(rutinaPesos) ? rutinaPesos.length : 0
-  const totalActividad = Array.isArray(ejerciciosActividad) ? ejerciciosActividad.length : 0
 
   const avisoSinDatos = (tipo) => {
     window.alert(`No hay registros de ${tipo} para exportar todavía.`)
@@ -197,7 +201,7 @@ export default function Config() {
 
   const cargandoPerfilNube = Boolean(user && isConfigured && profileLoading)
   const esProfe = profile?.role === 'profe'
-  const mostrarSeccionesAlumno = !user || !isConfigured || (user && !profileLoading && !esProfe)
+  const mostrarSeccionesAlumno = !user || !isConfigured || profile?.role !== 'profe'
   const objetivoActivo = OBJETIVOS.find((o) => o.value === config.objetivo)
   const detalleObjetivo = OBJETIVO_DETALLE[config.objetivo]
 
@@ -311,39 +315,43 @@ export default function Config() {
           </div>
         )}
 
-        {!cargandoPerfilNube && (
+        {user && (
           <SeguimientoCaja
             id="exportar-datos"
             className="cfg-ti-export-panel"
             titulo="Exportar datos"
             resumen={`${totalComidas} comidas · ${totalSeriesGym} series · ${totalActividad} actividad`}
             ctaCerrado="Descargar"
+            onOpenChange={(open) => {
+              if (open) ensureBundle()
+            }}
           >
             <p className="config-hint mb-3">
               Descargá tu historial para Excel, Google Sheets o respaldo.
+              {exportLoading ? ' Cargando datos…' : ''}
             </p>
             <p className="config-section-label mb-2">Comidas</p>
             <div className="buttons are-small mb-3">
-              <button type="button" className="button is-link is-light" onClick={() => { if (!totalComidas) return avisoSinDatos('comidas'); exportarComidasExcel(comidas) }}>↓ Excel ({totalComidas})</button>
-              <button type="button" className="button is-light" onClick={() => { if (!totalComidas) return avisoSinDatos('comidas'); exportarComidasCsv(comidas) }}>↓ CSV</button>
-              <button type="button" className="button is-light" onClick={() => { if (!totalComidas) return avisoSinDatos('comidas'); exportarComidasJson(comidas) }}>↓ JSON</button>
+              <button type="button" className="button is-link is-light" onClick={async () => { if (!totalComidas) return avisoSinDatos('comidas'); const d = await exportarConDatos(); if (d) exportarComidasExcel(d.comidas) }}>↓ Excel ({totalComidas})</button>
+              <button type="button" className="button is-light" onClick={async () => { if (!totalComidas) return avisoSinDatos('comidas'); const d = await exportarConDatos(); if (d) exportarComidasCsv(d.comidas) }}>↓ CSV</button>
+              <button type="button" className="button is-light" onClick={async () => { if (!totalComidas) return avisoSinDatos('comidas'); const d = await exportarConDatos(); if (d) exportarComidasJson(d.comidas) }}>↓ JSON</button>
             </div>
             <p className="config-section-label mb-2">Gimnasio</p>
             <div className="buttons are-small mb-3">
-              <button type="button" className="button is-link is-light" onClick={() => { if (!totalSeriesGym) return avisoSinDatos('entrenamientos de gym'); exportarGymExcel(rutinaPesos) }}>↓ Excel ({totalSeriesGym})</button>
-              <button type="button" className="button is-light" onClick={() => { if (!totalSeriesGym) return avisoSinDatos('entrenamientos de gym'); exportarGymCsv(rutinaPesos) }}>↓ CSV</button>
-              <button type="button" className="button is-light" onClick={() => { if (!totalSeriesGym) return avisoSinDatos('entrenamientos de gym'); exportarGymJson(rutinaPesos, rutinas, rutinaActivaId) }}>↓ JSON + plan</button>
+              <button type="button" className="button is-link is-light" onClick={async () => { if (!totalSeriesGym) return avisoSinDatos('entrenamientos de gym'); const d = await exportarConDatos(); if (d) exportarGymExcel(d.rutinaPesos) }}>↓ Excel ({totalSeriesGym})</button>
+              <button type="button" className="button is-light" onClick={async () => { if (!totalSeriesGym) return avisoSinDatos('entrenamientos de gym'); const d = await exportarConDatos(); if (d) exportarGymCsv(d.rutinaPesos) }}>↓ CSV</button>
+              <button type="button" className="button is-light" onClick={async () => { if (!totalSeriesGym) return avisoSinDatos('entrenamientos de gym'); const d = await exportarConDatos(); if (d) exportarGymJson(d.rutinaPesos, d.rutinas, d.rutinaActivaId) }}>↓ JSON + plan</button>
             </div>
             <p className="config-section-label mb-2">Actividad libre</p>
             <div className="buttons are-small">
-              <button type="button" className="button is-link is-light" onClick={() => { if (!totalActividad) return avisoSinDatos('actividad libre'); exportarEjerciciosActividadExcel(ejerciciosActividad) }}>↓ Excel ({totalActividad})</button>
-              <button type="button" className="button is-light" onClick={() => { if (!totalActividad) return avisoSinDatos('actividad libre'); exportarEjerciciosActividadCsv(ejerciciosActividad) }}>↓ CSV</button>
-              <button type="button" className="button is-light" onClick={() => { if (!totalActividad) return avisoSinDatos('actividad libre'); exportarEjerciciosActividadJson(ejerciciosActividad) }}>↓ JSON</button>
+              <button type="button" className="button is-link is-light" onClick={async () => { if (!totalActividad) return avisoSinDatos('actividad libre'); const d = await exportarConDatos(); if (d) exportarEjerciciosActividadExcel(d.ejerciciosActividad) }}>↓ Excel ({totalActividad})</button>
+              <button type="button" className="button is-light" onClick={async () => { if (!totalActividad) return avisoSinDatos('actividad libre'); const d = await exportarConDatos(); if (d) exportarEjerciciosActividadCsv(d.ejerciciosActividad) }}>↓ CSV</button>
+              <button type="button" className="button is-light" onClick={async () => { if (!totalActividad) return avisoSinDatos('actividad libre'); const d = await exportarConDatos(); if (d) exportarEjerciciosActividadJson(d.ejerciciosActividad) }}>↓ JSON</button>
             </div>
           </SeguimientoCaja>
         )}
 
-        {!user && !cargandoPerfilNube && mostrarSeccionesAlumno && (
+        {!user && (
           <div className="cfg-ti-cuenta mb-4">
             <h2 className="title is-6 mb-2">☁️ Cuenta</h2>
             {!isConfigured ? (
@@ -354,7 +362,7 @@ export default function Config() {
           </div>
         )}
 
-        {!cargandoPerfilNube && mostrarSeccionesAlumno && (
+        {user && mostrarSeccionesAlumno && (
           <>
             <section className="cfg-ti-objetivos">
               <div className="cfg-ti-objetivos-head">

@@ -12,15 +12,24 @@ export default function SeguimientoCaja({
   ctaAbierto = 'Cerrar',
   defaultOpen = false,
   className = '',
+  onOpenChange,
   children,
 }) {
   const [abierto, setAbierto] = useState(defaultOpen)
+
+  const setAbiertoConNotify = (next) => {
+    setAbierto((prev) => {
+      const value = typeof next === 'function' ? next(prev) : next
+      if (value !== prev) onOpenChange?.(value)
+      return value
+    })
+  }
 
   useEffect(() => {
     if (!id) return
     const syncHash = () => {
       if (window.location.hash === `#${id}`) {
-        setAbierto(true)
+        setAbiertoConNotify(true)
         requestAnimationFrame(() => {
           document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         })
@@ -39,7 +48,7 @@ export default function SeguimientoCaja({
       <button
         type="button"
         className="seguimiento-caja-head"
-        onClick={() => setAbierto((v) => !v)}
+        onClick={() => setAbiertoConNotify((v) => !v)}
         aria-expanded={abierto}
       >
         <span className="seguimiento-caja-chevron" aria-hidden="true">

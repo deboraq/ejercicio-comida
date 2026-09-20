@@ -10,6 +10,13 @@ import {
 import { mergeCloudAndLocal, shouldUploadMerged, isStorageInitial } from '../utils/storageMerge'
 import { normalizarSuplementosPorDia } from '../utils/suplementosStorage'
 import { normalizarHidratacionPorDia, mergeHidratacionPorDia } from '../utils/hidratacionStorage'
+import { isStorageKeyHydrated, markStorageKeyHydrated } from '../utils/storageHydration'
+import {
+  fetchAllUserDataCloud,
+  patchUserDataCloudCache,
+  queueUserDataPersist,
+  userDataCloudCached,
+} from '../utils/userDataCloud'
 
 function mergeLocalWithLive(key, fromLs, fromLive, initial) {
   if (Array.isArray(initial)) {
@@ -47,12 +54,35 @@ function normalizeStoredValue(key, normalizedRaw, initial) {
   }
   return normalizedRaw
 }
-import {
-  fetchAllUserDataCloud,
-  invalidateUserDataCloudCache,
-  patchUserDataCloudCache,
-  userDataCloudCached,
-} from '../utils/userDataCloud'
+
+function resolveMergedValue(userId, key, initial, cloudMap, localValRef) {
+  const fromLs = resolveUserLocalStorage(key, userId, initial, mergeStorageArrays)
+  const fromLive = normalizeStorageValue(localValRef.current, initial)
+  const localNorm = mergeLocalWithLive(key, fromLs, fromLive, initial)
+  const fromCloud = normalizeStorageValue(
+    cloudMap[key] != null ? cloudMap[key] : null,
+    initial,
+  )
+  const cloudRowExists = Object.prototype.hasOwnProperty.call(cloudMap, key)
+
+  let resolved = mergeCloudAndLocal(key, localNorm, fromCloud, initial)
+
+  if (key === 'hidratacionDia' && !isStorageInitial(fromLive, initial)) {
+    resolved = mergeHidratacionPorDia(resolved, fromLive)
+  } else if (
+    initial !== null
+    && typeof initial === 'object'
+    && !Array.isArray(initial)
+    && !isStorageInitial(fromLive, initial)
+    && key !== 'hidratacionDia'
+  ) {
+    const base = resolved && typeof resolved === 'object' && !Array.isArray(resolved) ? resolved : initial
+    const live = fromLive && typeof fromLive === 'object' && !Array.isArray(fromLive) ? fromLive : initial
+    resolved = { ...base, ...live }
+  }
+
+  return { resolved, fromCloud, cloudRowExists }
+}
 
 function persistUserData(userId, key, value) {
   if (!supabase || !userId) return Promise.resolve({ error: null })
@@ -106,52 +136,42 @@ export function useStorage(key, initialValue) {
 
     let cancelled = false
     const cacheHit = userDataCloudCached(user.id)
-    if (!cacheHit) {
+    const alreadyHydrated = isStorageKeyHydrated(user.id, key)
+    if (!cacheHit && !alreadyHydrated) {
       setCloudReady(false)
       setCloudVal(null)
     }
 
-    const load = async () => {
-      const cloudMap = await fetchAllUserDataCloud(user.id)
-
-      if (cancelled) return
-
-      const fromLs = resolveUserLocalStorage(key, user.id, initial, mergeStorageArrays)
-      const fromLive = normalizeStorageValue(localValRef.current, initial)
-      const localNorm = mergeLocalWithLive(key, fromLs, fromLive, initial)
-
-      const fromCloud = normalizeStorageValue(
-        cloudMap[key] != null ? cloudMap[key] : null,
-        initial,
-      )
-      const cloudRowExists = Object.prototype.hasOwnProperty.call(cloudMap, key)
-
-      let resolved = mergeCloudAndLocal(key, localNorm, fromCloud, initial)
-
-      if (key === 'hidratacionDia' && !isStorageInitial(fromLive, initial)) {
-        resolved = mergeHidratacionPorDia(resolved, fromLive)
-      } else if (
-        initial !== null
-        && typeof initial === 'object'
-        && !Array.isArray(initial)
-        && !isStorageInitial(fromLive, initial)
-        && key !== 'hidratacionDia'
-      ) {
-        const base = resolved && typeof resolved === 'object' && !Array.isArray(resolved) ? resolved : initial
-        const live = fromLive && typeof fromLive === 'object' && !Array.isArray(fromLive) ? fromLive : initial
-        resolved = { ...base, ...live }
-      }
-
-      if (shouldUploadMerged(key, resolved, fromCloud, initial, cloudRowExists)) {
-        persistUserData(user.id, key, resolved)
-      }
-
-      if (cancelled) return
-
+    const applyResolved = (resolved) => {
       setCloudVal(resolved)
       localValRef.current = resolved
-      setLocalVal((prev) => (JSON.stringify(prev) === JSON.stringify(resolved) ? prev : resolved))
+      setLocalVal((prev) => {
+        if (prev === resolved) return prev
+        return resolved
+      })
       setCloudReady(true)
+      markStorageKeyHydrated(user.id, key)
+    }
+
+    const load = async () => {
+      const cloudMap = await fetchAllUserDataCloud(user.id)
+      if (cancelled) return
+
+      const { resolved, fromCloud, cloudRowExists } = resolveMergedValue(
+        user.id,
+        key,
+        initial,
+        cloudMap,
+        localValRef,
+      )
+
+      if (!alreadyHydrated && shouldUploadMerged(key, resolved, fromCloud, initial, cloudRowExists)) {
+        queueUserDataPersist(user.id, key, resolved)
+      }
+
+      if (cancelled) return
+
+      applyResolved(resolved)
 
       const pending = pendingCloudPersistRef.current
       if (pending != null) {
@@ -177,6 +197,7 @@ export function useStorage(key, initialValue) {
       setLocalVal(normalized)
       localValRef.current = normalized
       setCloudVal(normalized)
+      markStorageKeyHydrated(user?.id, key)
 
       if (user?.id) {
         markLegacyStorageOwner(user.id)
