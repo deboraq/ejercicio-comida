@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { ensureMyProfile } from '../lib/profeDb'
 import { markLegacyStorageOwner } from '../utils/storageKeys'
+import { fetchAllUserDataCloud, invalidateUserDataCloudCache, invalidateAllUserDataCloudCache } from '../utils/userDataCloud'
 
 const AuthContext = createContext(null)
 
@@ -17,13 +18,21 @@ export function AuthProvider({ children }) {
     }
     supabase.auth.getSession().then(({ data: { session } }) => {
       const u = session?.user ?? null
-      if (u?.id) markLegacyStorageOwner(u.id)
+      if (u?.id) {
+        markLegacyStorageOwner(u.id)
+        fetchAllUserDataCloud(u.id).catch(() => {})
+      }
       setUser(u)
       setLoading(false)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const u = session?.user ?? null
-      if (u?.id) markLegacyStorageOwner(u.id)
+      if (u?.id) {
+        markLegacyStorageOwner(u.id)
+        fetchAllUserDataCloud(u.id).catch(() => {})
+      } else {
+        invalidateAllUserDataCloudCache()
+      }
       setUser(u)
     })
     return () => subscription.unsubscribe()
@@ -114,6 +123,7 @@ export function AuthProvider({ children }) {
 
   const signOut = async () => {
     setAuthError(null)
+    invalidateUserDataCloudCache(user?.id)
     if (supabase) await supabase.auth.signOut()
     setUser(null)
   }

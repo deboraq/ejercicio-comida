@@ -9,9 +9,16 @@ import {
 } from '../utils/storageKeys'
 import { mergeCloudAndLocal, shouldUploadMerged, isStorageInitial } from '../utils/storageMerge'
 import { normalizarSuplementosPorDia } from '../utils/suplementosStorage'
+import {
+  fetchAllUserDataCloud,
+  invalidateUserDataCloudCache,
+  patchUserDataCloudCache,
+  userDataCloudCached,
+} from '../utils/userDataCloud'
 
 function persistUserData(userId, key, value) {
   if (!supabase || !userId) return Promise.resolve({ error: null })
+  patchUserDataCloudCache(userId, key, value)
   return supabase
     .from('user_data')
     .upsert(
@@ -60,16 +67,14 @@ export function useStorage(key, initialValue) {
     }
 
     let cancelled = false
-    setCloudReady(false)
-    setCloudVal(null)
+    const cacheHit = userDataCloudCached(user.id)
+    if (!cacheHit) {
+      setCloudReady(false)
+      setCloudVal(null)
+    }
 
     const load = async () => {
-      const { data, error } = await supabase
-        .from('user_data')
-        .select('value')
-        .eq('user_id', user.id)
-        .eq('key', key)
-        .maybeSingle()
+      const cloudMap = await fetchAllUserDataCloud(user.id)
 
       if (cancelled) return
 
@@ -90,19 +95,16 @@ export function useStorage(key, initialValue) {
         }
       }
 
-      const fromCloud = normalizeStorageValue(data?.value != null ? data.value : null, initial)
-
-      if (error) {
-        console.error('Error loading user_data:', error)
-      }
+      const fromCloud = normalizeStorageValue(
+        cloudMap[key] != null ? cloudMap[key] : null,
+        initial,
+      )
+      const cloudRowExists = Object.prototype.hasOwnProperty.call(cloudMap, key)
 
       let resolved = mergeCloudAndLocal(key, localNorm, fromCloud, initial)
 
-      if (
-        !error &&
-        shouldUploadMerged(key, resolved, fromCloud, initial, data?.value != null)
-      ) {
-        await persistUserData(user.id, key, resolved)
+      if (shouldUploadMerged(key, resolved, fromCloud, initial, cloudRowExists)) {
+        persistUserData(user.id, key, resolved)
       }
 
       if (cancelled) return
