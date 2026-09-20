@@ -40,18 +40,13 @@ function horaParaInputTime(horaRegistro) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-function abrirInputTime(inputEl) {
-  if (!inputEl) return
-  try {
-    if (typeof inputEl.showPicker === 'function') {
-      inputEl.showPicker()
-      return
-    }
-  } catch {
-    /* showPicker puede fallar fuera de gesto del usuario */
-  }
-  inputEl.focus({ preventScroll: true })
-  inputEl.click()
+const OPCIONES_HORA = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const OPCIONES_MINUTO = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
+
+function partesHoraInput(horaRegistro) {
+  const norm = horaParaInputTime(horaRegistro)
+  const [h, m] = norm.split(':')
+  return { h: h || '00', m: m || '00' }
 }
 
 function etiquetaCortaAlimento(nombre = '') {
@@ -805,18 +800,15 @@ export default function ComidaTitanium({
   const [balanceDestacado, setBalanceDestacado] = useState(false)
   const pulseTimerRef = useRef(null)
   const balanceTimerRef = useRef(null)
-  const horaInputRef = useRef(null)
-  const horaInputValue = useMemo(() => horaParaInputTime(horaRegistro), [horaRegistro])
+  const { h: horaParteH, m: horaParteM } = useMemo(() => partesHoraInput(horaRegistro), [horaRegistro])
 
-  const onHoraInputChange = useCallback((e) => {
-    const v = e.target.value
-    if (v) setHoraRegistro?.(v)
-  }, [setHoraRegistro])
-
-  const onAbrirHoraPick = useCallback((e) => {
-    if (e.target === horaInputRef.current) return
-    abrirInputTime(horaInputRef.current)
-  }, [])
+  const cambiarHoraParte = useCallback((parte, valor) => {
+    const { h, m } = partesHoraInput(horaRegistro)
+    const next = parte === 'h'
+      ? `${String(valor).padStart(2, '0')}:${m}`
+      : `${h}:${String(valor).padStart(2, '0')}`
+    setHoraRegistro?.(next)
+  }, [horaRegistro, setHoraRegistro])
 
   useEffect(() => () => {
     if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
@@ -1213,26 +1205,32 @@ export default function ComidaTitanium({
                   {comidas.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <label
-                className="cd-hora-pick"
-                htmlFor="cd-hora-registro"
-                title={`Hora: ${horaInputValue}`}
-                onClick={onAbrirHoraPick}
-              >
-                <span className="cd-hora-pick-ico" aria-hidden>🕐</span>
-                <span className="cd-hora-pick-val" aria-hidden>{horaInputValue}</span>
-                <input
-                  id="cd-hora-registro"
-                  ref={horaInputRef}
-                  type="time"
-                  className="cd-hora-pick-input"
-                  value={horaInputValue}
-                  step={60}
-                  aria-label={`Hora del registro, ${horaInputValue}`}
-                  onChange={onHoraInputChange}
-                  onInput={onHoraInputChange}
-                />
-              </label>
+              <div className="cd-hora-selects" title={`Hora: ${horaParteH}:${horaParteM}`}>
+                <span className="cd-hora-selects-ico" aria-hidden>🕐</span>
+                <div className="cd-select-wrap cd-hora-select-wrap">
+                  <select
+                    value={horaParteH}
+                    aria-label="Hora del registro"
+                    onChange={(e) => cambiarHoraParte('h', e.target.value)}
+                  >
+                    {OPCIONES_HORA.map((h) => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                </div>
+                <span className="cd-hora-sep" aria-hidden>:</span>
+                <div className="cd-select-wrap cd-hora-select-wrap cd-hora-select-wrap--min">
+                  <select
+                    value={horaParteM}
+                    aria-label="Minutos del registro"
+                    onChange={(e) => cambiarHoraParte('m', e.target.value)}
+                  >
+                    {OPCIONES_MINUTO.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
             <div className="cd-search-wrap">
