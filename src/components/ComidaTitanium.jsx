@@ -41,15 +41,51 @@ function horaParaInputTime(horaRegistro) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+const OPCIONES_HORA_DIALOG = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const OPCIONES_MINUTO_DIALOG = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
+
+function partesHoraValor(valor) {
+  const norm = horaParaInputTime(valor)
+  const [h, m] = norm.split(':')
+  return { h: h || '00', m: m || '00' }
+}
+
+function esVistaMobileComida() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
+}
+
 function HoraRegistroDialog({ abierto, valor, onChange, onConfirmar, onCerrar }) {
   const inputRef = useRef(null)
+  const [modoSheet, setModoSheet] = useState(false)
+  const { h: horaH, m: horaM } = partesHoraValor(valor)
+
+  const cambiarParte = (parte, v) => {
+    const { h, m } = partesHoraValor(valor)
+    onChange(parte === 'h' ? `${v}:${m}` : `${h}:${v}`)
+  }
 
   useEffect(() => {
     if (!abierto) return undefined
+    setModoSheet(esVistaMobileComida())
+    const prevOverflow = document.body.style.overflow
+    const prevTouchAction = document.body.style.touchAction
+    document.body.style.overflow = 'hidden'
+    document.body.style.touchAction = 'none'
+
     const onKey = (e) => {
       if (e.key === 'Escape') onCerrar()
     }
     document.addEventListener('keydown', onKey)
+
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.body.style.touchAction = prevTouchAction
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [abierto, onCerrar])
+
+  useEffect(() => {
+    if (!abierto || modoSheet) return undefined
     const id = window.setTimeout(() => {
       const el = inputRef.current
       if (!el) return
@@ -57,19 +93,16 @@ function HoraRegistroDialog({ abierto, valor, onChange, onConfirmar, onCerrar })
       try {
         if (typeof el.showPicker === 'function') el.showPicker()
       } catch {
-        /* algunos navegadores bloquean showPicker fuera del gesto */
+        /* desktop: showPicker opcional */
       }
     }, 100)
-    return () => {
-      window.clearTimeout(id)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [abierto, onCerrar])
+    return () => window.clearTimeout(id)
+  }, [abierto, modoSheet])
 
   if (!abierto || typeof document === 'undefined') return null
 
   return createPortal(
-    <div className="cd-hora-dialog-root">
+    <div className={`cd-hora-dialog-root${modoSheet ? ' cd-hora-dialog-root--sheet' : ''}`}>
       <button type="button" className="cd-hora-dialog-backdrop" aria-label="Cerrar" onClick={onCerrar} />
       <div
         className="cd-hora-dialog"
@@ -78,18 +111,48 @@ function HoraRegistroDialog({ abierto, valor, onChange, onConfirmar, onCerrar })
         aria-labelledby="cd-hora-dialog-title"
       >
         <h3 id="cd-hora-dialog-title" className="cd-hora-dialog-title">Hora del registro</h3>
-        <p className="cd-hora-dialog-hint">Elegí la hora en la que comiste o bebiste.</p>
-        <input
-          ref={inputRef}
-          type="time"
-          className="cd-hora-dialog-input"
-          value={valor}
-          step={60}
-          aria-label="Hora del registro"
-          onChange={(e) => {
-            if (e.target.value) onChange(e.target.value)
-          }}
-        />
+        <p className="cd-hora-dialog-hint">
+          {modoSheet ? 'Elegí hora y minutos.' : 'Elegí la hora en la que comiste o bebiste.'}
+        </p>
+        {modoSheet ? (
+          <div className="cd-hora-dialog-pick">
+            <div className="cd-select-wrap cd-hora-dialog-select">
+              <select
+                value={horaH}
+                aria-label="Hora"
+                onChange={(e) => cambiarParte('h', e.target.value)}
+              >
+                {OPCIONES_HORA_DIALOG.map((h) => (
+                  <option key={h} value={h}>{h}</option>
+                ))}
+              </select>
+            </div>
+            <span className="cd-hora-dialog-sep" aria-hidden>:</span>
+            <div className="cd-select-wrap cd-hora-dialog-select cd-hora-dialog-select--min">
+              <select
+                value={horaM}
+                aria-label="Minutos"
+                onChange={(e) => cambiarParte('m', e.target.value)}
+              >
+                {OPCIONES_MINUTO_DIALOG.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        ) : (
+          <input
+            ref={inputRef}
+            type="time"
+            className="cd-hora-dialog-input"
+            value={horaParaInputTime(valor)}
+            step={60}
+            aria-label="Hora del registro"
+            onChange={(e) => {
+              if (e.target.value) onChange(e.target.value)
+            }}
+          />
+        )}
         <div className="cd-hora-dialog-actions">
           <button type="button" className="cd-btn cd-btn--ghost cd-btn--sm" onClick={onCerrar}>
             Cancelar
