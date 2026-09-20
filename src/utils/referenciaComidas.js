@@ -59,6 +59,15 @@ const QUERY_EXPAND = {
   wok: ['salteado', 'verduras salteadas'],
   merluza: ['pescado', 'filete merluza'],
   mermelada: ['mermelada light', 'bc light'],
+  chisitos: ['cheetos', 'snacks', 'maiz inflado', 'golosina', 'fiesta', 'evento'],
+  cheetos: ['chisitos', 'snack maiz'],
+  palitos: ['palitos salados', 'grissini', 'breadsticks', 'snack', 'fiesta', 'evento'],
+  torta: ['torta cumpleaños', 'pastel', 'cake', 'fiesta', 'evento', 'cumple'],
+  flambeada: ['pata flambeada', 'pato flambe', 'canard', 'fiesta', 'evento'],
+  pata: ['pata flambeada', 'pato', 'canard'],
+  fiesta: ['evento', 'cumpleaños', 'cumple', 'salida', 'social'],
+  evento: ['fiesta', 'cumpleaños', 'reunion', 'salida'],
+  cumple: ['cumpleaños', 'torta', 'fiesta', 'evento'],
 }
 
 export const REFERENCIA_ALIMENTOS = [
@@ -588,6 +597,29 @@ export const REFERENCIA_ALIMENTOS = [
   { categoria: "Salida / Social", nombre: "Vino (2 copas / salida)", calorias: 250, proteinas: 0, carbohidratos: 8, grasas: 0, porcion: "2 copas ~300 ml", aliases: ["vino salida","copas de vino","salida","social","restaurant","restaurante","delivery"] },
   { categoria: "Salida / Social", nombre: "Wok de verduras con arroz (1 plato)", calorias: 480, proteinas: 14, carbohidratos: 68, grasas: 16.9, porcion: "1 plato (~400 g)", aliases: ["wok","stir fry","salida","social","restaurant","restaurante","delivery","rice"] },
   { categoria: "Salida / Social", nombre: "Wrap de pollo / Caesar (1 unidad)", calorias: 480, proteinas: 28, carbohidratos: 42, grasas: 22.2, porcion: "1 wrap (~280 g)", aliases: ["wrap","wrap pollo","salida","social","restaurant","restaurante","delivery","chicken","pollo"] },
+
+  // Fiesta / Evento (cumpleaños, reuniones, picadas)
+  { categoria: "Fiesta / Evento", nombre: "Pata flambeada (1 porción)", calorias: 420, proteinas: 28, carbohidratos: 8, grasas: 31.6, porcion: "1 muslo/pata ~180 g con salsa", aliases: ["pato flambe","canard","pata","pato","flambe","flambeada","evento","fiesta","salida","social","restaurant","restaurante"] },
+  { categoria: "Fiesta / Evento", nombre: "Pato al horno / confit (1 porción)", calorias: 380, proteinas: 26, carbohidratos: 6, grasas: 28.4, porcion: "1 porción ~160 g", aliases: ["pato","pata","canard","evento","fiesta","salida","social"] },
+  { categoria: "Fiesta / Evento", nombre: "Torta de cumpleaños (1 porción)", calorias: 380, proteinas: 5, carbohidratos: 48, grasas: 19.1, porcion: "1 porción ~120 g", aliases: ["torta","pastel","cake","cumpleaños","cumple","evento","fiesta","chocolate","dulce"] },
+  { categoria: "Fiesta / Evento", nombre: "Torta de chocolate (1 porción)", calorias: 420, proteinas: 6, carbohidratos: 52, grasas: 21.8, porcion: "1 porción ~130 g", aliases: ["torta","pastel","chocolate","evento","fiesta","cumpleaños","postre"] },
+  { categoria: "Fiesta / Evento", nombre: "Torta frutilla / chantilly (1 porción)", calorias: 340, proteinas: 4, carbohidratos: 45, grasas: 16.2, porcion: "1 porción ~120 g", aliases: ["torta","frutilla","fresa","pastel","evento","fiesta","cumple"] },
+  { categoria: "Fiesta / Evento", nombre: "Porción de budín / ponque (1 unidad)", calorias: 280, proteinas: 4, carbohidratos: 38, grasas: 12.4, porcion: "1 rodaja ~80 g", aliases: ["budin","ponque","bizcochuelo","evento","fiesta","torta"] },
+  { categoria: "Fiesta / Evento", nombre: "Chisitos / snack de maíz (1 porción bolsa)", calorias: 160, proteinas: 2, carbohidratos: 15, grasas: 10.7, porcion: "1 porción ~30 g", aliases: ["chisitos","cheetos","snack maiz","golosina","fiesta","evento","salida","kiosco"] },
+  { categoria: "Fiesta / Evento", nombre: "Doritos / nachos de maíz (1 porción)", calorias: 150, proteinas: 2, carbohidratos: 18, grasas: 8.2, porcion: "1 porción ~28 g", aliases: ["doritos","nachos","snack","fiesta","evento","salida"] },
+  { categoria: "Fiesta / Evento", nombre: "Palitos salados (1 porción ~15 unidades)", calorias: 120, proteinas: 3, carbohidratos: 18, grasas: 4.2, porcion: "15 palitos ~25 g", aliases: ["palitos","palitos salados","grissini","breadsticks","snack","fiesta","evento","picada"] },
+  { categoria: "Fiesta / Evento", nombre: "Palitos de maíz / sorbeto (1 porción)", calorias: 130, proteinas: 2, carbohidratos: 16, grasas: 6.8, porcion: "1 puñado ~30 g", aliases: ["palitos maiz","sorbeto","snack","fiesta","evento"] },
+  { categoria: "Fiesta / Evento", nombre: "Cabritas / pochoclo dulce (1 taza)", calorias: 180, proteinas: 2, carbohidratos: 28, grasas: 7.1, porcion: "1 taza evento", aliases: ["cabritas","pochoclo dulce","palomitas dulce","fiesta","evento","cumple"] },
+  { categoria: "Fiesta / Evento", nombre: "Maní japonés (1 porción)", calorias: 170, proteinas: 6, carbohidratos: 14, grasas: 10.9, porcion: "30 g", aliases: ["mani japones","maní","snack","fiesta","evento","picada"] },
+  { categoria: "Fiesta / Evento", nombre: "Pizzeta / mini pizza (1 unidad)", calorias: 220, proteinas: 8, carbohidratos: 26, grasas: 9.8, porcion: "1 pizzeta ~80 g", aliases: ["pizzeta","mini pizza","fugazzeta","fiesta","evento","cumple","salida"] },
+  { categoria: "Fiesta / Evento", nombre: "Chipá (1 unidad)", calorias: 180, proteinas: 5, carbohidratos: 22, grasas: 8.4, porcion: "1 chipá mediano", aliases: ["chipa","pan queso","fiesta","evento","salida","merienda"] },
+  { categoria: "Fiesta / Evento", nombre: "Mini sándwich de miga (3 unidades)", calorias: 240, proteinas: 10, carbohidratos: 28, grasas: 9.6, porcion: "3 bocaditos", aliases: ["sandwich miga","bocaditos","canapes","fiesta","evento","picada"] },
+  { categoria: "Fiesta / Evento", nombre: "Tabla picada / fiambres (1 porción)", calorias: 320, proteinas: 18, carbohidratos: 8, grasas: 24.4, porcion: "1 porción personal ~100 g", aliases: ["picada","fiambres","tabla","quesos","salame","evento","fiesta","jamon"] },
+  { categoria: "Fiesta / Evento", nombre: "Canapé / bocadito cocktail (2 unidades)", calorias: 180, proteinas: 6, carbohidratos: 16, grasas: 10.2, porcion: "2 mini bocados", aliases: ["canape","canapé","bocadito","cocktail","evento","fiesta","recepcion"] },
+  { categoria: "Fiesta / Evento", nombre: "Pionono relleno (1 porción)", calorias: 290, proteinas: 6, carbohidratos: 32, grasas: 15.1, porcion: "1 rodaja ~90 g", aliases: ["pionono","arrollado","fiesta","evento","cumple"] },
+  { categoria: "Fiesta / Evento", nombre: "Gaseosa / cola evento (1 vaso)", calorias: 110, proteinas: 0, carbohidratos: 28, grasas: 0, porcion: "250 ml", aliases: ["coca","gaseosa","cola","fiesta","evento","cumple","salida"] },
+  { categoria: "Fiesta / Evento", nombre: "Champagne / espumante (1 copa)", calorias: 90, proteinas: 0, carbohidratos: 2, grasas: 0, porcion: "1 copa ~120 ml", aliases: ["espumante","champagne","brindis","evento","fiesta","salida"] },
+  { categoria: "Fiesta / Evento", nombre: "Picada completa (1 plato personal)", calorias: 520, proteinas: 24, carbohidratos: 22, grasas: 38.7, porcion: "quesos, fiambres, aceitunas, pan (~200 g)", aliases: ["picada","tabla","fiambres","evento","fiesta","reunion","salida","social"] },
 
   // Tartas (1 porción)
   { categoria: "Tartas (1 porción)", nombre: "Brownie (1 cuadrado)", calorias: 240, proteinas: 3, carbohidratos: 32, grasas: 11.1, porcion: "1 cuadrado ~50 g" },
