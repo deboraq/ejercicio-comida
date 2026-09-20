@@ -14352,9 +14352,9 @@ select.ap-input {
   min-width: 0;
 }
 
-/* Mismo recuadro para momento y hora */
+/* Mismo recuadro para momento y reloj */
 .cd-add-momento-row .cd-select-wrap,
-.cd-add-momento-row .cd-hora-selects {
+.cd-add-momento-row .cd-hora-pick {
   min-height: 2.6rem;
   height: 2.6rem;
   border-radius: 8px;
@@ -14366,8 +14366,8 @@ select.ap-input {
 
 .cd-add-momento-row .cd-select-wrap:hover,
 .cd-add-momento-row .cd-select-wrap:focus-within,
-.cd-add-momento-row .cd-hora-selects:hover,
-.cd-add-momento-row .cd-hora-selects:focus-within {
+.cd-add-momento-row .cd-hora-pick:hover,
+.cd-add-momento-row .cd-hora-pick:focus-visible {
   border-color: rgba(96, 165, 250, 0.55);
   background: rgba(30, 41, 59, 0.85);
 }
@@ -14377,37 +14377,10 @@ select.ap-input {
   align-items: center;
 }
 
-.cd-add-momento-row .cd-hora-selects {
+.cd-add-momento-row .cd-hora-pick {
+  width: 2.6rem;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.1rem;
-  padding: 0 0.2rem 0 0.35rem;
-  border: 1px solid rgba(59, 130, 246, 0.25);
-}
-
-.cd-add-momento-row .cd-hora-select-wrap {
-  border: none;
-  background: transparent;
-  min-height: 0;
-  height: auto;
-}
-
-.cd-add-momento-row .cd-hora-select-wrap::after {
-  right: 0.15rem;
-  width: 0.32rem;
-  height: 0.32rem;
-}
-
-.cd-add-momento-row .cd-hora-select-wrap select {
-  padding: 0 1.1rem 0 0.1rem;
-  font-size: 0.78rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.cd-add-momento-row .cd-hora-select-wrap--min {
-  min-width: 2.65rem;
+  padding: 0;
 }
 
 .cd-add-momento-row select {
@@ -15268,66 +15241,107 @@ select.ap-input {
   min-width: 0;
 }
 
-.cd-hora-selects {
+.cd-hora-pick {
+  position: relative;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.12rem;
-  flex-shrink: 0;
+  justify-content: center;
+  width: 2.6rem;
   min-height: 2.6rem;
-  padding: 0 0.25rem 0 0.35rem;
   border-radius: 8px;
   border: 1px solid rgba(59, 130, 246, 0.25);
   background: rgba(15, 23, 42, 0.72);
+  cursor: pointer;
   touch-action: manipulation;
-}
-
-.cd-hora-selects-ico {
-  font-size: 0.95rem;
-  line-height: 1;
-  flex-shrink: 0;
-  user-select: none;
-}
-
-.cd-hora-sep {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #64748b;
-  line-height: 1;
-  user-select: none;
-}
-
-.cd-hora-select-wrap {
-  position: relative;
-  border: none;
-  background: transparent;
-  min-height: 0;
-}
-
-.cd-hora-select-wrap::after {
-  right: 0.2rem;
-  width: 0.35rem;
-  height: 0.35rem;
-}
-
-.cd-hora-select-wrap select {
-  height: 2.6rem;
-  min-height: 2.6rem;
-  padding: 0 1.15rem 0 0.15rem;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #e2e8f0;
-  font-size: 0.78rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s, background 0.15s;
   appearance: none;
-  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+}
+
+.cd-hora-pick-ico {
+  font-size: 1.05rem;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.cd-hora-dialog-root {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
+    max(1rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
+}
+
+.cd-hora-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: rgba(2, 6, 23, 0.78);
   cursor: pointer;
 }
 
-.cd-hora-select-wrap--min select {
-  min-width: 2.5rem;
+.cd-hora-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 19.5rem);
+  padding: 1.15rem 1.1rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: linear-gradient(165deg, #1e293b 0%, #0f172a 100%);
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.5);
+}
+
+.cd-hora-dialog-title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 750;
+  color: #f1f5f9;
+}
+
+.cd-hora-dialog-hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.76rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.cd-hora-dialog-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 3.1rem;
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   text-align: center;
+  color-scheme: dark;
+}
+
+.cd-hora-dialog-input:focus {
+  outline: none;
+  border-color: rgba(96, 165, 250, 0.75);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
+}
+
+.cd-hora-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
 }
 
 .cd-select-wrap {

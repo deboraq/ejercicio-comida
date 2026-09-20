@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { fechaSoloDia, fechaToISO, formatearFecha } from '../utils/calorias'
 import { REFERENCIA_ALIMENTOS } from '../utils/referenciaComidas'
 import { getRecetasSugeridasCena } from '../utils/recetasCena'
@@ -40,13 +41,67 @@ function horaParaInputTime(horaRegistro) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-const OPCIONES_HORA = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
-const OPCIONES_MINUTO = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
+function HoraRegistroDialog({ abierto, valor, onChange, onConfirmar, onCerrar }) {
+  const inputRef = useRef(null)
 
-function partesHoraInput(horaRegistro) {
-  const norm = horaParaInputTime(horaRegistro)
-  const [h, m] = norm.split(':')
-  return { h: h || '00', m: m || '00' }
+  useEffect(() => {
+    if (!abierto) return undefined
+    const onKey = (e) => {
+      if (e.key === 'Escape') onCerrar()
+    }
+    document.addEventListener('keydown', onKey)
+    const id = window.setTimeout(() => {
+      const el = inputRef.current
+      if (!el) return
+      el.focus({ preventScroll: true })
+      try {
+        if (typeof el.showPicker === 'function') el.showPicker()
+      } catch {
+        /* algunos navegadores bloquean showPicker fuera del gesto */
+      }
+    }, 100)
+    return () => {
+      window.clearTimeout(id)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [abierto, onCerrar])
+
+  if (!abierto || typeof document === 'undefined') return null
+
+  return createPortal(
+    <div className="cd-hora-dialog-root">
+      <button type="button" className="cd-hora-dialog-backdrop" aria-label="Cerrar" onClick={onCerrar} />
+      <div
+        className="cd-hora-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cd-hora-dialog-title"
+      >
+        <h3 id="cd-hora-dialog-title" className="cd-hora-dialog-title">Hora del registro</h3>
+        <p className="cd-hora-dialog-hint">Elegí la hora en la que comiste o bebiste.</p>
+        <input
+          ref={inputRef}
+          type="time"
+          className="cd-hora-dialog-input"
+          value={valor}
+          step={60}
+          aria-label="Hora del registro"
+          onChange={(e) => {
+            if (e.target.value) onChange(e.target.value)
+          }}
+        />
+        <div className="cd-hora-dialog-actions">
+          <button type="button" className="cd-btn cd-btn--ghost cd-btn--sm" onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button type="button" className="cd-btn cd-btn--primary cd-btn--sm" onClick={onConfirmar}>
+            Listo
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
 }
 
 function etiquetaCortaAlimento(nombre = '') {
@@ -800,15 +855,23 @@ export default function ComidaTitanium({
   const [balanceDestacado, setBalanceDestacado] = useState(false)
   const pulseTimerRef = useRef(null)
   const balanceTimerRef = useRef(null)
-  const { h: horaParteH, m: horaParteM } = useMemo(() => partesHoraInput(horaRegistro), [horaRegistro])
+  const horaInputValue = useMemo(() => horaParaInputTime(horaRegistro), [horaRegistro])
+  const [horaDialogAbierto, setHoraDialogAbierto] = useState(false)
+  const [horaDraft, setHoraDraft] = useState(horaInputValue)
 
-  const cambiarHoraParte = useCallback((parte, valor) => {
-    const { h, m } = partesHoraInput(horaRegistro)
-    const next = parte === 'h'
-      ? `${String(valor).padStart(2, '0')}:${m}`
-      : `${h}:${String(valor).padStart(2, '0')}`
-    setHoraRegistro?.(next)
-  }, [horaRegistro, setHoraRegistro])
+  const abrirHoraDialog = useCallback(() => {
+    setHoraDraft(horaParaInputTime(horaRegistro))
+    setHoraDialogAbierto(true)
+  }, [horaRegistro])
+
+  const cerrarHoraDialog = useCallback(() => {
+    setHoraDialogAbierto(false)
+  }, [])
+
+  const confirmarHoraDialog = useCallback(() => {
+    setHoraRegistro?.(horaParaInputTime(horaDraft))
+    setHoraDialogAbierto(false)
+  }, [horaDraft, setHoraRegistro])
 
   useEffect(() => () => {
     if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
@@ -1205,32 +1268,24 @@ export default function ComidaTitanium({
                   {comidas.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="cd-hora-selects" title={`Hora: ${horaParteH}:${horaParteM}`}>
-                <span className="cd-hora-selects-ico" aria-hidden>🕐</span>
-                <div className="cd-select-wrap cd-hora-select-wrap">
-                  <select
-                    value={horaParteH}
-                    aria-label="Hora del registro"
-                    onChange={(e) => cambiarHoraParte('h', e.target.value)}
-                  >
-                    {OPCIONES_HORA.map((h) => (
-                      <option key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-                </div>
-                <span className="cd-hora-sep" aria-hidden>:</span>
-                <div className="cd-select-wrap cd-hora-select-wrap cd-hora-select-wrap--min">
-                  <select
-                    value={horaParteM}
-                    aria-label="Minutos del registro"
-                    onChange={(e) => cambiarHoraParte('m', e.target.value)}
-                  >
-                    {OPCIONES_MINUTO.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <button
+                type="button"
+                className="cd-hora-pick"
+                title={`Hora: ${horaInputValue}. Tocá para cambiar`}
+                aria-label={`Hora del registro ${horaInputValue}. Tocá para cambiar`}
+                aria-haspopup="dialog"
+                aria-expanded={horaDialogAbierto}
+                onClick={abrirHoraDialog}
+              >
+                <span className="cd-hora-pick-ico" aria-hidden>🕐</span>
+              </button>
+              <HoraRegistroDialog
+                abierto={horaDialogAbierto}
+                valor={horaDraft}
+                onChange={setHoraDraft}
+                onConfirmar={confirmarHoraDialog}
+                onCerrar={cerrarHoraDialog}
+              />
             </div>
 
             <div className="cd-search-wrap">
