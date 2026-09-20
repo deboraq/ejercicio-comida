@@ -21,6 +21,39 @@ function redondear1(n) {
   return Math.round(n * 10) / 10
 }
 
+/** Valor válido para `<input type="time">` (HH:mm 24 h). */
+function horaParaInputTime(horaRegistro) {
+  if (horaRegistro && /^\d{1,2}:\d{2}$/.test(String(horaRegistro).trim())) {
+    const [hStr, mStr] = String(horaRegistro).trim().split(':')
+    return `${String(Number(hStr)).padStart(2, '0')}:${mStr.padStart(2, '0')}`
+  }
+  const m = String(horaRegistro || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i)
+  if (m) {
+    let h = Number(m[1])
+    const min = m[2]
+    const ap = (m[3] || '').toUpperCase()
+    if (ap === 'PM' && h < 12) h += 12
+    if (ap === 'AM' && h === 12) h = 0
+    return `${String(h).padStart(2, '0')}:${min}`
+  }
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function abrirInputTime(inputEl) {
+  if (!inputEl) return
+  try {
+    if (typeof inputEl.showPicker === 'function') {
+      inputEl.showPicker()
+      return
+    }
+  } catch {
+    /* showPicker puede fallar fuera de gesto del usuario */
+  }
+  inputEl.focus({ preventScroll: true })
+  inputEl.click()
+}
+
 function etiquetaCortaAlimento(nombre = '') {
   const base = String(nombre).replace(/\s*\([^)]*\)\s*$/, '').trim()
   return base.length > 28 ? `${base.slice(0, 26)}…` : base
@@ -772,6 +805,18 @@ export default function ComidaTitanium({
   const [balanceDestacado, setBalanceDestacado] = useState(false)
   const pulseTimerRef = useRef(null)
   const balanceTimerRef = useRef(null)
+  const horaInputRef = useRef(null)
+  const horaInputValue = useMemo(() => horaParaInputTime(horaRegistro), [horaRegistro])
+
+  const onHoraInputChange = useCallback((e) => {
+    const v = e.target.value
+    if (v) setHoraRegistro?.(v)
+  }, [setHoraRegistro])
+
+  const onAbrirHoraPick = useCallback((e) => {
+    if (e.target === horaInputRef.current) return
+    abrirInputTime(horaInputRef.current)
+  }, [])
 
   useEffect(() => () => {
     if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
@@ -1168,16 +1213,26 @@ export default function ComidaTitanium({
                   {comidas.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="cd-hora-pick" title={`Hora: ${horaRegistro || 'ahora'}`}>
+              <label
+                className="cd-hora-pick"
+                htmlFor="cd-hora-registro"
+                title={`Hora: ${horaInputValue}`}
+                onClick={onAbrirHoraPick}
+              >
                 <span className="cd-hora-pick-ico" aria-hidden>🕐</span>
+                <span className="cd-hora-pick-val" aria-hidden>{horaInputValue}</span>
                 <input
+                  id="cd-hora-registro"
+                  ref={horaInputRef}
                   type="time"
                   className="cd-hora-pick-input"
-                  value={horaRegistro}
-                  aria-label={`Hora del registro, ${horaRegistro || 'hora actual'}`}
-                  onChange={(e) => setHoraRegistro?.(e.target.value)}
+                  value={horaInputValue}
+                  step={60}
+                  aria-label={`Hora del registro, ${horaInputValue}`}
+                  onChange={onHoraInputChange}
+                  onInput={onHoraInputChange}
                 />
-              </div>
+              </label>
             </div>
 
             <div className="cd-search-wrap">
