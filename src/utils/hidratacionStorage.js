@@ -28,3 +28,16 @@ export function actualizarVasosHidratacion(map, fecha, vasos) {
   }
   return { ...base, [fecha]: n }
 }
+
+/** Por día gana el mayor número de vasos (nunca perder marcas). */
+export function mergeHidratacionPorDia(a, b) {
+  const left = normalizarHidratacionPorDia(a)
+  const right = normalizarHidratacionPorDia(b)
+  const out = { ...left }
+  for (const [fecha, vasos] of Object.entries(right)) {
+    const prev = Number(out[fecha]) || 0
+    const next = Number(vasos) || 0
+    out[fecha] = Math.max(prev, next)
+  }
+  return out
+}

@@ -9,6 +9,44 @@ import {
 } from '../utils/storageKeys'
 import { mergeCloudAndLocal, shouldUploadMerged, isStorageInitial } from '../utils/storageMerge'
 import { normalizarSuplementosPorDia } from '../utils/suplementosStorage'
+import { normalizarHidratacionPorDia, mergeHidratacionPorDia } from '../utils/hidratacionStorage'
+
+function mergeLocalWithLive(key, fromLs, fromLive, initial) {
+  if (Array.isArray(initial)) {
+    if (isStorageInitial(fromLive, initial)) return fromLs
+    if (key === 'suplementos') {
+      return normalizarSuplementosPorDia(
+        mergeStorageArrays(
+          normalizarSuplementosPorDia(fromLs),
+          normalizarSuplementosPorDia(fromLive),
+        ),
+      )
+    }
+    return mergeStorageArrays(fromLs, fromLive)
+  }
+
+  if (initial !== null && typeof initial === 'object') {
+    if (isStorageInitial(fromLive, initial)) return fromLs
+    if (key === 'hidratacionDia') {
+      return mergeHidratacionPorDia(fromLs, fromLive)
+    }
+    const base = fromLs && typeof fromLs === 'object' && !Array.isArray(fromLs) ? fromLs : initial
+    const live = fromLive && typeof fromLive === 'object' && !Array.isArray(fromLive) ? fromLive : initial
+    return { ...base, ...live }
+  }
+
+  return fromLs
+}
+
+function normalizeStoredValue(key, normalizedRaw, initial) {
+  if (key === 'suplementos' && Array.isArray(normalizedRaw)) {
+    return normalizarSuplementosPorDia(normalizedRaw)
+  }
+  if (key === 'hidratacionDia' && normalizedRaw && typeof normalizedRaw === 'object') {
+    return normalizarHidratacionPorDia(normalizedRaw)
+  }
+  return normalizedRaw
+}
 import {
   fetchAllUserDataCloud,
   invalidateUserDataCloudCache,
@@ -80,20 +118,7 @@ export function useStorage(key, initialValue) {
 
       const fromLs = resolveUserLocalStorage(key, user.id, initial, mergeStorageArrays)
       const fromLive = normalizeStorageValue(localValRef.current, initial)
-      let localNorm = fromLs
-
-      if (Array.isArray(initial) && !isStorageInitial(fromLive, initial)) {
-        if (key === 'suplementos') {
-          localNorm = normalizarSuplementosPorDia(
-            mergeStorageArrays(
-              normalizarSuplementosPorDia(fromLs),
-              normalizarSuplementosPorDia(fromLive),
-            ),
-          )
-        } else {
-          localNorm = mergeStorageArrays(fromLs, fromLive)
-        }
-      }
+      const localNorm = mergeLocalWithLive(key, fromLs, fromLive, initial)
 
       const fromCloud = normalizeStorageValue(
         cloudMap[key] != null ? cloudMap[key] : null,
@@ -102,6 +127,20 @@ export function useStorage(key, initialValue) {
       const cloudRowExists = Object.prototype.hasOwnProperty.call(cloudMap, key)
 
       let resolved = mergeCloudAndLocal(key, localNorm, fromCloud, initial)
+
+      if (key === 'hidratacionDia' && !isStorageInitial(fromLive, initial)) {
+        resolved = mergeHidratacionPorDia(resolved, fromLive)
+      } else if (
+        initial !== null
+        && typeof initial === 'object'
+        && !Array.isArray(initial)
+        && !isStorageInitial(fromLive, initial)
+        && key !== 'hidratacionDia'
+      ) {
+        const base = resolved && typeof resolved === 'object' && !Array.isArray(resolved) ? resolved : initial
+        const live = fromLive && typeof fromLive === 'object' && !Array.isArray(fromLive) ? fromLive : initial
+        resolved = { ...base, ...live }
+      }
 
       if (shouldUploadMerged(key, resolved, fromCloud, initial, cloudRowExists)) {
         persistUserData(user.id, key, resolved)
@@ -134,15 +173,15 @@ export function useStorage(key, initialValue) {
           ? nextValueOrFn(valueRef.current)
           : nextValueOrFn
       const normalizedRaw = normalizeStorageValue(next, initial)
-      const normalized =
-        key === 'suplementos' && Array.isArray(normalizedRaw)
-          ? normalizarSuplementosPorDia(normalizedRaw)
-          : normalizedRaw
+      const normalized = normalizeStoredValue(key, normalizedRaw, initial)
       setLocalVal(normalized)
       localValRef.current = normalized
       setCloudVal(normalized)
 
-      if (user?.id) markLegacyStorageOwner(user.id)
+      if (user?.id) {
+        markLegacyStorageOwner(user.id)
+        patchUserDataCloudCache(user.id, key, normalized)
+      }
 
       if (user && isConfigured && supabase && cloudReady) {
         pendingCloudPersistRef.current = null

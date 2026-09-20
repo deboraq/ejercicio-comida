@@ -1,5 +1,5 @@
 import { mergeStorageArrays } from '../hooks/useLocalStorage'
-import { normalizarHidratacionPorDia } from './hidratacionStorage'
+import { normalizarHidratacionPorDia, mergeHidratacionPorDia } from './hidratacionStorage'
 import { normalizarPesoHistorial } from './pesoStorage'
 import { normalizarMedidasHistorial } from './medidasStorage'
 import { normalizarSuplementosPorDia } from './suplementosStorage'
@@ -48,7 +48,7 @@ export function mergeCloudAndLocal(key, localNorm, fromCloud, initial) {
       const cloudMap = normalizarHidratacionPorDia(fromCloud)
       const localMap = normalizarHidratacionPorDia(localNorm)
       if (isStorageInitial(localMap, initial) && Object.keys(cloudMap).length > 0) return cloudMap
-      return { ...cloudMap, ...localMap }
+      return mergeHidratacionPorDia(cloudMap, localMap)
     }
     return mergePlainObjects(fromCloud, localNorm, initial)
   }
