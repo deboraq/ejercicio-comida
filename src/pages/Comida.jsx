@@ -8,7 +8,6 @@ import { MOMENTOS_COMIDA, MOMENTO_ICON, normalizarMomento } from '../utils/comid
 import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias, getRachaDias } from '../utils/estadisticas'
 import ComidaTitanium from '../components/ComidaTitanium'
 import PlanMes1Panel from '../components/PlanMes1Panel'
-import { planMes1TieneInicio } from '../utils/planMes1'
 import { resumenPlanAlimenticioHoy } from '../utils/planPropio'
 import { nuevoIdRegistro } from '../utils/ids'
 import {
@@ -934,7 +933,6 @@ export default function Comida() {
     || consejosSemanales.find((c) => c.tipo === 'nutricion')?.texto
     || tipNutricionFallback
 
-  const planActivo = planMes1TieneInicio(config)
   const planResumen = useMemo(() => resumenPlanAlimenticioHoy(config, planPropio), [config, planPropio])
 
   const onRegistrarDesdePlan = (pre) => {
@@ -1068,7 +1066,6 @@ export default function Comida() {
           }}
           comidaFavoritos={comidaFavoritos}
           onToggleFavoritoComida={(nombre) => toggleFavoritoComida(setComidaFavoritos, nombre)}
-          planActivo={planActivo}
           planResumen={planResumen}
           planPanel={
             <PlanMes1Panel
