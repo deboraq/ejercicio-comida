@@ -1012,6 +1012,165 @@
   margin-top: 0.25rem;
 }
 
+.plan-kanban-plan-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.75rem;
+  width: 100%;
+}
+
+.plan-kanban-activa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.plan-kanban-activa-label {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.plan-kanban-activa-select {
+  position: relative;
+  flex: 1 1 8rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.plan-kanban-activa-select select {
+  width: 100%;
+  appearance: none;
+  padding: 0.48rem 1.85rem 0.48rem 0.65rem;
+  border-radius: 9px;
+  border: 1px solid rgba(51, 65, 85, 0.65);
+  background: rgba(15, 23, 42, 0.85);
+  color: #f1f5f9;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plan-kanban-activa-select select:disabled {
+  opacity: 0.72;
+  cursor: default;
+}
+
+.plan-kanban-activa-select::after {
+  content: '';
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid #64748b;
+  border-bottom: 2px solid #64748b;
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+}
+
+.plan-kanban-btn-nuevo {
+  flex: 0 0 auto;
+  padding: 0.48rem 0.85rem;
+  border-radius: 9px;
+  border: 1px solid rgba(71, 85, 105, 0.55);
+  background: rgba(30, 41, 59, 0.75);
+  color: #e2e8f0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.plan-kanban-btn-nuevo:hover {
+  border-color: rgba(59, 130, 246, 0.45);
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.plan-kanban-btn-eliminar {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.48rem 0.65rem;
+  border-radius: 9px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: rgba(127, 29, 29, 0.15);
+  color: #fca5a5;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.plan-kanban-btn-eliminar:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.55);
+  background: rgba(153, 27, 27, 0.28);
+}
+
+.plan-kanban-btn-eliminar:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.plan-kanban-btn-eliminar-label {
+  white-space: nowrap;
+}
+
+.plan-kanban-create-section {
+  padding: 0.65rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(51, 65, 85, 0.45);
+  background: rgba(15, 23, 35, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.plan-kanban-create-section--propio {
+  border-color: rgba(168, 85, 247, 0.28);
+  background: rgba(88, 28, 135, 0.08);
+}
+
+.plan-kanban-create-section-kicker {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.plan-kanban-create-sys-name {
+  font-size: 0.92rem;
+  font-weight: 750;
+  color: #f1f5f9;
+  line-height: 1.25;
+}
+
+.plan-kanban-create-row--tight {
+  margin-top: 0.15rem;
+}
+
+.plan-kanban-create-btn--wide {
+  width: 100%;
+  justify-content: center;
+}
+
+.plan-kanban-create-btn--propio {
+  border-color: rgba(192, 132, 252, 0.45);
+  background: rgba(88, 28, 135, 0.22);
+  color: #f3e8ff;
+}
+
+.plan-kanban-create-btn--propio:hover {
+  border-color: rgba(216, 180, 254, 0.55);
+  background: rgba(107, 33, 168, 0.32);
+}
+
 .plan-kanban-create-bar {
   margin-bottom: 0.85rem;
   padding: 0.65rem 0.75rem;
@@ -1066,7 +1225,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  align-items: center;
+  align-items: stretch;
+  flex-direction: column;
 }
 
 .plan-kanban-create-btn {

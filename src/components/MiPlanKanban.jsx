@@ -45,6 +45,15 @@ import {
 } from '../utils/planMes1Kanban'
 import { totalesMacrosItems } from '../utils/planOpcionComida'
 import { payloadSyncPlanToggle, planRefRegistro, planRefsChecksDia } from '../utils/planRegistroSync'
+import {
+  aplicarSnapshot,
+  entradaPlanVacio,
+  etiquetaOrigenPlanBiblioteca,
+  newPlanNutricionId,
+  nombrePlanGuiadoSistema,
+  snapshotFromRuntime,
+  upsertPlanEnLista,
+} from '../utils/planesNutricion'
 import '../pages/PlanMes1.css'
 
 function sexoLabel(sexo) {
@@ -113,9 +122,12 @@ export default function MiPlanKanban({
     extras: {},
   })
 
+  const [planesNutricion, setPlanesNutricion] = useStorage('planesNutricion', [])
+  const [planNutricionActivoId, setPlanNutricionActivoId] = useStorage('planNutricionActivoId', '')
   const [semanaActiva, setSemanaActiva] = useState(1)
   const [editorAbierto, setEditorAbierto] = useState(false)
   const [editDiaPlan, setEditDiaPlan] = useState(1)
+  const [panelNuevoPlan, setPanelNuevoPlan] = useState(false)
 
   useEffect(() => {
     const first = (semanaActiva - 1) * 7 + 1
@@ -135,11 +147,36 @@ export default function MiPlanKanban({
   const esquema = esquemaPlanActivo(config)
   const objetivoLabel = OBJETIVOS.find((o) => o.value === config?.objetivo)?.label
   const metaTitulo =
-    labelVariantePlan(config?.planMes1Variante || variantePlanDesdeObjetivo(config?.objetivo))
-    + (objetivoLabel ? ` / ${objetivoLabel.toLowerCase()}` : '')
+    objetivoLabel
+    || labelVariantePlan(config?.planMes1Variante || variantePlanDesdeObjetivo(config?.objetivo))
+
+  useEffect(() => {
+    if (!planMes1TieneInicio(config)) return
+    if (planesNutricion?.length > 0) return
+    const id = config?.planNutricionId || newPlanNutricionId()
+    const snap = snapshotFromRuntime(config, planPropio, estado, id)
+    setPlanesNutricion([snap])
+    setPlanNutricionActivoId(id)
+    if (!config?.planNutricionId) {
+      setConfig((c) => ({ ...c, planNutricionId: id }))
+    }
+    // Migración única: plan existente → biblioteca
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planesNutricion?.length, config?.planMes1Inicio])
 
   const diasSemana = useMemo(() => diasDeSemanaPlan(semanaActiva), [semanaActiva])
   const listoGenerar = perfilListoParaGenerarPlan(config)
+  const nombrePlanSistema = useMemo(() => nombrePlanGuiadoSistema(config), [config])
+
+  const estadoVacio = { checks: {}, omitidos: {}, extras: {} }
+
+  const persistirPlanActivoEnBiblioteca = () => {
+    if (!planMes1TieneInicio(config)) return planesNutricion || []
+    const id = planNutricionActivoId || config?.planNutricionId
+    if (!id) return planesNutricion || []
+    const snap = snapshotFromRuntime(config, planPropio, estado, id)
+    return upsertPlanEnLista(planesNutricion, snap)
+  }
 
   const confirmarReemplazoPlan = () => {
     if (!tienePlan) return true
@@ -148,31 +185,231 @@ export default function MiPlanKanban({
     )
   }
 
+  const promptNombrePlan = (sugerido) => {
+    const nombre = window.prompt('Nombre del plan', sugerido)
+    if (nombre === null) return null
+    return nombre.trim() || sugerido
+  }
+
+  const cambiarPlanActivo = (id) => {
+    if (!id || id === planNutricionActivoId) return
+    const entry = (planesNutricion || []).find((p) => p.id === id)
+    if (!entry) return
+    const lista = persistirPlanActivoEnBiblioteca()
+    setPlanesNutricion(lista)
+    const { configPatch, planPropio: pp, estado: est } = aplicarSnapshot(entry)
+    setConfig((c) => ({ ...c, ...configPatch }))
+    setPlanPropio(pp)
+    setEstado(est)
+    setPlanNutricionActivoId(id)
+    setSemanaActiva(1)
+    setEditorAbierto(entry.origen === 'propio')
+    setPanelNuevoPlan(false)
+  }
+
+  const registrarPlanNuevoEnBiblioteca = (id, nombre, origen, hoy, ppData) => {
+    const listaBase = persistirPlanActivoEnBiblioteca()
+    const entry = entradaPlanVacio(id, nombre, origen, hoy, config, ppData, estadoVacio)
+    setPlanesNutricion(upsertPlanEnLista(listaBase, entry))
+    setPlanNutricionActivoId(id)
+  }
+
   const activarPlanGuiado = () => {
     if (!listoGenerar) {
       window.alert('Completá sexo, peso y objetivo en Config para crear el plan guiado de 30 días.')
       return
     }
     if (!confirmarReemplazoPlan()) return
+    const nombre = nombrePlanSistema
     const hoy = fechaToISO(new Date())
-    setEstado({ checks: {}, omitidos: {}, extras: {} })
-    setConfig((c) => ({ ...c, ...buildActivacionPlanMes1(c, hoy) }))
+    const id = newPlanNutricionId()
+    setEstado(estadoVacio)
+    setPlanPropio(null)
+    setConfig((c) => ({ ...c, ...buildActivacionPlanMes1(c, hoy), planNutricionId: id }))
+    registrarPlanNuevoEnBiblioteca(id, nombre, 'guia', hoy, null)
     setSemanaActiva(1)
     setEditorAbierto(false)
+    setPanelNuevoPlan(false)
   }
 
-  const activarPlanPropio = (desdeGuia = false) => {
+  const crearPlanPropio = (desdeGuia = false) => {
     if (!listo) {
       window.alert('Completá sexo y peso en Config (o arriba en tu perfil) antes de crear el plan.')
       return
     }
     if (!confirmarReemplazoPlan()) return
+    const sugerido = 'Mi plan propio'
+    const nombre = promptNombrePlan(sugerido)
+    if (nombre === null) return
     const hoy = fechaToISO(new Date())
-    setPlanPropio(desdeGuia ? crearPlanPropioDesdeGuia() : crearPlantillaPlanPropioVacia())
-    setEstado({ checks: {}, omitidos: {}, extras: {} })
-    setConfig((c) => ({ ...c, ...buildActivacionPlanPropio(c, hoy) }))
+    const pp = desdeGuia ? crearPlanPropioDesdeGuia() : crearPlantillaPlanPropioVacia(nombre)
+    if (nombre && pp.nombre !== nombre) pp.nombre = nombre
+    const id = newPlanNutricionId()
+    setPlanPropio(pp)
+    setEstado(estadoVacio)
+    setConfig((c) => ({ ...c, ...buildActivacionPlanPropio(c, hoy), planNutricionId: id }))
+    registrarPlanNuevoEnBiblioteca(id, nombre, 'propio', hoy, pp)
     setSemanaActiva(1)
     setEditorAbierto(true)
+    setPanelNuevoPlan(false)
+  }
+
+  const eliminarPlanBiblioteca = () => {
+    const lista = persistirPlanActivoEnBiblioteca()
+    const activoId = planNutricionActivoId || config?.planNutricionId
+    const entry = lista.find((p) => p.id === activoId)
+    if (!entry) return
+    if (
+      !window.confirm(
+        `¿Eliminar "${entry.nombre}"?\n\nSe borra de tu lista. Las marcas de ese plan no se recuperan.`,
+      )
+    ) {
+      return
+    }
+    const nextList = lista.filter((p) => p.id !== activoId)
+    setPlanesNutricion(nextList)
+    if (nextList.length === 0) {
+      setConfig((c) => ({
+        ...c,
+        planMes1Inicio: '',
+        planNutricionId: '',
+        planMes1Origen: 'guia',
+      }))
+      setPlanPropio(null)
+      setEstado(estadoVacio)
+      setPlanNutricionActivoId('')
+      setEditorAbierto(false)
+      setPanelNuevoPlan(false)
+      return
+    }
+    const otro = nextList[0]
+    const { configPatch, planPropio: pp, estado: est } = aplicarSnapshot(otro)
+    setConfig((c) => ({ ...c, ...configPatch }))
+    setPlanPropio(pp)
+    setEstado(est)
+    setPlanNutricionActivoId(otro.id)
+    setSemanaActiva(1)
+    setEditorAbierto(otro.origen === 'propio')
+  }
+
+  const bloquePlanSistema = () => (
+    <div className="plan-kanban-create-section">
+      <p className="plan-kanban-create-section-kicker mb-0">Plan del sistema</p>
+      <p className="plan-kanban-create-sys-name mb-0">{nombrePlanSistema}</p>
+      <p className="plan-kanban-create-bar-sub mb-0">
+        Menú de 30 días según tu objetivo y perfil en Config.
+      </p>
+      <button
+        type="button"
+        className="plan-kanban-create-btn plan-kanban-create-btn--primary plan-kanban-create-btn--wide"
+        onClick={activarPlanGuiado}
+        disabled={!listoGenerar}
+        title={
+          listoGenerar
+            ? 'Usar este menú guiado'
+            : 'Completá sexo, peso y objetivo en Config'
+        }
+      >
+        Usar plan del sistema
+      </button>
+    </div>
+  )
+
+  const bloqueCrearPlanPropio = () => (
+    <div className="plan-kanban-create-section plan-kanban-create-section--propio">
+      <p className="plan-kanban-create-section-kicker mb-0">Tu menú</p>
+      <p className="plan-kanban-create-bar-sub mb-0">
+        Armá comidas a tu gusto (dos opciones por comida). Podés empezar vacío o copiar el menú sugerido.
+      </p>
+      <div className="plan-kanban-create-row plan-kanban-create-row--tight">
+        <button
+          type="button"
+          className="plan-kanban-create-btn plan-kanban-create-btn--propio"
+          onClick={() => crearPlanPropio(false)}
+          disabled={!listo}
+        >
+          + Crear plan
+        </button>
+        <button
+          type="button"
+          className="plan-kanban-create-btn plan-kanban-create-btn--soft"
+          onClick={() => crearPlanPropio(true)}
+          disabled={!listo}
+        >
+          Crear plan desde menú sugerido
+        </button>
+      </div>
+    </div>
+  )
+
+  const filasCrearPlan = () => (
+    <>
+      {bloquePlanSistema()}
+      {bloqueCrearPlanPropio()}
+      <Link to="/config#plan-desde-objetivo" className="plan-kanban-create-link">
+        Más opciones en Config
+      </Link>
+    </>
+  )
+
+  const selectorPlanActivo = () => {
+    const lista = planesNutricion?.length
+      ? planesNutricion
+      : planNutricionActivoId || config?.planNutricionId
+        ? [
+            snapshotFromRuntime(
+              config,
+              planPropio,
+              estado,
+              planNutricionActivoId || config?.planNutricionId,
+            ),
+          ]
+        : []
+    const activoId = planNutricionActivoId || config?.planNutricionId || lista[0]?.id || ''
+    const puedeEliminar = lista.length > 0
+
+    return (
+      <div className="plan-kanban-plan-bar">
+        <div className="plan-kanban-activa">
+          <span className="plan-kanban-activa-label" id="plan-nutricion-activo-label">
+            Plan activo:
+          </span>
+          <div className="plan-kanban-activa-select">
+            <select
+              id="plan-nutricion-activo-select"
+              aria-labelledby="plan-nutricion-activo-label"
+              value={activoId}
+              onChange={(e) => cambiarPlanActivo(e.target.value)}
+              disabled={lista.length <= 1}
+            >
+              {lista.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre} · {etiquetaOrigenPlanBiblioteca(p)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="plan-kanban-btn-eliminar"
+          disabled={!puedeEliminar}
+          onClick={eliminarPlanBiblioteca}
+          title="Eliminar plan de la lista"
+          aria-label="Eliminar plan"
+        >
+          <IconTrash />
+          <span className="plan-kanban-btn-eliminar-label">Eliminar</span>
+        </button>
+        <button
+          type="button"
+          className="plan-kanban-btn-nuevo"
+          onClick={() => setPanelNuevoPlan((v) => !v)}
+        >
+          {panelNuevoPlan ? 'Cerrar' : '+ Agregar plan'}
+        </button>
+      </div>
+    )
   }
 
   const accionesCrearPlan = (modo = 'empty') => (
@@ -182,40 +419,19 @@ export default function MiPlanKanban({
     >
       {modo === 'bar' ? (
         <>
-          <p className="plan-kanban-create-bar-title mb-0">Nuevo plan</p>
-          <p className="plan-kanban-create-bar-sub mb-0">
-            Reiniciá desde hoy con otro menú. Las marcas del tablero se limpian.
-          </p>
+          {selectorPlanActivo()}
+          {panelNuevoPlan ? (
+            <>
+              <p className="plan-kanban-create-bar-sub mb-0">
+                Agregá otro plan o cambiá de menú. Al crear uno nuevo, el tablero empieza de cero desde hoy.
+              </p>
+              {filasCrearPlan()}
+            </>
+          ) : null}
         </>
-      ) : null}
-      <div className="plan-kanban-create-row">
-        <button
-          type="button"
-          className="plan-kanban-create-btn plan-kanban-create-btn--primary"
-          onClick={activarPlanGuiado}
-          disabled={!listoGenerar}
-          title={
-            listoGenerar
-              ? 'Menú de 30 días según tu objetivo'
-              : 'Completá sexo, peso y objetivo en Config'
-          }
-        >
-          Plan guiado (30 días)
-        </button>
-        <button type="button" className="plan-kanban-create-btn" onClick={() => activarPlanPropio(false)}>
-          Plan propio (vacío)
-        </button>
-        <button
-          type="button"
-          className="plan-kanban-create-btn plan-kanban-create-btn--soft"
-          onClick={() => activarPlanPropio(true)}
-        >
-          Plan propio desde menú sugerido
-        </button>
-        <Link to="/config#plan-desde-objetivo" className="plan-kanban-create-link">
-          Más opciones en Config
-        </Link>
-      </div>
+      ) : (
+        filasCrearPlan()
+      )}
     </div>
   )
 
@@ -518,8 +734,8 @@ export default function MiPlanKanban({
       <div className="plan-m1-embedded-empty">
         <h2 className="plan-m1-section-title">Mi plan</h2>
         <p className="plan-m1-sub mb-3">
-          Elegí un <strong>plan guiado</strong> de 30 días según tu objetivo o armá un{' '}
-          <strong>plan propio</strong> con tus comidas (dos opciones por comida). Todo desde acá, sin ir a Config.
+          Abajo ves el nombre exacto del <strong>plan del sistema</strong> o usá <strong>+ Crear plan</strong> para
+          armar el tuyo.
         </p>
         {accionesCrearPlan('empty')}
         {!listoGenerar && listo && (

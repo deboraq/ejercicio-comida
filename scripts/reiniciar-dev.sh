@@ -8,5 +8,5 @@ for p in $(lsof -t -iTCP:5173-5180 -sTCP:LISTEN 2>/dev/null); do
 done
 pkill -9 -f "vite" 2>/dev/null || true
 sleep 1
-echo "Iniciando npm run dev en http://127.0.0.1:5173 ..."
-exec npm run dev -- --host 127.0.0.1 --port 5173
+echo "Iniciando servidor (PC + celular en la misma Wi‑Fi)..."
+exec npm run dev -- --host --port 5173
