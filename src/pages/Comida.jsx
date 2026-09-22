@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useStorage } from '../hooks/useStorage'
 import { getConsejos, buildContextoDia, buildContextoSemana } from '../utils/consejos'
 import { formatearFecha, fechaToISO, fechaSoloDia } from '../utils/calorias'
@@ -6,7 +7,16 @@ import { REFERENCIA_ALIMENTOS, buscarAlimentos } from '../utils/referenciaComida
 import { MOMENTOS_COMIDA, MOMENTO_ICON, normalizarMomento } from '../utils/comidaMomentos'
 import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias, getRachaDias } from '../utils/estadisticas'
 import ComidaTitanium from '../components/ComidaTitanium'
+import PlanMes1Panel from '../components/PlanMes1Panel'
+import { planMes1TieneInicio } from '../utils/planMes1'
+import { resumenPlanAlimenticioHoy } from '../utils/planPropio'
 import { nuevoIdRegistro } from '../utils/ids'
+import {
+  aplicarBatchSyncPlan,
+  removeRegistroPlan,
+  removeRegistrosPlanMany,
+  upsertRegistroPlan,
+} from '../utils/planRegistroSync'
 import { exportarComidasCsv, exportarComidasExcel, exportarComidasJson } from '../utils/exportData'
 import { toggleFavoritoComida } from '../utils/comidaFavoritos'
 import { vasosHidratacionDia, actualizarVasosHidratacion } from '../utils/hidratacionStorage'
@@ -362,12 +372,15 @@ function ListaComidaAgrupada({ bloques, onEliminar, onEditar }) {
 }
 
 export default function Comida() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [registros, setRegistros] = useStorage('comida', [])
   const [ejercicios] = useStorage('ejercicios', [])
   const [registrosRutina] = useStorage('rutinaPesos', [])
   const [historialMedidasRaw] = useStorage('medidasHistorial', [])
   const historialMedidas = normalizarMedidasHistorial(asArray(historialMedidasRaw))
   const [config] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
+  const [planPropio] = useStorage('planPropio', null)
   const [comidaFavoritos, setComidaFavoritos] = useStorage('comidaFavoritos', [])
   const [comida, setComida] = useState('Desayuno')
   const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
@@ -436,6 +449,59 @@ export default function Comida() {
     setEntradaManual(false)
     setManualForm(MANUAL_FORM_VACIO)
   }
+
+  const aplicarPlanPrefill = useCallback((pre) => {
+    if (!pre) return
+    const momento = normalizarMomento(pre.momento) || pre.momento || 'Desayuno'
+    const hrs = horaInputDesdeDate()
+    setComida(momento)
+    setNotas(pre.notas ? String(pre.notas) : '')
+    setHoraRegistro(hrs)
+    setModoPanel('agregar')
+    setRegistroEnEdicionId(null)
+    setPanelPulse({ at: Date.now(), modo: 'agregar' })
+    const sugs = Array.isArray(pre.sugerencias) ? pre.sugerencias : []
+    if (sugs.length > 0) {
+      const batch = sugs.map((ref) =>
+        buildPendienteDesdeItem(buildItemDesdeReferencia(ref, 1), momento, hrs, ref),
+      )
+      setPendientes(batch)
+      setItems([])
+      setReferenciaActiva(null)
+      setBusquedaRef('')
+      setEntradaManual(false)
+      setManualForm(MANUAL_FORM_VACIO)
+    } else if (pre.textoPlan) {
+      setPendientes([])
+      setReferenciaActiva(null)
+      setItems([])
+      setBusquedaRef('')
+      setEntradaManual(true)
+      setManualForm({
+        ...MANUAL_FORM_VACIO,
+        descripcion: String(pre.textoPlan).slice(0, 240),
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (location.state?.vistaComida === 'plan') {
+      setVistaComida('plan')
+      const abrirEditor = location.state?.abrirEditorPlan
+      navigate('/comida', {
+        replace: true,
+        state: abrirEditor ? { abrirEditorPlan: true } : null,
+      })
+    }
+  }, [location.state, navigate])
+
+  useEffect(() => {
+    const pre = location.state?.planPrefill
+    if (!pre) return
+    aplicarPlanPrefill(pre)
+    setVistaComida('hoy')
+    navigate('/comida', { replace: true, state: null })
+  }, [location.state, navigate, aplicarPlanPrefill])
 
   const actualizarManual = (field, value) => {
     setManualForm((prev) => ({ ...prev, [field]: value }))
@@ -634,6 +700,9 @@ export default function Comida() {
     if (!batch.length) return
     const fecha = fechaInput || hoy
     const notasLote = notas.trim()
+    const registroPrevio = registroEnEdicionId
+      ? registros.find((r) => r.id === registroEnEdicionId)
+      : null
     const nuevos = batch.map((p) => ({
       id: nuevoIdRegistro(),
       comida: p.comida,
@@ -647,6 +716,7 @@ export default function Comida() {
       hora: p.hora,
       notas: notasLote,
       fecha,
+      ...(registroPrevio?.planRef ? { planRef: registroPrevio.planRef } : {}),
     }))
     const base = registroEnEdicionId
       ? registros.filter((r) => r.id !== registroEnEdicionId)
@@ -795,6 +865,49 @@ export default function Comida() {
     setPanelPulse({ at: Date.now(), modo: 'editar' })
   }
 
+  const syncPlanRegistro = useCallback(
+    (payload) => {
+      if (!payload?.type) return
+
+      if (payload.type === 'remove') {
+        setRegistros((prev) => removeRegistroPlan(prev, payload.planRef))
+        return
+      }
+
+      if (payload.type === 'removeMany') {
+        setRegistros((prev) => removeRegistrosPlanMany(prev, payload.planRefs || []))
+        return
+      }
+
+      if (payload.type === 'batch') {
+        setRegistros((prev) => aplicarBatchSyncPlan(prev, payload.ops || []))
+        return
+      }
+
+      if (payload.type === 'upsert' && payload.planRef && payload.registro) {
+        setRegistros((prev) => {
+          const next = upsertRegistroPlan(prev, payload.planRef, payload.registro)
+          if (payload.abrirEdicion) {
+            const saved = next.find((r) => r.planRef === payload.planRef)
+            if (saved) {
+              queueMicrotask(() => {
+                editarRegistro(saved)
+              })
+            }
+          }
+          return next
+        })
+        if (payload.registro?.fecha) {
+          setFechaInput(payload.registro.fecha)
+        }
+        if (payload.abrirEdicion) {
+          setVistaComida('hoy')
+        }
+      }
+    },
+    [editarRegistro],
+  )
+
   const toggleDiaHistorial = (fecha) => {
     setDiasExpandidos((prev) => {
       const next = new Set(prev)
@@ -820,6 +933,17 @@ export default function Comida() {
   const tipNutricion = consejosDiarios.find((c) => c.tipo === 'nutricion')?.texto
     || consejosSemanales.find((c) => c.tipo === 'nutricion')?.texto
     || tipNutricionFallback
+
+  const planActivo = planMes1TieneInicio(config)
+  const planResumen = useMemo(() => resumenPlanAlimenticioHoy(config, planPropio), [config, planPropio])
+
+  const onRegistrarDesdePlan = (pre) => {
+    if (pre?.fecha && /^\d{4}-\d{2}-\d{2}$/.test(pre.fecha)) {
+      setFechaInput(pre.fecha)
+    }
+    aplicarPlanPrefill(pre)
+    cambiarVistaComida('hoy')
+  }
 
   const onToggleVaso = (index) => {
     const n = index + 1
@@ -944,6 +1068,16 @@ export default function Comida() {
           }}
           comidaFavoritos={comidaFavoritos}
           onToggleFavoritoComida={(nombre) => toggleFavoritoComida(setComidaFavoritos, nombre)}
+          planActivo={planActivo}
+          planResumen={planResumen}
+          planPanel={
+            <PlanMes1Panel
+              embedded
+              onRegistrarComida={onRegistrarDesdePlan}
+              onSyncPlanRegistro={syncPlanRegistro}
+              abrirEditorInicial={Boolean(location.state?.abrirEditorPlan)}
+            />
+          }
         />
       </div>
     </section>

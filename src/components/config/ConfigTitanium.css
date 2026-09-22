@@ -432,6 +432,26 @@
   box-shadow: var(--app-grad-inset), var(--app-grad-shadow);
 }
 
+.cfg-ti-plan-generar {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.05rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.12), rgba(15, 23, 42, 0.6));
+  border: 1px solid rgba(45, 212, 191, 0.25);
+}
+
+.cfg-ti-plan-generar .cfg-ti-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.cfg-ti-plan-generar .cfg-ti-card-sub {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .cfg-ti-objetivos-head {
   display: flex;
   flex-wrap: wrap;

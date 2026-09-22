@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useStorage } from '../hooks/useStorage'
 import { useConfigExportData } from '../hooks/useConfigExportData'
 import { useAuth } from '../context/AuthContext'
@@ -8,6 +8,22 @@ import { updateMyFullName } from '../lib/profeDb'
 import { OBJETIVOS } from '../utils/consejos'
 import { SUPLEMENTOS } from '../utils/suplementos'
 import { buildPerfilCorporal, SEXOS, NIVELES_ACTIVIDAD } from '../utils/composicion'
+import { fechaToISO } from '../utils/calorias'
+import {
+  buildActivacionPlanMes1,
+  labelVariantePlan,
+  perfilListoParaGenerarPlan,
+  perfilPlanListo,
+  planMes1TieneInicio,
+  variantePlanDesdeObjetivo,
+} from '../utils/planMes1'
+import {
+  buildActivacionPlanPropio,
+  crearPlantillaPlanPropioVacia,
+  crearPlanPropioDesdeGuia,
+  esPlanPropio,
+  labelOrigenPlan,
+} from '../utils/planPropio'
 import { normalizarPesoHistorial, sembrarPesoDesdeConfig } from '../utils/pesoStorage'
 import { normalizarMedidasHistorial } from '../utils/medidasStorage'
 import { asArray } from '../hooks/useLocalStorage'
@@ -43,6 +59,7 @@ const META_HINTS = {
 }
 
 export default function Config() {
+  const navigate = useNavigate()
   const { user, signOut, isConfigured } = useAuth()
   const { profile, profileError, loading: profileLoading, refresh: refreshProfile } = useMyProfile()
   const [nombrePerfil, setNombrePerfil] = useState('')
@@ -94,7 +111,13 @@ export default function Config() {
     metaCarbohidratos: '',
     metaGrasa: '',
     suplementosActivos: SUPLEMENTOS.map((s) => s.id),
+    planMes1Inicio: '',
+    planMes1Variante: 'bajar_grasa',
+    planMes1CincoComidas: true,
+    planMes1Objetivo: '',
+    planMes1Origen: 'guia',
   })
+  const [, setPlanPropio] = useStorage('planPropio', null)
 
   const { counts: exportCounts, loadingBundle: exportLoading, ensureBundle } = useConfigExportData()
   const totalComidas = exportCounts.comidas
@@ -204,6 +227,29 @@ export default function Config() {
   const mostrarSeccionesAlumno = !user || !isConfigured || profile?.role !== 'profe'
   const objetivoActivo = OBJETIVOS.find((o) => o.value === config.objetivo)
   const detalleObjetivo = OBJETIVO_DETALLE[config.objetivo]
+  const planListoGenerar = perfilListoParaGenerarPlan(config)
+  const planListoPropio = perfilPlanListo(config)
+  const planActivo = planMes1TieneInicio(config)
+  const varianteSugeridaLabel = labelVariantePlan(variantePlanDesdeObjetivo(config.objetivo))
+
+  const crearPlanSegunObjetivo = () => {
+    if (!planListoGenerar) return
+    const hoy = fechaToISO(new Date())
+    setConfig((c) => ({ ...c, ...buildActivacionPlanMes1(c, hoy) }))
+    navigate('/comida', { state: { vistaComida: 'plan' } })
+  }
+
+  const crearPlanPropio = (desdeGuia = false) => {
+    if (!planListoPropio) return
+    const hoy = fechaToISO(new Date())
+    setPlanPropio(desdeGuia ? crearPlanPropioDesdeGuia() : crearPlantillaPlanPropioVacia())
+    setConfig((c) => ({ ...c, ...buildActivacionPlanPropio(c, hoy) }))
+    navigate('/comida', { state: { vistaComida: 'plan', abrirEditorPlan: true } })
+  }
+
+  const abrirPlanEnComida = () => {
+    navigate('/comida', { state: { vistaComida: 'plan' } })
+  }
 
   const etiquetaRol = (role) => {
     if (role === 'admin') return 'Administrador'
@@ -389,6 +435,69 @@ export default function Config() {
                 Al cambiar tu objetivo, las sugerencias calóricas y macros se recalculan automáticamente según tu perfil.
                 {objetivoActivo ? ` Ahora: ${objetivoActivo.label.toLowerCase()}.` : ''}
               </p>
+            </section>
+
+            <section className="cfg-ti-plan-generar" id="plan-desde-objetivo">
+              <h2 className="cfg-ti-card-title mb-2">Tu plan en Comida</h2>
+              {planActivo ? (
+                <>
+                  <p className="cfg-ti-card-sub mb-3">
+                    Tenés un plan activo desde <strong>{config.planMes1Inicio}</strong>
+                    {' · '}
+                    <strong>{labelOrigenPlan(config)}</strong>
+                    {!esPlanPropio(config) && config.planMes1Variante ? (
+                      <> · {labelVariantePlan(config.planMes1Variante)}</>
+                    ) : null}
+                    . El menú está en <strong>Mi plan</strong> en Comida.
+                  </p>
+                  <div className="buttons are-small">
+                    <button type="button" className="cfg-ti-btn-primary" onClick={abrirPlanEnComida}>
+                      Abrir Mi plan
+                    </button>
+                    <button
+                      type="button"
+                      className="button is-light"
+                      onClick={crearPlanSegunObjetivo}
+                      title="Reinicia el día 1 hoy según tu objetivo actual"
+                    >
+                      Crear un plan de nuevo
+                    </button>
+                  </div>
+                </>
+              ) : planListoGenerar || planListoPropio ? (
+                <>
+                  {planListoGenerar && (
+                    <>
+                      <p className="cfg-ti-card-sub mb-3">
+                        <strong>Plan guiado:</strong> menú de 30 días según tu objetivo ({varianteSugeridaLabel}).
+                      </p>
+                      <button type="button" className="cfg-ti-btn-primary mb-3" onClick={crearPlanSegunObjetivo}>
+                        Crear plan guiado
+                      </button>
+                    </>
+                  )}
+                  {planListoPropio && (
+                    <>
+                      <p className="cfg-ti-card-sub mb-2">
+                        <strong>Plan propio:</strong> definís vos cada comida con dos opciones por día (30 días).
+                      </p>
+                      <div className="buttons are-small mb-0">
+                        <button type="button" className="button is-link" onClick={() => crearPlanPropio(false)}>
+                          Crear plan propio vacío
+                        </button>
+                        <button type="button" className="button is-light" onClick={() => crearPlanPropio(true)}>
+                          Copiar menú sugerido y editar
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <p className="cfg-ti-objetivo-hint mb-0">
+                  Para un plan guiado: objetivo, peso y sexo. Para un plan propio alcanza con{' '}
+                  <strong>peso</strong> y <strong>sexo biológico</strong>.
+                </p>
+              )}
             </section>
 
             <div className="cfg-ti-grid">
