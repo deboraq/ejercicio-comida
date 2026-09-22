@@ -146,7 +146,7 @@ const ETIQUETA_CATEGORIA = {
   Fiambres: 'Fiambres',
   'Snacks / Bebidas': 'Snack',
   Personalizado: 'Personalizado',
-  'Plan alimenticio': 'Plan TMV',
+  'Plan alimenticio': 'Plan',
   'Plan alimenticio / Hortalizas': 'Hortaliza plan',
   'Plan alimenticio / Ensaladas': 'Ensalada plan',
   'Plan alimenticio / Recetas': 'Receta plan',
@@ -831,6 +831,9 @@ export default function ComidaTitanium({
   objetivo,
   comidaFavoritos = [],
   onToggleFavoritoComida,
+  planActivo = false,
+  planResumen = null,
+  planPanel = null,
 }) {
   const itemsPorMomento = useMemo(() => {
     const map = {}
@@ -1078,6 +1081,11 @@ export default function ComidaTitanium({
                 ›
               </button>
             </div>
+            {planActivo && (
+              <button type="button" className="cd-btn cd-btn--ghost" onClick={() => setVistaComida?.('plan')}>
+                Mi plan
+              </button>
+            )}
             <button type="button" className="cd-btn cd-btn--primary" onClick={() => agregarMomento(comida || 'Desayuno')}>
               <span className="cd-btn-label cd-btn-label--long">+ Registrar comida rápida</span>
               <span className="cd-btn-label cd-btn-label--short">+ Comida rápida</span>
@@ -1094,6 +1102,16 @@ export default function ComidaTitanium({
             onClick={() => setVistaComida?.('hoy')}
           >
             Registro de Hoy
+          </button>
+          <button
+            type="button"
+            className={`cd-module-tab${vistaComida === 'plan' ? ' is-active' : ''}`}
+            onClick={() => setVistaComida?.('plan')}
+          >
+            Mi plan
+            {planResumen?.estado === 'activo' && (
+              <span className="cd-module-tab-badge">D{planResumen.dia}</span>
+            )}
           </button>
           <button
             type="button"
@@ -1140,9 +1158,23 @@ export default function ComidaTitanium({
         </div>
       )}
 
-      <div className={`cd-layout${vistaComida === 'historial' ? ' cd-layout--historial' : ''}`}>
+      {planResumen?.estado === 'activo' && vistaComida === 'hoy' && (
+        <div className="cd-plan-strip">
+          <p className="mb-0">
+            <strong>Tu plan</strong> · día {planResumen.dia} de {planResumen.total}
+            {planResumen.tip ? ` — ${planResumen.tip.slice(0, 80)}…` : ''}
+          </p>
+          <button type="button" className="cd-btn cd-btn--ghost cd-btn--sm" onClick={() => setVistaComida?.('plan')}>
+            Ver menú del día
+          </button>
+        </div>
+      )}
+
+      <div className={`cd-layout${vistaComida === 'historial' ? ' cd-layout--historial' : ''}${vistaComida === 'plan' ? ' cd-layout--plan' : ''}`}>
         <div className="cd-main">
-          {vistaComida === 'hoy' ? (
+          {vistaComida === 'plan' ? (
+            <section className="cd-plan-embed plan-mes1-page">{planPanel}</section>
+          ) : vistaComida === 'hoy' ? (
             <>
           <section
             id="cd-balance"

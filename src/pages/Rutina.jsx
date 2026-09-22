@@ -823,7 +823,7 @@ export default function Rutina() {
 
               <button
                 type="button"
-                className="rut-ico-btn"
+                className="rut-ico-btn rut-ico-btn--delete"
                 disabled={origenRutinas !== 'propias' || listaRutinas.length <= 1}
                 onClick={() => window.confirm('¿Eliminar esta rutina?') && eliminarRutina(rutinaIdActual)}
                 title="Eliminar rutina"
@@ -832,6 +832,7 @@ export default function Rutina() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
                   <path d="M4 7h16" /><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" /><path d="M18 7l-.8 12.2A2 2 0 0115.2 21H8.8a2 2 0 01-2-1.8L6 7" /><path d="M10 11v6M14 11v6" />
                 </svg>
+                <span className="rut-btn-label rut-btn-label--mobile-only">Eliminar rutina</span>
               </button>
 
               <button

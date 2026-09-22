@@ -103,6 +103,21 @@ function buildPayloadSerie(it, serieNum, d, notaEjercicio = '') {
   }
 }
 
+function buildNotasSuperserie(notaEjercicio, etiquetaSs, ronda) {
+  const meta = `Superserie ${etiquetaSs} · Ronda ${ronda}`
+  const nota = String(notaEjercicio || '').trim()
+  return nota ? `${meta} · ${nota}` : meta
+}
+
+/** Peso/reps de referencia: ronda anterior de hoy o última sesión. */
+function referenciaAnteriorSs(hist, ya, rondaNum) {
+  if (rondaNum > 1) {
+    const prev = (ya || []).find((r) => Number(r.serieNum) === rondaNum - 1)
+    if (prev && (prev.pesoKg != null || prev.repeticiones)) return prev
+  }
+  return anteriorPorSerie(hist, rondaNum)
+}
+
 function seriesPendientes(ya, nSeries) {
   return Array.from({ length: nSeries }, (_, i) => i + 1).filter((s) => !registroHechoParaSerie(ya, s))
 }
@@ -293,6 +308,19 @@ export default function SesionRegistroTitanium({
     setSsRondas({})
     setExpandidos({})
     setSsExpandidos({})
+  }, [planItems])
+
+  useEffect(() => {
+    setNotas((prev) => {
+      const next = { ...prev }
+      for (const it of planItems) {
+        const planNota = String(it.notas || '').trim()
+        if (planNota && (next[it.nombre] == null || next[it.nombre] === '')) {
+          next[it.nombre] = planNota
+        }
+      }
+      return next
+    })
   }, [planItems])
 
   useEffect(() => {
@@ -773,7 +801,7 @@ export default function SesionRegistroTitanium({
       }
     }
     const hist = historialDe(historialPorEjercicio, it.nombre)
-    const ant = anteriorPorSerie(hist, ronda)
+    const ant = referenciaAnteriorSs(hist, ya, ronda)
     return ssDrafts[draftKey] || {
       pesoKg: pesoKgSugerido(it, hist, ronda),
       repeticiones: repsPlanDefault(it, ant, false),
@@ -822,7 +850,7 @@ export default function SesionRegistroTitanium({
         serieNum: r,
         repeticiones: String(d.repeticiones || it.repeticiones || '10').trim(),
         pesoKg: d.pesoKg,
-        notas: `Superserie ${label} · Ronda ${r}`,
+        notas: buildNotasSuperserie(notas[it.nombre], label, r),
       })
     }
     guardarUnaOVarias(pendientes)
@@ -834,17 +862,19 @@ export default function SesionRegistroTitanium({
     if (hechas >= vueltas) return
     const next = hechas + 1
     const pendientes = []
-    for (const it of bloque.items) {
+    for (let i = 0; i < bloque.items.length; i += 1) {
+      const it = bloque.items[i]
       const ya = regsPorEjercicio[it.nombre] || []
       if (ya.some((r) => Number(r.serieNum) === next)) continue
       const d = draftSsDe(bloque.id, it, next)
+      const ssLabel = `${bloque.label}${i + 1}`
       pendientes.push({
         ejercicio: it.nombre,
         series: 1,
         serieNum: next,
         repeticiones: String(d.repeticiones || '10').trim(),
         pesoKg: d.pesoKg,
-        notas: `Superserie ${bloque.label} · Ronda ${next}`,
+        notas: buildNotasSuperserie(notas[it.nombre], ssLabel, next),
       })
     }
     guardarUnaOVarias(pendientes)
@@ -867,7 +897,7 @@ export default function SesionRegistroTitanium({
           serieNum: r,
           repeticiones: String(d.repeticiones || it.repeticiones || '10').trim(),
           pesoKg: d.pesoKg,
-          notas: `Superserie ${label} · Ronda ${r}`,
+          notas: buildNotasSuperserie(notas[it.nombre], label, r),
         })
       }
     }
@@ -884,15 +914,22 @@ export default function SesionRegistroTitanium({
     const parcial = !checked && ya.length > 0
     const esPesoCorporal = esPesoCorporalNombre(it.nombre)
     const rondasHechasTxt = resumenRondasSs(ya)
+    const hist = historialDe(historialPorEjercicio, it.nombre)
+    const ant = referenciaAnteriorSs(hist, ya, rondaActual)
 
     return (
       <div key={it.nombre} className={`fp-ss-item fp-ss-item--compact${checked ? ' is-done' : ''}${parcial ? ' is-partial' : ''}`}>
         {idx > 0 && <p className="fp-ss-join">↓ Sin pausa</p>}
         <div className="fp-ss-row fp-ss-row--compact">
           <span className="fp-ss-dot" aria-hidden />
-          <div className="fp-ss-copy fp-ss-copy--compact">
-            <span className="fp-ss-label-inline">{label}</span>
-            <strong className="fp-ss-name">{nombreDisplayEjercicio(it.nombre)}</strong>
+          <div className="fp-ss-copy fp-ss-copy--compact fp-ex-serie-copy">
+            <div className="fp-ss-title-row">
+              <span className="fp-ss-label-inline">{label}</span>
+              <strong className="fp-ss-name">{nombreDisplayEjercicio(it.nombre)}</strong>
+            </div>
+            <span className="fp-ex-serie-ant fp-ex-serie-ant--ss" title="Última vez / ronda anterior">
+              Ant.: {formatoAnterior(ant)}
+            </span>
           </div>
           <div className="fp-ss-log fp-ss-log--compact">
             {esPesoCorporal && !d.pesoKg ? (
@@ -936,6 +973,17 @@ export default function SesionRegistroTitanium({
           </div>
         </div>
         {rondasHechasTxt ? <span className="fp-ss-hint fp-ss-hint--done">{rondasHechasTxt}</span> : null}
+        <div className="fp-ex-foot fp-ex-foot--compact fp-ex-foot--ss">
+          <div className="fp-nota-box">
+            <IconPencil />
+            <input
+              type="text"
+              placeholder="Nota: técnica, agarre, sensaciones…"
+              value={notas[it.nombre] || ''}
+              onChange={(e) => setNotas((p) => ({ ...p, [it.nombre]: e.target.value }))}
+            />
+          </div>
+        </div>
       </div>
     )
   }

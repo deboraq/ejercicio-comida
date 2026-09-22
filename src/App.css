@@ -8610,9 +8610,18 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 0.35rem;
+  gap: 0.1rem;
   text-align: left;
+}
+
+.fp-ss-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  width: 100%;
 }
 
 .fp-ss-label-inline {
@@ -8658,6 +8667,34 @@ body {
 .fp-ss-item--compact .fp-ss-join {
   margin: 0.08rem 0 0.2rem;
   font-size: 0.66rem;
+}
+
+.fp-ex-serie-ant--ss {
+  display: block;
+  width: 100%;
+  margin-top: 0.08rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #64748b;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.fp-ex-foot--ss {
+  margin-top: 0.35rem;
+  padding-left: 0;
+  width: 100%;
+}
+
+.fp-ex-foot--ss .fp-nota-box {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 2.35rem;
+}
+
+.fp-ex-foot--ss .fp-nota-box input {
+  font-size: 0.78rem;
 }
 
 .fp-ss--done.fp-ex--compact {
@@ -8724,6 +8761,23 @@ body {
   .fp-ss-row--compact {
     padding: 0.5rem 0.5rem;
     gap: 0.4rem;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .fp-ss-row--compact .fp-ss-copy {
+    flex: 1 1 100%;
+    min-width: min(100%, 12rem);
+  }
+
+  .fp-ss-row--compact .fp-ss-log {
+    flex: 1 1 auto;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .fp-ex-foot--ss {
+    padding-left: 0;
   }
 
   .fp-ss-row--compact .fp-ss-name {
@@ -9335,6 +9389,14 @@ body {
   cursor: not-allowed;
 }
 
+.rut-btn-label--mobile-only {
+  display: none;
+}
+
+.rut-ico-btn--delete .rut-btn-label--mobile-only {
+  display: none;
+}
+
 .rut-btn-dark {
   appearance: none;
   display: inline-flex;
@@ -9630,7 +9692,29 @@ body {
   }
 
   .rutina-titanium .rut-ico-btn {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    width: 100%;
+    min-height: 2.5rem;
+    height: auto;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid rgba(248, 113, 113, 0.45);
+    color: #fca5a5;
+    background: rgba(127, 29, 29, 0.25);
+  }
+
+  .rutina-titanium .rut-ico-btn:disabled {
+    opacity: 0.35;
+  }
+
+  .rutina-titanium .rut-btn-label--mobile-only {
+    display: inline;
+    font-size: 0.78rem;
+    font-weight: 600;
   }
 
   .rutina-titanium .rut-btn-dark {
@@ -13831,6 +13915,33 @@ select.ap-input {
 }
 
 .cd-layout--historial .cd-main {
+  min-width: 0;
+}
+
+.cd-layout--plan {
+  grid-template-columns: 1fr;
+}
+
+.cd-layout--plan .cd-aside {
+  display: none;
+}
+
+.cd-plan-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.08);
+  color: #cbd5e1;
+  font-size: 0.82rem;
+}
+
+.cd-plan-embed {
   min-width: 0;
 }
 
