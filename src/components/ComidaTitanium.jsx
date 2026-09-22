@@ -147,6 +147,7 @@ const ETIQUETA_CATEGORIA = {
   'Snacks / Bebidas': 'Snack',
   Personalizado: 'Personalizado',
   'Plan alimenticio': 'Plan TMV',
+  'Plan alimenticio / Hortalizas': 'Hortaliza plan',
   'Plan alimenticio / Ensaladas': 'Ensalada plan',
   'Plan alimenticio / Recetas': 'Receta plan',
   'Plan alimenticio / Platos': 'Plato plan',
@@ -1423,7 +1424,7 @@ export default function ComidaTitanium({
                     </button>
                   </div>
                 ) : (
-                  resultadosBusqueda.slice(0, 6).map((a) => {
+                  resultadosBusqueda.slice(0, 8).map((a) => {
                     const selected = referenciaActiva?._idx === a._idx
                     const gra = grasasRef(a)
                     const esFav = esFavoritoComida(comidaFavoritos, a.nombre)

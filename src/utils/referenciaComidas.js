@@ -842,6 +842,25 @@ function expandirPalabras(palabras) {
   return [...out]
 }
 
+/** Nombre base antes del paréntesis: «Tomate (1 unidad)» → «tomate». */
+function raizNombreAlimento(nombre) {
+  return sinAcentos(nombre).split('(')[0].trim()
+}
+
+/** Prioriza tomate, lechuga, etc. frente a ensaladas del plan que contienen la misma palabra. */
+function boostVerduraSuelta(a, palabrasRaw, cat) {
+  if (palabrasRaw.length !== 1 || palabrasRaw[0].length < 3) return 0
+  const q = palabrasRaw[0]
+  const esHortalizaPlan = cat === 'plan alimenticio / hortalizas'
+  const esVerdura = cat === 'verduras' || esHortalizaPlan
+  if (!esVerdura) return 0
+  const raiz = raizNombreAlimento(a.nombre)
+  const aliases = (a.aliases || []).map((x) => sinAcentos(x))
+  if (raiz === q || aliases.includes(q)) return esHortalizaPlan ? 270 : 250
+  if (raiz.startsWith(`${q} `)) return 200
+  return 0
+}
+
 /** Buscar por nombre, categoría o aliases. Devuelve items con _idx. */
 export function buscarAlimentos(texto) {
   if (!texto || texto.length < 1) return []
@@ -880,10 +899,22 @@ export function buscarAlimentos(texto) {
     if (palabras.includes('media') || palabras.includes('medio')) {
       if (/media|medio|1\/2/.test(nombre) || /media|medio/.test(haystack)) score += 25
     }
+
+    score += boostVerduraSuelta(a, palabrasRaw, cat)
+
     return score > 0 ? { ...a, _idx: idx, _score: score } : null
   }).filter(Boolean)
 
-  return puntuados
-    .sort((a, b) => b._score - a._score || a.nombre.localeCompare(b.nombre, 'es'))
-    .slice(0, 120)
+  const ordenados = puntuados.sort(
+    (a, b) => b._score - a._score || a.nombre.localeCompare(b.nombre, 'es'),
+  )
+  const vistos = new Set()
+  const unicos = []
+  for (const item of ordenados) {
+    if (vistos.has(item.nombre)) continue
+    vistos.add(item.nombre)
+    unicos.push(item)
+  }
+
+  return unicos.slice(0, 120)
 }
