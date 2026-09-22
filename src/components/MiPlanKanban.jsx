@@ -36,7 +36,6 @@ import {
   formatearKcalRango,
   formatearPesoKg,
   labelEsquemaPlan,
-  nombreDiaSemanaCorto,
   resumenHidratacionPlan,
   slotsVisiblesParaEsquema,
   tipNutricionistaPlan,
@@ -871,7 +870,6 @@ export default function MiPlanKanban({
             const built = buildComidasDiaKanban(diaPlan, config, planPropio)
             if (!built) return null
             const fecha = fechaCalendarioDiaPlan(inicio, diaPlan)
-            const diaNombre = nombreDiaSemanaCorto(fecha)
             const extras = (estado?.extras?.[diaPlan] || []).map((ex) => ({
               ...ex,
               isExtra: true,
@@ -896,9 +894,7 @@ export default function MiPlanKanban({
               >
                 <header className="plan-kanban-col-head">
                   <div>
-                    <h3 className="plan-kanban-col-title">
-                      Día {diaPlan} · {diaNombre}
-                    </h3>
+                    <h3 className="plan-kanban-col-title">Día {diaPlan}</h3>
                     <p className="plan-kanban-col-date mb-0">
                       {etiquetaFechaCorta(fecha)}
                       <span className="plan-kanban-col-kcal">{Math.round(kcalDia).toLocaleString('es-AR')} kcal</span>

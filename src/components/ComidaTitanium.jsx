@@ -831,7 +831,6 @@ export default function ComidaTitanium({
   objetivo,
   comidaFavoritos = [],
   onToggleFavoritoComida,
-  planActivo = false,
   planResumen = null,
   planPanel = null,
 }) {
@@ -1081,11 +1080,6 @@ export default function ComidaTitanium({
                 ›
               </button>
             </div>
-            {planActivo && (
-              <button type="button" className="cd-btn cd-btn--ghost" onClick={() => setVistaComida?.('plan')}>
-                Mi plan
-              </button>
-            )}
             <button type="button" className="cd-btn cd-btn--primary" onClick={() => agregarMomento(comida || 'Desayuno')}>
               <span className="cd-btn-label cd-btn-label--long">+ Registrar comida rápida</span>
               <span className="cd-btn-label cd-btn-label--short">+ Comida rápida</span>
