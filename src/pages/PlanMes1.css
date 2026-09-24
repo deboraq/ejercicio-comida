@@ -713,6 +713,93 @@
   font-size: 0.7rem;
 }
 
+.plan-kanban-desfase-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.5rem;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  background: rgba(120, 53, 15, 0.12);
+  font-size: 0.68rem;
+  color: #fde68a;
+  line-height: 1.35;
+}
+
+.plan-kanban-desfase-inline-text strong {
+  color: #fef3c7;
+  font-weight: 700;
+}
+
+.plan-kanban-desfase-inline-btn {
+  appearance: none;
+  flex: 0 0 auto;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: #93c5fd;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  max-width: 100%;
+}
+
+.plan-kanban-compact-fold--plans .plan-kanban-create-bar {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  gap: 0.4rem;
+}
+
+.plan-kanban-plan-bar--stacked .plan-kanban-activa-select select {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: 0.72rem;
+  padding: 0.42rem 1.65rem 0.42rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(51, 65, 85, 0.65);
+  background: rgba(15, 23, 42, 0.85);
+  color: #f1f5f9;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.plan-kanban-plan-bar--stacked .plan-kanban-plan-bar-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+.plan-kanban-config-btn--compact {
+  flex: 0 0 auto;
+  margin-left: 0;
+  padding: 0.38rem 0.5rem;
+  font-size: 0.66rem;
+  min-height: 2rem;
+  justify-content: center;
+}
+
+.plan-kanban-compact-fold--plans,
+.plan-kanban-compact-fold-body {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.plan-kanban-compact-fold--plans[open] {
+  overflow: visible;
+}
+
 .plan-kanban--embedded .plan-kanban-create-bar {
   margin-bottom: 0.35rem;
 }
