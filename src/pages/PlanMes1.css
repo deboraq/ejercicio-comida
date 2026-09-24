@@ -1330,6 +1330,99 @@
   width: 100%;
 }
 
+.plan-kanban-plan-bar--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
+.plan-kanban-plan-bar--stacked .plan-kanban-activa {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  flex: 1 1 auto;
+}
+
+.plan-kanban-plan-bar--stacked .plan-kanban-activa-select {
+  width: 100%;
+  flex: 1 1 auto;
+}
+
+.plan-kanban-plan-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.plan-kanban-plan-bar--stacked .plan-kanban-btn-nuevo {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.plan-kanban-plan-bar--stacked .plan-kanban-btn-eliminar {
+  flex: 0 0 auto;
+}
+
+.plan-kanban-plan-bar--stacked .plan-kanban-btn-eliminar-label {
+  display: none;
+}
+
+.plan-kanban-config-btn--compact {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.68rem;
+}
+
+.plan-kanban-embedded-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.plan-kanban-compact-fold--plans summary {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  padding: 0.35rem 0.5rem;
+}
+
+.plan-kanban-compact-fold--plans {
+  margin-bottom: 0;
+  border-color: rgba(51, 65, 85, 0.4);
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.plan-kanban-meta-details--nested {
+  margin-top: 0.45rem;
+}
+
+.plan-kanban-meta-details--nested summary {
+  font-size: 0.7rem;
+  padding: 0.25rem 0;
+}
+
+.plan-kanban-sync-grid--compact {
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.plan-kanban-sync-grid--compact .plan-kanban-sync-card {
+  padding: 0.55rem 0.65rem;
+}
+
+.plan-kanban-compact-fold-body--flush {
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+}
+
+.plan-kanban--embedded .plan-kanban-toolbar-row--inicio {
+  margin-bottom: 0;
+}
+
 .plan-kanban-activa {
   display: flex;
   flex-wrap: wrap;

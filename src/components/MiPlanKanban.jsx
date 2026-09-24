@@ -547,7 +547,7 @@ export default function MiPlanKanban({
     </>
   )
 
-  const selectorPlanActivo = () => {
+  const selectorPlanActivo = (compact = false) => {
     const lista = planesNutricion?.length
       ? planesNutricion
       : planNutricionActivoId || config?.planNutricionId
@@ -564,15 +564,18 @@ export default function MiPlanKanban({
     const puedeEliminar = lista.length > 0
 
     return (
-      <div className="plan-kanban-plan-bar">
+      <div className={`plan-kanban-plan-bar${compact ? ' plan-kanban-plan-bar--stacked' : ''}`}>
         <div className="plan-kanban-activa">
-          <span className="plan-kanban-activa-label" id="plan-nutricion-activo-label">
-            Plan activo:
-          </span>
+          {!compact && (
+            <span className="plan-kanban-activa-label" id="plan-nutricion-activo-label">
+              Plan activo:
+            </span>
+          )}
           <div className="plan-kanban-activa-select">
             <select
               id="plan-nutricion-activo-select"
-              aria-labelledby="plan-nutricion-activo-label"
+              aria-label={compact ? 'Plan activo' : undefined}
+              aria-labelledby={compact ? undefined : 'plan-nutricion-activo-label'}
               value={activoId}
               onChange={(e) => cambiarPlanActivo(e.target.value)}
               disabled={lista.length <= 1}
@@ -585,36 +588,44 @@ export default function MiPlanKanban({
             </select>
           </div>
         </div>
-        <button
-          type="button"
-          className="plan-kanban-btn-eliminar"
-          disabled={!puedeEliminar}
-          onClick={eliminarPlanBiblioteca}
-          title="Eliminar plan de la lista"
-          aria-label="Eliminar plan"
-        >
-          <IconTrash />
-          <span className="plan-kanban-btn-eliminar-label">Eliminar</span>
-        </button>
-        <button
-          type="button"
-          className="plan-kanban-btn-nuevo"
-          onClick={() => setPanelNuevoPlan((v) => !v)}
-        >
-          {panelNuevoPlan ? 'Cerrar' : '+ Agregar plan'}
-        </button>
+        <div className="plan-kanban-plan-bar-actions">
+          <button
+            type="button"
+            className="plan-kanban-btn-nuevo"
+            onClick={() => setPanelNuevoPlan((v) => !v)}
+          >
+            {panelNuevoPlan ? 'Cerrar' : '+ Plan'}
+          </button>
+          <button
+            type="button"
+            className="plan-kanban-btn-eliminar"
+            disabled={!puedeEliminar}
+            onClick={eliminarPlanBiblioteca}
+            title="Eliminar plan de la lista"
+            aria-label="Eliminar plan"
+          >
+            <IconTrash />
+            <span className="plan-kanban-btn-eliminar-label">Eliminar</span>
+          </button>
+          {compact && (
+            <Link to="/config#plan-desde-objetivo" className="plan-kanban-config-btn plan-kanban-config-btn--compact">
+              <IconGear />
+              <span>Config</span>
+            </Link>
+          )}
+        </div>
       </div>
     )
   }
 
-  const accionesCrearPlan = (modo = 'empty') => (
+  const accionesCrearPlan = (modo = 'empty', compact = false) => (
     <div
       id="plan-crear-nuevo"
       className={modo === 'bar' ? 'plan-kanban-create-bar' : 'plan-kanban-create-block'}
     >
       {modo === 'bar' ? (
         <>
-          {selectorPlanActivo()}
+          {selectorPlanActivo(compact)}
           {panelNuevoPlan ? (
             <>
               <p className="plan-kanban-create-bar-sub mb-0">
@@ -944,15 +955,6 @@ export default function MiPlanKanban({
 
   const hidratacion = resumenHidratacionPlan(config)
 
-  const etiquetaVistaZoom =
-    vistaPlanZoom === '1'
-      ? '1 día'
-      : vistaPlanZoom === '2'
-        ? '2 días'
-        : vistaPlanZoom === 'semana'
-          ? 'Semana'
-          : 'Mes'
-
   const toolbarInicioYZoom = (
     <div className="plan-kanban-toolbar-row plan-kanban-toolbar-row--inicio">
       <label className="plan-kanban-inicio-dia">
@@ -1059,68 +1061,57 @@ export default function MiPlanKanban({
     <div className={`plan-kanban${embedded ? ' plan-kanban--embedded' : ''}`}>
       {embedded ? (
         <>
-          <details className="plan-kanban-compact-fold">
-            <summary>
-              <span className="plan-kanban-compact-fold-title">
-                {esPlanPropio(config) ? planPropio?.nombre || 'Mi plan' : metaTitulo}
-              </span>
-              <span className="plan-kanban-compact-fold-meta">
-                D{contextoDiasPlan.diaCalendario ?? '—'} · {etiquetaVistaZoom}
-              </span>
-            </summary>
-            <div className="plan-kanban-compact-fold-body">
-              <div className="plan-kanban-meta-actions plan-kanban-meta-actions--fold">
-                <Link to="/config#plan-desde-objetivo" className="plan-kanban-config-btn">
-                  <IconGear />
-                  Config
-                </Link>
-              </div>
-              {accionesCrearPlan('bar')}
-              {contextoDiasPlan.desfaseInicio && contextoDiasPlan.ultimoMarca != null && (
-                <div className="plan-kanban-desfase-alert plan-kanban-desfase-alert--compact" role="alert">
-                  <p className="mb-2">
-                    Marcas hasta <strong>Día {contextoDiasPlan.ultimoMarca}</strong>, calendario en{' '}
-                    <strong>Día {contextoDiasPlan.diaCalendario}</strong>.
-                  </p>
-                  <button
-                    type="button"
-                    className="plan-kanban-create-btn plan-kanban-create-btn--primary plan-kanban-create-btn--wide"
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `¿Ajustar para que HOY sea el Día ${contextoDiasPlan.ultimoMarca}?`,
-                        )
-                      ) {
-                        ajustarInicioAlDia(contextoDiasPlan.ultimoMarca)
-                      }
-                    }}
-                  >
-                    Corregir a Día {contextoDiasPlan.ultimoMarca}
-                  </button>
-                </div>
-              )}
-              <details className="plan-kanban-meta-details">
-                <summary>Perfil y metas</summary>
-                <div className="plan-kanban-sync-grid">
-                  <div className="plan-kanban-sync-card plan-kanban-sync-card--perfil">
-                    <span className="plan-kanban-sync-label">Perfil</span>
-                    <strong>
-                      {sexoLabel(config.sexo)} · {formatearPesoKg(config.pesoKg)}
-                    </strong>
-                  </div>
-                  <div className="plan-kanban-sync-card plan-kanban-sync-card--kcal">
-                    <span className="plan-kanban-sync-label">Calorías</span>
-                    <strong>{formatearKcalRango(metaKcal.min, metaKcal.max)}</strong>
-                  </div>
-                </div>
-              </details>
-            </div>
-          </details>
-          <div className="plan-kanban-toolbar plan-kanban-toolbar--compact">
+          <div className="plan-kanban-embedded-top">
             {toolbarInicioYZoom}
-            <details className="plan-kanban-compact-fold plan-kanban-compact-fold--inline">
-              <summary>Esquema y editor</summary>
-              <div className="plan-kanban-compact-fold-body">{bloqueEsquemaYEditor}</div>
+            <details className="plan-kanban-compact-fold plan-kanban-compact-fold--plans">
+              <summary>Gestionar plan</summary>
+              <div className="plan-kanban-compact-fold-body">
+                {accionesCrearPlan('bar', true)}
+                {contextoDiasPlan.desfaseInicio && contextoDiasPlan.ultimoMarca != null && (
+                  <div className="plan-kanban-desfase-alert plan-kanban-desfase-alert--compact" role="alert">
+                    <p className="mb-2">
+                      Marcas hasta <strong>Día {contextoDiasPlan.ultimoMarca}</strong>, calendario en{' '}
+                      <strong>Día {contextoDiasPlan.diaCalendario}</strong>.
+                    </p>
+                    <button
+                      type="button"
+                      className="plan-kanban-create-btn plan-kanban-create-btn--primary plan-kanban-create-btn--wide"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `¿Ajustar para que HOY sea el Día ${contextoDiasPlan.ultimoMarca}?`,
+                          )
+                        ) {
+                          ajustarInicioAlDia(contextoDiasPlan.ultimoMarca)
+                        }
+                      }}
+                    >
+                      Corregir a Día {contextoDiasPlan.ultimoMarca}
+                    </button>
+                  </div>
+                )}
+                <details className="plan-kanban-meta-details plan-kanban-meta-details--nested">
+                  <summary>Perfil y metas</summary>
+                  <div className="plan-kanban-sync-grid plan-kanban-sync-grid--compact">
+                    <div className="plan-kanban-sync-card plan-kanban-sync-card--perfil">
+                      <span className="plan-kanban-sync-label">Perfil</span>
+                      <strong>
+                        {sexoLabel(config.sexo)} · {formatearPesoKg(config.pesoKg)}
+                      </strong>
+                    </div>
+                    <div className="plan-kanban-sync-card plan-kanban-sync-card--kcal">
+                      <span className="plan-kanban-sync-label">Calorías</span>
+                      <strong>{formatearKcalRango(metaKcal.min, metaKcal.max)}</strong>
+                    </div>
+                  </div>
+                </details>
+                <details className="plan-kanban-meta-details plan-kanban-meta-details--nested">
+                  <summary>Esquema y editor</summary>
+                  <div className="plan-kanban-compact-fold-body plan-kanban-compact-fold-body--flush">
+                    {bloqueEsquemaYEditor}
+                  </div>
+                </details>
+              </div>
             </details>
           </div>
         </>
