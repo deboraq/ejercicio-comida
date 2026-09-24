@@ -68,6 +68,15 @@ export function diaPlanMes1(fechaInicioISO, fechaRef = fechaToISO(new Date())) {
   return diff + 1
 }
 
+/** Fecha de inicio para que hoy sea el día N del plan (1…30). */
+export function inicioISOparaDiaPlan(diaPlan, hoyISO = fechaToISO(new Date())) {
+  const d = Number(diaPlan)
+  if (!Number.isFinite(d) || d < 1 || d > PLAN_MES1_TOTAL_DIAS) return hoyISO
+  const ref = new Date(`${hoyISO}T12:00:00`)
+  ref.setDate(ref.getDate() - (d - 1))
+  return fechaToISO(ref)
+}
+
 function plantillaSemana(diaPlan) {
   const idx = (diaPlan - 1) % 7
   const semana = Math.floor((diaPlan - 1) / 7)
