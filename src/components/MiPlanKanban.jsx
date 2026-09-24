@@ -582,7 +582,9 @@ export default function MiPlanKanban({
             >
               {lista.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.nombre} · {etiquetaOrigenPlanBiblioteca(p)}
+                  {compact
+                    ? p.nombre
+                    : `${p.nombre} · ${etiquetaOrigenPlanBiblioteca(p)}`}
                 </option>
               ))}
             </select>
@@ -1063,33 +1065,33 @@ export default function MiPlanKanban({
         <>
           <div className="plan-kanban-embedded-top">
             {toolbarInicioYZoom}
+            {contextoDiasPlan.desfaseInicio && contextoDiasPlan.ultimoMarca != null && (
+              <div className="plan-kanban-desfase-inline" role="alert">
+                <p className="plan-kanban-desfase-inline-text mb-0">
+                  Marcas hasta <strong>Día {contextoDiasPlan.ultimoMarca}</strong> · hoy{' '}
+                  <strong>Día {contextoDiasPlan.diaCalendario}</strong>.
+                </p>
+                <button
+                  type="button"
+                  className="plan-kanban-desfase-inline-btn"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `¿Ajustar el plan para que HOY sea el Día ${contextoDiasPlan.ultimoMarca}?`,
+                      )
+                    ) {
+                      ajustarInicioAlDia(contextoDiasPlan.ultimoMarca)
+                    }
+                  }}
+                >
+                  Ajustar a Día {contextoDiasPlan.ultimoMarca}
+                </button>
+              </div>
+            )}
             <details className="plan-kanban-compact-fold plan-kanban-compact-fold--plans">
               <summary>Gestionar plan</summary>
               <div className="plan-kanban-compact-fold-body">
                 {accionesCrearPlan('bar', true)}
-                {contextoDiasPlan.desfaseInicio && contextoDiasPlan.ultimoMarca != null && (
-                  <div className="plan-kanban-desfase-alert plan-kanban-desfase-alert--compact" role="alert">
-                    <p className="mb-2">
-                      Marcas hasta <strong>Día {contextoDiasPlan.ultimoMarca}</strong>, calendario en{' '}
-                      <strong>Día {contextoDiasPlan.diaCalendario}</strong>.
-                    </p>
-                    <button
-                      type="button"
-                      className="plan-kanban-create-btn plan-kanban-create-btn--primary plan-kanban-create-btn--wide"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `¿Ajustar para que HOY sea el Día ${contextoDiasPlan.ultimoMarca}?`,
-                          )
-                        ) {
-                          ajustarInicioAlDia(contextoDiasPlan.ultimoMarca)
-                        }
-                      }}
-                    >
-                      Corregir a Día {contextoDiasPlan.ultimoMarca}
-                    </button>
-                  </div>
-                )}
                 <details className="plan-kanban-meta-details plan-kanban-meta-details--nested">
                   <summary>Perfil y metas</summary>
                   <div className="plan-kanban-sync-grid plan-kanban-sync-grid--compact">
