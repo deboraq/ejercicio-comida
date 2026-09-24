@@ -210,11 +210,16 @@ export function navegacionInicialPlanKanban(inicioISO, estado, hoyISO = fechaToI
     diaEdit = Math.min(PLAN_MES1_TOTAL_DIAS, ultimoMarca + 1)
   }
 
-  if (diaCalendario != null && ultimoMarca != null) {
-    diaEdit = Math.max(diaCalendario, ultimoMarca)
+  if (ultimoMarca != null) {
+    if (diaCalendario != null) {
+      diaEdit = Math.max(diaCalendario, ultimoMarca)
+    } else {
+      diaEdit = Math.min(PLAN_MES1_TOTAL_DIAS, ultimoMarca + 1)
+    }
   }
 
   const semana = semanaDelDiaPlan(diaEdit)
+  const desfaseInicio = diaCalendario != null && ultimoMarca != null && ultimoMarca > diaCalendario
 
   const diaScroll =
     ultimoMarca != null
@@ -229,5 +234,6 @@ export function navegacionInicialPlanKanban(inicioISO, estado, hoyISO = fechaToI
     diaScroll,
     diaCalendario,
     ultimoMarca,
+    desfaseInicio,
   }
 }

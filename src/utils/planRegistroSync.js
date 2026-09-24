@@ -1,4 +1,6 @@
 import { nuevoIdRegistro } from './ids.js'
+import { diaPlanMes1 } from './planMes1.js'
+import { fechaToISO } from './calorias.js'
 import {
   claveComidaPlan,
   estimarMacrosComida,
@@ -23,6 +25,18 @@ export function planRefsChecksDia(diaPlan, slots, extrasDia) {
   return refs
 }
 
+/** Fecha del registro en Comida al marcar una comida del plan. */
+export function fechaRegistroDesdePlanDia(inicioISO, diaPlan, hoyISO = fechaToISO(new Date())) {
+  const hoy = hoyISO || fechaToISO(new Date())
+  const diaHoyPlan = diaPlanMes1(inicioISO, hoy)
+  const fechaSlot = fechaCalendarioDiaPlan(inicioISO, diaPlan)
+  if (diaPlan === diaHoyPlan) return hoy
+  if (fechaSlot === hoy) return hoy
+  // Inicio desfasado: no crear comidas en fechas futuras; van al registro de hoy
+  if (fechaSlot && fechaSlot > hoy) return hoy
+  return fechaSlot || hoy
+}
+
 export function buildRegistroPlanEntry({
   diaPlan,
   inicioISO,
@@ -35,7 +49,8 @@ export function buildRegistroPlanEntry({
   opcionLabel,
   items = null,
 }) {
-  const fecha = fechaCalendarioDiaPlan(inicioISO, diaPlan)
+  const hoyISO = fechaToISO(new Date())
+  const fecha = fechaRegistroDesdePlanDia(inicioISO, diaPlan, hoyISO)
   const planRef = planRefRegistro(
     diaPlan,
     slotId === 'extra' ? 'extra' : slotId,

@@ -8,6 +8,7 @@ import {
   PLAN_MES1_TOTAL_DIAS,
   diaPlanMes1,
   buildActivacionPlanMes1,
+  inicioISOparaDiaPlan,
   labelVariantePlan,
   metaCaloriasPlan,
   perfilListoParaGenerarPlan,
@@ -233,6 +234,8 @@ export default function MiPlanKanban({
       diaSiguiente,
       diaToca: nav.diaEdit,
       semanaSugerida: nav.semana,
+      desfaseInicio: nav.desfaseInicio,
+      inicioPlan: inicio,
     }
   }, [inicio, estadoPlanActivo])
   const listo = perfilPlanListo(config)
@@ -279,6 +282,33 @@ export default function MiPlanKanban({
     const snap = snapshotFromRuntime(config, planPropio, estado, id)
     return upsertPlanEnLista(planesNutricion, snap)
   }
+
+  const ajustarInicioAlDia = (diaPlan) => {
+    const d = Number(diaPlan)
+    if (!Number.isFinite(d) || d < 1 || d > PLAN_MES1_TOTAL_DIAS) return
+    const hoy = fechaToISO(new Date())
+    const nuevoInicio = inicioISOparaDiaPlan(d, hoy)
+    setConfig((c) => ({ ...c, planMes1Inicio: nuevoInicio }))
+    const id = planNutricionActivoId || config?.planNutricionId
+    if (id) {
+      setPlanesNutricion((prev) => {
+        const cfg = { ...config, planMes1Inicio: nuevoInicio }
+        return upsertPlanEnLista(prev, snapshotFromRuntime(cfg, planPropio, estado, id))
+      })
+    }
+    planNavAplicadoRef.current = null
+    planNavMarcasRef.current = ''
+  }
+
+  useEffect(() => {
+    if (!tienePlan) return
+    const id = planNutricionActivoId || config?.planNutricionId
+    if (!id) return
+    setPlanesNutricion((prev) =>
+      upsertPlanEnLista(prev, snapshotFromRuntime(config, planPropio, estado, id)),
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estado?.checks, estado?.omitidos, estado?.extras, planNutricionActivoId, config?.planNutricionId])
 
   const confirmarReemplazoPlan = () => {
     if (!tienePlan) return true
@@ -877,6 +907,31 @@ export default function MiPlanKanban({
         </div>
 
         {accionesCrearPlan('bar')}
+
+        {contextoDiasPlan.desfaseInicio && contextoDiasPlan.ultimoMarca != null && (
+          <div className="plan-kanban-desfase-alert" role="alert">
+            <p className="mb-2">
+              Tenés marcas hasta el <strong>Día {contextoDiasPlan.ultimoMarca}</strong>, pero la fecha de inicio (
+              {contextoDiasPlan.inicioPlan}) hace que hoy sea solo el{' '}
+              <strong>Día {contextoDiasPlan.diaCalendario}</strong>. Por eso el registro diario puede no coincidir.
+            </p>
+            <button
+              type="button"
+              className="plan-kanban-create-btn plan-kanban-create-btn--primary plan-kanban-create-btn--wide"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `¿Ajustar el plan para que HOY sea el Día ${contextoDiasPlan.ultimoMarca}? (No borra tus marcas del tablero)`,
+                  )
+                ) {
+                  ajustarInicioAlDia(contextoDiasPlan.ultimoMarca)
+                }
+              }}
+            >
+              Corregir: hoy es Día {contextoDiasPlan.ultimoMarca}
+            </button>
+          </div>
+        )}
 
         {(contextoDiasPlan.diaCalendario != null
           || contextoDiasPlan.ultimoMarca != null

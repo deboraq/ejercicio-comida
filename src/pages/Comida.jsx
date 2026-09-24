@@ -896,15 +896,19 @@ export default function Comida() {
           }
           return next
         })
-        if (payload.registro?.fecha) {
-          setFechaInput(payload.registro.fecha)
+        const fechaReg = payload.registro?.fecha
+        if (fechaReg) {
+          setFechaInput(fechaReg)
+        }
+        if (fechaReg === hoy) {
+          setVistaComida('hoy')
         }
         if (payload.abrirEdicion) {
           setVistaComida('hoy')
         }
       }
     },
-    [editarRegistro],
+    [editarRegistro, hoy],
   )
 
   const toggleDiaHistorial = (fecha) => {
