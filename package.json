@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "dev:lan": "vite --host",
+    "dev:celu": "zsh scripts/dev-celu.sh",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
