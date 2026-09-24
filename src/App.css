@@ -9811,10 +9811,9 @@ body {
     min-height: 1.85rem;
     height: auto;
     box-sizing: border-box;
-    border: 1px solid rgba(148, 163, 184, 0.22);
-    background: rgba(21, 27, 43, 0.85);
     flex-direction: row;
     gap: 0.2rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .rutina-titanium .rut-head .rut-tab svg {
@@ -9827,9 +9826,8 @@ body {
     display: none;
   }
 
-  .rutina-titanium .rut-head .rut-tab.is-active {
-    border-color: #3b82f6;
-    background: rgba(59, 130, 246, 0.14);
+  .rutina-titanium .rut-head .rut-tab:hover:not(.is-active) {
+    filter: brightness(1.08);
   }
 
   .rutina-titanium .rut-tab-label--long {
@@ -13676,6 +13674,108 @@ select.ap-input {
   box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.06), 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 
+/* Comida — tarjetas con degradé por vista */
+.comida-page.comida-titanium .cd-module-tab--hoy {
+  background: linear-gradient(155deg, rgba(52, 211, 153, 0.2) 0%, rgba(6, 78, 59, 0.38) 50%, rgba(15, 23, 42, 0.9) 100%);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #99f6e4;
+}
+
+.comida-page.comida-titanium .cd-module-tab--hoy.is-active {
+  background: linear-gradient(155deg, rgba(110, 231, 183, 0.35) 0%, rgba(16, 185, 129, 0.45) 42%, rgba(4, 120, 87, 0.52) 100%);
+  border-color: rgba(110, 231, 183, 0.48);
+  color: #ecfdf5;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 16px rgba(16, 185, 129, 0.2);
+}
+
+.comida-page.comida-titanium .cd-module-tab--plan {
+  background: linear-gradient(155deg, rgba(96, 165, 250, 0.2) 0%, rgba(29, 78, 216, 0.36) 50%, rgba(15, 23, 42, 0.9) 100%);
+  border-color: rgba(59, 130, 246, 0.32);
+  color: #bfdbfe;
+}
+
+.comida-page.comida-titanium .cd-module-tab--plan.is-active {
+  background: linear-gradient(155deg, rgba(147, 197, 253, 0.32) 0%, rgba(59, 130, 246, 0.48) 42%, rgba(37, 99, 235, 0.52) 100%);
+  border-color: rgba(147, 197, 253, 0.45);
+  color: #eff6ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 16px rgba(59, 130, 246, 0.22);
+}
+
+.comida-page.comida-titanium .cd-module-tab--historial {
+  background: linear-gradient(155deg, rgba(167, 139, 250, 0.2) 0%, rgba(91, 33, 182, 0.36) 50%, rgba(15, 23, 42, 0.9) 100%);
+  border-color: rgba(139, 92, 246, 0.32);
+  color: #ddd6fe;
+}
+
+.comida-page.comida-titanium .cd-module-tab--historial.is-active {
+  background: linear-gradient(155deg, rgba(196, 181, 253, 0.32) 0%, rgba(124, 58, 237, 0.45) 42%, rgba(91, 33, 182, 0.52) 100%);
+  border-color: rgba(196, 181, 253, 0.42);
+  color: #f5f3ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 16px rgba(124, 58, 237, 0.2);
+}
+
+.comida-page.comida-titanium .cd-module-tab--hoy .cd-module-tab-badge {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: rgba(110, 231, 183, 0.35);
+  color: #a7f3d0;
+}
+
+.comida-page.comida-titanium .cd-module-tab--plan .cd-module-tab-badge {
+  background: rgba(59, 130, 246, 0.22);
+  border-color: rgba(147, 197, 253, 0.35);
+  color: #93c5fd;
+}
+
+.comida-page.comida-titanium .cd-module-tab--historial .cd-module-tab-badge {
+  background: rgba(124, 58, 237, 0.22);
+  border-color: rgba(196, 181, 253, 0.35);
+  color: #c4b5fd;
+}
+
+/* Rutina — tarjetas con degradé (Hoy / Plan / Progreso) */
+.rutina-titanium .rut-tab--hoy {
+  background: linear-gradient(155deg, rgba(52, 211, 153, 0.2) 0%, rgba(6, 78, 59, 0.38) 50%, rgba(15, 23, 42, 0.9) 100%);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #99f6e4;
+}
+
+.rutina-titanium .rut-tab--hoy.is-active {
+  background: linear-gradient(155deg, rgba(110, 231, 183, 0.35) 0%, rgba(16, 185, 129, 0.45) 42%, rgba(4, 120, 87, 0.52) 100%);
+  border-color: rgba(110, 231, 183, 0.48);
+  color: #ecfdf5;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 16px rgba(16, 185, 129, 0.2);
+}
+
+.rutina-titanium .rut-tab--plan {
+  background: linear-gradient(155deg, rgba(96, 165, 250, 0.2) 0%, rgba(29, 78, 216, 0.36) 50%, rgba(15, 23, 42, 0.9) 100%);
+  border-color: rgba(59, 130, 246, 0.32);
+  color: #bfdbfe;
+}
+
+.rutina-titanium .rut-tab--plan.is-active {
+  background: linear-gradient(155deg, rgba(147, 197, 253, 0.32) 0%, rgba(59, 130, 246, 0.48) 42%, rgba(37, 99, 235, 0.52) 100%);
+  border-color: rgba(147, 197, 253, 0.45);
+  color: #eff6ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 16px rgba(59, 130, 246, 0.22);
+}
+
+.rutina-titanium .rut-tab--progreso {
+  background: linear-gradient(155deg, rgba(251, 191, 36, 0.18) 0%, rgba(180, 83, 9, 0.34) 50%, rgba(15, 23, 42, 0.9) 100%);
+  border-color: rgba(245, 158, 11, 0.32);
+  color: #fde68a;
+}
+
+.rutina-titanium .rut-tab--progreso.is-active {
+  background: linear-gradient(155deg, rgba(253, 224, 71, 0.28) 0%, rgba(245, 158, 11, 0.42) 42%, rgba(180, 83, 9, 0.5) 100%);
+  border-color: rgba(253, 224, 71, 0.4);
+  color: #fffbeb;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 16px rgba(245, 158, 11, 0.18);
+}
+
+.rutina-titanium .rut-tab--progreso.is-active svg {
+  color: #fef3c7;
+}
+
 .cd-module-tab-badge {
   display: inline-flex;
   align-items: center;
@@ -13788,9 +13888,7 @@ select.ap-input {
     line-height: 1.1;
     white-space: nowrap;
     text-align: center;
-    border: 1px solid rgba(51, 65, 85, 0.65);
-    background: rgba(15, 23, 42, 0.55);
-    box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.04);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
@@ -13813,12 +13911,11 @@ select.ap-input {
   }
 
   .comida-page.comida-titanium .cd-module-tab:not(.is-active):hover {
-    border-color: rgba(71, 85, 105, 0.85);
-    background: rgba(26, 34, 53, 0.65);
+    filter: brightness(1.08);
   }
 
   .comida-page.comida-titanium .cd-module-tab.is-active {
-    border-color: rgba(59, 130, 246, 0.45);
+    filter: none;
   }
 
   .comida-page.comida-titanium .cd-header-actions {

@@ -885,7 +885,7 @@ export default function Rutina() {
             <nav className="rut-tabs" aria-label="Vistas de rutina">
               <button
                 type="button"
-                className={`rut-tab${vista === 'registrar' && origenRutinas === 'propias' ? ' is-active' : ''}`}
+                className={`rut-tab rut-tab--hoy${vista === 'registrar' && origenRutinas === 'propias' ? ' is-active' : ''}`}
                 onClick={() => { setOrigenRutinas('propias'); setVista('registrar') }}
               >
                 <span className="rut-tab-check" aria-hidden>
@@ -898,7 +898,7 @@ export default function Rutina() {
               </button>
               <button
                 type="button"
-                className={`rut-tab${vista === 'configurar' && origenRutinas === 'propias' ? ' is-active' : ''}`}
+                className={`rut-tab rut-tab--plan${vista === 'configurar' && origenRutinas === 'propias' ? ' is-active' : ''}`}
                 onClick={() => { setOrigenRutinas('propias'); setVista('configurar') }}
               >
                 <span className="rut-tab-label rut-tab-label--long">Armar tu plan</span>
@@ -906,7 +906,7 @@ export default function Rutina() {
               </button>
               <button
                 type="button"
-                className={`rut-tab${vista === 'progreso' && origenRutinas === 'propias' ? ' is-active' : ''}`}
+                className={`rut-tab rut-tab--progreso${vista === 'progreso' && origenRutinas === 'propias' ? ' is-active' : ''}`}
                 onClick={() => { setOrigenRutinas('propias'); setVista('progreso') }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
