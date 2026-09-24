@@ -1456,13 +1456,6 @@
   display: none;
 }
 
-.plan-kanban-config-btn--compact {
-  flex: 0 0 auto;
-  margin-left: auto;
-  padding: 0.4rem 0.55rem;
-  font-size: 0.68rem;
-}
-
 .plan-kanban-embedded-top {
   display: flex;
   flex-direction: column;
