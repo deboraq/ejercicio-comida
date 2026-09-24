@@ -9541,6 +9541,10 @@ body {
   display: none;
 }
 
+.rut-head-title-text--short {
+  display: none;
+}
+
 .rut-btn-label--short {
   display: none;
 }
@@ -9615,8 +9619,8 @@ body {
   .rutina-titanium .rut-head {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    padding-bottom: 0.35rem;
+    gap: 0.28rem;
+    padding-bottom: 0.2rem;
   }
 
   .rutina-titanium .rut-head-top {
@@ -9635,7 +9639,7 @@ body {
     flex: 0 0 auto !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 0.5rem;
+    gap: 0.28rem;
     padding-top: 0;
   }
 
@@ -9644,19 +9648,28 @@ body {
     flex: 0 0 auto !important;
     width: 100%;
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.45rem;
+    grid-template-columns: 1fr 1fr 2.15rem;
+    gap: 0.32rem;
     align-items: stretch;
   }
 
   .rutina-titanium .rut-head-title {
     margin: 0;
-    padding-left: 3.2rem;
-    min-height: 2.35rem;
+    padding-left: 2.75rem;
+    padding-right: 2.5rem;
+    min-height: 1.75rem;
     display: flex;
     align-items: center;
-    font-size: clamp(1.05rem, 4.5vw, 1.4rem);
-    line-height: 1.15;
+    font-size: clamp(0.92rem, 3.6vw, 1.12rem);
+    line-height: 1.2;
+  }
+
+  .rutina-titanium .rut-head-title-text--long {
+    display: none;
+  }
+
+  .rutina-titanium .rut-head-title-text--short {
+    display: inline;
   }
 
   .rutina-titanium .rut-head-sub {
@@ -9668,12 +9681,13 @@ body {
   }
 
   .rutina-titanium .rut-activa {
-    grid-column: 1 / -1;
+    grid-column: 1 / 3;
     grid-row: 1;
     width: 100%;
     box-sizing: border-box;
-    min-height: 2.55rem;
-    padding-right: 2.65rem;
+    min-height: 2.05rem;
+    height: 2.05rem;
+    padding: 0 0.55rem;
   }
 
   .rutina-titanium .rut-activa-label {
@@ -9695,13 +9709,14 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.35rem;
-    grid-column: 1 / -1;
-    grid-row: 3;
-    width: 100%;
-    min-height: 2.5rem;
-    height: auto;
-    padding: 0.45rem 0.65rem;
+    gap: 0;
+    grid-column: 3;
+    grid-row: 2;
+    width: 2.15rem;
+    min-width: 2.15rem;
+    min-height: 2.05rem;
+    height: 2.05rem;
+    padding: 0;
     border: 1px solid rgba(248, 113, 113, 0.45);
     color: #fca5a5;
     background: rgba(127, 29, 29, 0.25);
@@ -9712,9 +9727,7 @@ body {
   }
 
   .rutina-titanium .rut-btn-label--mobile-only {
-    display: inline;
-    font-size: 0.78rem;
-    font-weight: 600;
+    display: none;
   }
 
   .rutina-titanium .rut-btn-dark {
@@ -9723,12 +9736,12 @@ body {
     width: 100%;
     min-width: 0;
     justify-content: center;
-    font-size: 0.78rem;
+    font-size: 0.68rem;
     white-space: nowrap;
-    line-height: 1.15;
-    min-height: 2.5rem;
-    height: 2.5rem;
-    padding-inline: 0.4rem;
+    line-height: 1.1;
+    min-height: 2.05rem;
+    height: 2.05rem;
+    padding-inline: 0.35rem;
   }
 
   .rutina-titanium .rut-btn-pdf {
@@ -9737,12 +9750,12 @@ body {
     width: 100%;
     min-width: 0;
     justify-content: center;
-    font-size: 0.78rem;
+    font-size: 0.68rem;
     white-space: nowrap;
-    line-height: 1.15;
-    min-height: 2.5rem;
-    height: 2.5rem;
-    padding-inline: 0.4rem;
+    line-height: 1.1;
+    min-height: 2.05rem;
+    height: 2.05rem;
+    padding-inline: 0.35rem;
     background: #151b2b;
     border: 1px solid rgba(59, 130, 246, 0.42);
     color: #93c5fd;
@@ -9754,18 +9767,18 @@ body {
   }
 
   .rutina-titanium .rut-campana {
-    grid-column: 2;
+    grid-column: 3;
     grid-row: 1;
-    justify-self: end;
+    justify-self: center;
     align-self: center;
     z-index: 1;
-    margin-right: 0.2rem;
+    margin-right: 0;
   }
 
   .rutina-titanium .rut-campana .button {
-    width: 2.15rem !important;
-    height: 2.15rem !important;
-    min-width: 2.15rem !important;
+    width: 2.05rem !important;
+    height: 2.05rem !important;
+    min-width: 2.05rem !important;
   }
 
   .rutina-titanium .rut-btn-label--long {
@@ -9778,9 +9791,9 @@ body {
 
   .rutina-titanium .rut-head .rut-tabs {
     display: grid !important;
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     width: 100%;
-    gap: 0.4rem;
+    gap: 0.28rem;
     flex-wrap: unset !important;
   }
 
@@ -9791,15 +9804,27 @@ body {
     justify-content: center;
     align-items: center;
     text-align: center;
-    white-space: normal !important;
-    line-height: 1.15;
-    font-size: 0.8rem;
-    padding: 0.55rem 0.65rem;
-    min-height: 2.6rem;
+    white-space: nowrap !important;
+    line-height: 1.1;
+    font-size: 0.66rem;
+    padding: 0.32rem 0.22rem;
+    min-height: 1.85rem;
     height: auto;
     box-sizing: border-box;
     border: 1px solid rgba(148, 163, 184, 0.22);
     background: rgba(21, 27, 43, 0.85);
+    flex-direction: row;
+    gap: 0.2rem;
+  }
+
+  .rutina-titanium .rut-head .rut-tab svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+
+  .rutina-titanium .rut-head .rut-tab.is-active .rut-tab-check {
+    display: none;
   }
 
   .rutina-titanium .rut-head .rut-tab.is-active {
@@ -9820,16 +9845,17 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
     box-sizing: border-box;
+    padding: 0.12rem;
   }
 
   .rutina-titanium .rut-origen button {
     width: 100%;
     text-align: center;
-    white-space: normal;
-    line-height: 1.15;
-    font-size: 0.72rem;
-    padding-inline: 0.35rem;
-    min-height: 2.35rem;
+    white-space: nowrap;
+    line-height: 1.1;
+    font-size: 0.66rem;
+    padding: 0.32rem 0.25rem;
+    min-height: 1.75rem;
   }
 
   .rutina-titanium .rut-day-chips {
@@ -9875,6 +9901,14 @@ body {
 }
 
 @media (min-width: 1024px) {
+  .rutina-titanium .rut-head-title-text--short {
+    display: none;
+  }
+
+  .rutina-titanium .rut-head-title-text--long {
+    display: inline;
+  }
+
   .rutina-titanium .rut-tab-label--short {
     display: none;
   }

@@ -795,7 +795,10 @@ export default function Rutina() {
         <header className="rut-head">
           <div className="rut-head-top">
             <div className="rut-head-titles">
-              <h1 className="rut-head-title">Gestión de Rutinas y Entrenamiento</h1>
+              <h1 className="rut-head-title">
+                <span className="rut-head-title-text rut-head-title-text--long">Gestión de Rutinas y Entrenamiento</span>
+                <span className="rut-head-title-text rut-head-title-text--short">Rutinas</span>
+              </h1>
               <p className="rut-head-sub">
                 Control de cargas, progresión de 1RM estimada, tonelaje acumulado y métricas de rendimiento en tiempo real.
               </p>
@@ -891,14 +894,15 @@ export default function Rutina() {
                   </svg>
                 </span>
                 <span className="rut-tab-label rut-tab-label--long">Registrar Sesión (Hoy)</span>
-                <span className="rut-tab-label rut-tab-label--short">Registrar (Hoy)</span>
+                <span className="rut-tab-label rut-tab-label--short">Hoy</span>
               </button>
               <button
                 type="button"
                 className={`rut-tab${vista === 'configurar' && origenRutinas === 'propias' ? ' is-active' : ''}`}
                 onClick={() => { setOrigenRutinas('propias'); setVista('configurar') }}
               >
-                Armar tu plan
+                <span className="rut-tab-label rut-tab-label--long">Armar tu plan</span>
+                <span className="rut-tab-label rut-tab-label--short">Plan</span>
               </button>
               <button
                 type="button"
@@ -910,7 +914,7 @@ export default function Rutina() {
                   <path d="m7 15 3.5-4.5L14 13l4-6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <span className="rut-tab-label rut-tab-label--long">Progreso & Cargas</span>
-                <span className="rut-tab-label rut-tab-label--short">Progreso & Cargas</span>
+                <span className="rut-tab-label rut-tab-label--short">Progreso</span>
               </button>
             </nav>
 
