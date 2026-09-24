@@ -13661,6 +13661,15 @@ select.ap-input {
   display: none;
 }
 
+.cd-tab-label--short {
+  display: none;
+}
+
+.cd-title-text--short,
+.cd-date-text--short {
+  display: none;
+}
+
 @media (max-width: 1023px) {
   .comida-container.app-page-container {
     min-width: 0 !important;
@@ -13673,16 +13682,46 @@ select.ap-input {
     margin-top: -0.15rem;
   }
 
+  .comida-page.comida-titanium .cd-root {
+    gap: 0.55rem;
+  }
+
+  .comida-page.comida-titanium .cd-title-text--long,
+  .comida-page.comida-titanium .cd-date-text--long {
+    display: none;
+  }
+
+  .comida-page.comida-titanium .cd-title-text--short,
+  .comida-page.comida-titanium .cd-date-text--short {
+    display: inline;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-plan .cd-header-left,
+  .comida-page.comida-titanium .cd-root.cd-vista-historial .cd-header-left {
+    display: none;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-plan .cd-module-tabs,
+  .comida-page.comida-titanium .cd-root.cd-vista-historial .cd-module-tabs {
+    order: 1;
+  }
+
   .comida-page.comida-titanium .cd-header-shell {
     display: flex;
     flex-direction: column;
     position: relative;
-    gap: 0.5rem;
-    padding-bottom: 0.35rem;
+    gap: 0.28rem;
+    padding-bottom: 0.15rem;
   }
 
   .comida-page.comida-titanium .cd-header {
     display: contents;
+  }
+
+  .comida-page.comida-titanium .cd-date-inner svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
   }
 
   .comida-page.comida-titanium .cd-header-left {
@@ -13697,27 +13736,46 @@ select.ap-input {
     order: 2;
     flex: 0 0 auto !important;
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     flex-direction: row !important;
     align-items: stretch !important;
-    gap: 0.4rem;
+    gap: 0.28rem;
     margin-bottom: 0;
-    padding: 0.28rem;
+    padding: 0.18rem;
     width: 100%;
   }
 
   .comida-page.comida-titanium .cd-module-tab {
     width: 100%;
     min-width: 0;
-    min-height: 2.5rem;
-    padding: 0.55rem 0.65rem;
-    font-size: 0.76rem;
-    line-height: 1.15;
-    white-space: normal;
+    min-height: 1.85rem;
+    padding: 0.3rem 0.2rem;
+    font-size: 0.68rem;
+    line-height: 1.1;
+    white-space: nowrap;
     text-align: center;
     border: 1px solid rgba(51, 65, 85, 0.65);
     background: rgba(15, 23, 42, 0.55);
     box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.04);
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.2rem;
+  }
+
+  .comida-page.comida-titanium .cd-tab-label--long {
+    display: none;
+  }
+
+  .comida-page.comida-titanium .cd-tab-label--short {
+    display: inline;
+  }
+
+  .comida-page.comida-titanium .cd-module-tab-badge {
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.25rem;
+    font-size: 0.58rem;
   }
 
   .comida-page.comida-titanium .cd-module-tab:not(.is-active):hover {
@@ -13734,9 +13792,10 @@ select.ap-input {
     flex: 0 0 auto !important;
     width: 100%;
     display: flex !important;
-    flex-direction: column;
-    gap: 0.45rem;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    align-items: center;
   }
 
   .comida-page.comida-titanium .cd-title-row {
@@ -13746,9 +13805,9 @@ select.ap-input {
     align-items: center;
     gap: 0.35rem;
     margin-bottom: 0;
-    padding-left: 3.2rem;
-    padding-right: 2.85rem;
-    min-height: 2.35rem;
+    padding-left: 2.75rem;
+    padding-right: 2.55rem;
+    min-height: 1.75rem;
     box-sizing: border-box;
   }
 
@@ -13758,8 +13817,8 @@ select.ap-input {
     min-height: unset;
     display: block;
     min-width: 0;
-    font-size: clamp(1.02rem, 4.2vw, 1.32rem);
-    line-height: 1.35;
+    font-size: clamp(0.92rem, 3.6vw, 1.12rem);
+    line-height: 1.25;
   }
 
   .comida-page.comida-titanium .cd-title-text {
@@ -13791,40 +13850,52 @@ select.ap-input {
   }
 
   .comida-page.comida-titanium .cd-date-nav {
-    width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
     justify-content: space-between;
+    padding: 0.2rem 0.15rem;
   }
 
   .comida-page.comida-titanium .cd-date-inner {
     flex: 1;
     justify-content: center;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
+    gap: 0.25rem;
+  }
+
+  .comida-page.comida-titanium .cd-date-arrow {
+    min-width: 1.65rem;
+    padding: 0.15rem 0.25rem;
   }
 
   .comida-page.comida-titanium .cd-header-actions .cd-btn--primary {
-    width: 100%;
+    flex: 0 0 auto;
+    width: auto !important;
+    max-width: 42%;
     min-width: 0;
-    min-height: 2.5rem;
+    min-height: 2.05rem;
+    padding: 0.35rem 0.55rem;
     white-space: nowrap;
-    line-height: 1.15;
+    line-height: 1.1;
     text-align: center;
     justify-content: center;
     display: inline-flex;
     align-items: center;
+    font-size: 0.68rem;
   }
 
   .comida-page.comida-titanium .cd-campana {
     position: absolute;
-    top: 0.1rem;
+    top: 0;
     right: 0;
     z-index: 2;
     display: inline-flex;
   }
 
   .comida-page.comida-titanium .cd-campana .button {
-    width: 2.35rem !important;
-    min-width: 2.35rem !important;
-    height: 2.35rem !important;
+    width: 2rem !important;
+    min-width: 2rem !important;
+    height: 2rem !important;
     min-height: 2.35rem !important;
     padding: 0 !important;
     display: inline-flex;
@@ -13923,6 +13994,55 @@ select.ap-input {
   .comida-page.comida-titanium .cd-module-tab,
   .comida-page.comida-titanium .cd-meal-act {
     touch-action: manipulation;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-plan .cd-header-actions {
+    display: none !important;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-plan .cd-header-left {
+    padding-right: 0.35rem;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-plan .cd-title-row {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-hoy .cd-balance-sub {
+    display: none;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-hoy .cd-panel.cd-balance {
+    padding: 0.72rem 0.8rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-hoy .cd-balance-head {
+    margin-bottom: 0.35rem;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-hoy .cd-water {
+    padding-top: 0.55rem;
+    gap: 0.45rem;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-hoy .cd-water-glasses {
+    gap: 0.18rem;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-hoy .cd-glass {
+    width: 0.62rem;
+    height: 0.9rem;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-hoy .cd-plan-strip {
+    display: none;
+  }
+
+  .comida-page.comida-titanium .cd-root.cd-vista-hoy .cd-meal-act svg {
+    width: 14px;
+    height: 14px;
   }
 }
 

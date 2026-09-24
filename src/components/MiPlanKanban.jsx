@@ -133,6 +133,7 @@ export default function MiPlanKanban({
   const [editorAbierto, setEditorAbierto] = useState(false)
   const [editDiaPlan, setEditDiaPlan] = useState(1)
   const [panelNuevoPlan, setPanelNuevoPlan] = useState(false)
+  const [vistaPlanZoom, setVistaPlanZoom] = useState('2')
   const boardWrapRef = useRef(null)
   const planNavKey = planNutricionActivoId || config?.planNutricionId || ''
   const planNavAplicadoRef = useRef(null)
@@ -145,6 +146,21 @@ export default function MiPlanKanban({
     const col = wrap?.querySelector(`[data-dia-plan="${diaPlan}"]`)
     col?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
   }, [])
+
+  const scrollParDiasPlan = useCallback(
+    (diaA, diaB) => {
+      const wrap = boardWrapRef.current
+      if (!wrap || !diaA) return
+      const colA = wrap.querySelector(`[data-dia-plan="${diaA}"]`)
+      if (!colA) return
+      if (vistaPlanZoom === '2' && diaB && diaB !== diaA) {
+        wrap.scrollTo({ left: Math.max(0, colA.offsetLeft - 4), behavior: 'smooth' })
+        return
+      }
+      colA.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+    },
+    [vistaPlanZoom],
+  )
 
   const aplicarNavegacionInicial = useCallback(
     (inicioISO, est) => {
@@ -160,16 +176,31 @@ export default function MiPlanKanban({
   const inicio = config?.planMes1Inicio || ''
   const tienePlan = planMes1TieneInicio(config)
 
-  const estadoPlanActivo = useMemo(() => {
-    const id = planNutricionActivoId || config?.planNutricionId
-    const entry = (planesNutricion || []).find((p) => p.id === id)
-    if (!entry?.estado) return estado
-    return {
-      checks: { ...(entry.estado.checks || {}), ...(estado.checks || {}) },
-      omitidos: { ...(entry.estado.omitidos || {}), ...(estado.omitidos || {}) },
-      extras: { ...(entry.estado.extras || {}), ...(estado.extras || {}) },
-    }
-  }, [estado, planesNutricion, planNutricionActivoId, config?.planNutricionId])
+  const syncBibliotecaEstado = useCallback(
+    (est) => {
+      const id = planNutricionActivoId || config?.planNutricionId
+      if (!id || !planMes1TieneInicio(config)) return
+      setPlanesNutricion((prev) =>
+        upsertPlanEnLista(prev, snapshotFromRuntime(config, planPropio, est, id)),
+      )
+    },
+    [config, planPropio, planNutricionActivoId, setPlanesNutricion],
+  )
+
+  const patchEstado = useCallback(
+    (updater) => {
+      setEstado((prev) => {
+        const next = typeof updater === 'function' ? updater(prev) : updater
+        queueMicrotask(() => syncBibliotecaEstado(next))
+        return next
+      })
+    },
+    [setEstado, syncBibliotecaEstado],
+  )
+
+  const marcadosKeyMemo = useMemo(() => diasConMarcasEnEstado(estado).join(','), [estado])
+  const estadoRef = useRef(estado)
+  estadoRef.current = estado
 
   useEffect(() => {
     const dias = diasDeSemanaPlan(semanaActiva)
@@ -182,28 +213,28 @@ export default function MiPlanKanban({
     const key = planNavKey || inicioISO
     if (!inicioISO || !key) return
 
-    const marcadosKey = diasConMarcasEnEstado(estadoPlanActivo).join(',')
+    const marcadosKey = marcadosKeyMemo
     const planCambio = planNavAplicadoRef.current !== key
-    const marcasRecienDisponibles =
-      Boolean(marcadosKey) && planNavMarcasRef.current !== marcadosKey && !planNavMarcasRef.current
+    const marcasRecienDisponibles = !planNavMarcasRef.current && Boolean(marcadosKey)
     const primeraVez = planNavAplicadoRef.current === null
     const storageListo = !user || !isConfigured || (configCloudReady && estadoCloudReady)
+    const datosCloudRecienListos =
+      storageListo
+      && planNavAplicadoRef.current === key
+      && !planNavMarcasRef.current
+      && Boolean(marcadosKey)
 
-    const debeNav =
-      planCambio
-      || primeraVez
-      || marcasRecienDisponibles
-      || (storageListo && planNavMarcasRef.current !== marcadosKey && planNavAplicadoRef.current === key)
+    const debeNav = planCambio || primeraVez || marcasRecienDisponibles || datosCloudRecienListos
 
     if (!debeNav) return
 
-    aplicarNavegacionInicial(inicioISO, estadoPlanActivo)
+    aplicarNavegacionInicial(inicioISO, estadoRef.current)
     planNavAplicadoRef.current = key
     planNavMarcasRef.current = marcadosKey
   }, [
     planNavKey,
-    config,
-    estadoPlanActivo,
+    config?.planMes1Inicio,
+    marcadosKeyMemo,
     configCloudReady,
     estadoCloudReady,
     user,
@@ -221,8 +252,8 @@ export default function MiPlanKanban({
     if (!inicio) {
       return { diaCalendario: null, ultimoMarca: null, diaSiguiente: null, diaToca: null }
     }
-    const nav = navegacionInicialPlanKanban(inicio, estadoPlanActivo)
-    const marcados = diasConMarcasEnEstado(estadoPlanActivo)
+    const nav = navegacionInicialPlanKanban(inicio, estado)
+    const marcados = diasConMarcasEnEstado(estado)
     const ultimoMarca = marcados.length ? marcados[marcados.length - 1] : null
     const diaSiguiente =
       ultimoMarca != null
@@ -237,7 +268,31 @@ export default function MiPlanKanban({
       desfaseInicio: nav.desfaseInicio,
       inicioPlan: inicio,
     }
-  }, [inicio, estadoPlanActivo])
+  }, [inicio, estado])
+
+  const diasSemana = useMemo(() => diasDeSemanaPlan(semanaActiva), [semanaActiva])
+
+  const diasAMostrar = useMemo(() => {
+    const diaAncla = contextoDiasPlan.diaCalendario ?? contextoDiasPlan.diaToca ?? 1
+    if (vistaPlanZoom === 'mes') {
+      return Array.from({ length: PLAN_MES1_TOTAL_DIAS }, (_, i) => i + 1)
+    }
+    if (vistaPlanZoom === 'semana') {
+      return diasSemana
+    }
+    if (vistaPlanZoom === '1') {
+      return [diaAncla]
+    }
+    const sig = Math.min(PLAN_MES1_TOTAL_DIAS, diaAncla + 1)
+    if (sig <= diaAncla) return [diaAncla]
+    return [diaAncla, sig]
+  }, [vistaPlanZoom, diasSemana, contextoDiasPlan.diaCalendario, contextoDiasPlan.diaToca])
+
+  const parScrollDosDias = useMemo(() => {
+    const t = contextoDiasPlan.diaCalendario ?? contextoDiasPlan.diaToca ?? 1
+    const s = Math.min(PLAN_MES1_TOTAL_DIAS, t + 1)
+    return { t, s: s > t ? s : null }
+  }, [contextoDiasPlan.diaCalendario, contextoDiasPlan.diaToca])
   const listo = perfilPlanListo(config)
   const metaKcal = metaCaloriasPlan(config?.sexo)
   const esquema = esquemaPlanActivo(config)
@@ -260,8 +315,6 @@ export default function MiPlanKanban({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planesNutricion?.length, config?.planMes1Inicio])
 
-  const diasSemana = useMemo(() => diasDeSemanaPlan(semanaActiva), [semanaActiva])
-
   useEffect(() => {
     if (!tienePlan || !pendingScrollDiaRef.current) return
     const dia = pendingScrollDiaRef.current
@@ -269,6 +322,22 @@ export default function MiPlanKanban({
     const t = window.setTimeout(() => scrollADiaPlan(dia), 60)
     return () => window.clearTimeout(t)
   }, [semanaActiva, diasSemana, tienePlan, scrollADiaPlan])
+
+  useEffect(() => {
+    if (!tienePlan) return
+    const { t, s } = parScrollDosDias
+    if (!t) return
+    const diaB = vistaPlanZoom === '2' ? s : contextoDiasPlan.diaSiguiente
+    const tm = window.setTimeout(() => scrollParDiasPlan(t, diaB), 120)
+    return () => window.clearTimeout(tm)
+  }, [
+    vistaPlanZoom,
+    parScrollDosDias,
+    contextoDiasPlan.diaSiguiente,
+    semanaActiva,
+    tienePlan,
+    scrollParDiasPlan,
+  ])
 
   const listoGenerar = perfilListoParaGenerarPlan(config)
   const nombrePlanSistema = useMemo(() => nombrePlanGuiadoSistema(config), [config])
@@ -299,16 +368,6 @@ export default function MiPlanKanban({
     planNavAplicadoRef.current = null
     planNavMarcasRef.current = ''
   }
-
-  useEffect(() => {
-    if (!tienePlan) return
-    const id = planNutricionActivoId || config?.planNutricionId
-    if (!id) return
-    setPlanesNutricion((prev) =>
-      upsertPlanEnLista(prev, snapshotFromRuntime(config, planPropio, estado, id)),
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [estado?.checks, estado?.omitidos, estado?.extras, planNutricionActivoId, config?.planNutricionId])
 
   const confirmarReemplazoPlan = () => {
     if (!tienePlan) return true
@@ -613,7 +672,7 @@ export default function MiPlanKanban({
 
     const willCheck = !estado?.checks?.[key]
 
-    setEstado((prev) => ({
+    patchEstado((prev) => ({
       ...prev,
       checks: {
         ...(prev?.checks || {}),
@@ -679,7 +738,7 @@ export default function MiPlanKanban({
 
   const handleDesmarcarTodoElDia = (diaPlan, slots, extrasDia) => {
     if (!window.confirm('¿Desmarcar todas las comidas de este día?')) return
-    setEstado((prev) => {
+    patchEstado((prev) => {
       const checks = { ...(prev?.checks || {}) }
       for (const k of clavesChecksDia(diaPlan, slots, extrasDia)) {
         delete checks[k]
@@ -692,7 +751,7 @@ export default function MiPlanKanban({
   const handleMarcarTodoElDia = (diaPlan, slots, extrasDia) => {
     const indices = preguntarOpcionesMarcarTodo()
     if (!indices) return
-    setEstado((prev) => {
+    patchEstado((prev) => {
       const checks = { ...(prev?.checks || {}) }
       for (const slot of slots) {
         const nOp = (slot.opciones || []).length
@@ -749,7 +808,7 @@ export default function MiPlanKanban({
   const handleEliminarComida = (diaPlan, slot, label) => {
     if (!window.confirm(`¿Quitar "${label}" del día ${diaPlan} del plan?`)) return
     const key = claveComidaPlan(diaPlan, slot.id)
-    setEstado((prev) => {
+    patchEstado((prev) => {
       const checks = { ...(prev?.checks || {}) }
       for (const k of clavesOpcionesSlot(diaPlan, slot.id, slot.opciones)) {
         delete checks[k]
@@ -766,7 +825,7 @@ export default function MiPlanKanban({
 
   const handleEliminarExtra = (diaPlan, extraId, label) => {
     if (!window.confirm(`¿Eliminar "${label}"?`)) return
-    setEstado((prev) => {
+    patchEstado((prev) => {
       const extrasDia = (prev?.extras?.[diaPlan] || []).filter((e) => e.id !== extraId)
       const checks = { ...(prev?.checks || {}) }
       delete checks[claveComidaPlan(diaPlan, 'extra', extraId)]
@@ -781,7 +840,7 @@ export default function MiPlanKanban({
 
   const handleAnadirColacion = (diaPlan) => {
     const id = `ex_${Date.now()}`
-    setEstado((prev) => ({
+    patchEstado((prev) => ({
       ...prev,
       extras: {
         ...(prev?.extras || {}),
@@ -801,7 +860,7 @@ export default function MiPlanKanban({
   const handleEditarEnRegistroHoy = (diaPlan, slot, texto, opcionLabel, opIdx = 0) => {
     const key = claveComidaPlan(diaPlan, slot.id, null, opIdx)
     if (!isChecked(diaPlan, slot.id, null, opIdx)) {
-      setEstado((prev) => ({
+      patchEstado((prev) => ({
         ...prev,
         checks: { ...(prev?.checks || {}), [key]: true },
       }))
@@ -835,7 +894,7 @@ export default function MiPlanKanban({
   const handleEditarExtraEnRegistro = (diaPlan, extra, texto) => {
     const key = claveComidaPlan(diaPlan, 'extra', extra.id)
     if (!isChecked(diaPlan, 'extra', extra.id)) {
-      setEstado((prev) => ({
+      patchEstado((prev) => ({
         ...prev,
         checks: { ...(prev?.checks || {}), [key]: true },
       }))
@@ -885,8 +944,188 @@ export default function MiPlanKanban({
 
   const hidratacion = resumenHidratacionPlan(config)
 
+  const etiquetaVistaZoom =
+    vistaPlanZoom === '1'
+      ? '1 día'
+      : vistaPlanZoom === '2'
+        ? '2 días'
+        : vistaPlanZoom === 'semana'
+          ? 'Semana'
+          : 'Mes'
+
+  const toolbarInicioYZoom = (
+    <div className="plan-kanban-toolbar-row plan-kanban-toolbar-row--inicio">
+      <label className="plan-kanban-inicio-dia">
+        <span className="plan-kanban-inicio-dia-label">Hoy</span>
+        <select
+          value={contextoDiasPlan.diaCalendario ?? 1}
+          onChange={(e) => ajustarInicioAlDia(Number(e.target.value))}
+          aria-label="Qué día del plan corresponde a hoy"
+        >
+          {Array.from({ length: PLAN_MES1_TOTAL_DIAS }, (_, i) => i + 1).map((d) => (
+            <option key={d} value={d}>
+              Día {d}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="plan-kanban-zoom" role="group" aria-label="Vista del tablero">
+        {[
+          { id: '1', label: '1' },
+          { id: '2', label: '2' },
+          { id: 'semana', label: 'Sem.' },
+          { id: 'mes', label: 'Mes' },
+        ].map((z) => (
+          <button
+            key={z.id}
+            type="button"
+            className={`plan-kanban-zoom-btn${vistaPlanZoom === z.id ? ' is-active' : ''}`}
+            onClick={() => setVistaPlanZoom(z.id)}
+            title={
+              z.id === '1'
+                ? 'Un día'
+                : z.id === '2'
+                  ? 'Dos días'
+                  : z.id === 'semana'
+                    ? 'Semana'
+                    : 'Mes completo'
+            }
+          >
+            {z.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
+  const bloqueEsquemaYEditor = (
+    <>
+      <div className="plan-kanban-esquema" role="group" aria-label="Esquema de comidas">
+        {ESQUEMAS.map((e) => (
+          <button
+            key={e.id}
+            type="button"
+            className={`plan-kanban-esquema-btn${esquema === e.id ? ' is-active' : ''}`}
+            onClick={() => setEsquema(e.id)}
+          >
+            {e.label}
+          </button>
+        ))}
+      </div>
+      {(vistaPlanZoom === 'semana' || vistaPlanZoom === 'mes') && (
+        <div className="plan-kanban-semanas" role="tablist" aria-label="Semanas del plan">
+          {[1, 2, 3, 4].map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="tab"
+              aria-selected={semanaActiva === s}
+              className={`plan-kanban-semana-btn${semanaActiva === s ? ' is-active' : ''}`}
+              onClick={() => setSemanaActiva(s)}
+            >
+              Semana {s}
+            </button>
+          ))}
+        </div>
+      )}
+      {esPlanPropio(config) && (
+        <div className="plan-kanban-propio-tools">
+          <label className="plan-kanban-edit-day">
+            <span>Día a editar</span>
+            <select
+              value={editDiaPlan}
+              onChange={(e) => setEditDiaPlan(Number(e.target.value))}
+            >
+              {diasSemana.map((d) => (
+                <option key={d} value={d}>
+                  Día {d}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className={`plan-kanban-esquema-btn${editorAbierto ? ' is-active' : ''}`}
+            onClick={() => setEditorAbierto((v) => !v)}
+          >
+            {editorAbierto ? 'Ocultar editor' : 'Editar menú'}
+          </button>
+        </div>
+      )}
+    </>
+  )
+
   return (
     <div className={`plan-kanban${embedded ? ' plan-kanban--embedded' : ''}`}>
+      {embedded ? (
+        <>
+          <details className="plan-kanban-compact-fold">
+            <summary>
+              <span className="plan-kanban-compact-fold-title">
+                {esPlanPropio(config) ? planPropio?.nombre || 'Mi plan' : metaTitulo}
+              </span>
+              <span className="plan-kanban-compact-fold-meta">
+                D{contextoDiasPlan.diaCalendario ?? '—'} · {etiquetaVistaZoom}
+              </span>
+            </summary>
+            <div className="plan-kanban-compact-fold-body">
+              <div className="plan-kanban-meta-actions plan-kanban-meta-actions--fold">
+                <Link to="/config#plan-desde-objetivo" className="plan-kanban-config-btn">
+                  <IconGear />
+                  Config
+                </Link>
+              </div>
+              {accionesCrearPlan('bar')}
+              {contextoDiasPlan.desfaseInicio && contextoDiasPlan.ultimoMarca != null && (
+                <div className="plan-kanban-desfase-alert plan-kanban-desfase-alert--compact" role="alert">
+                  <p className="mb-2">
+                    Marcas hasta <strong>Día {contextoDiasPlan.ultimoMarca}</strong>, calendario en{' '}
+                    <strong>Día {contextoDiasPlan.diaCalendario}</strong>.
+                  </p>
+                  <button
+                    type="button"
+                    className="plan-kanban-create-btn plan-kanban-create-btn--primary plan-kanban-create-btn--wide"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `¿Ajustar para que HOY sea el Día ${contextoDiasPlan.ultimoMarca}?`,
+                        )
+                      ) {
+                        ajustarInicioAlDia(contextoDiasPlan.ultimoMarca)
+                      }
+                    }}
+                  >
+                    Corregir a Día {contextoDiasPlan.ultimoMarca}
+                  </button>
+                </div>
+              )}
+              <details className="plan-kanban-meta-details">
+                <summary>Perfil y metas</summary>
+                <div className="plan-kanban-sync-grid">
+                  <div className="plan-kanban-sync-card plan-kanban-sync-card--perfil">
+                    <span className="plan-kanban-sync-label">Perfil</span>
+                    <strong>
+                      {sexoLabel(config.sexo)} · {formatearPesoKg(config.pesoKg)}
+                    </strong>
+                  </div>
+                  <div className="plan-kanban-sync-card plan-kanban-sync-card--kcal">
+                    <span className="plan-kanban-sync-label">Calorías</span>
+                    <strong>{formatearKcalRango(metaKcal.min, metaKcal.max)}</strong>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </details>
+          <div className="plan-kanban-toolbar plan-kanban-toolbar--compact">
+            {toolbarInicioYZoom}
+            <details className="plan-kanban-compact-fold plan-kanban-compact-fold--inline">
+              <summary>Esquema y editor</summary>
+              <div className="plan-kanban-compact-fold-body">{bloqueEsquemaYEditor}</div>
+            </details>
+          </div>
+        </>
+      ) : (
+      <>
       <header className="plan-kanban-meta">
         <div className="plan-kanban-meta-top">
           <div>
@@ -964,65 +1203,33 @@ export default function MiPlanKanban({
         )}
 
         <div className="plan-kanban-sync-grid">
-          <div className="plan-kanban-sync-card plan-kanban-sync-card--perfil">
-            <span className="plan-kanban-sync-label">Perfil biométrico</span>
-            <strong>
-              {sexoLabel(config.sexo)} · {formatearPesoKg(config.pesoKg)}
-            </strong>
+            <div className="plan-kanban-sync-card plan-kanban-sync-card--perfil">
+              <span className="plan-kanban-sync-label">Perfil biométrico</span>
+              <strong>
+                {sexoLabel(config.sexo)} · {formatearPesoKg(config.pesoKg)}
+              </strong>
+            </div>
+            <div className="plan-kanban-sync-card plan-kanban-sync-card--kcal">
+              <span className="plan-kanban-sync-label">Ingesta calórica diaria</span>
+              <strong>{formatearKcalRango(metaKcal.min, metaKcal.max)}</strong>
+            </div>
+            <div className="plan-kanban-sync-card plan-kanban-sync-card--macros">
+              <span className="plan-kanban-sync-label">Distribución objetivo</span>
+              <strong>{distribucionMacrosTexto(config)}</strong>
+            </div>
+            <div className="plan-kanban-sync-card plan-kanban-sync-card--agua">
+              <span className="plan-kanban-sync-label">Hidratación base</span>
+              <strong>{hidratacion.texto}</strong>
+            </div>
           </div>
-          <div className="plan-kanban-sync-card plan-kanban-sync-card--kcal">
-            <span className="plan-kanban-sync-label">Ingesta calórica diaria</span>
-            <strong>{formatearKcalRango(metaKcal.min, metaKcal.max)}</strong>
-          </div>
-          <div className="plan-kanban-sync-card plan-kanban-sync-card--macros">
-            <span className="plan-kanban-sync-label">Distribución objetivo</span>
-            <strong>{distribucionMacrosTexto(config)}</strong>
-          </div>
-          <div className="plan-kanban-sync-card plan-kanban-sync-card--agua">
-            <span className="plan-kanban-sync-label">Hidratación base</span>
-            <strong>{hidratacion.texto}</strong>
-          </div>
-        </div>
       </header>
 
-      {!listo && (
-        <div className="plan-m1-alert plan-kanban-alert">
-          <p className="mb-0">
-            Completá sexo y peso en <Link to="/config">Config</Link> para afinar porciones y agua.
-          </p>
-        </div>
-      )}
-
       <div className="plan-kanban-toolbar">
-        <div className="plan-kanban-esquema" role="group" aria-label="Esquema de comidas">
-          {ESQUEMAS.map((e) => (
-            <button
-              key={e.id}
-              type="button"
-              className={`plan-kanban-esquema-btn${esquema === e.id ? ' is-active' : ''}`}
-              onClick={() => setEsquema(e.id)}
-            >
-              {e.label}
-            </button>
-          ))}
-        </div>
-        <div className="plan-kanban-semanas" role="tablist" aria-label="Semanas del plan">
-          {[1, 2, 3, 4].map((s) => (
-            <button
-              key={s}
-              type="button"
-              role="tab"
-              aria-selected={semanaActiva === s}
-              className={`plan-kanban-semana-btn${semanaActiva === s ? ' is-active' : ''}`}
-              onClick={() => setSemanaActiva(s)}
-            >
-              Semana {s}
-            </button>
-          ))}
-        </div>
-        {contextoDiasPlan.diaCalendario != null && (
-          <p className="plan-kanban-nav-hint mb-0">
-            Calendario del plan: <strong>Día {contextoDiasPlan.diaCalendario}</strong> hoy
+        {toolbarInicioYZoom}
+        {bloqueEsquemaYEditor}
+        {vistaPlanZoom !== '1' && vistaPlanZoom !== '2' && contextoDiasPlan.diaCalendario != null && (
+          <p className="plan-kanban-nav-hint mb-0 plan-kanban-nav-hint--compact">
+            Calendario: <strong>Día {contextoDiasPlan.diaCalendario}</strong>
             {semanaActiva !== contextoDiasPlan.semanaSugerida && contextoDiasPlan.semanaSugerida ? (
               <>
                 {' '}
@@ -1032,37 +1239,23 @@ export default function MiPlanKanban({
                   className="plan-kanban-nav-jump"
                   onClick={() => setSemanaActiva(contextoDiasPlan.semanaSugerida)}
                 >
-                  Ir a Semana {contextoDiasPlan.semanaSugerida}
+                  Semana {contextoDiasPlan.semanaSugerida}
                 </button>
               </>
             ) : null}
           </p>
         )}
-        {esPlanPropio(config) && (
-          <div className="plan-kanban-propio-tools">
-            <label className="plan-kanban-edit-day">
-              <span>Día a editar</span>
-              <select
-                value={editDiaPlan}
-                onChange={(e) => setEditDiaPlan(Number(e.target.value))}
-              >
-                {diasSemana.map((d) => (
-                  <option key={d} value={d}>
-                    Día {d}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              className={`plan-kanban-esquema-btn${editorAbierto ? ' is-active' : ''}`}
-              onClick={() => setEditorAbierto((v) => !v)}
-            >
-              {editorAbierto ? 'Ocultar editor de menú' : 'Editar mi menú'}
-            </button>
-          </div>
-        )}
       </div>
+      </>
+      )}
+
+      {!listo && (
+        <div className="plan-m1-alert plan-kanban-alert">
+          <p className="mb-0">
+            Completá sexo y peso en <Link to="/config">Config</Link> para afinar porciones y agua.
+          </p>
+        </div>
+      )}
 
       {editorAbierto && esPlanPropio(config) && planPropio && (
         <PlanPropioEditor
@@ -1075,8 +1268,8 @@ export default function MiPlanKanban({
       )}
 
       <div className="plan-kanban-board-wrap" ref={boardWrapRef}>
-        <div className="plan-kanban-board">
-          {diasSemana.map((diaPlan) => {
+        <div className={`plan-kanban-board plan-kanban-board--zoom-${vistaPlanZoom}`}>
+          {diasAMostrar.map((diaPlan) => {
             const built = buildComidasDiaKanban(diaPlan, config, planPropio)
             if (!built) return null
             const fecha = fechaCalendarioDiaPlan(inicio, diaPlan)

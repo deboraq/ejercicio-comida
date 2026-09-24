@@ -447,6 +447,8 @@
   overflow-x: auto;
   margin: 0 -0.25rem;
   padding-bottom: 0.5rem;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
 
 .plan-kanban-board {
@@ -459,6 +461,7 @@
 .plan-kanban-col {
   width: 20rem;
   flex-shrink: 0;
+  scroll-snap-align: start;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -562,6 +565,209 @@
   font-weight: 700;
   text-decoration: underline;
   cursor: pointer;
+}
+
+.plan-kanban-toolbar-row--inicio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.plan-kanban-inicio-dia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.plan-kanban-inicio-dia select {
+  min-width: 5.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(51, 65, 85, 0.85);
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.plan-kanban-zoom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.plan-kanban-zoom-btn {
+  appearance: none;
+  border: 1px solid rgba(51, 65, 85, 0.7);
+  background: rgba(30, 41, 59, 0.55);
+  color: #94a3b8;
+  font-size: 0.68rem;
+  font-weight: 650;
+  padding: 0.3rem 0.55rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.plan-kanban-zoom-btn.is-active {
+  background: rgba(59, 130, 246, 0.22);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #e0f2fe;
+}
+
+.plan-kanban-board--zoom-1 .plan-kanban-col {
+  width: min(100%, 22rem);
+}
+
+.plan-kanban-board--zoom-2 .plan-kanban-col {
+  width: min(calc(50vw - 1.25rem), 19rem);
+}
+
+.plan-kanban--embedded .plan-kanban-board-wrap:has(.plan-kanban-board--zoom-2) {
+  overflow-x: hidden;
+}
+
+.plan-kanban--embedded .plan-kanban-board--zoom-2 {
+  width: 100%;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+}
+
+.plan-kanban--embedded .plan-kanban-board--zoom-2 .plan-kanban-col {
+  width: calc(50% - 0.35rem);
+  min-width: calc(50% - 0.35rem);
+  max-width: calc(50% - 0.35rem);
+  padding: 0.65rem;
+}
+
+.plan-kanban-compact-fold {
+  margin-bottom: 0.45rem;
+  border-radius: 10px;
+  border: 1px solid rgba(51, 65, 85, 0.55);
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.plan-kanban-compact-fold summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.76rem;
+  color: #cbd5e1;
+}
+
+.plan-kanban-compact-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.plan-kanban-compact-fold-title {
+  font-weight: 650;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-kanban-compact-fold-meta {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.plan-kanban-compact-fold-body {
+  padding: 0 0.55rem 0.55rem;
+}
+
+.plan-kanban-compact-fold--inline {
+  margin-top: 0.35rem;
+  border: 0;
+  background: transparent;
+}
+
+.plan-kanban-compact-fold--inline summary {
+  padding: 0.35rem 0;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.plan-kanban-toolbar--compact {
+  margin-bottom: 0.55rem;
+  gap: 0.35rem;
+}
+
+.plan-kanban-inicio-dia-label {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.plan-kanban-desfase-alert--compact {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.7rem;
+}
+
+.plan-kanban--embedded .plan-kanban-create-bar {
+  margin-bottom: 0.35rem;
+}
+
+.plan-kanban--embedded .plan-kanban-plan-bar {
+  gap: 0.35rem;
+}
+
+.plan-kanban-meta-actions--fold {
+  margin-bottom: 0.35rem;
+}
+
+.plan-kanban-board--zoom-mes .plan-kanban-col {
+  width: min(72vw, 17rem);
+}
+
+.plan-kanban-meta-details {
+  margin-bottom: 0.5rem;
+}
+
+.plan-kanban-meta-details summary {
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: #94a3b8;
+  margin-bottom: 0.45rem;
+  list-style: none;
+}
+
+.plan-kanban-meta-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.plan-kanban-meta-details[open] summary {
+  color: #cbd5e1;
+}
+
+.plan-kanban--embedded .plan-kanban-kicker {
+  display: none;
+}
+
+.plan-kanban--embedded .plan-kanban-meta {
+  margin-bottom: 0.65rem;
+}
+
+.plan-kanban--embedded .plan-kanban-nav-banner {
+  margin-bottom: 0.45rem;
+}
+
+.plan-kanban--embedded .plan-kanban-meta-top {
+  margin-bottom: 0.5rem;
+}
+
+.plan-kanban-nav-hint--compact {
+  font-size: 0.68rem;
 }
 
 .plan-kanban-desfase-alert {
