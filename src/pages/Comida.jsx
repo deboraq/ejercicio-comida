@@ -5,7 +5,7 @@ import { getConsejos, buildContextoDia, buildContextoSemana } from '../utils/con
 import { formatearFecha, fechaToISO, fechaSoloDia } from '../utils/calorias'
 import { REFERENCIA_ALIMENTOS, buscarAlimentos } from '../utils/referenciaComidas'
 import { MOMENTOS_COMIDA, MOMENTO_ICON, normalizarMomento } from '../utils/comidaMomentos'
-import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias, getRachaDias } from '../utils/estadisticas'
+import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias } from '../utils/estadisticas'
 import ComidaTitanium from '../components/ComidaTitanium'
 import PlanMes1Panel from '../components/PlanMes1Panel'
 import { resumenPlanAlimenticioHoy } from '../utils/planPropio'
@@ -900,15 +900,12 @@ export default function Comida() {
         if (fechaReg) {
           setFechaInput(fechaReg)
         }
-        if (fechaReg === hoy) {
-          setVistaComida('hoy')
-        }
         if (payload.abrirEdicion) {
           setVistaComida('hoy')
         }
       }
     },
-    [editarRegistro, hoy],
+    [editarRegistro],
   )
 
   const toggleDiaHistorial = (fecha) => {
@@ -922,7 +919,6 @@ export default function Comida() {
 
   const diasHistorial = Object.entries(porFechaEnRango)
     .sort(([a], [b]) => b.localeCompare(a))
-  const rachaDias = getRachaDias(registros, hoy)
   const vasosHoy = vasosHidratacionDia(hidratacionStore, fechaVista)
   const mesActual = hoy.slice(0, 7)
   const registrosMesCount = registros.filter((r) => fechaSoloDia(r.fecha).startsWith(mesActual)).length
@@ -973,7 +969,6 @@ export default function Comida() {
           hoy={hoy}
           fechaVista={fechaVista}
           onShiftDia={shiftDiaComida}
-          rachaDias={rachaDias}
           caloriasHoy={caloriasHoy}
           proteinasHoy={proteinasHoy}
           carbosHoy={carbosHoy}

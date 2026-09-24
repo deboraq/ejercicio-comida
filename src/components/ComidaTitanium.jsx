@@ -224,6 +224,15 @@ function formatearFechaNav(iso) {
   return `${pref}${d.getDate()} de ${mesCap} ${d.getFullYear()}`
 }
 
+function formatearFechaNavCorto(iso) {
+  const hoyIso = fechaToISO(new Date())
+  const d = new Date(`${iso}T12:00:00`)
+  const mes = d.toLocaleDateString('es-ES', { month: 'short' }).replace(/\.$/, '')
+  const mesCap = mes.charAt(0).toUpperCase() + mes.slice(1)
+  if (iso === hoyIso) return `Hoy · ${d.getDate()} ${mesCap}`
+  return `${d.getDate()} ${mesCap}`
+}
+
 function etiquetaInsight(consejo) {
   if (!consejo) return 'RESUMEN'
   if (consejo.tipo === 'descanso' || /fuerza|racha de \d+ días/i.test(consejo.texto || '')) {
@@ -744,7 +753,6 @@ export default function ComidaTitanium({
   hoy,
   fechaVista,
   onShiftDia,
-  rachaDias = 0,
   caloriasHoy,
   proteinasHoy,
   carbosHoy,
@@ -1044,20 +1052,15 @@ export default function ComidaTitanium({
   const enEdicion = modoPanel === 'editar'
 
   return (
-    <div className="cd-root">
+    <div className={`cd-root cd-vista-${vistaComida}`}>
       <div className="cd-header-shell">
         <header className="cd-header">
           <div className="cd-header-left">
             <div className="cd-title-row">
               <h1 className="cd-title mb-0">
-                <span className="cd-title-text">Nutrición y Comidas</span>
+                <span className="cd-title-text cd-title-text--long">Nutrición y Comidas</span>
+                <span className="cd-title-text cd-title-text--short">Comidas</span>
               </h1>
-              {rachaDias > 0 && (
-                <span className="cd-streak-badge cd-streak-badge--header">
-                  <span className="cd-streak-label cd-streak-label--long">Día {rachaDias} en Racha 🔥</span>
-                  <span className="cd-streak-label cd-streak-label--short">{rachaDias} días 🔥</span>
-                </span>
-              )}
             </div>
             <p className="cd-subtitle mb-0">
               Resumen calórico, balance de macronutrientes y registro en tiempo real
@@ -1068,7 +1071,8 @@ export default function ComidaTitanium({
               <button type="button" className="cd-date-arrow" aria-label="Día anterior" onClick={() => onShiftDia?.(-1)}>‹</button>
               <span className="cd-date-inner">
                 <IconCalendar />
-                {formatearFechaNav(diaActivo)}
+                <span className="cd-date-text cd-date-text--long">{formatearFechaNav(diaActivo)}</span>
+                <span className="cd-date-text cd-date-text--short">{formatearFechaNavCorto(diaActivo)}</span>
               </span>
               <button
                 type="button"
@@ -1095,14 +1099,16 @@ export default function ComidaTitanium({
             className={`cd-module-tab${vistaComida === 'hoy' ? ' is-active' : ''}`}
             onClick={() => setVistaComida?.('hoy')}
           >
-            Registro de Hoy
+            <span className="cd-tab-label cd-tab-label--long">Registro de Hoy</span>
+            <span className="cd-tab-label cd-tab-label--short">Hoy</span>
           </button>
           <button
             type="button"
             className={`cd-module-tab${vistaComida === 'plan' ? ' is-active' : ''}`}
             onClick={() => setVistaComida?.('plan')}
           >
-            Mi plan
+            <span className="cd-tab-label cd-tab-label--long">Mi plan</span>
+            <span className="cd-tab-label cd-tab-label--short">Plan</span>
             {planResumen?.estado === 'activo' && (
               <span className="cd-module-tab-badge">D{planResumen.dia}</span>
             )}
@@ -1112,7 +1118,8 @@ export default function ComidaTitanium({
             className={`cd-module-tab${vistaComida === 'historial' ? ' is-active' : ''}`}
             onClick={() => setVistaComida?.('historial')}
           >
-            Historial Completo
+            <span className="cd-tab-label cd-tab-label--long">Historial Completo</span>
+            <span className="cd-tab-label cd-tab-label--short">Historial</span>
             {registrosMesCount > 0 && (
               <span className="cd-module-tab-badge">{registrosMesCount}</span>
             )}
@@ -1120,7 +1127,7 @@ export default function ComidaTitanium({
         </nav>
       </div>
 
-      {bannerConsejo?.texto && (
+      {bannerConsejo?.texto && vistaComida === 'hoy' && (
         <div className="cd-insight">
           <div className="cd-insight-ico-wrap">
             <IconBulb />
