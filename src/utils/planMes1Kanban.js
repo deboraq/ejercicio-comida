@@ -1,5 +1,12 @@
 import { fechaToISO } from './calorias.js'
-import { getDiaPlanMes1, metaCaloriasPlan, aguaMlObjetivoPlan, litrosAguaPlan } from './planMes1.js'
+import {
+  PLAN_MES1_TOTAL_DIAS,
+  diaPlanMes1,
+  getDiaPlanMes1,
+  metaCaloriasPlan,
+  aguaMlObjetivoPlan,
+  litrosAguaPlan,
+} from './planMes1.js'
 import { getDiaPlanAlimenticio } from './planPropio.js'
 import { PLAN_MES1_SLOTS } from '../data/planMes1Semanas.js'
 
@@ -155,4 +162,72 @@ export function resumenHidratacionPlan(config) {
 export function distribucionMacrosTexto(config) {
   const r = metaCaloriasPlan(config?.sexo)
   return `P ${r.p[0]}-${r.p[1]}g · H ${r.h[0]}-${r.h[1]}g · G ${r.g[0]}-${r.g[1]}g`
+}
+
+function numeroDiaDesdeClavePlan(key) {
+  const n = Number(String(key).split('_')[0])
+  if (!Number.isFinite(n) || n < 1 || n > PLAN_MES1_TOTAL_DIAS) return null
+  return n
+}
+
+/** Días del plan 1…30 que tienen al menos una marca, omisión o extra. */
+export function diasConMarcasEnEstado(estado) {
+  const dias = new Set()
+  for (const key of Object.keys(estado?.checks || {})) {
+    const n = numeroDiaDesdeClavePlan(key)
+    if (n) dias.add(n)
+  }
+  for (const key of Object.keys(estado?.omitidos || {})) {
+    const n = numeroDiaDesdeClavePlan(key)
+    if (n) dias.add(n)
+  }
+  for (const key of Object.keys(estado?.extras || {})) {
+    const n = Number(key)
+    if (n >= 1 && n <= PLAN_MES1_TOTAL_DIAS) dias.add(n)
+  }
+  return [...dias].sort((a, b) => a - b)
+}
+
+export function semanaDelDiaPlan(diaPlan) {
+  const d = Number(diaPlan)
+  if (!Number.isFinite(d) || d < 1) return 1
+  return Math.min(4, Math.max(1, Math.ceil(d / 7)))
+}
+
+/**
+ * Al abrir Mi plan: semana y día según calendario del plan y última actividad.
+ * @returns {{ semana: number, diaEdit: number, diaScroll: number, diaCalendario: number|null, ultimoMarca: number|null }}
+ */
+export function navegacionInicialPlanKanban(inicioISO, estado, hoyISO = fechaToISO(new Date())) {
+  const marcados = diasConMarcasEnEstado(estado)
+  const ultimoMarca = marcados.length ? marcados[marcados.length - 1] : null
+  const diaCalendario = inicioISO ? diaPlanMes1(inicioISO, hoyISO) : null
+
+  let diaEdit = 1
+  if (diaCalendario != null) {
+    diaEdit = diaCalendario
+  } else if (ultimoMarca != null) {
+    diaEdit = Math.min(PLAN_MES1_TOTAL_DIAS, ultimoMarca + 1)
+  }
+
+  if (diaCalendario != null && ultimoMarca != null) {
+    diaEdit = Math.max(diaCalendario, ultimoMarca)
+  }
+
+  const semana = semanaDelDiaPlan(diaEdit)
+
+  const diaScroll =
+    ultimoMarca != null
+    && semanaDelDiaPlan(ultimoMarca) === semana
+    && ultimoMarca < diaEdit
+      ? ultimoMarca
+      : diaEdit
+
+  return {
+    semana,
+    diaEdit,
+    diaScroll,
+    diaCalendario,
+    ultimoMarca,
+  }
 }
