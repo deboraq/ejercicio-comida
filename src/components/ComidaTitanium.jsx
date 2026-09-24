@@ -1096,7 +1096,7 @@ export default function ComidaTitanium({
         <nav className="cd-module-tabs" aria-label="Vista de nutrición">
           <button
             type="button"
-            className={`cd-module-tab${vistaComida === 'hoy' ? ' is-active' : ''}`}
+            className={`cd-module-tab cd-module-tab--hoy${vistaComida === 'hoy' ? ' is-active' : ''}`}
             onClick={() => setVistaComida?.('hoy')}
           >
             <span className="cd-tab-label cd-tab-label--long">Registro de Hoy</span>
@@ -1104,7 +1104,7 @@ export default function ComidaTitanium({
           </button>
           <button
             type="button"
-            className={`cd-module-tab${vistaComida === 'plan' ? ' is-active' : ''}`}
+            className={`cd-module-tab cd-module-tab--plan${vistaComida === 'plan' ? ' is-active' : ''}`}
             onClick={() => setVistaComida?.('plan')}
           >
             <span className="cd-tab-label cd-tab-label--long">Mi plan</span>
@@ -1115,7 +1115,7 @@ export default function ComidaTitanium({
           </button>
           <button
             type="button"
-            className={`cd-module-tab${vistaComida === 'historial' ? ' is-active' : ''}`}
+            className={`cd-module-tab cd-module-tab--historial${vistaComida === 'historial' ? ' is-active' : ''}`}
             onClick={() => setVistaComida?.('historial')}
           >
             <span className="cd-tab-label cd-tab-label--long">Historial Completo</span>
