@@ -409,20 +409,23 @@ export default function Inicio() {
             </p>
           </div>
           <div className="inicio-dash-actions">
-            <Link to="/comida" className="inicio-dash-btn inicio-dash-btn--ghost">
+            <Link to="/comida" className="inicio-dash-btn inicio-dash-btn--comida">
               <span className="inicio-dash-btn-ico inicio-dash-btn-ico--plus" aria-hidden>+</span>
-              Registrar comida
+              <span className="inicio-dash-btn-label inicio-dash-btn-label--long">Registrar comida</span>
+              <span className="inicio-dash-btn-label inicio-dash-btn-label--short">Comida</span>
             </Link>
             <Link
               to={`/rutina?fecha=${encodeURIComponent(diaEnVista)}`}
               className="inicio-dash-btn inicio-dash-btn--rutina"
             >
               <span className="inicio-dash-btn-ico" aria-hidden>🏋️</span>
-              Iniciar rutina gym
+              <span className="inicio-dash-btn-label inicio-dash-btn-label--long">Iniciar rutina gym</span>
+              <span className="inicio-dash-btn-label inicio-dash-btn-label--short">Rutina</span>
             </Link>
-            <Link to="/ejercicios" className="inicio-dash-btn inicio-dash-btn--primary">
+            <Link to="/ejercicios" className="inicio-dash-btn inicio-dash-btn--ejercicio">
               <span className="inicio-dash-btn-ico" aria-hidden>▷</span>
-              Iniciar ejercicio
+              <span className="inicio-dash-btn-label inicio-dash-btn-label--long">Iniciar ejercicio</span>
+              <span className="inicio-dash-btn-label inicio-dash-btn-label--short">Ejercicio</span>
             </Link>
           </div>
         </header>
