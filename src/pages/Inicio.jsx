@@ -410,22 +410,25 @@ export default function Inicio() {
           </div>
           <div className="inicio-dash-actions">
             <Link to="/comida" className="inicio-dash-btn inicio-dash-btn--comida">
-              <span className="inicio-dash-btn-ico inicio-dash-btn-ico--plus" aria-hidden>+</span>
-              <span className="inicio-dash-btn-label inicio-dash-btn-label--long">Registrar comida</span>
-              <span className="inicio-dash-btn-label inicio-dash-btn-label--short">Comida</span>
+              <span className="inicio-dash-btn-ico" aria-hidden>
+                🍽️
+              </span>
+              <span className="inicio-dash-btn-label">Registrar comida</span>
             </Link>
             <Link
               to={`/rutina?fecha=${encodeURIComponent(diaEnVista)}`}
               className="inicio-dash-btn inicio-dash-btn--rutina"
             >
-              <span className="inicio-dash-btn-ico" aria-hidden>🏋️</span>
-              <span className="inicio-dash-btn-label inicio-dash-btn-label--long">Iniciar rutina gym</span>
-              <span className="inicio-dash-btn-label inicio-dash-btn-label--short">Rutina</span>
+              <span className="inicio-dash-btn-ico" aria-hidden>
+                🏋️
+              </span>
+              <span className="inicio-dash-btn-label">Iniciar rutina</span>
             </Link>
             <Link to="/ejercicios" className="inicio-dash-btn inicio-dash-btn--ejercicio">
-              <span className="inicio-dash-btn-ico" aria-hidden>▷</span>
-              <span className="inicio-dash-btn-label inicio-dash-btn-label--long">Iniciar ejercicio</span>
-              <span className="inicio-dash-btn-label inicio-dash-btn-label--short">Ejercicio</span>
+              <span className="inicio-dash-btn-ico" aria-hidden>
+                🏃
+              </span>
+              <span className="inicio-dash-btn-label">Iniciar ejercicio</span>
             </Link>
           </div>
         </header>
@@ -822,10 +825,11 @@ export default function Inicio() {
               <h2 className="title is-6 mb-0">Calendario</h2>
               <button type="button" className="delete" aria-label="Cerrar" onClick={() => setMesModalAbierto(false)} />
             </div>
-            <div className="cal-mes-nav mb-3">
+            <div className="cal-mes-nav cal-mes-nav--modal mb-3">
               <button
                 type="button"
-                className="button is-small is-light"
+                className="button is-small is-light cal-mes-nav-prev"
+                aria-label="Mes anterior"
                 onClick={() => {
                   const [y, m] = mesCalendario.split('-').map(Number)
                   const prev = new Date(y, m - 2, 1)
@@ -834,7 +838,7 @@ export default function Inicio() {
               >
                 ←
               </button>
-              <span className="is-size-6 has-text-weight-medium">
+              <span className="cal-mes-nav-mes is-size-6 has-text-weight-medium">
                 {(() => {
                   const [y, m] = mesCalendario.split('-').map(Number)
                   return new Date(y, m - 1, 1).toLocaleDateString('es', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase())
@@ -842,7 +846,8 @@ export default function Inicio() {
               </span>
               <button
                 type="button"
-                className="button is-small is-light"
+                className="button is-small is-light cal-mes-nav-next"
+                aria-label="Mes siguiente"
                 onClick={() => {
                   const [y, m] = mesCalendario.split('-').map(Number)
                   const next = new Date(y, m, 1)

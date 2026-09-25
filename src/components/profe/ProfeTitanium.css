@@ -5022,18 +5022,131 @@
   }
 
   .pf-ws-exercise-row {
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: start;
+    gap: 0.45rem;
+    padding: 0.55rem 0.55rem 0.6rem;
+  }
+
+  .pf-ws-drag {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    padding-top: 0.1rem;
+  }
+
+  .pf-ws-exercise-index {
+    display: none;
+  }
+
+  .pf-ws-exercise-info {
+    grid-column: 2;
+    grid-row: 1;
+    gap: 0.22rem;
+  }
+
+  .pf-ws-exercise-actions {
+    grid-column: 3;
+    grid-row: 1;
+    flex-direction: row;
+    align-self: start;
   }
 
   .pf-ws-exercise-fields {
     grid-column: 1 / -1;
-    grid-template-columns: repeat(5, minmax(3rem, 1fr));
+    grid-row: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.28rem;
     width: 100%;
   }
 
-  .pf-ws-exercise-actions {
-    flex-direction: row;
+  .pf-ws-field-box--muscle {
+    grid-column: 1 / -1;
+  }
+
+  .pf-ws-exercise-list-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    margin-bottom: 0.55rem;
+    padding-bottom: 0.45rem;
+  }
+
+  .pf-ws-exercise-list-hint {
+    text-align: left;
+    font-size: 0.62rem;
+    line-height: 1.35;
+  }
+
+  .pf-ws-exercise-panel {
+    padding: 0.65rem 0.55rem 0.75rem;
+  }
+
+  .pf-ws-exercise-toolbar {
+    gap: 0.45rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .pf-ws-exercise-toolbar-top {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem;
+  }
+
+  .pf-ws-exercise-toolbar-top .pf-ws-exercise-search-wrap {
+    grid-column: 1 / -1;
+  }
+
+  .pf-ws-exercise-toolbar-top .pf-btn {
+    width: 100%;
+    min-width: 0;
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
+    font-size: 0.68rem;
+  }
+
+  .pf-ws-catalog-collapsed-hint {
+    font-size: 0.62rem;
+    line-height: 1.35;
+  }
+
+  .pf-ws-exercise-comment {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.12rem;
+  }
+
+  .pf-ws-exercise-comment-label {
+    font-size: 0.46rem;
+  }
+
+  .pf-ws-exercise-comment input {
+    height: 1.45rem;
+    min-height: 1.45rem;
+    font-size: 0.62rem;
+  }
+
+  .pf-ws-exercise-name {
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+
+  .pf-ws-field-box {
+    padding: 0.26rem 0.32rem 0.3rem;
+    border-radius: 6px;
+  }
+
+  .pf-ws-field-box span,
+  .pf-ws-exercise-fields label span {
+    font-size: 0.46rem;
+  }
+
+  .pf-ws-field-box input,
+  .pf-ws-muscle-select {
+    font-size: 0.65rem;
+  }
+
+  .pf-ws-exercise-list {
+    gap: 0.4rem;
   }
 }
 
@@ -5043,7 +5156,7 @@
   }
 
   .pf-ws-exercise-row {
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
   .pf-ws-exercise-index {
@@ -5056,7 +5169,13 @@
 
   .pf-ws-exercise-actions {
     flex-direction: row;
-    margin-left: auto;
+  }
+
+  .pf-ws-icon-btn {
+    width: 1.65rem;
+    height: 1.65rem;
+    min-width: 1.65rem;
+    font-size: 0.72rem;
   }
 }
 
