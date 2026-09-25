@@ -199,47 +199,33 @@ body {
   }
 
   .inicio-dash-hello-row {
-    padding-left: 3.2rem;
-    min-height: 2.5rem;
+    padding-left: 2.75rem;
+    min-height: 1.75rem;
     align-items: center;
   }
 
   .inicio-dash-sub {
-    padding-left: 0;
-    margin-left: 0;
+    display: none;
   }
 
   .inicio-dash-hello {
-    font-size: clamp(1.25rem, 5vw, 1.55rem);
+    font-size: clamp(0.95rem, 4vw, 1.2rem);
     line-height: 1.2;
   }
 
   .inicio-dash-hero {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.35rem;
+    margin-bottom: 0.65rem;
   }
 
   .inicio-dash-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.28rem;
     width: 100%;
     max-width: 100%;
-  }
-
-  .inicio-dash-actions .inicio-dash-btn--primary {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .inicio-dash-actions .inicio-dash-btn--rutina {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .inicio-dash-actions .inicio-dash-btn--ghost {
-    grid-column: 1 / -1;
-    grid-row: 2;
   }
 
   .inicio-dash-actions .inicio-dash-btn {
@@ -248,12 +234,32 @@ body {
     box-sizing: border-box;
     justify-content: center;
     text-align: center;
-    white-space: normal;
-    line-height: 1.15;
-    padding-inline: 0.55rem;
-    min-height: 2.6rem;
+    white-space: nowrap;
+    line-height: 1.1;
+    padding: 0.32rem 0.2rem;
+    min-height: 1.85rem;
     height: auto;
-    font-size: 0.8rem;
+    font-size: 0.66rem;
+    flex-direction: row;
+    gap: 0.22rem;
+    border-radius: 0.55rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .inicio-dash-btn-label--long {
+    display: none;
+  }
+
+  .inicio-dash-btn-label--short {
+    display: inline;
+  }
+
+  .inicio-dash-btn-ico {
+    font-size: 0.72rem;
+  }
+
+  .inicio-dash-btn-ico--plus {
+    font-size: 0.85rem;
   }
 }
 
@@ -4132,45 +4138,58 @@ body {
 }
 
 .inicio-dash-btn-ico--plus {
-  color: #34d399;
+  color: #6ee7b7;
   font-size: 1.1rem;
   font-weight: 700;
 }
 
+.inicio-dash-btn-label--short {
+  display: none;
+}
+
+.inicio-dash-btn--comida,
 .inicio-dash-btn--ghost {
-  background: #151b2b;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  color: #fff;
+  background: linear-gradient(155deg, rgba(52, 211, 153, 0.28) 0%, rgba(6, 78, 59, 0.42) 50%, rgba(15, 23, 42, 0.92) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.32);
+  color: #ecfdf5;
 }
 
+.inicio-dash-btn--comida:hover,
 .inicio-dash-btn--ghost:hover {
-  background: #1a2235;
-  border-color: rgba(148, 163, 184, 0.42);
+  background: linear-gradient(155deg, rgba(110, 231, 183, 0.38) 0%, rgba(16, 185, 129, 0.48) 45%, rgba(4, 120, 87, 0.55) 100%);
+  border-color: rgba(110, 231, 183, 0.45);
   color: #fff;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18);
 }
 
+.inicio-dash-btn--ejercicio,
 .inicio-dash-btn--primary {
-  background: #3b82f6;
-  border: 1px solid transparent;
-  color: #fff;
-  box-shadow: 0 8px 18px rgba(59, 130, 246, 0.28);
+  background: linear-gradient(155deg, rgba(96, 165, 250, 0.28) 0%, rgba(29, 78, 216, 0.42) 50%, rgba(15, 23, 42, 0.92) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.32);
+  color: #dbeafe;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
+.inicio-dash-btn--ejercicio:hover,
 .inicio-dash-btn--primary:hover {
-  background: #2563eb;
+  background: linear-gradient(155deg, rgba(147, 197, 253, 0.35) 0%, rgba(59, 130, 246, 0.48) 45%, rgba(37, 99, 235, 0.52) 100%);
+  border-color: rgba(147, 197, 253, 0.42);
   color: #fff;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.2);
 }
 
 .inicio-dash-btn--rutina {
-  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
-  border: 1px solid transparent;
-  color: #fff;
-  box-shadow: 0 8px 18px rgba(124, 58, 237, 0.25);
+  background: linear-gradient(155deg, rgba(167, 139, 250, 0.28) 0%, rgba(91, 33, 182, 0.42) 50%, rgba(15, 23, 42, 0.92) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.32);
+  color: #ede9fe;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .inicio-dash-btn--rutina:hover {
-  background: linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%);
+  background: linear-gradient(155deg, rgba(196, 181, 253, 0.35) 0%, rgba(124, 58, 237, 0.48) 45%, rgba(91, 33, 182, 0.52) 100%);
+  border-color: rgba(196, 181, 253, 0.4);
   color: #fff;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.2);
 }
 
 .inicio-hoy-racha {
