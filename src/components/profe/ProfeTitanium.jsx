@@ -775,7 +775,7 @@ export default function ProfeTitanium({
           <button
             key={t.id}
             type="button"
-            className={`pf-tab${tab === t.id ? ' is-active' : ''}`}
+            className={`pf-tab pf-tab--${t.id}${tab === t.id ? ' is-active' : ''}`}
             onClick={() => setTab(t.id)}
           >
             <TabIcon className="pf-tab-ico" />
