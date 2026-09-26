@@ -283,35 +283,36 @@ export default function Config() {
               <div className="cfg-ti-hero-main">
                 <div className="cfg-ti-avatar" aria-hidden>{inicialAvatar}</div>
                 <div className="cfg-ti-hero-meta">
-                  <p className="cfg-ti-hero-name mb-0">{nombreMostrado}</p>
-                  <div className="cfg-ti-badges">
-                    {isConfigured && !profileLoading && profile?.role === 'admin' && (
-                      <span className="cfg-ti-badge cfg-ti-badge--admin">Administrador</span>
-                    )}
-                    {isConfigured && !profileLoading && profile?.role === 'profe' && (
-                      <span className="cfg-ti-badge cfg-ti-badge--profe">Entrenador</span>
-                    )}
-                    {isConfigured && !profileLoading && profile?.role === 'admin' && mostrarSeccionesAlumno && (
-                      <span className="cfg-ti-badge cfg-ti-badge--alumna">Alumna</span>
-                    )}
-                    {isConfigured && !profileLoading && profile?.role === 'alumno' && (
-                      <span className="cfg-ti-badge cfg-ti-badge--alumno">{etiquetaRol(profile.role)}</span>
-                    )}
+                  <div className="cfg-ti-hero-title-row">
+                    <p className="cfg-ti-hero-name mb-0">{nombreMostrado}</p>
+                    <div className="cfg-ti-badges">
+                      {isConfigured && !profileLoading && profile?.role === 'admin' && (
+                        <span className="cfg-ti-badge cfg-ti-badge--admin">Administrador</span>
+                      )}
+                      {isConfigured && !profileLoading && profile?.role === 'profe' && (
+                        <span className="cfg-ti-badge cfg-ti-badge--profe">Entrenador</span>
+                      )}
+                      {isConfigured && !profileLoading && profile?.role === 'admin' && mostrarSeccionesAlumno && (
+                        <span className="cfg-ti-badge cfg-ti-badge--alumna">Alumna</span>
+                      )}
+                      {isConfigured && !profileLoading && profile?.role === 'alumno' && (
+                        <span className="cfg-ti-badge cfg-ti-badge--alumno">{etiquetaRol(profile.role)}</span>
+                      )}
+                    </div>
                   </div>
                   <p className="cfg-ti-email mb-0">{user.email}</p>
-                  {user && isConfigured && !profileLoading && (
-                    <p className="cfg-ti-sync mb-0">✓ Sincronizado con la nube de Fitness Pro</p>
-                  )}
                 </div>
               </div>
               <div className="cfg-ti-hero-actions">
                 {!cargandoPerfilNube && (
                   <button type="button" className="cfg-ti-btn cfg-ti-btn--ghost" onClick={abrirExportar}>
-                    ↓ Exportar mis datos
+                    <span className="cfg-ti-btn-label cfg-ti-btn-label--long">↓ Exportar mis datos</span>
+                    <span className="cfg-ti-btn-label cfg-ti-btn-label--short">↓ Exportar</span>
                   </button>
                 )}
                 <button type="button" className="cfg-ti-btn cfg-ti-btn--danger" onClick={() => signOut()}>
-                  ↪ Cerrar sesión
+                  <span className="cfg-ti-btn-label cfg-ti-btn-label--long">↪ Cerrar sesión</span>
+                  <span className="cfg-ti-btn-label cfg-ti-btn-label--short">↪ Salir</span>
                 </button>
               </div>
             </div>
@@ -372,27 +373,27 @@ export default function Config() {
               if (open) ensureBundle()
             }}
           >
-            <p className="config-hint mb-3">
+            <p className="config-hint cfg-ti-export-hint mb-2">
               Descargá tu historial para Excel, Google Sheets o respaldo.
               {exportLoading ? ' Cargando datos…' : ''}
             </p>
-            <p className="config-section-label mb-2">Comidas</p>
-            <div className="buttons are-small mb-3">
-              <button type="button" className="button is-link is-light" onClick={async () => { if (!totalComidas) return avisoSinDatos('comidas'); const d = await exportarConDatos(); if (d) exportarComidasExcel(d.comidas) }}>↓ Excel ({totalComidas})</button>
-              <button type="button" className="button is-light" onClick={async () => { if (!totalComidas) return avisoSinDatos('comidas'); const d = await exportarConDatos(); if (d) exportarComidasCsv(d.comidas) }}>↓ CSV</button>
-              <button type="button" className="button is-light" onClick={async () => { if (!totalComidas) return avisoSinDatos('comidas'); const d = await exportarConDatos(); if (d) exportarComidasJson(d.comidas) }}>↓ JSON</button>
+            <p className="config-section-label cfg-ti-export-label mb-1">Comidas</p>
+            <div className="cfg-ti-export-grid buttons are-small mb-2">
+              <button type="button" className="button is-small is-link is-light" onClick={async () => { if (!totalComidas) return avisoSinDatos('comidas'); const d = await exportarConDatos(); if (d) exportarComidasExcel(d.comidas) }}>↓ Excel ({totalComidas})</button>
+              <button type="button" className="button is-small is-light" onClick={async () => { if (!totalComidas) return avisoSinDatos('comidas'); const d = await exportarConDatos(); if (d) exportarComidasCsv(d.comidas) }}>↓ CSV</button>
+              <button type="button" className="button is-small is-light" onClick={async () => { if (!totalComidas) return avisoSinDatos('comidas'); const d = await exportarConDatos(); if (d) exportarComidasJson(d.comidas) }}>↓ JSON</button>
             </div>
-            <p className="config-section-label mb-2">Gimnasio</p>
-            <div className="buttons are-small mb-3">
-              <button type="button" className="button is-link is-light" onClick={async () => { if (!totalSeriesGym) return avisoSinDatos('entrenamientos de gym'); const d = await exportarConDatos(); if (d) exportarGymExcel(d.rutinaPesos) }}>↓ Excel ({totalSeriesGym})</button>
-              <button type="button" className="button is-light" onClick={async () => { if (!totalSeriesGym) return avisoSinDatos('entrenamientos de gym'); const d = await exportarConDatos(); if (d) exportarGymCsv(d.rutinaPesos) }}>↓ CSV</button>
-              <button type="button" className="button is-light" onClick={async () => { if (!totalSeriesGym) return avisoSinDatos('entrenamientos de gym'); const d = await exportarConDatos(); if (d) exportarGymJson(d.rutinaPesos, d.rutinas, d.rutinaActivaId) }}>↓ JSON + plan</button>
+            <p className="config-section-label cfg-ti-export-label mb-1">Gimnasio</p>
+            <div className="cfg-ti-export-grid buttons are-small mb-2">
+              <button type="button" className="button is-small is-link is-light" onClick={async () => { if (!totalSeriesGym) return avisoSinDatos('entrenamientos de gym'); const d = await exportarConDatos(); if (d) exportarGymExcel(d.rutinaPesos) }}>↓ Excel ({totalSeriesGym})</button>
+              <button type="button" className="button is-small is-light" onClick={async () => { if (!totalSeriesGym) return avisoSinDatos('entrenamientos de gym'); const d = await exportarConDatos(); if (d) exportarGymCsv(d.rutinaPesos) }}>↓ CSV</button>
+              <button type="button" className="button is-small is-light" onClick={async () => { if (!totalSeriesGym) return avisoSinDatos('entrenamientos de gym'); const d = await exportarConDatos(); if (d) exportarGymJson(d.rutinaPesos, d.rutinas, d.rutinaActivaId) }}>↓ JSON + plan</button>
             </div>
-            <p className="config-section-label mb-2">Actividad libre</p>
-            <div className="buttons are-small">
-              <button type="button" className="button is-link is-light" onClick={async () => { if (!totalActividad) return avisoSinDatos('actividad libre'); const d = await exportarConDatos(); if (d) exportarEjerciciosActividadExcel(d.ejerciciosActividad) }}>↓ Excel ({totalActividad})</button>
-              <button type="button" className="button is-light" onClick={async () => { if (!totalActividad) return avisoSinDatos('actividad libre'); const d = await exportarConDatos(); if (d) exportarEjerciciosActividadCsv(d.ejerciciosActividad) }}>↓ CSV</button>
-              <button type="button" className="button is-light" onClick={async () => { if (!totalActividad) return avisoSinDatos('actividad libre'); const d = await exportarConDatos(); if (d) exportarEjerciciosActividadJson(d.ejerciciosActividad) }}>↓ JSON</button>
+            <p className="config-section-label cfg-ti-export-label mb-1">Actividad libre</p>
+            <div className="cfg-ti-export-grid buttons are-small mb-0">
+              <button type="button" className="button is-small is-link is-light" onClick={async () => { if (!totalActividad) return avisoSinDatos('actividad libre'); const d = await exportarConDatos(); if (d) exportarEjerciciosActividadExcel(d.ejerciciosActividad) }}>↓ Excel ({totalActividad})</button>
+              <button type="button" className="button is-small is-light" onClick={async () => { if (!totalActividad) return avisoSinDatos('actividad libre'); const d = await exportarConDatos(); if (d) exportarEjerciciosActividadCsv(d.ejerciciosActividad) }}>↓ CSV</button>
+              <button type="button" className="button is-small is-light" onClick={async () => { if (!totalActividad) return avisoSinDatos('actividad libre'); const d = await exportarConDatos(); if (d) exportarEjerciciosActividadJson(d.ejerciciosActividad) }}>↓ JSON</button>
             </div>
           </SeguimientoCaja>
         )}
@@ -438,10 +439,10 @@ export default function Config() {
             </section>
 
             <section className="cfg-ti-plan-generar" id="plan-desde-objetivo">
-              <h2 className="cfg-ti-card-title mb-2">Tu plan en Comida</h2>
+              <h2 className="cfg-ti-card-title mb-1">Tu plan en Comida</h2>
               {planActivo ? (
                 <>
-                  <p className="cfg-ti-card-sub mb-3">
+                  <p className="cfg-ti-card-sub mb-2">
                     Tenés un plan activo desde <strong>{config.planMes1Inicio}</strong>
                     {' · '}
                     <strong>{labelOrigenPlan(config)}</strong>
@@ -450,13 +451,13 @@ export default function Config() {
                     ) : null}
                     . El menú está en <strong>Mi plan</strong> en Comida.
                   </p>
-                  <div className="buttons are-small">
+                  <div className="cfg-ti-plan-actions buttons are-small">
                     <button type="button" className="cfg-ti-btn-primary" onClick={abrirPlanEnComida}>
                       Abrir Mi plan
                     </button>
                     <button
                       type="button"
-                      className="button is-light"
+                      className="button is-small is-light cfg-ti-plan-btn-secondary"
                       onClick={crearPlanSegunObjetivo}
                       title="Reinicia el día 1 hoy según tu objetivo actual"
                     >
@@ -468,10 +469,10 @@ export default function Config() {
                 <>
                   {planListoGenerar && (
                     <>
-                      <p className="cfg-ti-card-sub mb-3">
+                      <p className="cfg-ti-card-sub mb-2">
                         <strong>Plan guiado:</strong> menú de 30 días según tu objetivo ({varianteSugeridaLabel}).
                       </p>
-                      <button type="button" className="cfg-ti-btn-primary mb-3" onClick={crearPlanSegunObjetivo}>
+                      <button type="button" className="cfg-ti-btn-primary cfg-ti-plan-actions-solo mb-2" onClick={crearPlanSegunObjetivo}>
                         Crear plan guiado
                       </button>
                     </>
@@ -481,11 +482,11 @@ export default function Config() {
                       <p className="cfg-ti-card-sub mb-2">
                         <strong>Plan propio:</strong> definís vos cada comida con dos opciones por día (30 días).
                       </p>
-                      <div className="buttons are-small mb-0">
-                        <button type="button" className="button is-link" onClick={() => crearPlanPropio(false)}>
+                      <div className="cfg-ti-plan-actions buttons are-small mb-0">
+                        <button type="button" className="button is-small is-link" onClick={() => crearPlanPropio(false)}>
                           Crear plan propio vacío
                         </button>
-                        <button type="button" className="button is-light" onClick={() => crearPlanPropio(true)}>
+                        <button type="button" className="button is-small is-light cfg-ti-plan-btn-secondary" onClick={() => crearPlanPropio(true)}>
                           Copiar menú sugerido y editar
                         </button>
                       </div>

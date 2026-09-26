@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ProfileProvider } from './context/ProfileContext'
-import { AppNotificationsProvider, AppNotificacionesCampana } from './context/AppNotificationsContext'
+import { AppNotificationsProvider } from './context/AppNotificationsContext'
 import { RoleNavProvider, useRoleNav } from './context/RoleNavContext'
 import Inicio from './pages/Inicio'
 import Ejercicios from './pages/Ejercicios'
@@ -19,6 +19,7 @@ import AppErrorBoundary from './components/AppErrorBoundary'
 import AppSidebar from './components/AppSidebar'
 import AppNavMenu from './components/AppNavMenu'
 import AppMenuToggle from './components/AppMenuToggle'
+import AppBottomNav from './components/AppBottomNav'
 import { AppMobileNavProvider } from './context/AppMobileNavContext'
 import { isNavModuleBlocked } from './utils/navModules'
 import './App.css'
@@ -95,7 +96,7 @@ function AppRoutes() {
   return (
     <AppMobileNavProvider open={mobileNavOpen} setOpen={setMobileNavOpen}>
     <div
-      className={`app-shell${isAuthPage ? ' app-shell--auth' : ''}${sidebarCollapsed ? ' app-shell--sidebar-collapsed' : ''}`}
+      className={`app-shell${isAuthPage ? ' app-shell--auth' : ''}${sidebarCollapsed ? ' app-shell--sidebar-collapsed' : ''}${!isAuthPage ? ' app-shell--mobile-tabbar' : ''}`}
     >
       {!isAuthPage && (
         <AppSidebar
@@ -132,10 +133,9 @@ function AppRoutes() {
               </p>
             )}
             <div className="app-topbar-spacer" />
-            {location.pathname !== '/' && !location.pathname.startsWith('/rutina') && !location.pathname.startsWith('/comida') && !location.pathname.startsWith('/ejercicios') && !location.pathname.startsWith('/profe') && !location.pathname.startsWith('/config') && <AppNotificacionesCampana />}
           </header>
         )}
-        <main className={`main-content${location.pathname === '/' ? ' main-content--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' main-content--rutina' : ''}${location.pathname.startsWith('/comida') ? ' main-content--comida' : ''}${location.pathname.startsWith('/plan-mes1') ? ' main-content--plan' : ''}${location.pathname.startsWith('/ejercicios') ? ' main-content--ejercicios' : ''}${location.pathname.startsWith('/profe') ? ' main-content--profe' : ''}${location.pathname.startsWith('/config') ? ' main-content--config' : ''}`}>
+        <main className={`main-content${location.pathname === '/' ? ' main-content--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' main-content--rutina' : ''}${location.pathname.startsWith('/comida') ? ' main-content--comida' : ''}${location.pathname.startsWith('/plan-mes1') ? ' main-content--plan' : ''}${location.pathname.startsWith('/ejercicios') ? ' main-content--ejercicios' : ''}${location.pathname.startsWith('/profe') ? ' main-content--profe' : ''}${location.pathname.startsWith('/config') ? ' main-content--config' : ''}${location.pathname.startsWith('/admin') ? ' main-content--admin' : ''}`}>
           <Routes>
             <Route path="/" element={<ModuleGate module="inicio" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Inicio /></ModuleGate>} />
             <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Ejercicios /></ModuleGate>} />
@@ -157,6 +157,13 @@ function AppRoutes() {
           </Routes>
         </main>
       </div>
+      {!isAuthPage && (
+        <AppBottomNav
+          ocultarNav={ocultarNav}
+          mostrarProfe={mostrarProfe}
+          mostrarAdmin={mostrarAdmin}
+        />
+      )}
     </div>
     </AppMobileNavProvider>
   )

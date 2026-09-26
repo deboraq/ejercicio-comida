@@ -5,7 +5,6 @@ import { REFERENCIA_ALIMENTOS } from '../utils/referenciaComidas'
 import { getRecetasSugeridasCena } from '../utils/recetasCena'
 import { getUltimosNDias, PERIODOS } from '../utils/estadisticas'
 import { META_MOMENTO_FRAC, HORA_MOMENTO_DEFAULT } from '../utils/comidaMomentos'
-import { AppNotificacionesCampana } from '../context/AppNotificationsContext'
 import {
   COMIDA_FAVORITOS_SUGERIDOS,
   resolverFavoritosComida,
@@ -1088,9 +1087,6 @@ export default function ComidaTitanium({
               <span className="cd-btn-label cd-btn-label--long">+ Registrar comida rápida</span>
               <span className="cd-btn-label cd-btn-label--short">+ Comida rápida</span>
             </button>
-            <div className="cd-campana">
-              <AppNotificacionesCampana />
-            </div>
           </div>
         </header>
         <nav className="cd-module-tabs" aria-label="Vista de nutrición">
