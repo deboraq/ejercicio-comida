@@ -3,11 +3,11 @@ import { inferirGrupoMuscular, nombreDisplayPlan } from './rutinaEjercicioDia.js
 
 /** Períodos del dashboard Progreso & Cargas */
 export const PERIODOS_PROGRESO = [
-  { value: '7d', label: '7D', dias: 7 },
-  { value: '30d', label: '30 días', dias: 30 },
-  { value: '3m', label: '3 meses', dias: 90 },
-  { value: '6m', label: '6 meses', dias: 180 },
-  { value: '1y', label: 'Todo el año', dias: 365 },
+  { value: '7d', label: '7D', short: '7D', dias: 7 },
+  { value: '30d', label: '30 días', short: '30d', dias: 30 },
+  { value: '3m', label: '3 meses', short: '3m', dias: 90 },
+  { value: '6m', label: '6 meses', short: '6m', dias: 180 },
+  { value: '1y', label: 'Todo el año', short: '1a', dias: 365 },
 ]
 
 export function rangoProgreso(periodo = '30d', hoyISO = fechaToISO(new Date())) {
