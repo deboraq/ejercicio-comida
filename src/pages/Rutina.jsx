@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import { useStorage } from '../hooks/useStorage'
 import { useAuth } from '../context/AuthContext'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
@@ -69,6 +69,8 @@ function clonarRutinaParaMisRutinas(orig) {
 export default function Rutina() {
   const { user, isConfigured } = useAuth()
   const [searchParams] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
   const syncRutinasNube = Boolean(user && isConfigured)
   const [rutinas, setRutinas] = useStorage('rutinas', [])
   const [rutinasAsignadas, setRutinasAsignadas] = useStorage('rutinasAsignadas', [])
@@ -115,6 +117,25 @@ export default function Rutina() {
       setOrigenRutinas('propias')
     }
   }, [searchParams])
+
+  useEffect(() => {
+    const st = location.state
+    if (!st || typeof st !== 'object') return
+    let nextState = null
+    if (st.rutinaOrigen === 'asignadas') {
+      setOrigenRutinas('asignadas')
+      setVista('registrar')
+    } else if (st.rutinaOrigen === 'propias') {
+      setOrigenRutinas('propias')
+    }
+    if (st.rutinaVista === 'configurar' || st.rutinaVista === 'progreso' || st.rutinaVista === 'registrar') {
+      setOrigenRutinas((prev) => (st.rutinaOrigen === 'asignadas' ? prev : 'propias'))
+      if (st.rutinaOrigen !== 'asignadas') setVista(st.rutinaVista)
+    }
+    if (st.rutinaOrigen || st.rutinaVista) {
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: nextState })
+    }
+  }, [location.pathname, location.search, location.state, navigate])
 
   const hoy = fechaToISO(new Date())
   const pesoCfg = config?.pesoKg || 70

@@ -1,7 +1,10 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useMyProfile } from '../hooks/useMyProfile'
+import { useRoleNav } from '../context/RoleNavContext'
+import { isNavModuleBlocked } from '../utils/navModules'
+import InicioAccesosSection from '../components/InicioAccesosSection'
 import { useStorage } from '../hooks/useStorage'
 import {
   caloriasEjercicioRegistro,
@@ -147,6 +150,7 @@ function quemadasEnFecha(ejercicios, registrosRutina, fecha, pesoKg) {
 export default function Inicio() {
   const { user, isConfigured } = useAuth()
   const { profile } = useMyProfile()
+  const { roleNavMap } = useRoleNav()
   const [ejerciciosRaw] = useStorage('ejercicios', [])
   const [comidaRaw] = useStorage('comida', [])
   const [suplementosRaw, setSuplementos] = useStorage('suplementos', [])
@@ -183,6 +187,17 @@ export default function Inicio() {
 
   const nombre = primerNombre(profile, user)
   const pesoCfg = config?.pesoKg || 70
+
+  const mostrarProfe = Boolean(isConfigured)
+  const mostrarAdmin = Boolean(isConfigured && profile?.role === 'admin')
+  const ocultarNav = useCallback(
+    (clave) => {
+      if (!isConfigured || !user) return false
+      if (!profile || profile.role === 'admin') return false
+      return isNavModuleBlocked(profile, clave, roleNavMap)
+    },
+    [isConfigured, user, profile, roleNavMap],
+  )
 
   const ayer = useMemo(() => {
     const d = new Date(`${diaEnVista}T12:00:00`)
@@ -408,30 +423,14 @@ export default function Inicio() {
               Resumen diario de nutrición, gasto calórico y progreso físico.
             </p>
           </div>
-          <div className="inicio-dash-actions">
-            <Link to="/comida" className="inicio-dash-btn inicio-dash-btn--comida">
-              <span className="inicio-dash-btn-ico" aria-hidden>
-                🍽️
-              </span>
-              <span className="inicio-dash-btn-label">Registrar comida</span>
-            </Link>
-            <Link
-              to={`/rutina?fecha=${encodeURIComponent(diaEnVista)}`}
-              className="inicio-dash-btn inicio-dash-btn--rutina"
-            >
-              <span className="inicio-dash-btn-ico" aria-hidden>
-                🏋️
-              </span>
-              <span className="inicio-dash-btn-label">Iniciar rutina</span>
-            </Link>
-            <Link to="/ejercicios" className="inicio-dash-btn inicio-dash-btn--ejercicio">
-              <span className="inicio-dash-btn-ico" aria-hidden>
-                🏃
-              </span>
-              <span className="inicio-dash-btn-label">Iniciar ejercicio</span>
-            </Link>
-          </div>
         </header>
+
+        <InicioAccesosSection
+          hoyISO={diaEnVista}
+          ocultarNav={ocultarNav}
+          mostrarProfe={mostrarProfe}
+          mostrarAdmin={mostrarAdmin}
+        />
 
         <div className="inicio-week-strip">
           <div className="inicio-week-toolbar">
