@@ -684,17 +684,17 @@ function MealCard({
     <article className={`cd-meal${vacio ? ' cd-meal--pending' : ' cd-meal--filled'}`}>
       <header className="cd-meal-head">
         <div className="cd-meal-head-top">
-          <div className="cd-meal-head-row">
-            <span className="cd-meal-icon" aria-hidden>{icon}</span>
-            <h3 className="cd-meal-title mb-0">
-              {tipo}
-              {!vacio && horaConsumo && (
-                <span className="cd-meal-title-sep"> • Consumido {horaConsumo}</span>
-              )}
-            </h3>
+          <div className="cd-meal-head-main">
+            <div className="cd-meal-head-row">
+              <span className="cd-meal-icon" aria-hidden>{icon}</span>
+              <h3 className="cd-meal-title mb-0">{tipo}</h3>
+            </div>
+            {!vacio && horaConsumo && (
+              <p className="cd-meal-consumed mb-0">Consumido {horaConsumo}</p>
+            )}
           </div>
           <p className="cd-meal-kcal-inline mb-0">
-            <strong className="cd-meal-kcal-now">{cal}</strong>
+            <strong className={`cd-meal-kcal-now${cal > metaMomento ? ' is-over' : ''}`}>{Math.round(cal)}</strong>
             <span className="cd-meal-kcal-goal"> / {metaMomento} kcal</span>
           </p>
         </div>
@@ -706,15 +706,18 @@ function MealCard({
             const sub = subtituloAlimento(r)
             return (
               <li key={r.id} className="cd-meal-item">
-                <div className="cd-meal-item-text">
-                  <p className="cd-meal-item-name mb-0">
-                    {r.descripcion}
-                    {r.hora && <span className="cd-meal-item-hora"> · {r.hora}</span>}
-                  </p>
-                  {sub && <p className="cd-meal-item-sub mb-0">{sub}</p>}
-                </div>
-                <div className="cd-meal-item-right">
-                  <MacroPills r={r} compact />
+                <div className="cd-meal-item-head">
+                  <div className="cd-meal-item-text">
+                    <p className="cd-meal-item-name mb-0">{r.descripcion}</p>
+                    {sub ? (
+                      <p className="cd-meal-item-sub mb-0">
+                        {sub}
+                        {r.hora && <span className="cd-meal-item-hora"> · {r.hora}</span>}
+                      </p>
+                    ) : r.hora ? (
+                      <p className="cd-meal-item-sub mb-0">{r.hora}</p>
+                    ) : null}
+                  </div>
                   <div className="cd-meal-actions">
                     {onEditar && (
                       <button
@@ -736,6 +739,7 @@ function MealCard({
                     </button>
                   </div>
                 </div>
+                <MacroPills r={r} compact />
               </li>
             )
           })}
