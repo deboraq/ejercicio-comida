@@ -767,7 +767,7 @@ export default function ProgresoCargasTitanium({
     const preferidos = ejerciciosDisponibles.filter((e) => planSet.has(e.nombre))
     const base = (preferidos.length ? preferidos : ejerciciosDisponibles)
       .filter((e) => e.nombre !== ejercicioActivo)
-      .slice(0, 2)
+      .slice(0, 3)
     return base.map((e) => {
       const full = nombreDisplayPlan(e.nombre)
       const short = full
@@ -777,7 +777,7 @@ export default function ProgresoCargasTitanium({
         .trim()
       return {
         ...e,
-        label: short.length > 16 ? `${short.slice(0, 14)}…` : short || full,
+        label: short.length > 22 ? `${short.slice(0, 20)}…` : short || full,
       }
     })
   }, [ejerciciosDisponibles, ejerciciosPlan, ejercicioActivo])
@@ -804,10 +804,12 @@ export default function ProgresoCargasTitanium({
   return (
     <div className="pc-dash">
       <div className="pc-toolbar">
-        <div className="pc-tb-left">
-          <div className="pc-ex-line">
-            <span className="pc-label-inline">Ejercicio analizado:</span>
-            <div className="pc-select-wrap">
+        <div className="pc-tb-ex">
+          <label className="pc-label-block" htmlFor="pc-ex">
+            Ejercicio analizado
+          </label>
+          <div className="pc-tb-ex-row">
+            <div className="pc-select-wrap pc-select-wrap--block">
               <select
                 id="pc-ex"
                 className="pc-select"
@@ -823,56 +825,67 @@ export default function ProgresoCargasTitanium({
                 ))}
               </select>
             </div>
-          </div>
-          <div className="pc-rapidos">
-            <span className="pc-rapidos-label">Rápidos:</span>
-            {chips.map((c) => (
-              <button
-                key={c.nombre}
-                type="button"
-                className="pc-chip"
-                onClick={() => setEjercicio(c.nombre)}
-                title={nombreDisplayPlan(c.nombre)}
-              >
-                {c.label}
-              </button>
-            ))}
+            {(onExportarExcel || onExportarCsv || onExportarJson) && (
+              <div className="pc-export buttons are-small mb-0">
+                {onExportarExcel && (
+                  <button type="button" className="button is-small is-link is-light" onClick={onExportarExcel}>
+                    Excel ({totalExport})
+                  </button>
+                )}
+                {onExportarCsv && (
+                  <button type="button" className="button is-small is-light" onClick={onExportarCsv}>
+                    CSV
+                  </button>
+                )}
+                {onExportarJson && (
+                  <button type="button" className="button is-small is-light" onClick={onExportarJson}>
+                    JSON
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="pc-tb-right">
-          {(onExportarExcel || onExportarCsv || onExportarJson) && (
-            <div className="pc-export buttons are-small mb-0">
-              {onExportarExcel && (
-                <button type="button" className="button is-link is-light" onClick={onExportarExcel}>
-                  ↓ Excel ({totalExport})
+        {chips.length > 0 && (
+          <div className="pc-rapidos">
+            <span className="pc-label-block pc-rapidos-label">Rápidos</span>
+            <div className="pc-rapidos-chips">
+              {chips.map((c) => (
+                <button
+                  key={c.nombre}
+                  type="button"
+                  className={`pc-chip${c.nombre === ejercicioActivo ? ' is-active' : ''}`}
+                  onClick={() => setEjercicio(c.nombre)}
+                  title={nombreDisplayPlan(c.nombre)}
+                >
+                  {c.label}
                 </button>
-              )}
-              {onExportarCsv && (
-                <button type="button" className="button is-light" onClick={onExportarCsv}>
-                  ↓ CSV
-                </button>
-              )}
-              {onExportarJson && (
-                <button type="button" className="button is-light" onClick={onExportarJson}>
-                  ↓ JSON
-                </button>
-              )}
+              ))}
             </div>
-          )}
-          <div className="pc-periods" role="group" aria-label="Período">
-            {PERIODOS_PROGRESO.map((p) => (
-              <button
-                key={p.value}
-                type="button"
-                className={`pc-period${periodo === p.value ? ' is-active' : ''}`}
-                onClick={() => setPeriodo(p.value)}
-              >
-                {p.label}
-              </button>
-            ))}
           </div>
-          <p className="pc-rango mb-0">{rangoLabel}</p>
+        )}
+
+        <div className="pc-tb-meta">
+          <div className="pc-periods-scroll">
+            <div className="pc-periods" role="group" aria-label="Período">
+              {PERIODOS_PROGRESO.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  className={`pc-period${periodo === p.value ? ' is-active' : ''}`}
+                  onClick={() => setPeriodo(p.value)}
+                  title={p.label}
+                >
+                  <span className="pc-period-long">{p.label}</span>
+                  <span className="pc-period-short">{p.short || p.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="pc-tb-meta-foot">
+            <p className="pc-rango mb-0">{rangoLabel}</p>
+          </div>
         </div>
       </div>
 
