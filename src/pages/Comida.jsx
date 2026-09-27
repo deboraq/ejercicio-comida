@@ -484,9 +484,10 @@ export default function Comida() {
   }, [])
 
   useEffect(() => {
-    if (location.state?.vistaComida === 'plan') {
-      setVistaComida('plan')
-      const abrirEditor = location.state?.abrirEditorPlan
+    const v = location.state?.vistaComida
+    if (v === 'plan' || v === 'historial') {
+      setVistaComida(v)
+      const abrirEditor = v === 'plan' && location.state?.abrirEditorPlan
       navigate('/comida', {
         replace: true,
         state: abrirEditor ? { abrirEditorPlan: true } : null,

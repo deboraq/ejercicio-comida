@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAppNotifications } from '../context/AppNotificationsContext'
 import { useMyProfile } from '../hooks/useMyProfile'
@@ -21,6 +21,8 @@ import ModuleGateCard from '../components/ModuleGateCard'
 
 export default function Profe() {
   const { user, isConfigured } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const { onToast, setAvisosAdmin, avisosAdmin } = useAppNotifications()
   const { profile, profileError, loading: profileLoading, refresh: refreshProfile } = useMyProfile()
   const [students, setStudents] = useState([])
@@ -35,6 +37,19 @@ export default function Profe() {
   const [userDataMap, setUserDataMap] = useState({})
   const [assignmentsMap, setAssignmentsMap] = useState({})
   const [userDataSyncWarn, setUserDataSyncWarn] = useState(false)
+  const [profeTabSeed, setProfeTabSeed] = useState(0)
+
+  useEffect(() => {
+    const tab = location.state?.profeTab
+    if (!tab || typeof tab !== 'string') return
+    try {
+      sessionStorage.setItem('profe-titanium-tab', tab)
+    } catch {
+      /* ignore */
+    }
+    setProfeTabSeed((n) => n + 1)
+    navigate('/profe', { replace: true, state: null })
+  }, [location.state, navigate])
 
   const esProfe = profile?.role === 'profe'
   const esAdmin = profile?.role === 'admin'
@@ -377,6 +392,7 @@ export default function Profe() {
     <section className="section py-2 profe-page profe-titanium">
       <div className="container app-page-container profe-container">
         <ProfeTitanium
+          key={profeTabSeed}
           profile={profile}
           user={user}
           students={students}
