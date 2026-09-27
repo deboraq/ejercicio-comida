@@ -54,7 +54,7 @@
   --app-sidebar-width: 15.5rem;
   --app-sidebar-width-collapsed: 4.5rem;
   --app-sidebar-current-width: var(--app-sidebar-width);
-  --app-bottom-nav-height: 3.65rem;
+  --app-bottom-nav-height: 4.15rem;
   --app-radius-lg: 0.875rem;
   --app-radius-xl: 1rem;
   --app-grad-panel:
@@ -282,8 +282,8 @@ body {
   box-sizing: border-box;
   min-height: var(--app-bottom-nav-height);
   padding:
-    0.35rem max(0.35rem, env(safe-area-inset-right, 0px))
-    max(0.35rem, env(safe-area-inset-bottom, 0px))
+    0.45rem max(0.35rem, env(safe-area-inset-right, 0px))
+    max(0.45rem, env(safe-area-inset-bottom, 0px))
     max(0.35rem, env(safe-area-inset-left, 0px));
   background: rgba(10, 15, 26, 0.94);
   border-top: 1px solid rgba(148, 163, 184, 0.14);
@@ -299,8 +299,8 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.12rem;
-  padding: 0.2rem 0.1rem;
+  gap: 0.18rem;
+  padding: 0.28rem 0.12rem;
   border-radius: 10px;
   color: #64748b;
   text-decoration: none;
@@ -14243,6 +14243,18 @@ select.ap-input {
 .cd-meal-head-main {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cd-meal-consumed {
+  margin: 0;
+  padding-left: 2.55rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.35;
 }
 
 .cd-meal-head-row {
@@ -14311,6 +14323,10 @@ select.ap-input {
   letter-spacing: -0.02em;
 }
 
+.comida-page.comida-titanium .cd-meal-kcal-now.is-over {
+  color: #fb923c !important;
+}
+
 .cd-meal-kcal-goal {
   font-size: 0.8rem;
   color: #94a3b8;
@@ -14338,11 +14354,19 @@ select.ap-input {
 
 .cd-meal-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  padding: 0.75rem 0;
   border-bottom: 1px solid rgba(51, 65, 85, 0.38);
+}
+
+.cd-meal-item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .cd-meal-item:last-child {
@@ -14354,7 +14378,8 @@ select.ap-input {
   font-size: 0.88rem;
   font-weight: 700;
   color: #f8fafc;
-  line-height: 1.4;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .cd-meal-item-sub {
@@ -14375,33 +14400,27 @@ select.ap-input {
   min-width: 0;
 }
 
-.cd-meal-item-right {
-  display: flex;
-  align-items: center;
-  gap: 0.28rem;
-  flex-shrink: 0;
-}
-
 .cd-meal-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 0.1rem;
+  justify-content: flex-end;
+  gap: 0.35rem;
   flex-shrink: 0;
-  min-width: 1rem;
-  padding-left: 0.1rem;
+  padding-left: 0.15rem;
 }
 
 .cd-meal-act {
   appearance: none;
   border: 0;
-  background: transparent;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(71, 85, 105, 0.45);
+  border-radius: 8px;
   color: #64748b;
   font-size: 0.7rem;
   line-height: 1;
-  width: 1rem;
-  height: 0.95rem;
+  width: 1.65rem;
+  height: 1.65rem;
   padding: 0;
   cursor: pointer;
   display: inline-flex;
@@ -14435,21 +14454,24 @@ select.ap-input {
 }
 
 .cd-macros--meal {
-  flex-wrap: nowrap;
-  gap: 0.32rem;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.28rem;
+  width: 100%;
+  align-items: stretch;
 }
 
 .cd-macros--meal .cd-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.12rem;
-  padding: 0.28rem 0.52rem;
+  gap: 0.1rem;
+  padding: 0.24rem 0.35rem;
   border-radius: 8px;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   line-height: 1.1;
-  min-height: 1.68rem;
+  min-height: 1.55rem;
+  min-width: 0;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
@@ -14457,9 +14479,8 @@ select.ap-input {
   background: linear-gradient(135deg, #4f8ff7 0%, #3b82f6 45%, #2563eb 100%);
   border: 1px solid rgba(147, 197, 253, 0.42);
   color: #eff6ff;
-  min-width: 3.75rem;
   font-weight: 700;
-  padding-inline: 0.58rem;
+  padding-inline: 0.35rem;
 }
 
 .cd-macros--meal .cd-pill--kcal .cd-pill-val {
@@ -14470,7 +14491,7 @@ select.ap-input {
 .cd-macros--meal .cd-pill--p {
   background: linear-gradient(145deg, rgba(37, 99, 235, 0.28) 0%, rgba(15, 23, 42, 0.92) 100%);
   border: 1px solid rgba(56, 189, 248, 0.42);
-  min-width: 2.95rem;
+  min-width: 0;
 }
 
 .cd-macros--meal .cd-pill--p .cd-pill-lbl {
@@ -14486,7 +14507,7 @@ select.ap-input {
 .cd-macros--meal .cd-pill--c {
   background: linear-gradient(145deg, rgba(180, 83, 9, 0.32) 0%, rgba(41, 22, 6, 0.92) 100%);
   border: 1px solid rgba(245, 158, 11, 0.42);
-  min-width: 2.95rem;
+  min-width: 0;
 }
 
 .cd-macros--meal .cd-pill--c .cd-pill-lbl {
@@ -14502,7 +14523,7 @@ select.ap-input {
 .cd-macros--meal .cd-pill--g {
   background: linear-gradient(145deg, rgba(190, 24, 93, 0.28) 0%, rgba(42, 10, 28, 0.92) 100%);
   border: 1px solid rgba(236, 72, 153, 0.42);
-  min-width: 2.95rem;
+  min-width: 0;
 }
 
 .cd-macros--meal .cd-pill--g .cd-pill-lbl {
@@ -15042,6 +15063,29 @@ select.ap-input {
 
   .comida-page.comida-titanium .cd-meal-kcal-inline {
     text-align: right;
+    padding-top: 0.15rem;
+  }
+
+  .comida-page.comida-titanium .cd-meal-meta-rec {
+    display: none;
+  }
+
+  .comida-page.comida-titanium .cd-meal {
+    padding: 0.95rem 0.85rem 0.85rem;
+  }
+
+  .comida-page.comida-titanium .cd-meal-head {
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
+
+  .comida-page.comida-titanium .cd-meal-title {
+    font-size: 0.92rem;
+  }
+
+  .comida-page.comida-titanium .cd-meal-consumed {
+    padding-left: 2.45rem;
+    font-size: 0.64rem;
   }
 
   .comida-page.comida-titanium .cd-add-fields {
