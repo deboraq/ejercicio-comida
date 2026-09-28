@@ -656,6 +656,7 @@ body {
   border-color: var(--app-border) !important;
   border-radius: var(--app-radius-lg) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  color-scheme: dark;
 }
 
 .app-layout .input::placeholder,
@@ -7486,6 +7487,7 @@ body {
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: #1a2235 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2394a3b8' d='M1 1l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 0.7rem center;
   color: #f1f5f9;
+  color-scheme: dark;
   font-size: 0.82rem;
   font-weight: 650;
 }
@@ -10172,13 +10174,15 @@ body {
 .rut-activa-select select {
   appearance: none;
   -webkit-appearance: none;
-  border: 0;
-  background: transparent;
-  color: #fff;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background-color: #151b2b;
+  color: #f1f5f9;
+  color-scheme: dark;
   font-size: 0.84rem;
   font-weight: 700;
-  padding: 0 1.4rem 0 0;
-  max-width: 10.5rem;
+  padding: 0.35rem 1.4rem 0.35rem 0.55rem;
+  max-width: 12rem;
   cursor: pointer;
   outline: none;
   text-overflow: ellipsis;
@@ -15176,7 +15180,7 @@ select.ap-input {
 .rutina-titanium .rut-tab:not(.is-active) {
   background: rgba(15, 23, 42, 0.82) !important;
   border-color: rgba(51, 65, 85, 0.6) !important;
-  color: #64748b !important;
+  color: #94a3b8 !important;
   box-shadow: none !important;
   filter: none !important;
   font-weight: 650 !important;
@@ -16261,6 +16265,7 @@ select.ap-input {
   border-radius: 8px;
   background: transparent;
   color: #e2e8f0;
+  color-scheme: dark;
   font-size: 0.82rem;
   font-weight: 650;
   appearance: none;
@@ -17316,6 +17321,7 @@ select.ap-input {
   border: 1px solid #1e293b;
   background: var(--cd-grad-deep);
   color: #e2e8f0;
+  color-scheme: dark;
   font-size: 0.78rem;
 }
 
