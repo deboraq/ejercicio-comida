@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { clearStorageHydration } from './storageHydration'
+import { scheduleCloudPersist } from './offlineDataSync'
 
 /** Una sola petición por sesión; evita N consultas paralelas a user_data. */
 const inflightByUser = new Map()
@@ -71,37 +72,8 @@ export function getUserDataCloudMap(userId) {
   return cacheByUser.get(userId) ?? null
 }
 
-const upsertQueueByUser = new Map()
-let upsertFlushTimer = null
-
 /** Agrupa subidas tras merge inicial para no bloquear la UI con N upserts. */
 export function queueUserDataPersist(userId, key, value) {
   if (!userId || !key || !supabase) return
-  patchUserDataCloudCache(userId, key, value)
-  if (!upsertQueueByUser.has(userId)) upsertQueueByUser.set(userId, new Map())
-  upsertQueueByUser.get(userId).set(key, value)
-  clearTimeout(upsertFlushTimer)
-  upsertFlushTimer = setTimeout(flushUserDataPersistQueue, 100)
-}
-
-function flushUserDataPersistQueue() {
-  upsertFlushTimer = null
-  if (!supabase) return
-  for (const [userId, keyMap] of upsertQueueByUser) {
-    const rows = [...keyMap.entries()].map(([key, value]) => ({
-      user_id: userId,
-      key,
-      value,
-      updated_at: new Date().toISOString(),
-    }))
-    if (rows.length) {
-      supabase
-        .from('user_data')
-        .upsert(rows, { onConflict: 'user_id,key' })
-        .then(({ error }) => {
-          if (error) console.error('Error batch saving user_data:', error)
-        })
-    }
-  }
-  upsertQueueByUser.clear()
+  scheduleCloudPersist(userId, key, value)
 }

@@ -13,10 +13,12 @@ import { normalizarHidratacionPorDia, mergeHidratacionPorDia } from '../utils/hi
 import { isStorageKeyHydrated, markStorageKeyHydrated } from '../utils/storageHydration'
 import {
   fetchAllUserDataCloud,
+  getUserDataCloudMap,
   patchUserDataCloudCache,
   queueUserDataPersist,
   userDataCloudCached,
 } from '../utils/userDataCloud'
+import { isAppOnline, scheduleCloudPersist } from '../utils/offlineDataSync'
 
 function mergeLocalWithLive(key, fromLs, fromLive, initial) {
   if (Array.isArray(initial)) {
@@ -86,17 +88,8 @@ function resolveMergedValue(userId, key, initial, cloudMap, localValRef) {
 
 function persistUserData(userId, key, value) {
   if (!supabase || !userId) return Promise.resolve({ error: null })
-  patchUserDataCloudCache(userId, key, value)
-  return supabase
-    .from('user_data')
-    .upsert(
-      { user_id: userId, key, value, updated_at: new Date().toISOString() },
-      { onConflict: 'user_id,key' },
-    )
-    .then(({ error }) => {
-      if (error) console.error('Error saving user_data:', error)
-      return { error }
-    })
+  scheduleCloudPersist(userId, key, value)
+  return Promise.resolve({ error: null })
 }
 
 /**
@@ -154,7 +147,12 @@ export function useStorage(key, initialValue) {
     }
 
     const load = async () => {
-      const cloudMap = await fetchAllUserDataCloud(user.id)
+      let cloudMap = Object.create(null)
+      if (isAppOnline()) {
+        cloudMap = await fetchAllUserDataCloud(user.id)
+      } else {
+        cloudMap = getUserDataCloudMap(user.id) || Object.create(null)
+      }
       if (cancelled) return
 
       const { resolved, fromCloud, cloudRowExists } = resolveMergedValue(

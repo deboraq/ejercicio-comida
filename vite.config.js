@@ -1,6 +1,7 @@
 import os from 'node:os'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 
 /** Muestra en consola la URL para abrir la app desde el celular (misma Wi‑Fi). */
 function lanUrlsPlugin() {
@@ -29,7 +30,24 @@ function lanUrlsPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), lanUrlsPlugin()],
+  plugins: [
+    react(),
+    lanUrlsPlugin(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['vite.svg'],
+      manifest: false,
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//],
+        cleanupOutdatedCaches: true,
+      },
+      devOptions: {
+        enabled: false,
+      },
+    }),
+  ],
   server: {
     host: '0.0.0.0',
     port: 5173,

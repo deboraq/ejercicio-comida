@@ -21,6 +21,7 @@ import AppNavMenu from './components/AppNavMenu'
 import AppMenuToggle from './components/AppMenuToggle'
 import AppBottomNav from './components/AppBottomNav'
 import { AppMobileNavProvider } from './context/AppMobileNavContext'
+import OfflineStatusBanner from './components/OfflineStatusBanner'
 import { isNavModuleBlocked } from './utils/navModules'
 import './App.css'
 import './styles/responsive-global.css'
@@ -191,6 +192,7 @@ function AuthSessionShell() {
   return (
     <AppErrorBoundary key={`${user?.id ?? 'guest'}-${location.pathname}`}>
       <div className="app-layout">
+        <OfflineStatusBanner />
         <AppRoutes />
       </div>
     </AppErrorBoundary>
