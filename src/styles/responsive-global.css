@@ -156,8 +156,17 @@ html {
   }
 }
 
-@media (max-width: 1180px) {
-  .comida-page.comida-titanium .cd-layout {
+@media (min-width: 1024px) and (max-width: 1400px) {
+  .main-content--comida,
+  .main-content--rutina,
+  .main-content--config {
+    padding-left: 1rem !important;
+    padding-right: 1.25rem !important;
+  }
+}
+
+@media (max-width: 1280px) {
+  .comida-page.comida-titanium .cd-layout:not(.cd-layout--plan):not(.cd-layout--historial) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
