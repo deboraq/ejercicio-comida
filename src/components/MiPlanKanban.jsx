@@ -697,40 +697,68 @@ export default function MiPlanKanban({
       slot = slotOrExtra
     }
 
-    const key = extra
-      ? claveComidaPlan(diaPlan, 'extra', extra.id)
-      : claveComidaPlan(diaPlan, slot.id, null, opIndex)
+    patchEstado((prev) => {
+      const key = extra
+        ? claveComidaPlan(diaPlan, 'extra', extra.id)
+        : claveComidaPlan(diaPlan, slot.id, null, opIndex)
+      const willCheck = !prev?.checks?.[key]
+      const checks = { ...(prev?.checks || {}) }
+      const syncOps = []
 
-    const willCheck = !estado?.checks?.[key]
+      if (extra) {
+        checks[key] = willCheck
+      } else if (willCheck) {
+        for (let i = 0; i < (slot.opciones || []).length; i += 1) {
+          const k = claveComidaPlan(diaPlan, slot.id, null, i)
+          const activo = i === opIndex
+          if (activo) {
+            checks[k] = true
+          } else if (checks[k]) {
+            checks[k] = false
+            syncOps.push(
+              payloadSyncPlanToggle({
+                diaPlan,
+                inicioISO: inicio,
+                config,
+                slot,
+                opIdx: i,
+                checked: false,
+              }),
+            )
+          }
+        }
+      } else {
+        checks[key] = false
+      }
 
-    patchEstado((prev) => ({
-      ...prev,
-      checks: {
-        ...(prev?.checks || {}),
-        [key]: willCheck,
-      },
-    }))
-
-    if (!inicio) return
-
-    const syncPayload = extra
-      ? payloadSyncPlanToggle({
-          diaPlan,
-          inicioISO: inicio,
-          config,
-          extra,
-          checked: willCheck,
+      if (inicio) {
+        const mainPayload = extra
+          ? payloadSyncPlanToggle({
+              diaPlan,
+              inicioISO: inicio,
+              config,
+              extra,
+              checked: willCheck,
+            })
+          : payloadSyncPlanToggle({
+              diaPlan,
+              inicioISO: inicio,
+              config,
+              slot,
+              opIdx: opIndex,
+              checked: willCheck,
+            })
+        queueMicrotask(() => {
+          if (syncOps.length) {
+            emitSyncPlan({ type: 'batch', ops: [...syncOps, mainPayload] })
+          } else {
+            emitSyncPlan(mainPayload)
+          }
         })
-      : payloadSyncPlanToggle({
-          diaPlan,
-          inicioISO: inicio,
-          config,
-          slot,
-          opIdx: opIndex,
-          checked: willCheck,
-        })
+      }
 
-    emitSyncPlan(syncPayload)
+      return { ...prev, checks }
+    })
   }
 
   const clavesChecksDia = (diaPlan, slots, extrasDia) => {
@@ -1276,6 +1304,12 @@ export default function MiPlanKanban({
           semanaActiva={semanaActiva}
           onCerrar={() => setEditorAbierto(false)}
         />
+      )}
+
+      {(vistaPlanZoom === 'semana' || vistaPlanZoom === 'mes') && (
+        <p className="plan-kanban-scroll-hint mb-0">
+          Hay varios días en fila: deslizá horizontalmente o usá la barra de scroll debajo del tablero para verlos todos.
+        </p>
       )}
 
       <div className="plan-kanban-board-wrap" ref={boardWrapRef}>

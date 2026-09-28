@@ -280,11 +280,20 @@ html {
   margin: 0;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
+  overflow-x: auto !important;
 }
 
-.plan-kanban--embedded .plan-kanban-board-wrap:has(.plan-kanban-board--zoom-2) {
-  overflow-x: auto;
+.plan-kanban--embedded .plan-kanban-board-wrap {
+  overflow-x: auto !important;
+}
+
+.comida-page.comida-titanium .cd-layout--plan .cd-main,
+.comida-page.comida-titanium .cd-layout--plan .cd-root {
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
 }
 
 @media (min-width: 1024px) and (max-width: 1400px) {
@@ -311,6 +320,59 @@ html {
 /* Contraste legible (hidratación, tabs inactivas) */
 .comida-page.comida-titanium .cd-water-stats {
   color: #94a3b8 !important;
+}
+
+.comida-page.comida-titanium .cd-balance .cd-water {
+  overflow: visible;
+  max-width: 100%;
+}
+
+/* ——— PWA / offline ——— */
+.app-offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.app-offline-banner--offline {
+  background: rgba(120, 53, 15, 0.92);
+  color: #fef3c7;
+}
+
+.app-offline-banner--sync {
+  background: rgba(30, 58, 95, 0.92);
+  color: #dbeafe;
+}
+
+.app-offline-banner-text {
+  max-width: 42rem;
+}
+
+.app-offline-banner-btn {
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(15, 23, 42, 0.35);
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-offline-banner-btn:hover {
+  background: rgba(15, 23, 42, 0.55);
 }
 
 .rutina-titanium .rut-head .rut-tab:not(.is-active),

@@ -1,5 +1,4 @@
 import { nuevoIdRegistro } from './ids.js'
-import { diaPlanMes1 } from './planMes1.js'
 import { fechaToISO } from './calorias.js'
 import {
   claveComidaPlan,
@@ -25,16 +24,60 @@ export function planRefsChecksDia(diaPlan, slots, extrasDia) {
   return refs
 }
 
-/** Fecha del registro en Comida al marcar una comida del plan. */
+/** Fecha del registro en Comida al marcar una comida del plan (día del calendario del plan). */
 export function fechaRegistroDesdePlanDia(inicioISO, diaPlan, hoyISO = fechaToISO(new Date())) {
   const hoy = hoyISO || fechaToISO(new Date())
-  const diaHoyPlan = diaPlanMes1(inicioISO, hoy)
   const fechaSlot = fechaCalendarioDiaPlan(inicioISO, diaPlan)
-  if (diaPlan === diaHoyPlan) return hoy
-  if (fechaSlot === hoy) return hoy
-  // Inicio desfasado: no crear comidas en fechas futuras; van al registro de hoy
-  if (fechaSlot && fechaSlot > hoy) return hoy
   return fechaSlot || hoy
+}
+
+/** Interpreta planRef guardado en un registro de comida. */
+export function parsePlanRef(planRef) {
+  if (!planRef || !String(planRef).startsWith('plan_')) return null
+  const key = String(planRef).slice(5)
+  const extra = key.match(/^(\d+)_extra_(.+)$/)
+  if (extra) {
+    return {
+      diaPlan: Number(extra[1]),
+      slotId: 'extra',
+      extraId: extra[2],
+      opcionIndex: null,
+    }
+  }
+  const op = key.match(/^(\d+)_([^_]+)_op(\d+)$/)
+  if (op) {
+    return {
+      diaPlan: Number(op[1]),
+      slotId: op[2],
+      extraId: null,
+      opcionIndex: Number(op[3]),
+    }
+  }
+  return null
+}
+
+export function claveCheckDesdePlanRef(planRef) {
+  const p = parsePlanRef(planRef)
+  if (!p) return null
+  if (p.slotId === 'extra') return claveComidaPlan(p.diaPlan, 'extra', p.extraId)
+  return claveComidaPlan(p.diaPlan, p.slotId, null, p.opcionIndex)
+}
+
+/** Elimina duplicados con el mismo planRef (deja el más reciente por orden en lista). */
+export function dedupeRegistrosPorPlanRef(registros) {
+  const list = Array.isArray(registros) ? registros : []
+  const seen = new Set()
+  const out = []
+  for (const r of list) {
+    if (!r?.planRef) {
+      out.push(r)
+      continue
+    }
+    if (seen.has(r.planRef)) continue
+    seen.add(r.planRef)
+    out.push(r)
+  }
+  return out.length === list.length ? list : out
 }
 
 export function buildRegistroPlanEntry({
@@ -90,13 +133,11 @@ export function buildRegistroPlanEntry({
 }
 
 export function upsertRegistroPlan(registros, planRef, registro) {
-  const list = Array.isArray(registros) ? [...registros] : []
-  const idx = list.findIndex((r) => r.planRef === planRef)
-  if (idx >= 0) {
-    list[idx] = { ...list[idx], ...registro, planRef, id: list[idx].id }
-    return list
-  }
-  return [{ ...registro, planRef }, ...list]
+  const list = Array.isArray(registros) ? registros : []
+  const prev = list.find((r) => r.planRef === planRef)
+  const sinEste = list.filter((r) => r.planRef !== planRef)
+  const id = prev?.id || registro.id || nuevoIdRegistro()
+  return [{ ...registro, planRef, id }, ...sinEste]
 }
 
 export function removeRegistroPlan(registros, planRef) {

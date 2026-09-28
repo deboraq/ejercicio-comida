@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStorage } from '../hooks/useStorage'
 import { getConsejos, buildContextoDia, buildContextoSemana } from '../utils/consejos'
@@ -12,6 +12,8 @@ import { resumenPlanAlimenticioHoy } from '../utils/planPropio'
 import { nuevoIdRegistro } from '../utils/ids'
 import {
   aplicarBatchSyncPlan,
+  claveCheckDesdePlanRef,
+  dedupeRegistrosPorPlanRef,
   removeRegistroPlan,
   removeRegistrosPlanMany,
   upsertRegistroPlan,
@@ -374,6 +376,12 @@ export default function Comida() {
   const location = useLocation()
   const navigate = useNavigate()
   const [registros, setRegistros] = useStorage('comida', [])
+  const [, setPlanMes1Estado] = useStorage('planMes1Estado', {
+    checks: {},
+    omitidos: {},
+    extras: {},
+  })
+  const dedupePlanRef = useRef(false)
   const [ejercicios] = useStorage('ejercicios', [])
   const [registrosRutina] = useStorage('rutinaPesos', [])
   const [historialMedidasRaw] = useStorage('medidasHistorial', [])
@@ -405,6 +413,15 @@ export default function Comida() {
 
   const resultadosBusqueda = buscarAlimentos(busquedaRef)
   const hoy = fechaToISO(new Date())
+
+  useEffect(() => {
+    if (dedupePlanRef.current) return
+    dedupePlanRef.current = true
+    setRegistros((prev) => {
+      const next = dedupeRegistrosPorPlanRef(prev)
+      return next === prev ? prev : next
+    })
+  }, [setRegistros])
   const { desde, hasta } = getRangoPorPeriodo(periodo, desdeCustom, hastaCustom)
   const registrosEnRango = filtrarPorRango(registros, desde, hasta)
   const porFechaEnRango = registrosEnRango.reduce((acc, r) => {
@@ -703,7 +720,7 @@ export default function Comida() {
     const registroPrevio = registroEnEdicionId
       ? registros.find((r) => r.id === registroEnEdicionId)
       : null
-    const nuevos = batch.map((p) => ({
+    const nuevos = batch.map((p, i) => ({
       id: nuevoIdRegistro(),
       comida: p.comida,
       descripcion: p.descripcion,
@@ -716,7 +733,9 @@ export default function Comida() {
       hora: p.hora,
       notas: notasLote,
       fecha,
-      ...(registroPrevio?.planRef ? { planRef: registroPrevio.planRef } : {}),
+      ...(registroPrevio?.planRef && batch.length === 1 && i === 0
+        ? { planRef: registroPrevio.planRef }
+        : {}),
     }))
     const base = registroEnEdicionId
       ? registros.filter((r) => r.id !== registroEnEdicionId)
@@ -745,7 +764,19 @@ export default function Comida() {
   }
 
   const eliminar = (id) => {
+    const registro = registros.find((r) => r.id === id)
     setRegistros(registros.filter((r) => r.id !== id))
+    if (registro?.planRef) {
+      const checkKey = claveCheckDesdePlanRef(registro.planRef)
+      if (checkKey) {
+        setPlanMes1Estado((prev) => {
+          if (!prev?.checks?.[checkKey]) return prev
+          const checks = { ...(prev.checks || {}) }
+          delete checks[checkKey]
+          return { ...prev, checks }
+        })
+      }
+    }
     if (registroEnEdicionId === id) cancelarEdicion()
   }
 

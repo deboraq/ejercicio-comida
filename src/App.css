@@ -10068,7 +10068,7 @@ body {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.85rem 1.25rem;
+  gap: 0.65rem 1rem;
   padding-bottom: 0.75rem;
 }
 
@@ -10109,6 +10109,7 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 0.45rem;
+  min-height: 2.15rem;
 }
 
 .rut-modo {
@@ -10130,17 +10131,23 @@ body {
   align-items: center;
   gap: 0.45rem;
   height: 2.15rem;
-  padding: 0 0.55rem 0 0.75rem;
+  min-height: 2.15rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 0 0.5rem 0 0.65rem;
   border-radius: 10px 0 0 10px;
   background: #151b2b;
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-right: 0;
+  box-sizing: border-box;
 }
 
 .rut-activa-group {
   display: inline-flex;
-  align-items: stretch;
-  max-width: min(100%, 18rem);
+  align-items: center;
+  max-width: min(100%, 22rem);
+  height: 2.15rem;
+  box-sizing: border-box;
 }
 
 .rut-activa-group .rut-ico-btn--add {
@@ -10164,30 +10171,39 @@ body {
 }
 
 .rut-activa-label {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 650;
   color: #94a3b8;
   white-space: nowrap;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .rut-activa-select {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
 }
 
 .rut-activa-select select {
   appearance: none;
   -webkit-appearance: none;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 8px;
-  background-color: #151b2b;
+  width: 100%;
+  min-width: 0;
+  max-width: 11rem;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: #f1f5f9;
   color-scheme: dark;
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  padding: 0.35rem 1.4rem 0.35rem 0.55rem;
-  max-width: 12rem;
+  line-height: 1.2;
+  padding: 0 1.15rem 0 0;
   cursor: pointer;
   outline: none;
   text-overflow: ellipsis;
@@ -10229,15 +10245,39 @@ body {
 .rut-activa-select::after {
   content: '';
   position: absolute;
-  right: 0.15rem;
+  right: 0;
   top: 50%;
-  transform: translateY(-35%);
+  transform: translateY(-50%);
   width: 0;
   height: 0;
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
   border-top: 5px solid #94a3b8;
   pointer-events: none;
+}
+
+@media (min-width: 1024px) {
+  .rutina-titanium .rut-head-actions {
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+  }
+
+  .rutina-titanium .rut-head-actions-tools {
+    display: inline-flex;
+    width: auto;
+    grid-template-columns: unset;
+  }
+
+  .rutina-titanium .rut-btn-pdf {
+    width: auto;
+    min-height: 2.15rem;
+    height: 2.15rem;
+    background: #3b82f6;
+    border: 0;
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+  }
 }
 
 .rut-ico-btn {
@@ -14135,6 +14175,8 @@ select.ap-input {
 }
 
 .cd-balance {
+  container-type: inline-size;
+  container-name: cd-balance;
   background: var(--ti-surface);
   border: 1px solid var(--ti-surface-border);
   padding: 1.15rem 1.2rem 1rem;
@@ -14302,29 +14344,6 @@ select.ap-input {
     gap: 1rem;
   }
 
-  .cd-water {
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
-  .cd-water-glasses {
-    flex: 1 1 100%;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 0.35rem;
-    padding-top: 0.35rem;
-  }
-
-  .cd-glass {
-    flex: 0 0 auto;
-    min-width: 1.1rem;
-    width: 1.1rem;
-    height: 2.35rem;
-  }
-
-  .cd-btn--water {
-    margin-left: auto;
-  }
 }
 
 .cd-ring-wrap {
@@ -14499,10 +14518,15 @@ select.ap-input {
   border: 1px solid rgba(51, 65, 85, 0.55);
   background: rgba(8, 13, 26, 0.72);
   margin-top: 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  flex-wrap: nowrap;
 }
 
 .cd-water-copy {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-width: 0;
 }
 
@@ -14536,17 +14560,18 @@ select.ap-input {
 .cd-water-glasses {
   display: flex;
   gap: 0.45rem;
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   flex-wrap: nowrap;
   align-items: flex-end;
   justify-content: stretch;
-  min-width: 0;
-  padding: 0 0.25rem;
+  align-self: stretch;
+  padding: 0 0.15rem;
 }
 
 .cd-glass {
   flex: 1 1 0;
-  min-width: 1.35rem;
+  min-width: 0;
   width: auto;
   height: 3rem;
   border-radius: 8px;
@@ -14571,19 +14596,61 @@ select.ap-input {
   opacity: 0.82;
 }
 
-@media (max-width: 720px) {
+@container cd-balance (min-width: 521px) {
+  .cd-glass {
+    min-width: 1.35rem;
+  }
+}
+
+@container cd-balance (max-width: 520px) {
   .cd-water {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "ico copy"
+      "glasses btn";
+    align-items: end;
+    column-gap: 0.55rem;
+    row-gap: 0.45rem;
+    flex-wrap: unset;
+  }
+
+  .cd-water-ico-box {
+    grid-area: ico;
+    align-self: start;
+  }
+
+  .cd-water-copy {
+    grid-area: copy;
+    align-self: center;
   }
 
   .cd-water-glasses {
-    order: 3;
-    flex: 1 1 100%;
-    padding-top: 0.35rem;
+    grid-area: glasses;
+    display: flex;
+    flex: unset;
+    flex-wrap: nowrap;
+    gap: clamp(0.15rem, 1.1vw, 0.32rem);
+    min-width: 0;
+    padding: 0;
+    order: unset;
+  }
+
+  .cd-glass {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+    width: auto;
+    height: 2.15rem;
   }
 
   .cd-btn--water {
-    margin-left: auto;
+    grid-area: btn;
+    justify-self: end;
+    align-self: end;
+    margin-left: 0;
+    order: unset;
+    flex-shrink: 0;
   }
 }
 
@@ -15657,12 +15724,15 @@ select.ap-input {
   }
 
   .comida-page.comida-titanium .cd-root.cd-vista-hoy .cd-water-glasses {
-    gap: 0.18rem;
+    gap: clamp(0.15rem, 1.1vw, 0.28rem);
   }
 
   .comida-page.comida-titanium .cd-root.cd-vista-hoy .cd-glass {
-    width: 0.62rem;
-    height: 0.9rem;
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    max-width: none;
+    height: 2.15rem;
   }
 
   .comida-page.comida-titanium .cd-root.cd-vista-hoy .cd-plan-strip {

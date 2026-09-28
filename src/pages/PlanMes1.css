@@ -283,7 +283,7 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
 }
 
@@ -449,28 +449,42 @@
 }
 
 .plan-kanban-board-wrap {
+  display: block;
   overflow-x: auto;
+  overflow-y: visible;
   margin: 0;
-  padding: 0 0.15rem 0.5rem;
+  padding: 0 0 0.35rem;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
   overscroll-behavior-x: contain;
-  scrollbar-gutter: stable;
+}
+
+.plan-kanban-scroll-hint {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.35;
 }
 
 .plan-kanban-board {
   display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
   gap: 1rem;
   padding: 0.25rem 0.25rem 1.25rem;
-  min-width: min-content;
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 .plan-kanban-col {
-  width: min(20rem, 78vw);
-  flex-shrink: 0;
+  width: 15.5rem;
+  flex: 0 0 auto;
   scroll-snap-align: start;
   display: flex;
   flex-direction: column;
@@ -631,14 +645,29 @@
 
 .plan-kanban-board--zoom-1 .plan-kanban-col {
   width: min(100%, 22rem);
+  max-width: 22rem;
 }
 
 .plan-kanban-board--zoom-2 .plan-kanban-col {
-  width: min(calc(50vw - 1.25rem), 19rem);
+  width: min(calc(50% - 0.5rem), 19rem);
+}
+
+.plan-kanban-board--zoom-semana .plan-kanban-col {
+  width: 14.25rem;
+}
+
+.plan-kanban-board--zoom-mes .plan-kanban-col {
+  width: 12.75rem;
 }
 
 .plan-kanban--embedded .plan-kanban-board-wrap:has(.plan-kanban-board--zoom-2) {
   overflow-x: auto;
+}
+
+.plan-kanban--embedded .plan-kanban-board-wrap:has(.plan-kanban-board--zoom-semana),
+.plan-kanban--embedded .plan-kanban-board-wrap:has(.plan-kanban-board--zoom-mes) {
+  overflow-x: auto;
+  scroll-padding-inline: 0.5rem;
 }
 
 .plan-kanban--embedded .plan-kanban-board--zoom-2 {
@@ -655,12 +684,12 @@
 }
 
 @media (min-width: 1024px) and (max-width: 1500px) {
-  .plan-kanban-col {
-    width: min(17rem, 72vw);
+  .plan-kanban-board--zoom-semana .plan-kanban-col {
+    width: 13.5rem;
   }
 
   .plan-kanban-board--zoom-mes .plan-kanban-col {
-    width: min(16rem, 70vw);
+    width: 12rem;
   }
 }
 
@@ -833,7 +862,7 @@
 }
 
 .plan-kanban-board--zoom-mes .plan-kanban-col {
-  width: min(72vw, 17rem);
+  width: 12.75rem;
 }
 
 .plan-kanban-meta-details {
