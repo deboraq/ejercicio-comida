@@ -566,7 +566,9 @@ body {
   }
 
   .app-shell-main .section > .container.app-page-container {
-    max-width: 1200px;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -858,9 +860,10 @@ body {
     max(0.85rem, env(safe-area-inset-right, 0px))
     1.5rem
     max(0.85rem, env(safe-area-inset-left, 0px));
-  overflow-x: hidden;
+  overflow-x: clip;
   overflow-y: auto;
   min-height: 0;
+  min-width: 0;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -7413,7 +7416,9 @@ body {
 .app-topbar--rutina .app-topbar-title { display: none; }
 
 .rutina-container.app-page-container {
-  max-width: 1240px !important;
+  max-width: 100% !important;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .rutina-titanium {
@@ -13728,7 +13733,9 @@ select.ap-input {
 }
 
 .comida-container.app-page-container {
-  max-width: 1240px !important;
+  max-width: 100% !important;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .comida-page.comida-titanium.section {
@@ -14088,9 +14095,15 @@ select.ap-input {
 
 .cd-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
   gap: 1.1rem;
   align-items: start;
+}
+
+@media (max-width: 1280px) {
+  .cd-layout:not(.cd-layout--plan):not(.cd-layout--historial) {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 1024px) {
@@ -14280,6 +14293,37 @@ select.ap-input {
   .cd-balance-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
+  }
+}
+
+@media (max-width: 1200px) {
+  .cd-balance-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .cd-water {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .cd-water-glasses {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    padding-top: 0.35rem;
+  }
+
+  .cd-glass {
+    flex: 0 0 auto;
+    min-width: 1.1rem;
+    width: 1.1rem;
+    height: 2.35rem;
+  }
+
+  .cd-btn--water {
+    margin-left: auto;
   }
 }
 

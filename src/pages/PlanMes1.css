@@ -280,6 +280,11 @@
 
 .plan-kanban--embedded {
   padding: 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .plan-kanban-meta {
@@ -446,12 +451,14 @@
 .plan-kanban-board-wrap {
   overflow-x: auto;
   margin: 0;
-  padding-bottom: 0.5rem;
+  padding: 0 0.15rem 0.5rem;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  overscroll-behavior-x: contain;
+  scrollbar-gutter: stable;
 }
 
 .plan-kanban-board {
@@ -462,7 +469,7 @@
 }
 
 .plan-kanban-col {
-  width: 20rem;
+  width: min(20rem, 78vw);
   flex-shrink: 0;
   scroll-snap-align: start;
   display: flex;
@@ -641,10 +648,20 @@
 }
 
 .plan-kanban--embedded .plan-kanban-board--zoom-2 .plan-kanban-col {
-  width: calc(50% - 0.35rem);
-  min-width: calc(50% - 0.35rem);
-  max-width: calc(50% - 0.35rem);
+  width: min(calc(50% - 0.35rem), 16.5rem);
+  min-width: min(calc(50% - 0.35rem), 16.5rem);
+  max-width: min(calc(50% - 0.35rem), 16.5rem);
   padding: 0.65rem;
+}
+
+@media (min-width: 1024px) and (max-width: 1500px) {
+  .plan-kanban-col {
+    width: min(17rem, 72vw);
+  }
+
+  .plan-kanban-board--zoom-mes .plan-kanban-col {
+    width: min(16rem, 70vw);
+  }
 }
 
 .plan-kanban-compact-fold {
@@ -1044,8 +1061,8 @@
 }
 
 .plan-kanban-meal.is-slot-started .plan-kanban-option:not(.is-picked) {
-  opacity: 0.62;
-  filter: saturate(0.85);
+  opacity: 0.88;
+  filter: saturate(0.92);
 }
 
 .plan-kanban-meal-head--slot {
@@ -1209,16 +1226,16 @@
   text-transform: uppercase;
   padding: 0.38rem 0.6rem;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  background: rgba(30, 41, 59, 0.75);
-  color: #e2e8f0;
+  border: 1px solid #64748b !important;
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
   line-height: 1;
   transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
 .plan-kanban-meal-check:hover .plan-kanban-check-cta {
-  border-color: rgba(148, 163, 184, 0.55);
-  background: rgba(51, 65, 85, 0.85);
+  border-color: #94a3b8 !important;
+  background-color: #334155 !important;
 }
 
 .plan-kanban-check-cta-on {
@@ -1244,9 +1261,9 @@
 }
 
 .plan-kanban-check-input:checked ~ .plan-kanban-check-cta {
-  background: linear-gradient(145deg, rgba(34, 197, 94, 0.35), rgba(22, 163, 74, 0.28));
-  border-color: rgba(74, 222, 128, 0.65);
-  color: #bbf7d0;
+  background: linear-gradient(145deg, rgba(34, 197, 94, 0.45), rgba(22, 163, 74, 0.38)) !important;
+  border-color: rgba(74, 222, 128, 0.75) !important;
+  color: #ecfdf5 !important;
   box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.25);
 }
 
