@@ -889,6 +889,7 @@ export default function ComidaTitanium({
   const [buscadorDestacado, setBuscadorDestacado] = useState(false)
   const [recetasCenaAbiertas, setRecetasCenaAbiertas] = useState(false)
   const [balanceDestacado, setBalanceDestacado] = useState(false)
+  const [registrarExpandido, setRegistrarExpandido] = useState(false)
   const pulseTimerRef = useRef(null)
   const balanceTimerRef = useRef(null)
   const horaInputValue = useMemo(() => horaParaInputTime(horaRegistro), [horaRegistro])
@@ -921,6 +922,7 @@ export default function ComidaTitanium({
 
   const activarGuiaPanel = useCallback((modo = 'agregar', focusSearch = true) => {
     if (esVistaMobile()) {
+      setRegistrarExpandido(true)
       if (modo !== 'editar') {
         setBuscadorDestacado(true)
         if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
@@ -932,6 +934,10 @@ export default function ComidaTitanium({
         if (modo === 'editar') {
           window.setTimeout(() => {
             document.querySelector('#cd-agregar-panel .cd-qty-field input')?.focus({ preventScroll: true })
+          }, 280)
+        } else if (focusSearch) {
+          window.setTimeout(() => {
+            document.getElementById('cd-buscar')?.focus({ preventScroll: true })
           }, 280)
         }
       })
@@ -966,6 +972,22 @@ export default function ComidaTitanium({
     activarGuiaPanel('agregar', true)
   }, [setComida, onReiniciarHora, activarGuiaPanel, onSalirEdicion])
 
+  const toggleRegistrarPanelMobile = useCallback(() => {
+    if (!esVistaMobile()) return
+    setRegistrarExpandido((abierto) => {
+      const next = !abierto
+      if (next) {
+        requestAnimationFrame(() => {
+          document.getElementById('cd-agregar-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          window.setTimeout(() => {
+            document.getElementById('cd-buscar')?.focus({ preventScroll: true })
+          }, 280)
+        })
+      }
+      return next
+    })
+  }, [esVistaMobile])
+
   const handleEditarRegistro = useCallback((r) => {
     onEditarRegistro?.(r)
   }, [onEditarRegistro])
@@ -996,6 +1018,7 @@ export default function ComidaTitanium({
   }, [seleccionarReferencia, setComida, activarGuiaPanel])
 
   const agregarFavorito = (matchOrItem) => {
+    if (esVistaMobile()) setRegistrarExpandido(true)
     if (matchOrItem && typeof matchOrItem === 'object' && matchOrItem.nombre) {
       seleccionarReferencia(matchOrItem)
       return
@@ -1235,38 +1258,6 @@ export default function ComidaTitanium({
               <button type="button" className="cd-btn cd-btn--water" onClick={onAdd250ml}>+250ml</button>
             </div>
           </section>
-
-          <header className="cd-meals-section-head">
-            <h2 className="cd-meals-section-title mb-0">Comidas registradas</h2>
-            <p className="cd-meals-section-sub mb-0">Lo que ya cargaste hoy. Usá + Registrar en cada momento para sumar más.</p>
-          </header>
-
-          <div className="cd-meals">
-            {comidas.map((tipo) => (
-              <MealCard
-                key={tipo}
-                tipo={tipo}
-                icon={momentoIcon[tipo] || '🍽️'}
-                items={itemsPorMomento[tipo] || []}
-                metaKcal={metaKcal}
-                caloriasHoy={caloriasHoy}
-                proteinasRest={proteinasRest}
-                onAgregar={agregarMomento}
-                onEliminar={eliminar}
-                onEditar={handleEditarRegistro}
-              />
-            ))}
-          </div>
-
-          <TipNutricionista
-            texto={tipNutricion}
-            className="cd-tip--mobile"
-            recetasCena={recetasCena}
-            recetasAbiertas={recetasCenaAbiertas}
-            onVerRecetasCena={verRecetasCena}
-            onCerrarRecetas={() => setRecetasCenaAbiertas(false)}
-            onElegirReceta={elegirRecetaCena}
-          />
             </>
           ) : (
             <HistorialPanel
@@ -1298,14 +1289,35 @@ export default function ComidaTitanium({
         <aside className="cd-aside">
           <section
             id="cd-agregar-panel"
-            className={`cd-panel cd-search-panel${buscadorDestacado ? ' is-guide-pulse' : ''}${enEdicion ? ' is-guide-edit' : ''}`}
+            className={`cd-panel cd-search-panel${registrarExpandido ? ' is-registrar-expanded' : ' is-registrar-collapsed'}${buscadorDestacado ? ' is-guide-pulse' : ''}${enEdicion ? ' is-guide-edit' : ''}`}
           >
             <div className="cd-registrar-panel-head">
-              <h2 className="cd-registrar-panel-title mb-0">Registrar comida</h2>
-              <p className="cd-registrar-panel-sub mb-0">
-                Elegí momento y hora, buscá el alimento y tocá <strong>Registrar comida</strong> abajo.
-              </p>
+              <div className="cd-registrar-panel-head-row">
+                <div className="cd-registrar-panel-head-copy">
+                  <h2 className="cd-registrar-panel-title mb-0">Registrar comida</h2>
+                  <p className="cd-registrar-panel-sub cd-registrar-panel-sub--open mb-0">
+                    Elegí momento y hora, buscá el alimento y tocá Registrar comida abajo.
+                  </p>
+                  <p className="cd-registrar-panel-sub cd-registrar-panel-sub--closed mb-0">
+                    Tocá + o Registrar para cargar alimentos del día.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={`cd-registrar-panel-toggle${registrarExpandido ? ' is-expanded' : ''}`}
+                  onClick={toggleRegistrarPanelMobile}
+                  aria-expanded={registrarExpandido}
+                  aria-controls="cd-registrar-panel-body"
+                  aria-label={registrarExpandido ? 'Ocultar registro de comida' : 'Abrir registro de comida'}
+                >
+                  <span className="cd-registrar-panel-toggle-ico" aria-hidden>
+                    {registrarExpandido ? '▴' : '+'}
+                  </span>
+                </button>
+              </div>
             </div>
+
+            <div id="cd-registrar-panel-body" className="cd-registrar-panel-body">
             {(buscadorDestacado || enEdicion) && (
               <div
                 className={`cd-add-guide${enEdicion && !buscadorDestacado ? ' cd-add-guide--static' : ''}`}
@@ -1788,6 +1800,7 @@ export default function ComidaTitanium({
                 })}
               </div>
             </div>
+            </div>
           </section>
 
           <section className="cd-panel cd-week">
@@ -1825,6 +1838,47 @@ export default function ComidaTitanium({
             onElegirReceta={elegirRecetaCena}
           />
         </aside>
+
+        {vistaComida === 'hoy' && (
+          <>
+            <div className="cd-meals-block">
+              <header className="cd-meals-section-head">
+                <h2 className="cd-meals-section-title mb-0">Comidas registradas</h2>
+                <p className="cd-meals-section-sub mb-0 cd-meals-section-sub--desktop">
+                  Detalle por momento. Para sumar más, usá el panel <strong>Registrar comida</strong> o el botón{' '}
+                  <strong>+ Registrar …</strong> al pie de cada tarjeta.
+                </p>
+              </header>
+
+              <div className="cd-meals">
+                {comidas.map((tipo) => (
+                  <MealCard
+                    key={tipo}
+                    tipo={tipo}
+                    icon={momentoIcon[tipo] || '🍽️'}
+                    items={itemsPorMomento[tipo] || []}
+                    metaKcal={metaKcal}
+                    caloriasHoy={caloriasHoy}
+                    proteinasRest={proteinasRest}
+                    onAgregar={agregarMomento}
+                    onEliminar={eliminar}
+                    onEditar={handleEditarRegistro}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <TipNutricionista
+              texto={tipNutricion}
+              className="cd-tip--mobile"
+              recetasCena={recetasCena}
+              recetasAbiertas={recetasCenaAbiertas}
+              onVerRecetasCena={verRecetasCena}
+              onCerrarRecetas={() => setRecetasCenaAbiertas(false)}
+              onElegirReceta={elegirRecetaCena}
+            />
+          </>
+        )}
       </div>
     </div>
   )

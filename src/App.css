@@ -14140,9 +14140,53 @@ select.ap-input {
   align-items: start;
 }
 
+.comida-page.comida-titanium .cd-layout--hoy {
+  grid-template-areas:
+    "cd-main cd-aside"
+    "cd-meals cd-aside"
+    "cd-tipm cd-aside";
+}
+
+.comida-page.comida-titanium .cd-layout--hoy > .cd-main {
+  grid-area: cd-main;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.comida-page.comida-titanium .cd-layout--hoy > .cd-aside {
+  grid-area: cd-aside;
+  grid-row: 1 / -1;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.comida-page.comida-titanium .cd-layout--hoy > .cd-meals-block {
+  grid-area: cd-meals;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.comida-page.comida-titanium .cd-layout--hoy > .cd-tip--mobile {
+  grid-area: cd-tipm;
+  min-width: 0;
+  max-width: 100%;
+}
+
 @media (max-width: 1280px) {
   .cd-layout:not(.cd-layout--plan):not(.cd-layout--historial) {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .comida-page.comida-titanium .cd-layout--hoy {
+    grid-template-areas:
+      "cd-main"
+      "cd-aside"
+      "cd-meals"
+      "cd-tipm";
+  }
+
+  .comida-page.comida-titanium .cd-layout--hoy > .cd-aside {
+    grid-row: auto;
   }
 }
 
@@ -14605,10 +14649,8 @@ select.ap-input {
 @container cd-balance (max-width: 520px) {
   .cd-water {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "ico copy"
-      "glasses btn";
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
     align-items: end;
     column-gap: 0.55rem;
     row-gap: 0.45rem;
@@ -14616,17 +14658,20 @@ select.ap-input {
   }
 
   .cd-water-ico-box {
-    grid-area: ico;
+    grid-column: 1;
+    grid-row: 1;
     align-self: start;
   }
 
   .cd-water-copy {
-    grid-area: copy;
+    grid-column: 2 / 4;
+    grid-row: 1;
     align-self: center;
   }
 
   .cd-water-glasses {
-    grid-area: glasses;
+    grid-column: 1 / 3;
+    grid-row: 2;
     display: flex;
     flex: unset;
     flex-wrap: nowrap;
@@ -14645,11 +14690,55 @@ select.ap-input {
   }
 
   .cd-btn--water {
-    grid-area: btn;
+    grid-column: 3;
+    grid-row: 2;
     justify-self: end;
     align-self: end;
     margin-left: 0;
     order: unset;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 1023px) {
+  .comida-page.comida-titanium .cd-balance .cd-water {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: end;
+    column-gap: 0.55rem;
+    row-gap: 0.45rem;
+    flex-wrap: unset;
+  }
+
+  .comida-page.comida-titanium .cd-balance .cd-water-ico-box {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  .comida-page.comida-titanium .cd-balance .cd-water-copy {
+    grid-column: 2 / 4;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .comida-page.comida-titanium .cd-balance .cd-water-glasses {
+    grid-column: 1 / 3;
+    grid-row: 2;
+    display: flex;
+    flex: unset;
+    flex-wrap: nowrap;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .comida-page.comida-titanium .cd-balance .cd-btn--water {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+    align-self: end;
+    margin-left: 0;
     flex-shrink: 0;
   }
 }
@@ -15358,6 +15447,53 @@ select.ap-input {
 
   .comida-page.comida-titanium .cd-root {
     gap: 0.55rem;
+  }
+
+  .comida-page.comida-titanium .cd-layout--hoy {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "cd-main"
+      "cd-aside"
+      "cd-meals"
+      "cd-tipm";
+    gap: 0.65rem;
+  }
+
+  .comida-page.comida-titanium .cd-layout--hoy > .cd-aside {
+    grid-row: auto;
+  }
+
+  .comida-page.comida-titanium .cd-layout--hoy > .cd-main,
+  .comida-page.comida-titanium .cd-layout--hoy > .cd-aside,
+  .comida-page.comida-titanium .cd-layout--hoy > .cd-meals-block,
+  .comida-page.comida-titanium .cd-layout--hoy > .cd-tip--mobile,
+  .comida-page.comida-titanium .cd-balance,
+  .comida-page.comida-titanium .cd-balance-body,
+  .comida-page.comida-titanium .cd-water {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .comida-page.comida-titanium .cd-macro-bar-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.18rem;
+  }
+
+  .comida-page.comida-titanium .cd-macro-bar-val {
+    width: 100%;
+    text-align: left;
+    white-space: normal;
+    line-height: 1.35;
+  }
+
+  .comida-page.comida-titanium .cd-meals-section-sub--desktop {
+    display: none;
+  }
+
+  .comida-page.comida-titanium .cd-meals-section-head {
+    margin-top: 0.15rem;
   }
 
   .comida-page.comida-titanium .cd-title-text--long,
@@ -16177,6 +16313,119 @@ select.ap-input {
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
 }
 
+.cd-registrar-panel-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cd-registrar-panel-head-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.cd-registrar-panel-toggle {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  margin: 0;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.72);
+  color: #e2e8f0;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  appearance: none;
+  font: inherit;
+}
+
+.cd-registrar-panel-toggle:hover {
+  border-color: rgba(52, 211, 153, 0.45);
+  background: rgba(16, 185, 129, 0.1);
+  color: #6ee7b7;
+}
+
+.cd-registrar-panel-toggle.is-expanded {
+  color: #94a3b8;
+}
+
+.cd-registrar-panel-toggle.is-expanded:hover {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(30, 41, 59, 0.85);
+  color: #f1f5f9;
+}
+
+.cd-registrar-panel-toggle-ico {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.cd-registrar-panel-toggle.is-expanded .cd-registrar-panel-toggle-ico {
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.cd-registrar-panel-sub--closed {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .cd-search-panel.is-registrar-collapsed .cd-registrar-panel-body,
+  .cd-search-panel.is-registrar-expanded .cd-registrar-panel-body {
+    display: block;
+  }
+}
+
+@media (max-width: 1023px) {
+  .comida-page.comida-titanium .cd-registrar-panel-toggle {
+    display: inline-flex;
+  }
+
+  .comida-page.comida-titanium .cd-search-panel.is-registrar-collapsed .cd-registrar-panel-body {
+    display: none;
+  }
+
+  .comida-page.comida-titanium .cd-search-panel.is-registrar-collapsed .cd-registrar-panel-sub--open {
+    display: none;
+  }
+
+  .comida-page.comida-titanium .cd-search-panel.is-registrar-collapsed .cd-registrar-panel-sub--closed {
+    display: block;
+    margin-top: 0.28rem;
+  }
+
+  .comida-page.comida-titanium .cd-search-panel.is-registrar-expanded .cd-registrar-panel-sub--closed {
+    display: none;
+  }
+
+  .comida-page.comida-titanium .cd-search-panel.is-registrar-collapsed .cd-registrar-panel-head {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .comida-page.comida-titanium .cd-search-panel.is-registrar-collapsed {
+    padding-bottom: 0.72rem;
+  }
+
+  .comida-page.comida-titanium .cd-search-panel.is-registrar-expanded .cd-registrar-panel-head {
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  }
+}
+
 .cd-registrar-panel-title {
   font-size: 1.05rem;
   font-weight: 800;
@@ -16192,7 +16441,7 @@ select.ap-input {
   font-weight: 500;
 }
 
-.cd-registrar-panel-sub strong {
+.comida-page.comida-titanium .cd-search-panel.is-registrar-expanded .cd-registrar-panel-sub strong {
   color: #6ee7b7;
   font-weight: 700;
 }
@@ -16213,6 +16462,13 @@ select.ap-input {
   font-size: 0.72rem;
   line-height: 1.35;
   color: #64748b;
+}
+
+.cd-meals-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
 }
 
 .cd-search-panel.is-guide-pulse {
