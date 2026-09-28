@@ -94,6 +94,24 @@ function IconGear() {
   )
 }
 
+/** Botón «Hecho ?» / «Hecho ✓» al completar una comida del plan. */
+function PlanMealCheck({ checked, onChange }) {
+  return (
+    <label className="plan-kanban-meal-check plan-kanban-meal-check--block">
+      <input
+        type="checkbox"
+        className="plan-kanban-check-input"
+        checked={checked}
+        onChange={onChange}
+      />
+      <span className="plan-kanban-check-cta">
+        <span className="plan-kanban-check-cta-off">Hecho <span className="plan-kanban-check-cta-mark" aria-hidden>?</span></span>
+        <span className="plan-kanban-check-cta-on">Hecho <span className="plan-kanban-check-cta-mark" aria-hidden>✓</span></span>
+      </span>
+    </label>
+  )
+}
+
 const ESQUEMAS = [
   { id: '5', label: '5 comidas (con colación)' },
   { id: '4', label: '4 comidas' },
@@ -1376,25 +1394,24 @@ export default function MiPlanKanban({
                                 className={`plan-kanban-option${checked ? ' is-picked' : ''}`}
                               >
                                 <div className="plan-kanban-option-head">
-                                  <label className="plan-kanban-meal-check">
-                                    <input
-                                      type="checkbox"
-                                      checked={checked}
-                                      onChange={() => handleToggleOpcion(diaPlan, slot, opIdx)}
-                                    />
+                                  <div className="plan-kanban-option-title-row">
                                     <span className="plan-kanban-option-label">{op.label}</span>
-                                  </label>
-                                  <button
-                                    type="button"
-                                    className="plan-kanban-icon-btn"
-                                    aria-label={`Editar ${op.label} en registro de hoy`}
-                                    title="Editar en Registro de hoy"
-                                    onClick={() =>
-                                      handleEditarEnRegistroHoy(diaPlan, slot, op.texto, op.label, opIdx)
-                                    }
-                                  >
-                                    <IconPencil />
-                                  </button>
+                                    <button
+                                      type="button"
+                                      className="plan-kanban-icon-btn"
+                                      aria-label={`Editar ${op.label} en registro de hoy`}
+                                      title="Editar en Registro de hoy"
+                                      onClick={() =>
+                                        handleEditarEnRegistroHoy(diaPlan, slot, op.texto, op.label, opIdx)
+                                      }
+                                    >
+                                      <IconPencil />
+                                    </button>
+                                  </div>
+                                  <PlanMealCheck
+                                    checked={checked}
+                                    onChange={() => handleToggleOpcion(diaPlan, slot, opIdx)}
+                                  />
                                 </div>
                                 <p className={`plan-kanban-meal-text${checked ? ' is-struck' : ''}`}>
                                   {op.texto}
@@ -1405,12 +1422,6 @@ export default function MiPlanKanban({
                                   <span className="plan-kanban-pill plan-kanban-pill--c">C {macros.h}g</span>
                                   <span className="plan-kanban-pill plan-kanban-pill--g">G {macros.g}g</span>
                                 </div>
-                                {checked && (
-                                  <p className="plan-kanban-meal-done-foot mb-0">
-                                    <span>✓ {op.label} completada</span>
-                                    <span className="plan-kanban-listo">Listo</span>
-                                  </p>
-                                )}
                               </div>
                             )
                           })}
@@ -1433,37 +1444,36 @@ export default function MiPlanKanban({
                       >
                         <div className={`plan-kanban-option plan-kanban-option--single${checked ? ' is-picked' : ''}`}>
                         <div className="plan-kanban-meal-head">
-                          <label className="plan-kanban-meal-check">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => handleToggleOpcion(diaPlan, { ...slot, isExtra: true })}
-                            />
+                          <div className="plan-kanban-option-title-row">
                             <span className="plan-kanban-meal-moment">
                               🍎 {label}{' '}
                               <time>{hora}</time>
                             </span>
-                          </label>
-                          <div className="plan-kanban-meal-actions">
-                            <button
-                              type="button"
-                              className="plan-kanban-icon-btn"
-                              aria-label="Editar en registro de hoy"
-                              title="Editar en Registro de hoy"
-                              onClick={() => handleEditarExtraEnRegistro(diaPlan, slot, texto)}
-                            >
-                              <IconPencil />
-                            </button>
-                            <button
-                              type="button"
-                              className="plan-kanban-icon-btn plan-kanban-icon-btn--danger"
-                              aria-label="Quitar colación extra"
-                              title="Quitar"
-                              onClick={() => handleEliminarExtra(diaPlan, slot.id, label)}
-                            >
-                              <IconTrash />
-                            </button>
+                            <div className="plan-kanban-meal-actions">
+                              <button
+                                type="button"
+                                className="plan-kanban-icon-btn"
+                                aria-label="Editar en registro de hoy"
+                                title="Editar en Registro de hoy"
+                                onClick={() => handleEditarExtraEnRegistro(diaPlan, slot, texto)}
+                              >
+                                <IconPencil />
+                              </button>
+                              <button
+                                type="button"
+                                className="plan-kanban-icon-btn plan-kanban-icon-btn--danger"
+                                aria-label="Quitar colación extra"
+                                title="Quitar"
+                                onClick={() => handleEliminarExtra(diaPlan, slot.id, label)}
+                              >
+                                <IconTrash />
+                              </button>
+                            </div>
                           </div>
+                          <PlanMealCheck
+                            checked={checked}
+                            onChange={() => handleToggleOpcion(diaPlan, { ...slot, isExtra: true })}
+                          />
                         </div>
                         <p className={`plan-kanban-meal-text${checked ? ' is-struck' : ''}`}>{texto}</p>
                         <div className="plan-kanban-macros">
@@ -1472,12 +1482,6 @@ export default function MiPlanKanban({
                           <span className="plan-kanban-pill plan-kanban-pill--c">C {macros.h}g</span>
                           <span className="plan-kanban-pill plan-kanban-pill--g">G {macros.g}g</span>
                         </div>
-                        {checked ? (
-                          <p className="plan-kanban-meal-done-foot mb-0">
-                            <span>✓ Colación completada</span>
-                            <span className="plan-kanban-listo">Listo</span>
-                          </p>
-                        ) : null}
                         </div>
                       </div>
                     )

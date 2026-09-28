@@ -295,6 +295,12 @@ export function resumenPlanDia(ejercicios = []) {
   }
 }
 
+/** Misma métrica y distribución sumando todos los días del plan. */
+export function resumenPlanCompleto(dias = []) {
+  const todos = (Array.isArray(dias) ? dias : []).flatMap((d) => d?.ejercicios || [])
+  return resumenPlanDia(todos)
+}
+
 /** Siguiente etiqueta de superserie libre (A, B, C…). */
 export function siguienteLabelSuperserie(ejercicios = []) {
   const usados = new Set(

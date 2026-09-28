@@ -521,35 +521,50 @@
 }
 
 .cfg-ti-plan-generar {
+  --cfg-plan-title-fs: 0.95rem;
+  --cfg-plan-body-fs: 0.78rem;
+  --cfg-plan-lh: 1.45;
   margin-bottom: 0.45rem;
   padding: 0.65rem 0.75rem;
   border-radius: 12px;
   background: var(--cfg-card);
   border: 1px solid var(--cfg-border);
   box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.05);
+  font-size: var(--cfg-plan-body-fs);
+  line-height: var(--cfg-plan-lh);
 }
 
-.cfg-ti-plan-generar .cfg-ti-card-title {
-  font-size: 0.8125rem;
-  font-weight: 650;
-  line-height: 1.25;
+.cfg-ti-plan-generar :is(
+  .cfg-ti-plan-title,
+  .cfg-ti-plan-copy,
+  .cfg-ti-plan-em,
+  .cfg-ti-plan-btn,
+  .cfg-ti-plan-actions-solo
+) {
+  font-family: inherit;
+}
+
+.cfg-ti-plan-generar .cfg-ti-plan-title {
+  font-size: var(--cfg-plan-title-fs);
+  font-weight: 700;
+  line-height: var(--cfg-plan-lh);
   color: #fff;
+  margin: 0;
 }
 
-.cfg-ti-plan-generar .cfg-ti-card-sub {
+.cfg-ti-plan-generar .cfg-ti-plan-copy {
   color: #94a3b8;
-  font-size: 0.72rem;
-  line-height: 1.38;
+  font-size: var(--cfg-plan-body-fs);
+  font-weight: 400;
+  line-height: var(--cfg-plan-lh);
+  margin: 0;
 }
 
-.cfg-ti-plan-generar .cfg-ti-card-sub strong {
+.cfg-ti-plan-generar .cfg-ti-plan-em {
   color: #e2e8f0;
-  font-weight: 650;
-}
-
-.cfg-ti-plan-generar .cfg-ti-objetivo-hint {
-  font-size: 0.72rem;
-  line-height: 1.38;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
 }
 
 .cfg-ti-plan-generar .cfg-ti-plan-actions {
@@ -564,39 +579,50 @@
   display: block;
 }
 
-.cfg-ti-plan-generar .cfg-ti-plan-actions .button,
-.cfg-ti-plan-generar .cfg-ti-plan-actions .cfg-ti-btn-primary,
+.cfg-ti-plan-generar .cfg-ti-plan-btn,
 .cfg-ti-plan-generar .cfg-ti-plan-actions-solo {
   width: 100%;
   min-width: 0;
   min-height: var(--cfg-control-h) !important;
   margin: 0 !important;
-  padding: 0.2rem 0.35rem !important;
-  font-size: var(--cfg-control-fs) !important;
-  font-weight: 650 !important;
-  line-height: 1.1 !important;
+  padding: 0.28rem 0.4rem !important;
+  font-size: var(--cfg-plan-body-fs) !important;
+  font-weight: 600 !important;
+  line-height: var(--cfg-plan-lh) !important;
   border-radius: 8px !important;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   box-sizing: border-box;
+  appearance: none;
+  font-family: inherit;
+  cursor: pointer;
 }
 
-.cfg-ti-plan-generar .cfg-ti-plan-actions .button.is-link {
+.cfg-ti-plan-generar .cfg-ti-plan-btn--primary,
+.cfg-ti-plan-generar .cfg-ti-plan-actions-solo.cfg-ti-plan-btn--primary {
+  border: 1px solid var(--ti-pill-blue-border, rgba(59, 130, 246, 0.32));
+  background: var(
+    --ti-pill-blue-bg,
+    linear-gradient(155deg, rgba(96, 165, 250, 0.2) 0%, rgba(29, 78, 216, 0.36) 50%, rgba(15, 23, 42, 0.9) 100%)
+  );
+  color: var(--ti-pill-blue-text, #bfdbfe);
+}
+
+.cfg-ti-plan-generar .cfg-ti-plan-actions .cfg-ti-plan-btn--link {
   background: var(--ti-pill-blue-bg) !important;
   border: 1px solid var(--ti-pill-blue-border) !important;
   color: var(--ti-pill-blue-text) !important;
 }
 
-.cfg-ti-plan-generar .cfg-ti-plan-btn-secondary,
-.cfg-ti-plan-generar .cfg-ti-plan-actions .button.is-light {
+.cfg-ti-plan-generar .cfg-ti-plan-btn-secondary {
   background: #0d1322 !important;
   border: 1px solid rgba(148, 163, 184, 0.16) !important;
   color: #cbd5e1 !important;
 }
 
-.cfg-ti-plan-generar .cfg-ti-plan-actions .button:hover,
+.cfg-ti-plan-generar .cfg-ti-plan-btn:hover,
 .cfg-ti-plan-generar .cfg-ti-plan-actions-solo:hover {
   filter: brightness(1.08);
 }

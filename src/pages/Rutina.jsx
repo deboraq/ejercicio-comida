@@ -32,7 +32,7 @@ function crearDia(num) {
 function rutinaVacia(id = null) {
   return {
     id: id || `r${Date.now()}`,
-    nombre: 'Nueva rutina',
+    nombre: 'Rutina principal',
     dias: [crearDia(1), crearDia(2), crearDia(3)],
   }
 }
@@ -84,7 +84,6 @@ export default function Rutina() {
   const [diaEditando, setDiaEditando] = useState('')
   const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
   const [diaSeleccionado, setDiaSeleccionado] = useState('')
-  const [nombreNuevaRutina, setNombreNuevaRutina] = useState('')
   const [mesCalendario, setMesCalendario] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -514,13 +513,22 @@ export default function Rutina() {
     }))
   }
 
-  const crearRutina = () => {
-    const nombre = nombreNuevaRutina.trim() || 'Nueva rutina'
-    const nueva = { ...rutinaVacia(), id: `r${Date.now()}`, nombre }
+  const crearRutinaDesdePrompt = useCallback(() => {
+    const sugerido = `Rutina ${(listaRutinas?.length || 0) + 1}`
+    const nombre = window.prompt(
+      '¿Cómo se llama la rutina?\n(ej. Piernas, Torso A)\n\nDespués cargá días y ejercicios en la pestaña «Armar rutina».',
+      sugerido,
+    )
+    if (nombre == null) return
+    const nueva = {
+      ...rutinaVacia(),
+      id: `r${Date.now()}`,
+      nombre: String(nombre).trim() || sugerido,
+    }
     setRutinas((list) => [...(list || []), nueva])
     setRutinaActivaId(nueva.id)
-    setNombreNuevaRutina('')
-  }
+    setVista('configurar')
+  }, [listaRutinas?.length, setRutinas, setRutinaActivaId])
 
   const eliminarRutina = (id) => {
     if (listaRutinas.length <= 1) return
@@ -820,63 +828,44 @@ export default function Rutina() {
                 <span className="rut-head-title-text rut-head-title-text--long">Gestión de Rutinas y Entrenamiento</span>
                 <span className="rut-head-title-text rut-head-title-text--short">Rutinas</span>
               </h1>
-              <p className="rut-head-sub">
-                Control de cargas, progresión de 1RM estimada, tonelaje acumulado y métricas de rendimiento en tiempo real.
+              <p className="rut-head-sub rut-head-sub--desktop">
+                Cargas, progresión y métricas de tu entrenamiento.
               </p>
             </div>
 
             <div className="rut-head-actions">
               <span className="rut-modo">Modo Atleta</span>
 
-              <div className="rut-activa">
-                <span className="rut-activa-label" id="rutina-activa-label">Rutina activa:</span>
-                <div className="rut-activa-select">
-                  <select
-                    id="rutina-activa-select"
-                    aria-labelledby="rutina-activa-label"
-                    value={rutinaActivaId || rutinaIdActual}
-                    onChange={(e) => setRutinaActivaId(e.target.value)}
-                    disabled={origenRutinas !== 'propias'}
-                  >
-                    {listaRutinas.map((r) => (
-                      <option key={r.id} value={r.id}>{r.nombre}</option>
-                    ))}
-                  </select>
+              <div className="rut-activa-group">
+                <div className="rut-activa">
+                  <span className="rut-activa-label" id="rutina-activa-label">Rutina guardada</span>
+                  <div className="rut-activa-select">
+                    <select
+                      id="rutina-activa-select"
+                      aria-labelledby="rutina-activa-label"
+                      value={rutinaActivaId || rutinaIdActual}
+                      onChange={(e) => setRutinaActivaId(e.target.value)}
+                      disabled={origenRutinas !== 'propias'}
+                    >
+                      {listaRutinas.map((r) => (
+                        <option key={r.id} value={r.id}>{r.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  className="rut-ico-btn rut-ico-btn--add"
+                  disabled={origenRutinas !== 'propias'}
+                  onClick={crearRutinaDesdePrompt}
+                  title="Crear otra rutina guardada"
+                  aria-label="Crear otra rutina guardada"
+                >
+                  +
+                </button>
               </div>
 
-              <button
-                type="button"
-                className="rut-ico-btn rut-ico-btn--delete"
-                disabled={origenRutinas !== 'propias' || listaRutinas.length <= 1}
-                onClick={() => window.confirm('¿Eliminar esta rutina?') && eliminarRutina(rutinaIdActual)}
-                title="Eliminar rutina"
-                aria-label="Eliminar rutina"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-                  <path d="M4 7h16" /><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" /><path d="M18 7l-.8 12.2A2 2 0 0115.2 21H8.8a2 2 0 01-2-1.8L6 7" /><path d="M10 11v6M14 11v6" />
-                </svg>
-                <span className="rut-btn-label rut-btn-label--mobile-only">Eliminar rutina</span>
-              </button>
-
-              <button
-                type="button"
-                className="rut-btn-dark"
-                disabled={origenRutinas !== 'propias'}
-                onClick={() => {
-                  const nombre = window.prompt('Nombre de la nueva rutina', nombreNuevaRutina || 'Nueva rutina')
-                  if (nombre == null) return
-                  const nueva = { ...rutinaVacia(), id: `r${Date.now()}`, nombre: nombre.trim() || 'Nueva rutina' }
-                  setRutinas((list) => [...(list || []), nueva])
-                  setRutinaActivaId(nueva.id)
-                  setNombreNuevaRutina('')
-                  setOrigenRutinas('propias')
-                  setVista('configurar')
-                }}
-              >
-                + Nueva rutina
-              </button>
-
+              <div className="rut-head-actions-tools">
               <button
                 type="button"
                 className="rut-btn-pdf"
@@ -896,8 +885,23 @@ export default function Rutina() {
                 <span className="rut-btn-label rut-btn-label--short">PDF</span>
               </button>
 
+              <button
+                type="button"
+                className="rut-ico-btn rut-ico-btn--delete"
+                disabled={origenRutinas !== 'propias' || listaRutinas.length <= 1}
+                onClick={() => window.confirm('¿Eliminar esta rutina?') && eliminarRutina(rutinaIdActual)}
+                title="Eliminar rutina"
+                aria-label="Eliminar rutina"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                  <path d="M4 7h16" /><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" /><path d="M18 7l-.8 12.2A2 2 0 0115.2 21H8.8a2 2 0 01-2-1.8L6 7" /><path d="M10 11v6M14 11v6" />
+                </svg>
+                <span className="rut-btn-label rut-btn-label--mobile-only">Eliminar</span>
+              </button>
+
               <div className="rut-campana">
                 <AppNotificacionesCampana />
+              </div>
               </div>
             </div>
           </div>
@@ -908,27 +912,32 @@ export default function Rutina() {
                 type="button"
                 className={`rut-tab rut-tab--hoy${vista === 'registrar' && origenRutinas === 'propias' ? ' is-active' : ''}`}
                 onClick={() => { setOrigenRutinas('propias'); setVista('registrar') }}
+                aria-current={vista === 'registrar' && origenRutinas === 'propias' ? 'page' : undefined}
               >
                 <span className="rut-tab-check" aria-hidden>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                     <path d="M5 13l4 4L19 7" />
                   </svg>
                 </span>
-                <span className="rut-tab-label rut-tab-label--long">Registrar Sesión (Hoy)</span>
-                <span className="rut-tab-label rut-tab-label--short">Hoy</span>
+                <span className="rut-tab-label rut-tab-label--long">Mi rutina de hoy</span>
+                <span className="rut-tab-label rut-tab-label--short">Mi rutina de hoy</span>
               </button>
               <button
                 type="button"
                 className={`rut-tab rut-tab--plan${vista === 'configurar' && origenRutinas === 'propias' ? ' is-active' : ''}`}
                 onClick={() => { setOrigenRutinas('propias'); setVista('configurar') }}
+                title="Armar rutina"
+                aria-label="Armar rutina"
+                aria-current={vista === 'configurar' && origenRutinas === 'propias' ? 'page' : undefined}
               >
-                <span className="rut-tab-label rut-tab-label--long">Armar tu plan</span>
-                <span className="rut-tab-label rut-tab-label--short">Plan</span>
+                <span className="rut-tab-label rut-tab-label--long">Armar rutina</span>
+                <span className="rut-tab-label rut-tab-label--short">Armar rutina</span>
               </button>
               <button
                 type="button"
                 className={`rut-tab rut-tab--progreso${vista === 'progreso' && origenRutinas === 'propias' ? ' is-active' : ''}`}
                 onClick={() => { setOrigenRutinas('propias'); setVista('progreso') }}
+                aria-current={vista === 'progreso' && origenRutinas === 'propias' ? 'page' : undefined}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                   <path d="M4 19V5M4 19h16" strokeLinecap="round" />
@@ -956,7 +965,8 @@ export default function Rutina() {
                 className={origenRutinas === 'asignadas' ? 'is-active' : ''}
                 onClick={() => setOrigenRutinas('asignadas')}
               >
-                Asignadas por Profe
+                <span className="rut-origen-label rut-origen-label--long">Asignadas por Profe</span>
+                <span className="rut-origen-label rut-origen-label--short">Asignadas</span>
               </button>
             </div>
           </div>
@@ -999,14 +1009,20 @@ export default function Rutina() {
               window.alert(
                 ejercicio && carga != null
                   ? `Sugerencia: en la próxima sesión de «${ejercicio}» apuntá a ${carga} kg.`
-                  : 'Abrí Registrar sesión para aplicar la sugerencia.'
+                  : 'Abrí «Mi rutina de hoy» para aplicar la sugerencia.'
               )
             }}
           />
         )}
 
         {vista === 'configurar' && (
-          <ArmarPlanTitanium
+          <>
+            <p className="rut-vista-lead" role="status">
+              Armando la rutina <strong>{rutinaActiva?.nombre || 'seleccionada'}</strong>. Para usar otra, cambiá{' '}
+              <strong>Rutina guardada</strong> arriba.
+            </p>
+            <ArmarPlanTitanium
+            nombreEntrenamiento={rutinaActiva?.nombre}
             dias={dias}
             diaEditando={diaEditando || diaActual?.id || ''}
             setDiaEditando={setDiaEditando}
@@ -1034,6 +1050,7 @@ export default function Rutina() {
               }
             }}
           />
+          </>
         )}
 
         {vista === 'registrar' && (
@@ -1041,10 +1058,6 @@ export default function Rutina() {
             <div className="rut-sesion-main">
               <div className="rut-day-panel">
                 <div className="rut-day-panel-top">
-                  <p className="rut-day-kicker mb-0">
-                    <i className="rut-day-dot" aria-hidden />
-                    Seleccionar día del plan activo
-                  </p>
                   <p className="rut-day-fecha mb-0">
                     <span className="rut-day-fecha-label">
                       {(fechaInput || hoy) === hoy ? 'Hoy:' : 'Sesión:'}
@@ -1066,7 +1079,7 @@ export default function Rutina() {
                   </p>
                 </div>
 
-                <div className="rut-day-chips" role="group" aria-label="Día de la rutina">
+                <div className="rut-day-chips" role="group" aria-label={`Día de ${rutinaActiva?.nombre || 'la rutina'}`}>
                   {dias.map((d, di) => {
                     const grupos = inferirGruposMuscularesDia(d.ejercicios)
                     const cant = (d.ejercicios || []).length
@@ -1124,7 +1137,7 @@ export default function Rutina() {
                 <div className="rut-empty">
                   <p className="mb-2">No hay ejercicios en <strong>{diaParaRegistrar?.nombre}</strong>.</p>
                   <button type="button" className="rut-btn-primary" onClick={() => setVista('configurar')}>
-                    Ir a Armar tu plan
+                    Ir a Armar rutina
                   </button>
                 </div>
               ) : (

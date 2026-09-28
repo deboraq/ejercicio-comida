@@ -23,6 +23,7 @@ import AppBottomNav from './components/AppBottomNav'
 import { AppMobileNavProvider } from './context/AppMobileNavContext'
 import { isNavModuleBlocked } from './utils/navModules'
 import './App.css'
+import './styles/responsive-global.css'
 
 const SIDEBAR_COLLAPSED_KEY = 'app-sidebar-collapsed'
 

@@ -1,5 +1,7 @@
 /** Utilidades de composición / peso-altura / gasto calórico. */
 
+import { objetivoPrimario } from './configObjetivos.js'
+
 export function parseAlturaCm(valor) {
   if (valor == null || valor === '') return null
   const n = Number(String(valor).trim().replace(',', '.'))
@@ -171,7 +173,7 @@ export function buildPerfilCorporal(config = {}, pesoFallback = null) {
         : null
   const sugerencia =
     tdee != null
-      ? sugerirMetasDiarias({ tdee, pesoKg, objetivo: config?.objetivo })
+      ? sugerirMetasDiarias({ tdee, pesoKg, objetivo: objetivoPrimario(config) })
       : null
 
   return {

@@ -6,6 +6,12 @@ import { useAuth } from '../context/AuthContext'
 import { useMyProfile } from '../hooks/useMyProfile'
 import { updateMyFullName } from '../lib/profeDb'
 import { OBJETIVOS } from '../utils/consejos'
+import {
+  labelsObjetivosTexto,
+  normalizeObjetivosConfig,
+  objetivoPrimario,
+  toggleObjetivoEnLista,
+} from '../utils/configObjetivos'
 import { SUPLEMENTOS } from '../utils/suplementos'
 import { buildPerfilCorporal, SEXOS, NIVELES_ACTIVIDAD } from '../utils/composicion'
 import { fechaToISO } from '../utils/calorias'
@@ -130,7 +136,7 @@ export default function Config() {
     return data
   }
 
-  const setObjetivo = (v) => setConfig((c) => ({ ...c, objetivo: v }))
+  const setObjetivoToggle = (v) => setConfig((c) => toggleObjetivoEnLista(c, v))
   const setAltura = (v) => {
     if (v === '' || v == null) {
       setConfig((c) => ({ ...c, alturaCm: '' }))
@@ -225,12 +231,14 @@ export default function Config() {
   const cargandoPerfilNube = Boolean(user && isConfigured && profileLoading)
   const esProfe = profile?.role === 'profe'
   const mostrarSeccionesAlumno = !user || !isConfigured || profile?.role !== 'profe'
-  const objetivoActivo = OBJETIVOS.find((o) => o.value === config.objetivo)
-  const detalleObjetivo = OBJETIVO_DETALLE[config.objetivo]
+  const objetivosSeleccionados = useMemo(() => normalizeObjetivosConfig(config), [config])
+  const objetivoPrimarioId = useMemo(() => objetivoPrimario(config), [config])
+  const objetivoActivo = OBJETIVOS.find((o) => o.value === objetivoPrimarioId)
   const planListoGenerar = perfilListoParaGenerarPlan(config)
   const planListoPropio = perfilPlanListo(config)
   const planActivo = planMes1TieneInicio(config)
-  const varianteSugeridaLabel = labelVariantePlan(variantePlanDesdeObjetivo(config.objetivo))
+  const varianteSugeridaLabel = labelVariantePlan(variantePlanDesdeObjetivo(objetivoPrimarioId))
+  const etiquetaObjetivos = labelsObjetivosTexto(config)
 
   const crearPlanSegunObjetivo = () => {
     if (!planListoGenerar) return
@@ -413,51 +421,56 @@ export default function Config() {
           <>
             <section className="cfg-ti-objetivos">
               <div className="cfg-ti-objetivos-head">
-                <h2>Tu objetivo actual</h2>
-                {detalleObjetivo?.badge && (
-                  <span className="cfg-ti-objetivo-badge">{detalleObjetivo.badge}</span>
+                <h2>Tus objetivos</h2>
+                {objetivosSeleccionados.includes('bajar_peso') && OBJETIVO_DETALLE.bajar_peso.badge && (
+                  <span className="cfg-ti-objetivo-badge">{OBJETIVO_DETALLE.bajar_peso.badge}</span>
                 )}
               </div>
               <div className="cfg-ti-objetivo-grid">
-                {OBJETIVOS.map((o) => (
+                {OBJETIVOS.map((o) => {
+                  const activo = objetivosSeleccionados.includes(o.value)
+                  return (
                   <button
                     key={o.value}
                     type="button"
-                    className={`cfg-ti-objetivo-tile cfg-ti-objetivo-tile--${o.value}${config.objetivo === o.value ? ' is-active' : ''}`}
-                    onClick={() => setObjetivo(o.value)}
+                    className={`cfg-ti-objetivo-tile cfg-ti-objetivo-tile--${o.value}${activo ? ' is-active' : ''}`}
+                    aria-pressed={activo}
+                    onClick={() => setObjetivoToggle(o.value)}
                   >
                     <span className="cfg-ti-objetivo-icon">{o.icon}</span>
                     <span className="cfg-ti-objetivo-label">{o.label}</span>
                     <span className="cfg-ti-objetivo-sub">{OBJETIVO_DETALLE[o.value]?.sub || ''}</span>
                   </button>
-                ))}
+                  )
+                })}
               </div>
               <p className="cfg-ti-objetivo-hint mb-0">
-                Al cambiar tu objetivo, las sugerencias calóricas y macros se recalculan automáticamente según tu perfil.
-                {objetivoActivo ? ` Ahora: ${objetivoActivo.label.toLowerCase()}.` : ''}
+                Podés marcar más de uno. Las metas sugeridas usan el objetivo principal ({objetivoActivo?.label?.toLowerCase() || 'mantener peso'});
+                los consejos en Inicio y Comida combinan todos los que elijas.
+                {etiquetaObjetivos ? ` Seleccionados: ${etiquetaObjetivos}.` : ''}
               </p>
             </section>
 
             <section className="cfg-ti-plan-generar" id="plan-desde-objetivo">
-              <h2 className="cfg-ti-card-title mb-1">Tu plan en Comida</h2>
+              <h2 className="cfg-ti-plan-title mb-1">Tu plan en Comida</h2>
               {planActivo ? (
                 <>
-                  <p className="cfg-ti-card-sub mb-2">
-                    Tenés un plan activo desde <strong>{config.planMes1Inicio}</strong>
+                  <p className="cfg-ti-plan-copy mb-2">
+                    Tenés un plan activo desde <span className="cfg-ti-plan-em">{config.planMes1Inicio}</span>
                     {' · '}
-                    <strong>{labelOrigenPlan(config)}</strong>
+                    <span className="cfg-ti-plan-em">{labelOrigenPlan(config)}</span>
                     {!esPlanPropio(config) && config.planMes1Variante ? (
                       <> · {labelVariantePlan(config.planMes1Variante)}</>
                     ) : null}
-                    . El menú está en <strong>Mi plan</strong> en Comida.
+                    . El menú está en <span className="cfg-ti-plan-em">Mi plan</span> en Comida.
                   </p>
-                  <div className="cfg-ti-plan-actions buttons are-small">
-                    <button type="button" className="cfg-ti-btn-primary" onClick={abrirPlanEnComida}>
+                  <div className="cfg-ti-plan-actions">
+                    <button type="button" className="cfg-ti-plan-btn cfg-ti-plan-btn--primary" onClick={abrirPlanEnComida}>
                       Abrir Mi plan
                     </button>
                     <button
                       type="button"
-                      className="button is-small is-light cfg-ti-plan-btn-secondary"
+                      className="cfg-ti-plan-btn cfg-ti-plan-btn-secondary"
                       onClick={crearPlanSegunObjetivo}
                       title="Reinicia el día 1 hoy según tu objetivo actual"
                     >
@@ -469,24 +482,24 @@ export default function Config() {
                 <>
                   {planListoGenerar && (
                     <>
-                      <p className="cfg-ti-card-sub mb-2">
-                        <strong>Plan guiado:</strong> menú de 30 días según tu objetivo ({varianteSugeridaLabel}).
+                      <p className="cfg-ti-plan-copy mb-2">
+                        <span className="cfg-ti-plan-em">Plan guiado:</span> menú de 30 días según tu objetivo ({varianteSugeridaLabel}).
                       </p>
-                      <button type="button" className="cfg-ti-btn-primary cfg-ti-plan-actions-solo mb-2" onClick={crearPlanSegunObjetivo}>
+                      <button type="button" className="cfg-ti-plan-btn cfg-ti-plan-btn--primary cfg-ti-plan-actions-solo mb-2" onClick={crearPlanSegunObjetivo}>
                         Crear plan guiado
                       </button>
                     </>
                   )}
                   {planListoPropio && (
                     <>
-                      <p className="cfg-ti-card-sub mb-2">
-                        <strong>Plan propio:</strong> definís vos cada comida con dos opciones por día (30 días).
+                      <p className="cfg-ti-plan-copy mb-2">
+                        <span className="cfg-ti-plan-em">Plan propio:</span> definís vos cada comida con dos opciones por día (30 días).
                       </p>
-                      <div className="cfg-ti-plan-actions buttons are-small mb-0">
-                        <button type="button" className="button is-small is-link" onClick={() => crearPlanPropio(false)}>
+                      <div className="cfg-ti-plan-actions mb-0">
+                        <button type="button" className="cfg-ti-plan-btn cfg-ti-plan-btn--link" onClick={() => crearPlanPropio(false)}>
                           Crear plan propio vacío
                         </button>
-                        <button type="button" className="button is-small is-light cfg-ti-plan-btn-secondary" onClick={() => crearPlanPropio(true)}>
+                        <button type="button" className="cfg-ti-plan-btn cfg-ti-plan-btn-secondary" onClick={() => crearPlanPropio(true)}>
                           Copiar menú sugerido y editar
                         </button>
                       </div>
@@ -494,9 +507,9 @@ export default function Config() {
                   )}
                 </>
               ) : (
-                <p className="cfg-ti-objetivo-hint mb-0">
+                <p className="cfg-ti-plan-copy mb-0">
                   Para un plan guiado: objetivo, peso y sexo. Para un plan propio alcanza con{' '}
-                  <strong>peso</strong> y <strong>sexo biológico</strong>.
+                  <span className="cfg-ti-plan-em">peso</span> y <span className="cfg-ti-plan-em">sexo biológico</span>.
                 </p>
               )}
             </section>
