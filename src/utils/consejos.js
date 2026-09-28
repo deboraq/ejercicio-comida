@@ -9,13 +9,9 @@ import {
 import { getUltimosNDias } from './estadisticas'
 import { buildProgresoMedidas, formatDeltaCm, labelCampo } from './medidas'
 import { buildPerfilCorporal } from './composicion'
+import { resolveObjetivosParaConsejos } from './configObjetivos.js'
 
-export const OBJETIVOS = [
-  { value: 'bajar_peso', label: 'Bajar de peso', icon: '📉' },
-  { value: 'mantener_peso', label: 'Mantener peso', icon: '⚖️' },
-  { value: 'aumentar_peso', label: 'Aumentar peso', icon: '📈' },
-  { value: 'ganar_musculo', label: 'Ganar músculo', icon: '💪' },
-]
+export { OBJETIVOS } from './configObjetivos.js'
 
 import { MOMENTOS_COMIDA, normalizarMomento } from './comidaMomentos.js'
 
@@ -62,6 +58,15 @@ function pct(valor, meta) {
 
 function redondear(n) {
   return Math.round(Number(n) || 0)
+}
+
+/** ¿Alguno de los objetivos activos coincide? */
+function objOk(objetivos, ...ids) {
+  return ids.some((id) => objetivos.includes(id))
+}
+
+function maxConsejosPorObjetivos(objetivos, base = 1) {
+  return objetivos.length > 1 ? Math.min(3, base + objetivos.length - 1) : base
 }
 
 /** Sugerencias concretas de alimentos según gramos de proteína faltantes. */
@@ -282,7 +287,7 @@ export function buildContextoSemana({
   }
 }
 
-function consejosComidaDelDia(obj, ctx, ctxAyer = null) {
+function consejosComidaDelDia(objetivos, ctx, ctxAyer = null) {
   const tips = []
   const { metas } = ctx
   const metaPro = metas.proteina
@@ -350,7 +355,7 @@ function consejosComidaDelDia(obj, ctx, ctxAyer = null) {
 
   // Carbos altos + objetivo bajar
   if (
-    obj === 'bajar_peso' &&
+    objOk(objetivos, 'bajar_peso') &&
     ((pCarb != null && pCarb >= 0.85) ||
       (metaCarb == null && ctx.carbohidratos > 0 && ctx.caloriasConsumidas > 0 && ctx.carbohidratos * 4 > ctx.caloriasConsumidas * 0.55))
   ) {
@@ -400,7 +405,7 @@ function consejosComidaDelDia(obj, ctx, ctxAyer = null) {
     )
   }
 
-  if (metaCal && ctx.caloriasConsumidas > metaCal * 1.12 && obj === 'bajar_peso') {
+  if (metaCal && ctx.caloriasConsumidas > metaCal * 1.12 && objOk(objetivos, 'bajar_peso')) {
     const exceso = redondear(ctx.caloriasConsumidas - metaCal)
     tips.push(
       consejo(
@@ -416,7 +421,7 @@ function consejosComidaDelDia(obj, ctx, ctxAyer = null) {
     metaCal &&
     ctx.caloriasConsumidas > 0 &&
     ctx.caloriasConsumidas < metaCal * 0.65 &&
-    (obj === 'aumentar_peso' || obj === 'ganar_musculo')
+    objOk(objetivos, 'aumentar_peso', 'ganar_musculo')
   ) {
     const faltan = redondear(metaCal - ctx.caloriasConsumidas)
     tips.push(
@@ -441,7 +446,7 @@ function consejosComidaDelDia(obj, ctx, ctxAyer = null) {
     )
   }
 
-  if (pPro != null && pPro >= 0.9 && (obj === 'ganar_musculo' || obj === 'aumentar_peso')) {
+  if (pPro != null && pPro >= 0.9 && objOk(objetivos, 'ganar_musculo', 'aumentar_peso')) {
     tips.push(
       consejo(
         'dia',
@@ -455,7 +460,7 @@ function consejosComidaDelDia(obj, ctx, ctxAyer = null) {
   return tips
 }
 
-function consejosEjercicioDelDia(obj, ctx) {
+function consejosEjercicioDelDia(objetivos, ctx) {
   const tips = []
   const { metas } = ctx
   const metaPro = metas.proteina
@@ -465,7 +470,7 @@ function consejosEjercicioDelDia(obj, ctx) {
   const hayCardio = minCardio > 0 || (ctx.ejerciciosPorTipo?.Cardio || 0) > 0
 
   if (!ctx.tieneActividad) {
-    if (obj === 'bajar_peso' || obj === 'mantener_peso') {
+    if (objOk(objetivos, 'bajar_peso', 'mantener_peso')) {
       tips.push(
         consejo(
           'dia',
@@ -474,7 +479,7 @@ function consejosEjercicioDelDia(obj, ctx) {
           'Hoy no hay actividad registrada. Sumá una caminata de 20–30 min o una sesión corta: anotala para que el consejo de mañana sea más preciso.'
         )
       )
-    } else if (obj === 'ganar_musculo') {
+    } else if (objOk(objetivos, 'ganar_musculo')) {
       tips.push(
         consejo(
           'dia',
@@ -526,7 +531,7 @@ function consejosEjercicioDelDia(obj, ctx) {
 
   if (ctx.caloriasQuemadas > 350 && ctx.caloriasConsumidas > 0) {
     const balance = ctx.caloriasConsumidas - ctx.caloriasQuemadas
-    if (obj === 'bajar_peso' && balance > 400) {
+    if (objOk(objetivos, 'bajar_peso') && balance > 400) {
       tips.push(
         consejo(
           'dia',
@@ -536,7 +541,7 @@ function consejosEjercicioDelDia(obj, ctx) {
         )
       )
     }
-    if ((obj === 'mantener_peso' || obj === 'ganar_musculo') && balance < -250) {
+    if (objOk(objetivos, 'mantener_peso', 'ganar_musculo') && balance < -250) {
       tips.push(
         consejo(
           'dia',
@@ -548,7 +553,7 @@ function consejosEjercicioDelDia(obj, ctx) {
     }
   }
 
-  if (obj === 'ganar_musculo' && hayCardio && !hayFuerza) {
+  if (objOk(objetivos, 'ganar_musculo') && hayCardio && !hayFuerza) {
     tips.push(
       consejo(
         'dia',
@@ -562,7 +567,7 @@ function consejosEjercicioDelDia(obj, ctx) {
   return tips
 }
 
-function consejosSemanales(obj, ctx) {
+function consejosSemanales(objetivos, ctx) {
   const tips = []
   const { metas, numDias } = ctx
   const metaPro = metas.proteina
@@ -640,7 +645,7 @@ function consejosSemanales(obj, ctx) {
     )
   }
 
-  if (metaCal && ctx.promedioCalorias > metaCal * 1.1 && obj === 'bajar_peso') {
+  if (metaCal && ctx.promedioCalorias > metaCal * 1.1 && objOk(objetivos, 'bajar_peso')) {
     tips.push(
       consejo(
         'semana',
@@ -651,7 +656,7 @@ function consejosSemanales(obj, ctx) {
     )
   }
 
-  if (metaCal && ctx.promedioCalorias > 0 && ctx.promedioCalorias < metaCal * 0.75 && (obj === 'aumentar_peso' || obj === 'ganar_musculo')) {
+  if (metaCal && ctx.promedioCalorias > 0 && ctx.promedioCalorias < metaCal * 0.75 && objOk(objetivos, 'aumentar_peso', 'ganar_musculo')) {
     tips.push(
       consejo(
         'semana',
@@ -662,7 +667,7 @@ function consejosSemanales(obj, ctx) {
     )
   }
 
-  if (ctx.diasConActividad < 3 && (obj === 'mantener_peso' || obj === 'bajar_peso' || obj === 'ganar_musculo')) {
+  if (ctx.diasConActividad < 3 && objOk(objetivos, 'mantener_peso', 'bajar_peso', 'ganar_musculo')) {
     tips.push(
       consejo(
         'semana',
@@ -674,7 +679,7 @@ function consejosSemanales(obj, ctx) {
   }
 
   const soloCardio = (ctx.tiposEjercicio.Cardio || 0) > 0 && !(ctx.tiposEjercicio.Fuerza || 0)
-  if (obj === 'ganar_musculo' && soloCardio && ctx.diasConActividad >= 2) {
+  if (objOk(objetivos, 'ganar_musculo') && soloCardio && ctx.diasConActividad >= 2) {
     tips.push(
       consejo(
         'semana',
@@ -702,7 +707,7 @@ function consejosSemanales(obj, ctx) {
 /**
  * Consejos según historial de medidas corporales (cm).
  */
-function consejosMedidas(obj, progreso) {
+function consejosMedidas(objetivos, progreso) {
   const tips = []
   if (!progreso) return tips
 
@@ -754,7 +759,7 @@ function consejosMedidas(obj, progreso) {
 
   if (d.cinturaBaja != null) {
     const textoDelta = formatDeltaCm(d.cinturaBaja)
-    if (obj === 'bajar_peso' && d.cinturaBaja <= -1) {
+    if (objOk(objetivos, 'bajar_peso') && d.cinturaBaja <= -1) {
       tips.push(
         consejo(
           'semana',
@@ -763,7 +768,7 @@ function consejosMedidas(obj, progreso) {
           `La cintura baja bajó ${textoDelta} vs. la toma anterior. Buen progreso de composición, aunque el peso no se mueva tanto.`
         )
       )
-    } else if (obj === 'bajar_peso' && d.cinturaBaja >= 1.5) {
+    } else if (objOk(objetivos, 'bajar_peso') && d.cinturaBaja >= 1.5) {
       tips.push(
         consejo(
           'semana',
@@ -784,7 +789,7 @@ function consejosMedidas(obj, progreso) {
     }
   }
 
-  if (d.cadera != null && obj === 'bajar_peso' && d.cadera <= -1) {
+  if (d.cadera != null && objOk(objetivos, 'bajar_peso') && d.cadera <= -1) {
     tips.push(
       consejo(
         'semana',
@@ -802,7 +807,7 @@ function consejosMedidas(obj, progreso) {
   })()
 
   if (deltaBrazo != null) {
-    if ((obj === 'ganar_musculo' || obj === 'aumentar_peso') && deltaBrazo >= 0.5) {
+    if (objOk(objetivos, 'ganar_musculo', 'aumentar_peso') && deltaBrazo >= 0.5) {
       tips.push(
         consejo(
           'semana',
@@ -811,7 +816,7 @@ function consejosMedidas(obj, progreso) {
           `Los brazos subieron en promedio ${formatDeltaCm(deltaBrazo)}. Buena señal de progreso muscular; mantené fuerza y proteína alta.`
         )
       )
-    } else if (obj === 'ganar_musculo' && deltaBrazo <= -0.5) {
+    } else if (objOk(objetivos, 'ganar_musculo') && deltaBrazo <= -0.5) {
       tips.push(
         consejo(
           'semana',
@@ -823,7 +828,7 @@ function consejosMedidas(obj, progreso) {
     }
   }
 
-  if (d.pecho != null && (obj === 'ganar_musculo' || obj === 'aumentar_peso') && d.pecho >= 0.8) {
+  if (d.pecho != null && objOk(objetivos, 'ganar_musculo', 'aumentar_peso') && d.pecho >= 0.8) {
     tips.push(
       consejo(
         'semana',
@@ -858,7 +863,7 @@ function consejosMedidas(obj, progreso) {
 
   if (v.cinturaBaja != null && v.cadera != null && v.cadera > 0) {
     const ratio = Math.round((v.cinturaBaja / v.cadera) * 100) / 100
-    if (obj === 'bajar_peso' && ratio >= 0.9) {
+    if (objOk(objetivos, 'bajar_peso') && ratio >= 0.9) {
       tips.push(
         consejo(
           'semana',
@@ -873,7 +878,7 @@ function consejosMedidas(obj, progreso) {
   if (progreso.camposComparables?.length >= 2) {
     const bajaron = progreso.camposComparables.filter((k) => d[k] < 0)
     const subieron = progreso.camposComparables.filter((k) => d[k] > 0)
-    if (obj === 'bajar_peso' && bajaron.includes('cinturaBaja') && (subieron.includes('brazoIzq') || subieron.includes('brazoDer'))) {
+    if (objOk(objetivos, 'bajar_peso') && bajaron.includes('cinturaBaja') && (subieron.includes('brazoIzq') || subieron.includes('brazoDer'))) {
       tips.push(
         consejo(
           'semana',
@@ -904,7 +909,7 @@ function consejosMedidas(obj, progreso) {
 /**
  * Consejos según peso, altura (IMC), sexo y edad.
  */
-function consejosPerfilCorporal(obj, perfil) {
+function consejosPerfilCorporal(objetivos, perfil) {
   const tips = []
   if (!perfil) return tips
 
@@ -934,7 +939,7 @@ function consejosPerfilCorporal(obj, perfil) {
 
   if (perfil.imc != null && perfil.categoria) {
     const { imc, categoria, rango } = perfil
-    if (obj === 'bajar_peso' && (categoria.key === 'sobrepeso' || categoria.key === 'obesidad')) {
+    if (objOk(objetivos, 'bajar_peso') && (categoria.key === 'sobrepeso' || categoria.key === 'obesidad')) {
       tips.push(
         consejo(
           'semana',
@@ -943,7 +948,7 @@ function consejosPerfilCorporal(obj, perfil) {
           `Tu IMC es ${imc} (${categoria.label}). Bajá de a poco con déficit moderado; el rango orientativo para tu altura es ${rango.min}–${rango.max} kg (el IMC no ve músculo vs grasa).`
         )
       )
-    } else if (obj === 'aumentar_peso' && categoria.key === 'bajo') {
+    } else if (objOk(objetivos, 'aumentar_peso') && categoria.key === 'bajo') {
       tips.push(
         consejo(
           'semana',
@@ -952,7 +957,7 @@ function consejosPerfilCorporal(obj, perfil) {
           `Tu IMC es ${imc} (bajo peso). Subí calorías con comidas nutritivas y sumá fuerza para ganar músculo, no solo grasa.`
         )
       )
-    } else if (obj === 'ganar_musculo' && categoria.key === 'normal') {
+    } else if (objOk(objetivos, 'ganar_musculo') && categoria.key === 'normal') {
       tips.push(
         consejo(
           'semana',
@@ -961,7 +966,7 @@ function consejosPerfilCorporal(obj, perfil) {
           `IMC ${imc} en rango saludable. Para ganar músculo importan más fuerza, proteína y medidas (brazos/pecho) que el IMC solo.`
         )
       )
-    } else if (categoria.key === 'normal' && obj === 'mantener_peso') {
+    } else if (categoria.key === 'normal' && objOk(objetivos, 'mantener_peso')) {
       tips.push(
         consejo(
           'semana',
@@ -970,7 +975,7 @@ function consejosPerfilCorporal(obj, perfil) {
           `IMC ${imc}: en rango saludable. Seguí midiendo cintura y peso cada tanto para mantener el equilibrio.`
         )
       )
-    } else if (obj === 'ganar_musculo' && (categoria.key === 'sobrepeso' || categoria.key === 'obesidad')) {
+    } else if (objOk(objetivos, 'ganar_musculo') && (categoria.key === 'sobrepeso' || categoria.key === 'obesidad')) {
       tips.push(
         consejo(
           'semana',
@@ -1023,7 +1028,7 @@ function consejosPerfilCorporal(obj, perfil) {
  * @param {object} [contextoSemana] para tips de ayer / racha (opcional)
  */
 export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedidas = null, contextoSemana = null) {
-  const obj = objetivo || config?.objetivo || 'mantener_peso'
+  const objetivos = resolveObjetivosParaConsejos(objetivo, config)
   const ctx =
     contexto?.numComidas != null
       ? contexto
@@ -1043,7 +1048,7 @@ export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedid
     const cal = num(contexto.caloriasConsumidas)
     const pro = num(contexto.proteinas)
     const quemadas = num(contexto.caloriasQuemadas)
-    if (obj === 'bajar_peso' && cal > 0 && quemadas > 0 && cal > quemadas + 400) {
+    if (objOk(objetivos, 'bajar_peso') && cal > 0 && quemadas > 0 && cal > quemadas + 400) {
       tips.push(
         consejo(
           'dia',
@@ -1053,7 +1058,7 @@ export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedid
         )
       )
     }
-    if ((obj === 'ganar_musculo' || obj === 'aumentar_peso') && pro < metaPro && cal > 0) {
+    if (objOk(objetivos, 'ganar_musculo', 'aumentar_peso') && pro < metaPro && cal > 0) {
       const faltan = metaPro - pro
       tips.push(
         consejo(
@@ -1064,7 +1069,7 @@ export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedid
         )
       )
     }
-    return uniqTextos(tips, 1)
+    return uniqTextos(tips, maxConsejosPorObjetivos(objetivos, 1))
   }
 
   const fechaAyer = diaAnterior(ctx.fecha)
@@ -1074,8 +1079,8 @@ export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedid
   }
 
   const tips = [
-    ...consejosComidaDelDia(obj, ctx, ctxAyer),
-    ...consejosEjercicioDelDia(obj, ctx),
+    ...consejosComidaDelDia(objetivos, ctx, ctxAyer),
+    ...consejosEjercicioDelDia(objetivos, ctx),
   ]
 
   // Recordatorio puntual de medidas (prioridad media) mezclado en el día
@@ -1111,14 +1116,14 @@ export function getConsejosDelDia(objetivo, contexto, config = {}, progresoMedid
     )
   }
 
-  return uniqTextos(tips, 1)
+  return uniqTextos(tips, maxConsejosPorObjetivos(objetivos, 1))
 }
 
 /**
  * Consejos semanales según lo registrado en los últimos días.
  */
 export function getConsejosSemanales(objetivo, contextoSemana, config = {}, progresoMedidas = null) {
-  const obj = objetivo || config?.objetivo || 'mantener_peso'
+  const objetivos = resolveObjetivosParaConsejos(objetivo, config)
   const ctx = contextoSemana?.diasConComida != null
     ? contextoSemana
     : buildContextoSemana({
@@ -1131,12 +1136,12 @@ export function getConsejosSemanales(objetivo, contextoSemana, config = {}, prog
       })
 
   const tips = [
-    ...consejosSemanales(obj, ctx),
-    ...consejosMedidas(obj, progresoMedidas),
-    ...consejosPerfilCorporal(obj, buildPerfilCorporal(config)),
+    ...consejosSemanales(objetivos, ctx),
+    ...consejosMedidas(objetivos, progresoMedidas),
+    ...consejosPerfilCorporal(objetivos, buildPerfilCorporal(config)),
   ]
 
-  return uniqTextos(tips, 1)
+  return uniqTextos(tips, maxConsejosPorObjetivos(objetivos, 1))
 }
 
 /**

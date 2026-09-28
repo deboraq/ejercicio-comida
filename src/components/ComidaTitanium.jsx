@@ -746,7 +746,7 @@ function MealCard({
         </ul>
       )}
       <button type="button" className="cd-meal-add" onClick={() => onAgregar(tipo)}>
-        + Agregar alimento a {tipo}
+        + Registrar {tipo}
       </button>
     </article>
   )
@@ -1066,7 +1066,11 @@ export default function ComidaTitanium({
               </h1>
             </div>
             <p className="cd-subtitle mb-0">
-              Resumen calórico, balance de macronutrientes y registro en tiempo real
+              {vistaComida === 'hoy'
+                ? 'Buscá alimentos y registrá lo que comés en el día (desayuno, almuerzo, cena…).'
+                : vistaComida === 'plan'
+                  ? 'Menú semanal, marcar comidas del plan y sincronizar con tu registro.'
+                  : 'Consultá días anteriores y exportá tu historial.'}
             </p>
           </div>
           <div className="cd-header-actions">
@@ -1088,8 +1092,8 @@ export default function ComidaTitanium({
               </button>
             </div>
             <button type="button" className="cd-btn cd-btn--primary" onClick={() => agregarMomento(comida || 'Desayuno')}>
-              <span className="cd-btn-label cd-btn-label--long">+ Registrar comida rápida</span>
-              <span className="cd-btn-label cd-btn-label--short">+ Comida rápida</span>
+              <span className="cd-btn-label cd-btn-label--long">+ Registrar comida</span>
+              <span className="cd-btn-label cd-btn-label--short">+ Registrar</span>
             </button>
           </div>
         </header>
@@ -1098,14 +1102,16 @@ export default function ComidaTitanium({
             type="button"
             className={`cd-module-tab cd-module-tab--hoy${vistaComida === 'hoy' ? ' is-active' : ''}`}
             onClick={() => setVistaComida?.('hoy')}
+            aria-current={vistaComida === 'hoy' ? 'page' : undefined}
           >
-            <span className="cd-tab-label cd-tab-label--long">Registro de Hoy</span>
-            <span className="cd-tab-label cd-tab-label--short">Hoy</span>
+            <span className="cd-tab-label cd-tab-label--long">Registrar comida</span>
+            <span className="cd-tab-label cd-tab-label--short">Registrar</span>
           </button>
           <button
             type="button"
             className={`cd-module-tab cd-module-tab--plan${vistaComida === 'plan' ? ' is-active' : ''}`}
             onClick={() => setVistaComida?.('plan')}
+            aria-current={vistaComida === 'plan' ? 'page' : undefined}
           >
             <span className="cd-tab-label cd-tab-label--long">Mi plan</span>
             <span className="cd-tab-label cd-tab-label--short">Plan</span>
@@ -1117,6 +1123,7 @@ export default function ComidaTitanium({
             type="button"
             className={`cd-module-tab cd-module-tab--historial${vistaComida === 'historial' ? ' is-active' : ''}`}
             onClick={() => setVistaComida?.('historial')}
+            aria-current={vistaComida === 'historial' ? 'page' : undefined}
           >
             <span className="cd-tab-label cd-tab-label--long">Historial Completo</span>
             <span className="cd-tab-label cd-tab-label--short">Historial</span>
@@ -1159,19 +1166,7 @@ export default function ComidaTitanium({
         </div>
       )}
 
-      {planResumen?.estado === 'activo' && vistaComida === 'hoy' && (
-        <div className="cd-plan-strip">
-          <p className="mb-0">
-            <strong>Tu plan</strong> · día {planResumen.dia} de {planResumen.total}
-            {planResumen.tip ? ` — ${planResumen.tip.slice(0, 80)}…` : ''}
-          </p>
-          <button type="button" className="cd-btn cd-btn--ghost cd-btn--sm" onClick={() => setVistaComida?.('plan')}>
-            Ver menú del día
-          </button>
-        </div>
-      )}
-
-      <div className={`cd-layout${vistaComida === 'historial' ? ' cd-layout--historial' : ''}${vistaComida === 'plan' ? ' cd-layout--plan' : ''}`}>
+      <div className={`cd-layout cd-layout--${vistaComida}${vistaComida === 'historial' ? ' cd-layout--historial' : ''}${vistaComida === 'plan' ? ' cd-layout--plan' : ''}`}>
         <div className="cd-main">
           {vistaComida === 'plan' ? (
             <section className="cd-plan-embed plan-mes1-page">{planPanel}</section>
@@ -1191,8 +1186,8 @@ export default function ComidaTitanium({
             )}
             <div className="cd-balance-head">
               <div>
-                <h2 className="cd-panel-title mb-0">Tu Balance Diario</h2>
-                <p className="cd-balance-sub mb-0">Objetivo energético personalizado y macros consumidos</p>
+                <h2 className="cd-panel-title mb-0">Balance del día</h2>
+                <p className="cd-balance-sub mb-0">Calorías y macros de lo que registraste hoy</p>
               </div>
               {caloriasActivas > 0 && (
                 <span className="cd-balance-active">Calorías Activas: +{caloriasActivas.toLocaleString('es-AR')} kcal</span>
@@ -1240,6 +1235,11 @@ export default function ComidaTitanium({
               <button type="button" className="cd-btn cd-btn--water" onClick={onAdd250ml}>+250ml</button>
             </div>
           </section>
+
+          <header className="cd-meals-section-head">
+            <h2 className="cd-meals-section-title mb-0">Comidas registradas</h2>
+            <p className="cd-meals-section-sub mb-0">Lo que ya cargaste hoy. Usá + Registrar en cada momento para sumar más.</p>
+          </header>
 
           <div className="cd-meals">
             {comidas.map((tipo) => (
@@ -1300,6 +1300,12 @@ export default function ComidaTitanium({
             id="cd-agregar-panel"
             className={`cd-panel cd-search-panel${buscadorDestacado ? ' is-guide-pulse' : ''}${enEdicion ? ' is-guide-edit' : ''}`}
           >
+            <div className="cd-registrar-panel-head">
+              <h2 className="cd-registrar-panel-title mb-0">Registrar comida</h2>
+              <p className="cd-registrar-panel-sub mb-0">
+                Elegí momento y hora, buscá el alimento y tocá <strong>Registrar comida</strong> abajo.
+              </p>
+            </div>
             {(buscadorDestacado || enEdicion) && (
               <div
                 className={`cd-add-guide${enEdicion && !buscadorDestacado ? ' cd-add-guide--static' : ''}`}
@@ -1354,7 +1360,7 @@ export default function ComidaTitanium({
                 className="cd-search-input"
                 value={busquedaRef}
                 onChange={(e) => setBusquedaRef(e.target.value)}
-                placeholder={referenciaActiva ? 'Buscar otro alimento…' : 'Ej: tostad, pollo, arroz...'}
+                placeholder={referenciaActiva ? 'Buscar otro alimento…' : 'Buscar alimento para registrar…'}
                 autoComplete="off"
               />
               {(busquedaRef.trim() || referenciaActiva) && (
@@ -1599,7 +1605,7 @@ export default function ComidaTitanium({
             >
               <div className="cd-add-title-row">
                 <h3 className="cd-add-title mb-0">
-                  {enEdicion ? 'Guardar cambios' : pendientes.length > 0 ? 'Lista para guardar' : 'Confirmar'}
+                  {enEdicion ? 'Guardar cambios' : pendientes.length > 0 ? 'Listo para registrar' : 'Confirmar registro'}
                 </h3>
                 {enEdicion && (
                   <button type="button" className="cd-add-cancel" onClick={() => onCancelarEdicion?.()}>
@@ -1740,7 +1746,7 @@ export default function ComidaTitanium({
                 >
                   {enEdicion
                     ? (pendientes.length > 1 ? `Guardar ${pendientes.length} cambios` : 'Guardar cambios')
-                    : (pendientes.length > 1 ? `Guardar ${pendientes.length} alimentos` : 'Guardar en el historial')}
+                    : (pendientes.length > 1 ? `Registrar ${pendientes.length} alimentos` : 'Registrar comida')}
                 </button>
               </div>
             </div>

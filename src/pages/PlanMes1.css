@@ -1101,10 +1101,6 @@
   filter: none;
 }
 
-.plan-kanban-option.is-picked .plan-kanban-meal-check input {
-  accent-color: rgb(var(--slot-a));
-}
-
 .plan-kanban-option.is-picked .plan-kanban-listo {
   background: rgb(var(--slot-a));
   border-color: transparent;
@@ -1120,10 +1116,23 @@
 
 .plan-kanban-option-head {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.plan-kanban-option-title-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.35rem;
-  margin-bottom: 0.3rem;
+  min-width: 0;
+}
+
+.plan-kanban-option-title-row .plan-kanban-meal-moment {
+  flex: 1;
+  min-width: 0;
 }
 
 .plan-kanban-option-label {
@@ -1140,28 +1149,144 @@
 
 .plan-kanban-meal-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 0.35rem;
   margin-bottom: 0.35rem;
 }
 
 .plan-kanban-meal-check {
   display: flex;
-  align-items: flex-start;
-  gap: 0.4rem;
+  align-items: center;
+  gap: 0.45rem;
   cursor: pointer;
   flex: 1;
   min-width: 0;
+  border-radius: 8px;
+  transition: background 0.15s;
 }
 
-.plan-kanban-meal-check input {
-  margin-top: 0.15rem;
-  width: 1.05rem;
-  height: 1.05rem;
-  accent-color: #4ade80;
+.plan-kanban-meal-check--block {
+  flex: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.plan-kanban-meal-check--block:hover {
+  background: transparent;
+}
+
+.plan-kanban-meal-check--block .plan-kanban-check-cta {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  padding: 0.48rem 0.65rem;
+  font-size: 0.68rem;
+  border-radius: 8px;
+}
+
+.plan-kanban-check-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.plan-kanban-check-cta {
   flex-shrink: 0;
-  cursor: pointer;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.38rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(30, 41, 59, 0.75);
+  color: #e2e8f0;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.plan-kanban-meal-check:hover .plan-kanban-check-cta {
+  border-color: rgba(148, 163, 184, 0.55);
+  background: rgba(51, 65, 85, 0.85);
+}
+
+.plan-kanban-check-cta-on {
+  display: none;
+  color: #ecfdf5;
+}
+
+.plan-kanban-check-cta-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1em;
+  margin-left: 0.2em;
+  font-weight: 900;
+}
+
+.plan-kanban-check-cta-off .plan-kanban-check-cta-mark {
+  color: #fbbf24;
+}
+
+.plan-kanban-check-cta-on .plan-kanban-check-cta-mark {
+  color: #ecfdf5;
+}
+
+.plan-kanban-check-input:checked ~ .plan-kanban-check-cta {
+  background: linear-gradient(145deg, rgba(34, 197, 94, 0.35), rgba(22, 163, 74, 0.28));
+  border-color: rgba(74, 222, 128, 0.65);
+  color: #bbf7d0;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.25);
+}
+
+.plan-kanban-check-input:checked ~ .plan-kanban-check-cta .plan-kanban-check-cta-off {
+  display: none;
+}
+
+.plan-kanban-check-input:checked ~ .plan-kanban-check-cta .plan-kanban-check-cta-on {
+  display: inline;
+}
+
+.plan-kanban-check-input:focus-visible ~ .plan-kanban-check-cta {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+/* Escritorio: «Hecho ?» al lado del título de la opción */
+@media (min-width: 721px) {
+  .plan-kanban-option-head,
+  .plan-kanban-meal-head {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .plan-kanban-option-title-row {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .plan-kanban-meal-check--block {
+    width: auto;
+    flex: 0 0 auto;
+    max-width: 100%;
+  }
+
+  .plan-kanban-meal-check--block .plan-kanban-check-cta {
+    width: auto;
+    white-space: nowrap;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.62rem;
+    border-radius: 999px;
+  }
 }
 
 .plan-kanban-meal-moment {
@@ -1375,7 +1500,11 @@
 
 @media (max-width: 720px) {
   .plan-kanban-col {
-    width: 17.5rem;
+    width: min(100%, 17.5rem);
+  }
+
+  .plan-kanban-meal-text {
+    text-align: left;
   }
 
   .plan-kanban-foot-link {

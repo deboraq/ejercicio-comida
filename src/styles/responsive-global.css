@@ -1,0 +1,277 @@
+/*
+ * Responsividad y contraste en todos los anchos (móvil, tablet, ventana reducida en desktop).
+ * Cargar después de App.css.
+ */
+
+html {
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.app-layout,
+.app-shell,
+.app-shell-main,
+.main-content,
+.app-page-container,
+.section {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-layout {
+  color-scheme: dark;
+}
+
+.app-layout :is(img, video, canvas, svg:not(.cd-ring-chart svg)) {
+  max-width: 100%;
+  height: auto;
+}
+
+.app-layout :is(table, pre, .table-container) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ——— Contraste: evitar texto claro sobre fondo claro ——— */
+.app-layout .subtitle:not(.has-text-white),
+.app-layout .help,
+.app-layout .is-size-7:not(.has-text-white) {
+  color: var(--app-muted) !important;
+}
+
+.app-layout .has-text-grey,
+.app-layout .has-text-grey-light,
+.app-layout .has-text-grey-lighter {
+  color: var(--app-muted) !important;
+}
+
+.app-layout .box.has-background-white,
+.app-layout .box.has-background-light,
+.app-layout .notification.is-light,
+.app-layout .message.is-light .message-body {
+  color-scheme: light;
+  color: #1a1a1a !important;
+  background-color: #f5f5f5 !important;
+}
+
+.app-layout .box.has-background-light .title,
+.app-layout .box.has-background-light .subtitle,
+.app-layout .box.has-background-light .has-text-grey,
+.app-layout .box.has-background-light p,
+.app-layout .message.is-light .message-body {
+  color: #1f2937 !important;
+}
+
+.app-layout .modal-card-head,
+.app-layout .modal-card-body,
+.app-layout .modal-card-foot,
+.app-layout .dropdown-content,
+.app-layout .dropdown-menu {
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border) !important;
+}
+
+.app-layout .modal-card-title {
+  color: var(--app-text) !important;
+}
+
+.comida-page.comida-titanium .cd-macro-bar-rest,
+.comida-page.comida-titanium .cd-macro-bar-goal,
+.comida-page.comida-titanium .cd-macro-bar-rest-inline,
+.comida-page.comida-titanium .cd-meal-empty-sub,
+.comida-page.comida-titanium .cd-panel-sub,
+.comida-page.comida-titanium .cd-insight-tag--muted {
+  color: #94a3b8 !important;
+}
+
+.comida-page.comida-titanium .cd-module-tab:not(.is-active) {
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+.comida-page.comida-titanium .cd-module-tab.is-active {
+  color: #f8fafc !important;
+}
+
+.comida-page.comida-titanium .cd-plan-strip,
+.comida-page.comida-titanium .cd-insight-text {
+  color: #e2e8f0;
+}
+
+/* ——— Desktop con sidebar: ventana estrecha ——— */
+@media (min-width: 1024px) and (max-width: 1360px) {
+  .main-content {
+    padding: 0.85rem 1.15rem 1.35rem 1rem !important;
+  }
+
+  .app-shell-main .section > .container.app-page-container {
+    max-width: 100% !important;
+  }
+
+  .comida-page.comida-titanium .cd-balance-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .comida-page.comida-titanium .cd-header-actions {
+    flex-wrap: wrap;
+  }
+
+  .comida-page.comida-titanium .cd-module-tabs {
+    flex-wrap: wrap;
+  }
+
+  .comida-page.comida-titanium .cd-module-tab {
+    flex: 1 1 calc(33.333% - 0.35rem);
+    min-width: 7.5rem;
+  }
+
+  .inicio-dash-grid,
+  .inicio-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .comida-page.comida-titanium .cd-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1180px) {
+  .ap-root {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ap-side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .ap-side-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .ap-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ——— Tablet / móvil (hasta 1023px ya tiene reglas en App.css; refuerzo) ——— */
+@media (max-width: 1023px) {
+  .comida-page.comida-titanium .cd-balance-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .comida-page.comida-titanium .cd-insight {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .comida-page.comida-titanium .cd-insight-btn {
+    width: 100%;
+    margin-top: 0.35rem;
+  }
+
+  .comida-page.comida-titanium .cd-plan-strip {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .rutina-titanium .rut-head-actions,
+  .rutina-titanium .rut-toolbar-row {
+    flex-wrap: wrap;
+  }
+
+  .cfg-ti-page .cfg-ti-objetivo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .comida-page.comida-titanium .cd-balance-grid {
+    gap: 1rem;
+  }
+
+  .comida-page.comida-titanium .cd-macros-col {
+    gap: 0.45rem;
+  }
+
+  .comida-page.comida-titanium .cd-macro-bar-val {
+    white-space: normal;
+    text-align: left;
+    font-size: 0.68rem;
+  }
+
+  .plan-kanban-board-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .plan-kanban-board {
+    min-width: min(100%, 680px);
+  }
+}
+
+@media (max-width: 640px) {
+  .cfg-ti-page .cfg-ti-objetivo-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .comida-page.comida-titanium .cd-header-actions .cd-btn--primary {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .comida-page.comida-titanium .cd-date-nav {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .inicio-dash-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .comida-page.comida-titanium .cd-module-tab {
+    font-size: clamp(0.5rem, 2.5vw, 0.58rem) !important;
+    padding: 0.26rem 0.12rem !important;
+    gap: 0.15rem !important;
+  }
+
+  .comida-page.comida-titanium .cd-module-tab-badge {
+    min-width: 0.95rem;
+    height: 0.95rem;
+    font-size: 0.48rem;
+  }
+
+  .app-bottom-nav-label {
+    font-size: clamp(0.58rem, 2.4vw, 0.68rem) !important;
+  }
+}
+
+/* iOS safe areas (barra inferior / notch) */
+@supports (padding: max(0px)) {
+  .app-bottom-nav {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-shell--mobile-tabbar .main-content {
+    padding-left: max(0.65rem, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(0.65rem, env(safe-area-inset-right, 0px)) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-layout * {
+    scroll-behavior: auto !important;
+  }
+}

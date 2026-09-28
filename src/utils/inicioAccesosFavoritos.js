@@ -16,8 +16,8 @@ export const INICIO_ACCESOS_SUGERIDOS = [
 export const INICIO_ACCESOS_CATALOGO = [
   {
     id: 'comida-hoy',
-    label: 'Comida de hoy',
-    desc: 'Registro del día',
+    label: 'Registrar comida',
+    desc: 'Anotá desayuno, almuerzo y cena',
     icon: '🍽️',
     tone: 'comida',
     navModule: 'comida',
@@ -55,8 +55,8 @@ export const INICIO_ACCESOS_CATALOGO = [
   },
   {
     id: 'rutina-plan',
-    label: 'Armar tu rutina',
-    desc: 'Plan semanal propio',
+    label: 'Armar rutina',
+    desc: 'Días y ejercicios de la rutina elegida',
     icon: '🗓️',
     tone: 'rutina',
     navModule: 'rutina',

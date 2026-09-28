@@ -5,6 +5,7 @@ import {
   inferirGruposMuscularesDia,
   inferirGrupoMuscular,
   resumenPlanDia,
+  resumenPlanCompleto,
   GRUPOS_MUSCULARES_OPCIONES,
 } from '../utils/rutinaEjercicioDia'
 import { grupoMuscularTone } from './profe/profeCatalogoUi'
@@ -102,6 +103,7 @@ function grupoMuscularDisplay(row) {
  * Configurador Titanium: Armá tu plan.
  */
 export default function ArmarPlanTitanium({
+  nombreEntrenamiento = '',
   dias,
   diaEditando,
   setDiaEditando,
@@ -132,6 +134,7 @@ export default function ArmarPlanTitanium({
   const [, setCatalogoMeta] = useStorage('profeCatalogoMeta', { seedVersion: 0 })
   const [favoritos, setFavoritos] = useStorage('profeCatalogoFavoritos', [])
   const [categoriasCustom, setCategoriasCustom] = useStorage('profeCatalogoCategorias', [])
+  const [distAlcance, setDistAlcance] = useState('dia')
 
   useEffect(() => {
     applyProfeCatalogoSeedSync(setCatalogo, setCatalogoMeta)
@@ -172,6 +175,8 @@ export default function ArmarPlanTitanium({
     [ejerciciosDelDia]
   )
   const resumen = useMemo(() => resumenPlanDia(ejerciciosDelDia), [ejerciciosDelDia])
+  const resumenPlan = useMemo(() => resumenPlanCompleto(dias), [dias])
+  const resumenDist = distAlcance === 'plan' ? resumenPlan : resumen
 
   const abrirCatalogo = () => {
     applyProfeCatalogoSeedSync(setCatalogo, setCatalogoMeta)
@@ -298,14 +303,20 @@ export default function ArmarPlanTitanium({
     const enSs = Boolean(row.superserie)
     const esPrimeroSs = enSs && (!prev || prev.superserie !== row.superserie)
     const esContinuacionSs = enSs && prev?.superserie === row.superserie
+    const next = filasDelDia[idx + 1]
+    const esUltimoSs = enSs && (!next || next.superserie !== row.superserie)
     const showVincular = origenEditable && !enSs && idx < filasDelDia.length - 1
     const ro = !origenEditable
 
     return (
-      <li key={`ap-ex-${idx}`} className="ap-ws-exercise-item">
+      <li
+        key={`ap-ex-${idx}`}
+        className={`ap-ws-exercise-item${enSs ? ' ap-ss-block' : ''}${esPrimeroSs ? ' ap-ss-block--start' : ''}${esContinuacionSs ? ' ap-ss-block--cont' : ''}${esUltimoSs ? ' ap-ss-block--end' : ''}`}
+      >
         {esContinuacionSs ? (
-          <div className="ap-ss-link">
-            <span>+ Sin descanso intermedio</span>
+          <div className="ap-ss-link" aria-hidden>
+            <span className="ap-ss-link-ico">↳</span>
+            <span>Sin descanso · mismo bloque {row.superserie}</span>
           </div>
         ) : null}
         {esPrimeroSs ? (
@@ -348,7 +359,7 @@ export default function ArmarPlanTitanium({
           <span className="pf-ws-drag" title="Arrastrar para reordenar" aria-hidden>
             ::
           </span>
-          <span className="pf-ws-exercise-index">{idx + 1}</span>
+          <span className={`pf-ws-exercise-index${enSs ? ' is-ss-index' : ''}`}>{idx + 1}</span>
           <div className="pf-ws-exercise-info">
             <input
               className="pf-ws-exercise-name"
@@ -465,9 +476,13 @@ export default function ArmarPlanTitanium({
         <div className="ap-panel">
           <div className="ap-panel-head">
             <div>
-              <h2 className="ap-title">Armá tu plan</h2>
-              <p className="ap-sub">
-                Días, catálogo de gym, superseries, resumen y distribución muscular — como en plantillas del profe.
+              <h2 className="ap-title">Días y ejercicios</h2>
+              <p className="ap-sub mb-0">
+                {nombreEntrenamiento ? (
+                  <>Rutina «{nombreEntrenamiento}» — agregá días, movimientos y superseries.</>
+                ) : (
+                  <>Agregá días, movimientos y superseries.</>
+                )}
               </p>
             </div>
             {origenEditable && (
@@ -661,15 +676,38 @@ export default function ArmarPlanTitanium({
         </div>
 
         <div className="ap-side-card">
-          <div className="ap-side-head">
+          <div className="ap-side-head ap-side-head--split">
             <h3 className="ap-side-title">Distribución muscular</h3>
-            <span className="ap-side-meta">{resumen.seriesEfectivas} series</span>
+            <div className="ap-dist-scope" role="group" aria-label="Alcance de la distribución">
+              <button
+                type="button"
+                className={`ap-dist-scope-btn${distAlcance === 'dia' ? ' is-active' : ''}`}
+                onClick={() => setDistAlcance('dia')}
+              >
+                Por día
+              </button>
+              <button
+                type="button"
+                className={`ap-dist-scope-btn${distAlcance === 'plan' ? ' is-active' : ''}`}
+                onClick={() => setDistAlcance('plan')}
+              >
+                Todo el plan
+              </button>
+            </div>
           </div>
-          {resumen.distribucion.length === 0 ? (
+          <p className="ap-dist-scope-note mb-0">
+            {distAlcance === 'plan'
+              ? `${(dias || []).length} día${(dias || []).length === 1 ? '' : 's'} cargados en la rutina.`
+              : `Día seleccionado: ${diaActual?.nombre || '—'}.`}
+          </p>
+          <div className="ap-side-head ap-side-head--meta">
+            <span className="ap-side-meta">{resumenDist.seriesEfectivas} series</span>
+          </div>
+          {resumenDist.distribucion.length === 0 ? (
             <p className="ap-side-empty">Sin series todavía.</p>
           ) : (
             <ul className="ap-dist">
-              {resumen.distribucion.map((row) => (
+              {resumenDist.distribucion.map((row) => (
                 <li key={row.grupo}>
                   <div className="ap-dist-top">
                     <span>{row.grupo}</span>
