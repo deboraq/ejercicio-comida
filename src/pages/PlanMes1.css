@@ -445,10 +445,13 @@
 
 .plan-kanban-board-wrap {
   overflow-x: auto;
-  margin: 0 -0.25rem;
+  margin: 0;
   padding-bottom: 0.5rem;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .plan-kanban-board {
@@ -628,7 +631,7 @@
 }
 
 .plan-kanban--embedded .plan-kanban-board-wrap:has(.plan-kanban-board--zoom-2) {
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .plan-kanban--embedded .plan-kanban-board--zoom-2 {

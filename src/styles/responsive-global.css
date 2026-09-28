@@ -7,11 +7,17 @@ html {
   overflow-x: clip;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  color-scheme: dark;
+}
+
+.app-shell-main {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 .app-layout,
 .app-shell,
-.app-shell-main,
 .main-content,
 .app-page-container,
 .section {
@@ -21,6 +27,22 @@ html {
 
 .app-layout {
   color-scheme: dark;
+}
+
+/* Windows / Chrome: listas nativas de <select> con fondo claro y texto blanco */
+.app-layout :is(select, .select select) {
+  color-scheme: dark;
+}
+
+.app-layout select option {
+  background-color: #151b2b;
+  color: #e2e8f0;
+}
+
+.app-layout select option:checked,
+.app-layout select option:focus {
+  background-color: #1e3a5f;
+  color: #f8fafc;
 }
 
 .app-layout :is(img, video, canvas, svg:not(.cd-ring-chart svg)) {
@@ -218,6 +240,77 @@ html {
   .plan-kanban-board {
     min-width: min(100%, 680px);
   }
+}
+
+/* ——— Contención horizontal (desktop Windows, ventana no maximizada) ——— */
+.comida-page.comida-titanium,
+.rutina-titanium,
+.cfg-ti-page,
+.inicio-page,
+.ejercicios-page {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.comida-page.comida-titanium .cd-root,
+.comida-page.comida-titanium .cd-layout,
+.comida-page.comida-titanium .cd-main,
+.comida-page.comida-titanium .cd-aside,
+.plan-kanban,
+.plan-kanban--embedded,
+.rutina-titanium .ap-root,
+.rutina-titanium .ap-panel {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.plan-kanban-board-wrap {
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.plan-kanban--embedded .plan-kanban-board-wrap:has(.plan-kanban-board--zoom-2) {
+  overflow-x: auto;
+}
+
+@media (min-width: 1024px) and (max-width: 1400px) {
+  .rutina-titanium .ap-root {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .comida-page.comida-titanium .cd-layout:not(.cd-layout--plan) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .plan-kanban-board--zoom-1 .plan-kanban-col {
+    width: min(18rem, 42vw);
+  }
+}
+
+@media (min-width: 1024px) {
+  .plan-kanban-board-wrap {
+    overflow-x: auto;
+    scroll-padding-inline: 0.5rem;
+  }
+}
+
+/* Contraste legible (hidratación, tabs inactivas) */
+.comida-page.comida-titanium .cd-water-stats {
+  color: #94a3b8 !important;
+}
+
+.rutina-titanium .rut-head .rut-tab:not(.is-active),
+.rutina-titanium .rut-tab:not(.is-active) {
+  color: #94a3b8 !important;
+}
+
+.comida-page.comida-titanium .cd-module-tab:not(.is-active) {
+  color: #94a3b8 !important;
 }
 
 @media (max-width: 640px) {
