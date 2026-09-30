@@ -22,6 +22,7 @@ import { buildPerfilCorporal } from '../utils/composicion'
 import { normalizarPesoHistorial } from '../utils/pesoStorage'
 import { normalizarMedidasHistorial } from '../utils/medidasStorage'
 import { asArray } from '../hooks/useLocalStorage'
+import { numeroFlexibleO } from '../utils/comidaLineItems'
 
 const LABEL_TIPO_CONSEJO = {
   nutricion: 'Nutrición',
@@ -132,10 +133,10 @@ function agruparComidasDia(comidas) {
   const keys = [...orden.filter((o) => map[o]), ...Object.keys(map).filter((k) => !orden.includes(k))]
   return keys.map((tipo) => {
     const items = map[tipo]
-    const kcal = items.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
-    const pro = items.reduce((s, r) => s + (Number(r.proteinas) || 0), 0)
-    const car = items.reduce((s, r) => s + (Number(r.carbohidratos) || 0), 0)
-    const gra = items.reduce((s, r) => s + (Number(r.grasas) || 0), 0)
+    const kcal = items.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
+    const pro = items.reduce((s, r) => s + numeroFlexibleO(r.proteinas), 0)
+    const car = items.reduce((s, r) => s + numeroFlexibleO(r.carbohidratos), 0)
+    const gra = items.reduce((s, r) => s + numeroFlexibleO(r.grasas), 0)
     return { tipo, items, kcal, pro, car, gra }
   })
 }
@@ -147,18 +148,13 @@ function quemadasEnFecha(ejercicios, registrosRutina, fecha, pesoKg) {
   )
 }
 
-/** Solo lo cargado en Comida (no estimaciones del checklist del plan). */
-function esComidaRegistradaManualmente(registro) {
-  if (!registro) return false
-  if (registro.planRef) return false
-  if (String(registro.categoria || '').trim().toLowerCase() === 'plan') return false
-  return true
+/** Mismos registros que la vista Comida del día (fecha local). */
+function comidasEnDia(comidas, fechaISO) {
+  return comidas.filter((c) => fechaSoloDia(c.fecha) === fechaISO)
 }
 
-function comidasRegistradasEnDia(comidas, fechaISO) {
-  return comidas.filter(
-    (c) => fechaSoloDia(c.fecha) === fechaISO && esComidaRegistradaManualmente(c),
-  )
+function sumCaloriasComidas(lista) {
+  return lista.reduce((s, r) => s + numeroFlexibleO(r.calorias), 0)
 }
 
 export default function Inicio() {
@@ -224,10 +220,7 @@ export default function Inicio() {
   }, [diaEnVista])
 
   const ejerciciosDelDia = ejercicios.filter((e) => fechaSoloDia(e.fecha) === diaEnVista)
-  const comidasDelDia = comidasRegistradasEnDia(comida, diaEnVista)
-  const comidasPlanDelDia = comida.filter(
-    (c) => fechaSoloDia(c.fecha) === diaEnVista && !esComidaRegistradaManualmente(c),
-  )
+  const comidasDelDia = comidasEnDia(comida, diaEnVista)
   const suplementosDelDia = suplementos.find((s) => fechaSoloDia(s.fecha) === diaEnVista)?.items ?? []
   const suplementosActivos = Array.isArray(config?.suplementosActivos)
     ? config.suplementosActivos
@@ -273,10 +266,10 @@ export default function Inicio() {
     minutosRutinaDia(registrosRutina, diaEnVista)
   const caloriasQuemadasDia = quemadasEnFecha(ejercicios, registrosRutina, diaEnVista, pesoCfg)
   const caloriasQuemadasAyer = quemadasEnFecha(ejercicios, registrosRutina, ayer, pesoCfg)
-  const caloriasConsumidasDia = comidasDelDia.reduce((s, r) => s + (Number(r.calorias) || 0), 0)
-  const proteinasDia = comidasDelDia.reduce((s, r) => s + (Number(r.proteinas) || 0), 0)
-  const carbosDia = comidasDelDia.reduce((s, r) => s + (Number(r.carbohidratos) || 0), 0)
-  const grasasDia = comidasDelDia.reduce((s, r) => s + (Number(r.grasas) || 0), 0)
+  const caloriasConsumidasDia = sumCaloriasComidas(comidasDelDia)
+  const proteinasDia = comidasDelDia.reduce((s, r) => s + numeroFlexibleO(r.proteinas), 0)
+  const carbosDia = comidasDelDia.reduce((s, r) => s + numeroFlexibleO(r.carbohidratos), 0)
+  const grasasDia = comidasDelDia.reduce((s, r) => s + numeroFlexibleO(r.grasas), 0)
 
   const metaKcal = Number(config?.metaCalorias) || 0
   const metaPro = Number(config?.metaProteina) || 0
@@ -346,7 +339,7 @@ export default function Inicio() {
   )
 
   const fechasConComida = useMemo(
-    () => new Set(comida.filter(esComidaRegistradaManualmente).map((c) => fechaSoloDia(c.fecha))),
+    () => new Set(comida.map((c) => fechaSoloDia(c.fecha)).filter(Boolean)),
     [comida],
   )
   const fechasConEjercicio = useMemo(
@@ -360,7 +353,7 @@ export default function Inicio() {
 
   const caloriasPorDiaSemana = diasSemana.map((f) => ({
     fecha: f,
-    cal: comidasRegistradasEnDia(comida, f).reduce((s, r) => s + (Number(r.calorias) || 0), 0),
+    cal: sumCaloriasComidas(comidasEnDia(comida, f)),
     quemadas: quemadasEnFecha(ejercicios, registrosRutina, f, pesoCfg),
   }))
   const maxGrafico = Math.max(1, ...caloriasPorDiaSemana.flatMap((d) => [d.cal, d.quemadas]))
@@ -716,13 +709,6 @@ export default function Inicio() {
                 <p className="is-size-7 has-text-grey mb-0 mt-3">
                   Sin comidas registradas este día.{' '}
                   <Link to="/comida">Registrar ahora</Link>
-                  {comidasPlanDelDia.length > 0 ? (
-                    <>
-                      {' '}
-                      Tenés {comidasPlanDelDia.length} marca{comidasPlanDelDia.length === 1 ? '' : 's'} del plan
-                      alimenticio; acá solo sumamos lo que cargás en Comida.
-                    </>
-                  ) : null}
                 </p>
               ) : (
                 <ul className="inicio-meals-list">
