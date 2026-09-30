@@ -138,6 +138,7 @@ const ETIQUETA_CATEGORIA = {
   Carbohidratos: 'Carbohidratos complejos',
   Pastas: 'Carbohidratos complejos',
   Verduras: 'Verduras',
+  'Ensaladas listas': 'Ensalada lista',
   'Comidas saludables': 'Plato balanceado',
   Almuerzo: 'Plato completo',
   'Desayuno / Lácteos': 'Desayuno',
