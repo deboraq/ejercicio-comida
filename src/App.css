@@ -4696,6 +4696,25 @@ body {
   color: #94a3b8;
 }
 
+.inicio-week-day.is-future:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.inicio-kpi-day-ref {
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.inicio-week-chart-col.is-future {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.inicio-week-chart-col.is-future:disabled {
+  pointer-events: none;
+}
+
 .inicio-week-day.is-selected {
   flex: 1.35 1 0;
   max-width: 4.1rem;

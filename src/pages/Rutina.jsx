@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import { useStorage } from '../hooks/useStorage'
 import { useAuth } from '../context/AuthContext'
@@ -24,6 +24,11 @@ import RutinasAsignadasTitanium from '../components/RutinasAsignadasTitanium'
 import { AppNotificacionesCampana } from '../context/AppNotificationsContext'
 import { nuevoIdRegistro } from '../utils/ids'
 import { exportarGymCsv, exportarGymExcel, exportarGymJson } from '../utils/exportData'
+import {
+  dedupeRutinasPropias,
+  rutinasListChanged,
+  RUTINA_PRINCIPAL_ID_PREFERIDO,
+} from '../utils/rutinasStorage'
 
 function crearDia(num) {
   return { id: `d${Date.now()}_${num}`, nombre: `Día ${num}`, ejercicios: [] }
@@ -72,7 +77,7 @@ export default function Rutina() {
   const location = useLocation()
   const navigate = useNavigate()
   const syncRutinasNube = Boolean(user && isConfigured)
-  const [rutinas, setRutinas] = useStorage('rutinas', [])
+  const [rutinas, setRutinas, rutinasCloudReady] = useStorage('rutinas', [])
   const [rutinasAsignadas, setRutinasAsignadas] = useStorage('rutinasAsignadas', [])
   const [rutinaActivaId, setRutinaActivaId] = useStorage('rutinaActivaId', '')
   const [registros, setRegistros] = useStorage('rutinaPesos', [])
@@ -159,8 +164,13 @@ export default function Rutina() {
 
   const diasDelMes = getDiasDelMes(mesCalendario)
 
+  const seedRutinaInicialRef = useRef(false)
+
   useEffect(() => {
+    if (!rutinasCloudReady) return
     if (!Array.isArray(rutinas) || rutinas.length > 0) return
+    if (seedRutinaInicialRef.current) return
+    seedRutinaInicialRef.current = true
     try {
       const old = localStorage.getItem('rutinaPlantilla')
       if (old) {
@@ -172,12 +182,32 @@ export default function Rutina() {
           return
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      /* ignore */
+    }
     setRutinas(RUTINA_INICIAL)
-    setRutinaActivaId('r_default')
-  }, [])
+    setRutinaActivaId(RUTINA_PRINCIPAL_ID_PREFERIDO)
+  }, [rutinas, rutinasCloudReady, setRutinas, setRutinaActivaId])
 
-  const listaRutinas = Array.isArray(rutinas) && rutinas.length > 0 ? rutinas : RUTINA_INICIAL
+  useEffect(() => {
+    if (!rutinasCloudReady || !Array.isArray(rutinas) || rutinas.length === 0) return
+    const deduped = dedupeRutinasPropias(rutinas)
+    if (!rutinasListChanged(rutinas, deduped)) return
+    setRutinas(deduped)
+    setRutinaActivaId((activa) => {
+      if (deduped.some((r) => r.id === activa)) return activa
+      const preferida =
+        deduped.find((r) => r.id === RUTINA_PRINCIPAL_ID_PREFERIDO) || deduped[0]
+      return preferida?.id || ''
+    })
+  }, [rutinas, rutinasCloudReady, setRutinas, setRutinaActivaId])
+
+  const listaRutinas =
+    Array.isArray(rutinas) && rutinas.length > 0
+      ? rutinas
+      : rutinasCloudReady
+        ? RUTINA_INICIAL
+        : []
   const rutinaActiva = listaRutinas.find((r) => r.id === (rutinaActivaId || listaRutinas[0]?.id)) || listaRutinas[0]
   const rutinaIdActual = rutinaActiva?.id || listaRutinas[0]?.id
   const dias = rutinaActiva?.dias || []

@@ -1,8 +1,18 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { ensureMyProfile } from '../lib/profeDb'
-import { markLegacyStorageOwner } from '../utils/storageKeys'
-import { fetchAllUserDataCloud, invalidateUserDataCloudCache, invalidateAllUserDataCloudCache } from '../utils/userDataCloud'
+import {
+  markLegacyStorageOwner,
+  sealLegacyStorageForUser,
+  clearLegacyStorageOwner,
+} from '../utils/storageKeys'
+import {
+  fetchAllUserDataCloud,
+  invalidateUserDataCloudCache,
+  invalidateAllUserDataCloudCache,
+  refreshAllUserDataCloud,
+} from '../utils/userDataCloud'
+import { flushPendingCloudWrites } from '../utils/offlineDataSync'
 
 const AuthContext = createContext(null)
 
@@ -10,6 +20,41 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
+  const prevUserIdRef = useRef(null)
+  const cloudRefreshTimerRef = useRef(null)
+
+  const handleSessionUser = (u) => {
+    const nextId = u?.id ?? null
+    const prevId = prevUserIdRef.current
+    if (prevId && prevId !== nextId) {
+      sealLegacyStorageForUser(prevId)
+      invalidateUserDataCloudCache(prevId)
+      invalidateAllUserDataCloudCache()
+    }
+    if (nextId !== prevId) {
+      prevUserIdRef.current = nextId
+    }
+    if (nextId) {
+      markLegacyStorageOwner(nextId)
+      fetchAllUserDataCloud(nextId).catch(() => {})
+    } else {
+      clearLegacyStorageOwner()
+      if (prevId) invalidateAllUserDataCloudCache()
+    }
+    setUser(u)
+  }
+
+  const scheduleCloudPull = () => {
+    if (!user?.id || !isSupabaseConfigured()) return
+    clearTimeout(cloudRefreshTimerRef.current)
+    cloudRefreshTimerRef.current = window.setTimeout(() => {
+      flushPendingCloudWrites()
+        .catch(() => {})
+        .finally(() => {
+          refreshAllUserDataCloud(user.id).catch(() => {})
+        })
+    }, 400)
+  }
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -17,26 +62,39 @@ export function AuthProvider({ children }) {
       return
     }
     supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = session?.user ?? null
-      if (u?.id) {
-        markLegacyStorageOwner(u.id)
-        fetchAllUserDataCloud(u.id).catch(() => {})
-      }
-      setUser(u)
+      handleSessionUser(session?.user ?? null)
       setLoading(false)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = session?.user ?? null
-      if (u?.id) {
-        markLegacyStorageOwner(u.id)
-        fetchAllUserDataCloud(u.id).catch(() => {})
-      } else {
-        invalidateAllUserDataCloudCache()
-      }
-      setUser(u)
+      handleSessionUser(session?.user ?? null)
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !user?.id) return
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') scheduleCloudPull()
+      else {
+        flushPendingCloudWrites().catch(() => {})
+      }
+    }
+    const onOnline = () => scheduleCloudPull()
+
+    window.addEventListener('online', onOnline)
+    document.addEventListener('visibilitychange', onVisible)
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') scheduleCloudPull()
+    }, 45000)
+
+    return () => {
+      clearTimeout(cloudRefreshTimerRef.current)
+      clearInterval(intervalId)
+      window.removeEventListener('online', onOnline)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [user?.id])
 
   useEffect(() => {
     if (!isSupabaseConfigured() || !user?.id) return
@@ -116,7 +174,7 @@ export function AuthProvider({ children }) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setAuthError(mensajeAuth(error))
-      else if (data?.user?.id) markLegacyStorageOwner(data.user.id)
+      else if (data?.user?.id) handleSessionUser(data.user)
       return { data, error }
     } catch (err) {
       const msg = mensajeAuth(err)
@@ -127,7 +185,14 @@ export function AuthProvider({ children }) {
 
   const signOut = async () => {
     setAuthError(null)
-    invalidateUserDataCloudCache(user?.id)
+    const signingOutId = user?.id
+    if (signingOutId) {
+      sealLegacyStorageForUser(signingOutId)
+      invalidateUserDataCloudCache(signingOutId)
+    }
+    clearLegacyStorageOwner()
+    invalidateAllUserDataCloudCache()
+    prevUserIdRef.current = null
     if (supabase) await supabase.auth.signOut()
     setUser(null)
   }

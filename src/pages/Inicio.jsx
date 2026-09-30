@@ -38,7 +38,7 @@ const LABEL_TIPO_CONSEJO = {
   perfil: 'Perfil',
 }
 
-const DIAS_CORTO = ['LU', 'MA', 'MI', 'JU', 'VI', 'SA', 'DO']
+const DIAS_CORTO = ['LU', 'MAR', 'MI', 'JU', 'VI', 'SA', 'DO']
 
 const MEAL_ICON = {
   Desayuno: { icon: '🍳', tone: 'orange' },
@@ -147,6 +147,20 @@ function quemadasEnFecha(ejercicios, registrosRutina, fecha, pesoKg) {
   )
 }
 
+/** Solo lo cargado en Comida (no estimaciones del checklist del plan). */
+function esComidaRegistradaManualmente(registro) {
+  if (!registro) return false
+  if (registro.planRef) return false
+  if (String(registro.categoria || '').trim().toLowerCase() === 'plan') return false
+  return true
+}
+
+function comidasRegistradasEnDia(comidas, fechaISO) {
+  return comidas.filter(
+    (c) => fechaSoloDia(c.fecha) === fechaISO && esComidaRegistradaManualmente(c),
+  )
+}
+
 export default function Inicio() {
   const { user, isConfigured } = useAuth()
   const { profile } = useMyProfile()
@@ -180,6 +194,10 @@ export default function Inicio() {
   const diasSemana = useMemo(() => getSemanaDe(anclaSemana), [anclaSemana])
 
   useEffect(() => {
+    if (diaEnVista > hoy) setDiaEnVista(hoy)
+  }, [hoy, diaEnVista])
+
+  useEffect(() => {
     setBarrasAnimadas(false)
     const t = setTimeout(() => setBarrasAnimadas(true), 160)
     return () => clearTimeout(t)
@@ -206,7 +224,10 @@ export default function Inicio() {
   }, [diaEnVista])
 
   const ejerciciosDelDia = ejercicios.filter((e) => fechaSoloDia(e.fecha) === diaEnVista)
-  const comidasDelDia = comida.filter((c) => fechaSoloDia(c.fecha) === diaEnVista)
+  const comidasDelDia = comidasRegistradasEnDia(comida, diaEnVista)
+  const comidasPlanDelDia = comida.filter(
+    (c) => fechaSoloDia(c.fecha) === diaEnVista && !esComidaRegistradaManualmente(c),
+  )
   const suplementosDelDia = suplementos.find((s) => fechaSoloDia(s.fecha) === diaEnVista)?.items ?? []
   const suplementosActivos = Array.isArray(config?.suplementosActivos)
     ? config.suplementosActivos
@@ -324,7 +345,10 @@ export default function Inicio() {
     hoy
   )
 
-  const fechasConComida = useMemo(() => new Set(comida.map((c) => fechaSoloDia(c.fecha))), [comida])
+  const fechasConComida = useMemo(
+    () => new Set(comida.filter(esComidaRegistradaManualmente).map((c) => fechaSoloDia(c.fecha))),
+    [comida],
+  )
   const fechasConEjercicio = useMemo(
     () =>
       new Set([
@@ -336,7 +360,7 @@ export default function Inicio() {
 
   const caloriasPorDiaSemana = diasSemana.map((f) => ({
     fecha: f,
-    cal: comida.filter((c) => fechaSoloDia(c.fecha) === f).reduce((s, r) => s + (Number(r.calorias) || 0), 0),
+    cal: comidasRegistradasEnDia(comida, f).reduce((s, r) => s + (Number(r.calorias) || 0), 0),
     quemadas: quemadasEnFecha(ejercicios, registrosRutina, f, pesoCfg),
   }))
   const maxGrafico = Math.max(1, ...caloriasPorDiaSemana.flatMap((d) => [d.cal, d.quemadas]))
@@ -362,6 +386,7 @@ export default function Inicio() {
   }
 
   const seleccionarDia = (fecha) => {
+    if (fecha > hoy) return
     setDiaEnVista(fecha)
     setAnclaSemana(fecha)
   }
@@ -463,6 +488,8 @@ export default function Inicio() {
                   type="button"
                   className={`inicio-week-day${sel ? ' is-selected' : ''}${esHoy ? ' is-today' : ''}${futuro ? ' is-future' : ''}`}
                   onClick={() => seleccionarDia(fecha)}
+                  disabled={futuro}
+                  aria-disabled={futuro}
                 >
                   <span className="inicio-week-day-name">
                     {esHoy ? `HOY • ${DIAS_CORTO[i]}` : DIAS_CORTO[i]}
@@ -481,7 +508,12 @@ export default function Inicio() {
         <div className="inicio-kpi-grid">
           <article className="box inicio-kpi-card">
             <div className="inicio-kpi-top">
-              <p className="inicio-kpi-label">Calorías consumidas</p>
+              <p className="inicio-kpi-label">
+                Calorías consumidas
+                {diaEnVista !== hoy ? (
+                  <span className="inicio-kpi-day-ref"> · {etiquetaDiaComidas}</span>
+                ) : null}
+              </p>
               <span className="inicio-kpi-icon inicio-kpi-icon--blue" aria-hidden>🥣</span>
             </div>
             <p className="inicio-kpi-value">
@@ -628,12 +660,15 @@ export default function Inicio() {
                     : pctQuem > 0
                       ? `${Math.max(pctQuem, 10)}%`
                       : undefined
+                  const esFuturo = d.fecha > hoy
                   return (
                     <button
                       key={d.fecha}
                       type="button"
-                      className={`inicio-week-chart-col${sel ? ' is-selected' : ''}${esHoy ? ' is-today' : ''}`}
+                      className={`inicio-week-chart-col${sel ? ' is-selected' : ''}${esHoy ? ' is-today' : ''}${esFuturo ? ' is-future' : ''}`}
                       onClick={() => seleccionarDia(d.fecha)}
+                      disabled={esFuturo}
+                      aria-disabled={esFuturo}
                     >
                       <span className="inicio-week-chart-val">
                         {sel && d.cal > 0 ? formatK(d.cal) : '\u00A0'}
@@ -679,8 +714,15 @@ export default function Inicio() {
               </div>
               {comidasAgrupadas.length === 0 ? (
                 <p className="is-size-7 has-text-grey mb-0 mt-3">
-                  Sin comidas este día.{' '}
+                  Sin comidas registradas este día.{' '}
                   <Link to="/comida">Registrar ahora</Link>
+                  {comidasPlanDelDia.length > 0 ? (
+                    <>
+                      {' '}
+                      Tenés {comidasPlanDelDia.length} marca{comidasPlanDelDia.length === 1 ? '' : 's'} del plan
+                      alimenticio; acá solo sumamos lo que cargás en Comida.
+                    </>
+                  ) : null}
                 </p>
               ) : (
                 <ul className="inicio-meals-list">

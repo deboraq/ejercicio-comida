@@ -10,6 +10,7 @@ export default function OfflineStatusBanner() {
   const [online, setOnline] = useState(() => isAppOnline())
   const [pendingKeys, setPendingKeys] = useState(() => getOfflineQueuePendingCount())
   const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState(null)
 
   useEffect(() => {
     const onStatus = (e) => {
@@ -17,6 +18,8 @@ export default function OfflineStatusBanner() {
       if (typeof d.online === 'boolean') setOnline(d.online)
       if (typeof d.pendingKeys === 'number') setPendingKeys(d.pendingKeys)
       if (typeof d.syncing === 'boolean') setSyncing(d.syncing)
+      if (d.flushError != null) setSyncError(d.flushError || null)
+      if (d.lastFlush && !d.flushError) setSyncError(null)
     }
     const onOnline = () => setOnline(true)
     const onOffline = () => setOnline(false)
@@ -33,10 +36,12 @@ export default function OfflineStatusBanner() {
     }
   }, [])
 
-  if (online && pendingKeys === 0 && !syncing) return null
+  if (online && pendingKeys === 0 && !syncing && !syncError) return null
 
   let message = ''
-  if (!online) {
+  if (syncError) {
+    message = `No se pudo sincronizar con tu cuenta: ${syncError}. Revisá internet o iniciá sesión de nuevo.`
+  } else if (!online) {
     message =
       pendingKeys > 0
         ? `Sin conexión · ${pendingKeys} cambio${pendingKeys === 1 ? '' : 's'} guardado${pendingKeys === 1 ? '' : 's'} en el teléfono. Se subirán solos al volver internet.`

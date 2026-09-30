@@ -22,16 +22,18 @@ export function isPrimitiveStorageArray(arr) {
   return typeof arr[0] !== 'object' || arr[0] === null
 }
 
-/** Une arrays de registros por `id` (local gana sobre nube en empate). */
-export function mergeStorageArrays(localArr = [], cloudArr = [], idKey = 'id') {
+/** Une arrays de registros por `id`; por defecto gana el segundo lote (local sobre nube). */
+export function mergeStorageArrays(localArr = [], cloudArr = [], idKey = 'id', cloudWinsOnConflict = false) {
   const local = Array.isArray(localArr) ? localArr : []
   const cloud = Array.isArray(cloudArr) ? cloudArr : []
 
   const hasObjectIds = (arr) => arr.some((x) => x && typeof x === 'object' && x[idKey] != null)
   if (isPrimitiveStorageArray(local) && isPrimitiveStorageArray(cloud) && !hasObjectIds(local) && !hasObjectIds(cloud)) {
+    const first = cloudWinsOnConflict ? local : cloud
+    const second = cloudWinsOnConflict ? cloud : local
     const seen = new Set()
     const merged = []
-    for (const item of [...cloud, ...local]) {
+    for (const item of [...first, ...second]) {
       const key = String(item)
       if (seen.has(key)) continue
       seen.add(key)
@@ -41,10 +43,12 @@ export function mergeStorageArrays(localArr = [], cloudArr = [], idKey = 'id') {
   }
 
   const byId = new Map()
-  for (const item of cloud) {
+  const firstPass = cloudWinsOnConflict ? local : cloud
+  const secondPass = cloudWinsOnConflict ? cloud : local
+  for (const item of firstPass) {
     if (item && item[idKey] != null) byId.set(String(item[idKey]), item)
   }
-  for (const item of local) {
+  for (const item of secondPass) {
     if (item && item[idKey] != null) byId.set(String(item[idKey]), item)
   }
   const merged = [...byId.values()]
