@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useStorage } from '../hooks/useStorage'
 import {
   caloriasEjercicioRegistro,
@@ -93,6 +94,7 @@ export default function Ejercicios() {
   const [histLimit, setHistLimit] = useState(7)
   const [diasExpandidos, setDiasExpandidos] = useState(() => new Set())
   const [formAbierto, setFormAbierto] = useState(false)
+  const extrasDetailsRef = useRef(null)
 
   useEffect(() => {
     if (!tipoAdmiteKilometros(tipo) && modoMedida === 'km') setModoMedida('minutos')
@@ -104,11 +106,19 @@ export default function Ejercicios() {
 
   useEffect(() => {
     if (!formAbierto) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const onKey = (ev) => {
       if (ev.key === 'Escape') cerrarFormulario()
     }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    if (extrasDetailsRef.current) {
+      extrasDetailsRef.current.open = window.matchMedia('(min-width: 769px)').matches
+    }
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.removeEventListener('keydown', onKey)
+    }
   }, [formAbierto])
 
   const pesoKg = config?.pesoKg || 70
@@ -648,8 +658,7 @@ export default function Ejercicios() {
         </div>
       </div>
 
-      {/* Modal Nuevo / Editar */}
-      {formAbierto && (
+      {formAbierto && typeof document !== 'undefined' && createPortal(
         <div className="ej-modal" role="dialog" aria-modal="true" aria-labelledby="ej-modal-title">
           <button type="button" className="ej-modal-backdrop" aria-label="Cerrar" onClick={cerrarFormulario} />
           <div className="ej-modal-panel">
@@ -671,9 +680,10 @@ export default function Ejercicios() {
             </div>
 
             <form onSubmit={agregar} className="ej-form">
+              <div className="ej-form-body">
               <div className="ej-form-grid">
                 <div className="ej-form-col">
-                  <div className="field">
+                  <div className="field ej-form-field--fecha">
                     <label className="ej-form-label" htmlFor="ej-fecha">Fecha</label>
                     <div className="control">
                       <input
@@ -686,7 +696,7 @@ export default function Ejercicios() {
                     </div>
                   </div>
 
-                  <div className="field">
+                  <div className="field ej-form-field--nombre">
                     <label className="ej-form-label" htmlFor="ej-nombre">Nombre del ejercicio</label>
                     <div className="control">
                       <input
@@ -703,7 +713,7 @@ export default function Ejercicios() {
                     <p className="ej-form-suggest mb-0">Sugerencia rápida: Tenis, Calistenia, Spinning, Boxeo.</p>
                   </div>
 
-                  <div className="field">
+                  <div className="field ej-form-field--tipo">
                     <label className="ej-form-label" htmlFor="ej-tipo">Tipo de actividad</label>
                     <div className="control">
                       <div className="select is-fullwidth">
@@ -730,8 +740,8 @@ export default function Ejercicios() {
                 </div>
 
                 <div className="ej-form-col">
-                  {tipoAdmiteKilometros(tipo) ? (
-                    <div className="field">
+                  {tipoAdmiteKilometros(tipo) && (
+                    <div className="field ej-form-field--medida">
                       <label className="ej-form-label">Medida</label>
                       <div className="ti-segmented ej-medida-seg">
                         <button
@@ -750,16 +760,9 @@ export default function Ejercicios() {
                         </button>
                       </div>
                     </div>
-                  ) : (
-                    <div className="field">
-                      <label className="ej-form-label">Medida</label>
-                      <div className="ti-segmented ej-medida-seg">
-                        <button type="button" className="is-active">Minutos</button>
-                      </div>
-                    </div>
                   )}
 
-                  <div className="field">
+                  <div className="field ej-form-field--duracion">
                     <label className="ej-form-label" htmlFor="ej-duracion">
                       {tipoAdmiteKilometros(tipo) && modoMedida === 'km' ? 'Distancia (km)' : 'Duración (min)'}
                     </label>
@@ -777,60 +780,62 @@ export default function Ejercicios() {
                         />
                       </div>
                     ) : (
-                      <>
-                        <p className="ej-form-step-hint mb-1">+15 min por clic</p>
-                        <div className="ej-duracion-stepper">
-                          <input
-                            id="ej-duracion"
-                            className="input"
-                            type="number"
-                            min="1"
-                            value={duracion}
-                            onChange={(e) => setDuracion(e.target.value)}
-                            placeholder="30"
-                          />
-                          <button type="button" className="ej-step-btn" onClick={() => ajustarDuracion(-15)} aria-label="Restar 15 min">−</button>
-                          <button type="button" className="ej-step-btn" onClick={() => ajustarDuracion(15)} aria-label="Sumar 15 min">+</button>
-                        </div>
-                      </>
+                      <div className="ej-duracion-stepper">
+                        <input
+                          id="ej-duracion"
+                          className="input"
+                          type="number"
+                          min="1"
+                          value={duracion}
+                          onChange={(e) => setDuracion(e.target.value)}
+                          placeholder="30"
+                        />
+                        <button type="button" className="ej-step-btn" onClick={() => ajustarDuracion(-15)} aria-label="Restar 15 min">−</button>
+                        <button type="button" className="ej-step-btn" onClick={() => ajustarDuracion(15)} aria-label="Sumar 15 min">+</button>
+                      </div>
                     )}
                   </div>
 
-                  <div className="field">
-                    <div className="ej-kcal-label-row">
-                      <label className="ej-form-label mb-0" htmlFor="ej-kcal">Kcal manual (opcional)</label>
-                      {kcalEstimadasPreview != null && (
-                        <span className="ej-kcal-badge">~{kcalEstimadasPreview} kcal estimadas</span>
-                      )}
+                  <details ref={extrasDetailsRef} className="ej-form-details ej-form-field--extras">
+                    <summary className="ej-form-details-summary">Kcal y notas (opcional)</summary>
+                    <div className="ej-form-details-body">
+                      <div className="field">
+                        <div className="ej-kcal-label-row">
+                          <label className="ej-form-label mb-0" htmlFor="ej-kcal">Kcal manual</label>
+                          {kcalEstimadasPreview != null && (
+                            <span className="ej-kcal-badge">~{kcalEstimadasPreview} kcal estimadas</span>
+                          )}
+                        </div>
+                        <div className="control">
+                          <input
+                            id="ej-kcal"
+                            className="input"
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={caloriasManual}
+                            onChange={(e) => setCaloriasManual(e.target.value)}
+                            placeholder="Reemplaza el cálculo automático"
+                          />
+                        </div>
+                      </div>
+                      <div className="field ej-form-notas mb-0">
+                        <label className="ej-form-label" htmlFor="ej-notas">Notas</label>
+                        <div className="control">
+                          <textarea
+                            id="ej-notas"
+                            className="textarea"
+                            rows={2}
+                            value={notas}
+                            onChange={(e) => setNotas(e.target.value)}
+                            placeholder="Intensidad, cómo te sentiste, sets..."
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="control">
-                      <input
-                        id="ej-kcal"
-                        className="input"
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={caloriasManual}
-                        onChange={(e) => setCaloriasManual(e.target.value)}
-                        placeholder="Reemplaza el cálculo automático"
-                      />
-                    </div>
-                  </div>
+                  </details>
                 </div>
               </div>
-
-              <div className="field ej-form-notas">
-                <label className="ej-form-label" htmlFor="ej-notas">Notas (opcional)</label>
-                <div className="control">
-                  <textarea
-                    id="ej-notas"
-                    className="textarea"
-                    rows={3}
-                    value={notas}
-                    onChange={(e) => setNotas(e.target.value)}
-                    placeholder="Intensidad, cómo te sentiste, sets, sensaciones..."
-                  />
-                </div>
               </div>
 
               <div className="ej-form-actions">
@@ -843,7 +848,8 @@ export default function Ejercicios() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </section>
   )
