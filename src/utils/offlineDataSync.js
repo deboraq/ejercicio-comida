@@ -75,6 +75,11 @@ export function getOfflineQueuePendingCount() {
   return n
 }
 
+export function hasPendingCloudWrite(userId, key) {
+  if (!userId || key == null) return false
+  return pendingByUser.get(userId)?.has(key) ?? false
+}
+
 /** Encola o sube un valor de user_data (localStorage ya actualizado en useStorage). */
 export function scheduleCloudPersist(userId, key, value) {
   if (!userId || key == null) return

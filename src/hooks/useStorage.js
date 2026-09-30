@@ -11,14 +11,17 @@ import { mergeCloudAndLocal, shouldUploadMerged, isStorageInitial } from '../uti
 import { normalizarSuplementosPorDia } from '../utils/suplementosStorage'
 import { normalizarHidratacionPorDia, mergeHidratacionPorDia } from '../utils/hidratacionStorage'
 import { isStorageKeyHydrated, markStorageKeyHydrated } from '../utils/storageHydration'
+import { dedupeRutinasPropias } from '../utils/rutinasStorage'
+import { isAppOnline, scheduleCloudPersist, hasPendingCloudWrite } from '../utils/offlineDataSync'
 import {
   fetchAllUserDataCloud,
   getUserDataCloudMap,
   patchUserDataCloudCache,
   queueUserDataPersist,
   userDataCloudCached,
+  USER_DATA_CLOUD_REFRESH,
+  didLastCloudFetchSucceed,
 } from '../utils/userDataCloud'
-import { isAppOnline, scheduleCloudPersist } from '../utils/offlineDataSync'
 
 function mergeLocalWithLive(key, fromLs, fromLive, initial) {
   if (Array.isArray(initial)) {
@@ -57,22 +60,25 @@ function normalizeStoredValue(key, normalizedRaw, initial) {
   return normalizedRaw
 }
 
-function resolveMergedValue(userId, key, initial, cloudMap, localValRef) {
+function resolveMergedValue(userId, key, initial, cloudMap, localValRef, preferCloud = false) {
   const fromLs = resolveUserLocalStorage(key, userId, initial, mergeStorageArrays)
   const fromLive = normalizeStorageValue(localValRef.current, initial)
-  const localNorm = mergeLocalWithLive(key, fromLs, fromLive, initial)
+  const localNorm = preferCloud
+    ? fromLs
+    : mergeLocalWithLive(key, fromLs, fromLive, initial)
   const fromCloud = normalizeStorageValue(
     cloudMap[key] != null ? cloudMap[key] : null,
     initial,
   )
   const cloudRowExists = Object.prototype.hasOwnProperty.call(cloudMap, key)
 
-  let resolved = mergeCloudAndLocal(key, localNorm, fromCloud, initial)
+  let resolved = mergeCloudAndLocal(key, localNorm, fromCloud, initial, preferCloud)
 
-  if (key === 'hidratacionDia' && !isStorageInitial(fromLive, initial)) {
+  if (!preferCloud && key === 'hidratacionDia' && !isStorageInitial(fromLive, initial)) {
     resolved = mergeHidratacionPorDia(resolved, fromLive)
   } else if (
-    initial !== null
+    !preferCloud
+    && initial !== null
     && typeof initial === 'object'
     && !Array.isArray(initial)
     && !isStorageInitial(fromLive, initial)
@@ -83,7 +89,16 @@ function resolveMergedValue(userId, key, initial, cloudMap, localValRef) {
     resolved = { ...base, ...live }
   }
 
+  resolved = postProcessStorageKey(key, resolved, initial)
+
   return { resolved, fromCloud, cloudRowExists }
+}
+
+function postProcessStorageKey(key, resolved, initial) {
+  if (key === 'rutinas' && Array.isArray(initial) && Array.isArray(resolved)) {
+    return dedupeRutinasPropias(resolved)
+  }
+  return resolved
 }
 
 function persistUserData(userId, key, value) {
@@ -146,7 +161,7 @@ export function useStorage(key, initialValue) {
       markStorageKeyHydrated(user.id, key)
     }
 
-    const load = async () => {
+    const load = async ({ preferCloud = false, skipUpload = false } = {}) => {
       let cloudMap = Object.create(null)
       if (isAppOnline()) {
         cloudMap = await fetchAllUserDataCloud(user.id)
@@ -155,15 +170,35 @@ export function useStorage(key, initialValue) {
       }
       if (cancelled) return
 
+      const pendingLocal = hasPendingCloudWrite(user.id, key)
+      const cloudHasRow = Object.prototype.hasOwnProperty.call(cloudMap, key)
+      const fromCloudPreview = normalizeStorageValue(
+        cloudMap[key] != null ? cloudMap[key] : null,
+        initial,
+      )
+      const pullRemote =
+        !alreadyHydrated
+        && didLastCloudFetchSucceed(user.id)
+        && cloudHasRow
+        && !isStorageInitial(fromCloudPreview, initial)
+      const usePreferCloud = (preferCloud && !pendingLocal) || pullRemote
+
       const { resolved, fromCloud, cloudRowExists } = resolveMergedValue(
         user.id,
         key,
         initial,
         cloudMap,
         localValRef,
+        usePreferCloud,
       )
 
-      if (!alreadyHydrated && shouldUploadMerged(key, resolved, fromCloud, initial, cloudRowExists)) {
+      if (
+        !skipUpload
+        && !alreadyHydrated
+        && !usePreferCloud
+        && didLastCloudFetchSucceed(user.id)
+        && shouldUploadMerged(key, resolved, fromCloud, initial, cloudRowExists)
+      ) {
         queueUserDataPersist(user.id, key, resolved)
       }
 
@@ -179,8 +214,16 @@ export function useStorage(key, initialValue) {
     }
 
     load()
+
+    const onCloudRefresh = (event) => {
+      if (event?.detail?.userId !== user.id) return
+      load({ preferCloud: true, skipUpload: true }).catch(() => {})
+    }
+    window.addEventListener(USER_DATA_CLOUD_REFRESH, onCloudRefresh)
+
     return () => {
       cancelled = true
+      window.removeEventListener(USER_DATA_CLOUD_REFRESH, onCloudRefresh)
     }
   }, [user?.id, isConfigured, key, initial, setLocalVal])
 
@@ -192,21 +235,22 @@ export function useStorage(key, initialValue) {
           : nextValueOrFn
       const normalizedRaw = normalizeStorageValue(next, initial)
       const normalized = normalizeStoredValue(key, normalizedRaw, initial)
-      setLocalVal(normalized)
-      localValRef.current = normalized
-      setCloudVal(normalized)
+      const normalizedFinal = postProcessStorageKey(key, normalized, initial)
+      setLocalVal(normalizedFinal)
+      localValRef.current = normalizedFinal
+      setCloudVal(normalizedFinal)
       markStorageKeyHydrated(user?.id, key)
 
       if (user?.id) {
         markLegacyStorageOwner(user.id)
-        patchUserDataCloudCache(user.id, key, normalized)
+        patchUserDataCloudCache(user.id, key, normalizedFinal)
       }
 
       if (user && isConfigured && supabase && cloudReady) {
         pendingCloudPersistRef.current = null
-        persistUserData(user.id, key, normalized)
+        persistUserData(user.id, key, normalizedFinal)
       } else if (user && isConfigured && supabase) {
-        pendingCloudPersistRef.current = normalized
+        pendingCloudPersistRef.current = normalizedFinal
       }
     },
     [user?.id, isConfigured, key, initial, setLocalVal, cloudReady],

@@ -12,35 +12,60 @@ export function isStorageInitial(value, initial) {
   }
 }
 
-function mergePlainObjects(cloudObj, localObj, initial) {
+function mergePlainObjects(cloudObj, localObj, initial, preferCloud = false) {
   const cloud = cloudObj && typeof cloudObj === 'object' && !Array.isArray(cloudObj) ? cloudObj : initial
   const local = localObj && typeof localObj === 'object' && !Array.isArray(localObj) ? localObj : initial
   if (isStorageInitial(local, initial)) return cloud
-  return { ...cloud, ...local }
+  if (isStorageInitial(cloud, initial)) return local
+  return preferCloud ? { ...local, ...cloud } : { ...cloud, ...local }
 }
 
-/** Une local + nube según tipo de dato; la nube manda si el local está vacío o es el valor inicial. */
-export function mergeCloudAndLocal(key, localNorm, fromCloud, initial) {
-  if (Array.isArray(initial)) {
-    const localArr = Array.isArray(localNorm) ? localNorm : []
-    const cloudArr = Array.isArray(fromCloud) ? fromCloud : []
-    if (isStorageInitial(localArr, initial) && cloudArr.length > 0) return cloudArr
-    if (cloudArr.length === 0 && localArr.length > 0) return localArr
+function mergeArraysForKey(key, localArr, cloudArr, preferCloud) {
+  const cloudWins = Boolean(preferCloud)
+  if (preferCloud) {
     if (key === 'pesoHistorial') {
-      return normalizarPesoHistorial(mergeStorageArrays(localArr, cloudArr))
+      return normalizarPesoHistorial(mergeStorageArrays(localArr, cloudArr, 'id', cloudWins))
     }
     if (key === 'medidasHistorial') {
-      return normalizarMedidasHistorial(mergeStorageArrays(localArr, cloudArr))
+      return normalizarMedidasHistorial(mergeStorageArrays(localArr, cloudArr, 'id', cloudWins))
     }
     if (key === 'suplementos') {
       return normalizarSuplementosPorDia(
         mergeStorageArrays(
           normalizarSuplementosPorDia(localArr),
           normalizarSuplementosPorDia(cloudArr),
+          'id',
+          cloudWins,
         ),
       )
     }
-    return mergeStorageArrays(localArr, cloudArr)
+    return mergeStorageArrays(localArr, cloudArr, 'id', cloudWins)
+  }
+  if (key === 'pesoHistorial') {
+    return normalizarPesoHistorial(mergeStorageArrays(localArr, cloudArr))
+  }
+  if (key === 'medidasHistorial') {
+    return normalizarMedidasHistorial(mergeStorageArrays(localArr, cloudArr))
+  }
+  if (key === 'suplementos') {
+    return normalizarSuplementosPorDia(
+      mergeStorageArrays(
+        normalizarSuplementosPorDia(localArr),
+        normalizarSuplementosPorDia(cloudArr),
+      ),
+    )
+  }
+  return mergeStorageArrays(localArr, cloudArr)
+}
+
+/** Une local + nube según tipo de dato; la nube manda si el local está vacío o es el valor inicial. */
+export function mergeCloudAndLocal(key, localNorm, fromCloud, initial, preferCloud = false) {
+  if (Array.isArray(initial)) {
+    const localArr = Array.isArray(localNorm) ? localNorm : []
+    const cloudArr = Array.isArray(fromCloud) ? fromCloud : []
+    if (isStorageInitial(localArr, initial) && cloudArr.length > 0) return cloudArr
+    if (cloudArr.length === 0 && localArr.length > 0) return localArr
+    return mergeArraysForKey(key, localArr, cloudArr, preferCloud)
   }
 
   if (initial !== null && typeof initial === 'object') {
@@ -48,9 +73,12 @@ export function mergeCloudAndLocal(key, localNorm, fromCloud, initial) {
       const cloudMap = normalizarHidratacionPorDia(fromCloud)
       const localMap = normalizarHidratacionPorDia(localNorm)
       if (isStorageInitial(localMap, initial) && Object.keys(cloudMap).length > 0) return cloudMap
+      if (preferCloud && Object.keys(cloudMap).length > 0) {
+        return mergeHidratacionPorDia(localMap, cloudMap)
+      }
       return mergeHidratacionPorDia(cloudMap, localMap)
     }
-    return mergePlainObjects(fromCloud, localNorm, initial)
+    return mergePlainObjects(fromCloud, localNorm, initial, preferCloud)
   }
 
   return fromCloud ?? localNorm
