@@ -1,6 +1,7 @@
 import { mergeStorageArrays } from '../hooks/useLocalStorage'
 import { normalizarHidratacionPorDia, mergeHidratacionPorDia } from './hidratacionStorage'
 import { dedupeRegistrosSync } from './storageRecordDedupe'
+import { dedupeRegistrosPorPlanRef, slotKeyDesdeCheckKey } from './planRegistroSync'
 import { normalizarPesoHistorial } from './pesoStorage'
 import { normalizarMedidasHistorial } from './medidasStorage'
 import { normalizarSuplementosPorDia } from './suplementosStorage'
@@ -11,6 +12,41 @@ export function isStorageInitial(value, initial) {
   } catch {
     return false
   }
+}
+
+function normalizePlanMes1ChecksOnePerSlot(estado) {
+  if (!estado || typeof estado !== 'object') return estado
+  const checks = { ...(estado.checks || {}) }
+  const pickedBySlot = new Map()
+  for (const [key, val] of Object.entries(checks)) {
+    if (!val) continue
+    const slotKey = slotKeyDesdeCheckKey(key)
+    if (!slotKey) continue
+    if (!pickedBySlot.has(slotKey)) pickedBySlot.set(slotKey, key)
+    else delete checks[key]
+  }
+  return { ...estado, checks }
+}
+
+function mergePlanMes1Estado(localObj, cloudObj, initial, preferCloud = false) {
+  const cloud = cloudObj && typeof cloudObj === 'object' && !Array.isArray(cloudObj) ? cloudObj : initial
+  const local = localObj && typeof localObj === 'object' && !Array.isArray(localObj) ? localObj : initial
+  if (isStorageInitial(local, initial) && !isStorageInitial(cloud, initial)) {
+    return normalizePlanMes1ChecksOnePerSlot(cloud)
+  }
+  if (isStorageInitial(cloud, initial) && !isStorageInitial(local, initial)) {
+    return normalizePlanMes1ChecksOnePerSlot(local)
+  }
+  const primary = preferCloud ? cloud : local
+  const secondary = preferCloud ? local : cloud
+  const merged = {
+    ...secondary,
+    ...primary,
+    checks: { ...(secondary.checks || {}), ...(primary.checks || {}) },
+    omitidos: { ...(secondary.omitidos || {}), ...(primary.omitidos || {}) },
+    extras: { ...(secondary.extras || {}), ...(primary.extras || {}) },
+  }
+  return normalizePlanMes1ChecksOnePerSlot(merged)
 }
 
 function mergePlainObjects(cloudObj, localObj, initial, preferCloud = false) {
@@ -68,12 +104,18 @@ export function mergeCloudAndLocal(key, localNorm, fromCloud, initial, preferClo
     const localArr = Array.isArray(localNorm) ? localNorm : []
     const cloudArr = Array.isArray(fromCloud) ? fromCloud : []
     if (isStorageInitial(localArr, initial) && cloudArr.length > 0) {
+      if (key === 'comida') return dedupeRegistrosPorPlanRef(dedupeRegistrosSync(key, cloudArr))
       return ARRAY_KEYS_DEDUPE.has(key) ? dedupeRegistrosSync(key, cloudArr) : cloudArr
     }
     if (cloudArr.length === 0 && localArr.length > 0) {
+      if (key === 'comida') return dedupeRegistrosPorPlanRef(dedupeRegistrosSync(key, localArr))
       return ARRAY_KEYS_DEDUPE.has(key) ? dedupeRegistrosSync(key, localArr) : localArr
     }
-    const merged = mergeArraysForKey(key, localArr, cloudArr, preferCloud)
+    let merged = mergeArraysForKey(key, localArr, cloudArr, preferCloud)
+    if (key === 'comida') {
+      merged = dedupeRegistrosPorPlanRef(dedupeRegistrosSync(key, merged))
+      return merged
+    }
     return ARRAY_KEYS_DEDUPE.has(key) ? dedupeRegistrosSync(key, merged) : merged
   }
 
@@ -88,6 +130,9 @@ export function mergeCloudAndLocal(key, localNorm, fromCloud, initial, preferClo
         return mergeHidratacionPorDia(localMap, cloudMap, 'preferSecond')
       }
       return mergeHidratacionPorDia(cloudMap, localMap, 'preferSecond')
+    }
+    if (key === 'planMes1Estado') {
+      return mergePlanMes1Estado(localNorm, fromCloud, initial, preferCloud)
     }
     return mergePlainObjects(fromCloud, localNorm, initial, preferCloud)
   }

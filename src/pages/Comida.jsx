@@ -14,6 +14,7 @@ import {
   aplicarBatchSyncPlan,
   claveCheckDesdePlanRef,
   dedupeRegistrosPorPlanRef,
+  syncPlanChecksFromRegistros,
   removeRegistroPlan,
   removeRegistrosPlanMany,
   upsertRegistroPlan,
@@ -422,6 +423,13 @@ export default function Comida() {
       return next === prev ? prev : next
     })
   }, [setRegistros])
+
+  useEffect(() => {
+    setPlanMes1Estado((prev) => {
+      const next = syncPlanChecksFromRegistros(prev, registros)
+      return next === prev ? prev : next
+    })
+  }, [registros, setPlanMes1Estado])
   const { desde, hasta } = getRangoPorPeriodo(periodo, desdeCustom, hastaCustom)
   const registrosEnRango = filtrarPorRango(registros, desde, hasta)
   const porFechaEnRango = registrosEnRango.reduce((acc, r) => {
