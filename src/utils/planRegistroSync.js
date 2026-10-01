@@ -63,21 +63,106 @@ export function claveCheckDesdePlanRef(planRef) {
   return claveComidaPlan(p.diaPlan, p.slotId, null, p.opcionIndex)
 }
 
-/** Elimina duplicados con el mismo planRef (deja el más reciente por orden en lista). */
+/** Clave de slot (día + comida) sin distinguir opción 1 / 2. */
+export function planRefSlotKey(planRef) {
+  const p = parsePlanRef(planRef)
+  if (!p) return null
+  if (p.slotId === 'extra') return `${p.diaPlan}_extra_${p.extraId}`
+  return `${p.diaPlan}_${p.slotId}`
+}
+
+export function slotKeyDesdeCheckKey(checkKey) {
+  if (!checkKey) return null
+  const s = String(checkKey)
+  const op = s.match(/^(\d+)_(.+)_op(\d+)$/)
+  if (op) return `${op[1]}_${op[2]}`
+  return s
+}
+
+/** Quita registros del plan del mismo slot (otras opciones) antes de upsert. */
+export function removeRegistrosPlanMismoSlot(registros, planRef) {
+  const p = parsePlanRef(planRef)
+  if (!p || p.slotId === 'extra') {
+    return (registros || []).filter((r) => r?.planRef !== planRef)
+  }
+  const slotKey = planRefSlotKey(planRef)
+  return (registros || []).filter((r) => {
+    if (!r?.planRef) return true
+    return planRefSlotKey(r.planRef) !== slotKey
+  })
+}
+
+export function planRefsOpcionesSlot(diaPlan, slotId, opcionesCount) {
+  const n = Math.max(0, Number(opcionesCount) || 0)
+  return Array.from({ length: n }, (_, i) => planRefRegistro(diaPlan, slotId, null, i))
+}
+
+/** Una sola opción registrada por slot del plan; gana la primera entrada (más reciente en lista). */
 export function dedupeRegistrosPorPlanRef(registros) {
   const list = Array.isArray(registros) ? registros : []
-  const seen = new Set()
+  const seenPlanRef = new Set()
+  const seenSlot = new Set()
   const out = []
   for (const r of list) {
     if (!r?.planRef) {
       out.push(r)
       continue
     }
-    if (seen.has(r.planRef)) continue
-    seen.add(r.planRef)
+    if (seenPlanRef.has(r.planRef)) continue
+    const slotKey = planRefSlotKey(r.planRef)
+    if (slotKey && seenSlot.has(slotKey)) continue
+    seenPlanRef.add(r.planRef)
+    if (slotKey) seenSlot.add(slotKey)
     out.push(r)
   }
   return out.length === list.length ? list : out
+}
+
+/** Alinea checks del plan con lo que hay en comida (evita “marcado + pendiente”). */
+export function syncPlanChecksFromRegistros(estado, registros) {
+  const base = estado && typeof estado === 'object' ? estado : { checks: {}, omitidos: {}, extras: {} }
+  const checks = { ...(base.checks || {}) }
+  let changed = false
+
+  const activosPorCheck = new Set()
+  const checkGanadorPorSlot = new Map()
+  for (const r of registros || []) {
+    if (!r?.planRef) continue
+    const checkKey = claveCheckDesdePlanRef(r.planRef)
+    const slotKey = planRefSlotKey(r.planRef)
+    if (!checkKey || !slotKey) continue
+    if (!checkGanadorPorSlot.has(slotKey)) {
+      checkGanadorPorSlot.set(slotKey, checkKey)
+      activosPorCheck.add(checkKey)
+    }
+  }
+
+  for (const key of Object.keys(checks)) {
+    if (!checks[key]) continue
+    const slotKey = slotKeyDesdeCheckKey(key)
+    const ganador = slotKey ? checkGanadorPorSlot.get(slotKey) : null
+    if (ganador) {
+      if (key !== ganador && checks[key]) {
+        delete checks[key]
+        changed = true
+      }
+      continue
+    }
+    if (!activosPorCheck.has(key)) {
+      delete checks[key]
+      changed = true
+    }
+  }
+
+  for (const key of activosPorCheck) {
+    if (!checks[key]) {
+      checks[key] = true
+      changed = true
+    }
+  }
+
+  if (!changed) return base
+  return { ...base, checks }
 }
 
 export function buildRegistroPlanEntry({
@@ -133,11 +218,10 @@ export function buildRegistroPlanEntry({
 }
 
 export function upsertRegistroPlan(registros, planRef, registro) {
-  const list = Array.isArray(registros) ? registros : []
-  const prev = list.find((r) => r.planRef === planRef)
-  const sinEste = list.filter((r) => r.planRef !== planRef)
+  const sinSlot = removeRegistrosPlanMismoSlot(registros, planRef)
+  const prev = (registros || []).find((r) => r.planRef === planRef)
   const id = prev?.id || registro.id || nuevoIdRegistro()
-  return [{ ...registro, planRef, id }, ...sinEste]
+  return [{ ...registro, planRef, id }, ...sinSlot]
 }
 
 export function removeRegistroPlan(registros, planRef) {

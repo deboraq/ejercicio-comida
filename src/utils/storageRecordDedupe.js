@@ -1,4 +1,5 @@
 import { fechaSoloDia } from './calorias'
+import { parsePlanRef, planRefSlotKey } from './planRegistroSync'
 
 function stableStringify(obj) {
   try {
@@ -23,6 +24,12 @@ export function registroSyncFingerprint(storageKey, item) {
   }
 
   if (storageKey === 'comida') {
+    if (item.planRef) {
+      const slotKey = planRefSlotKey(item.planRef)
+      if (slotKey) {
+        return `plan-slot|${fechaSoloDia(item.fecha)}|${slotKey}`
+      }
+    }
     return [
       fechaSoloDia(item.fecha),
       String(item.nombre || item.descripcion || '').trim().toLowerCase(),

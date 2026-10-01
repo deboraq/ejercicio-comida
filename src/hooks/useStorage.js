@@ -13,6 +13,7 @@ import { normalizarHidratacionPorDia, mergeHidratacionPorDia } from '../utils/hi
 import { isStorageKeyHydrated, markStorageKeyHydrated } from '../utils/storageHydration'
 import { dedupeRutinasPropias } from '../utils/rutinasStorage'
 import { dedupeRegistrosSync } from '../utils/storageRecordDedupe'
+import { dedupeRegistrosPorPlanRef } from '../utils/planRegistroSync'
 import { isAppOnline, scheduleCloudPersist, hasPendingCloudWrite } from '../utils/offlineDataSync'
 import {
   fetchAllUserDataCloud,
@@ -99,8 +100,11 @@ function postProcessStorageKey(key, resolved, initial) {
   if (key === 'rutinas' && Array.isArray(initial) && Array.isArray(resolved)) {
     return dedupeRutinasPropias(resolved)
   }
+  if (key === 'comida' && Array.isArray(initial) && Array.isArray(resolved)) {
+    return dedupeRegistrosPorPlanRef(dedupeRegistrosSync(key, resolved))
+  }
   if (
-    (key === 'ejercicios' || key === 'comida' || key === 'rutinaPesos')
+    (key === 'ejercicios' || key === 'rutinaPesos')
     && Array.isArray(initial)
     && Array.isArray(resolved)
   ) {

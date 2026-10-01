@@ -713,8 +713,8 @@ export default function MiPlanKanban({
           const activo = i === opIndex
           if (activo) {
             checks[k] = true
-          } else if (checks[k]) {
-            checks[k] = false
+          } else {
+            if (checks[k]) checks[k] = false
             syncOps.push(
               payloadSyncPlanToggle({
                 diaPlan,
@@ -919,10 +919,14 @@ export default function MiPlanKanban({
   const handleEditarEnRegistroHoy = (diaPlan, slot, texto, opcionLabel, opIdx = 0) => {
     const key = claveComidaPlan(diaPlan, slot.id, null, opIdx)
     if (!isChecked(diaPlan, slot.id, null, opIdx)) {
-      patchEstado((prev) => ({
-        ...prev,
-        checks: { ...(prev?.checks || {}), [key]: true },
-      }))
+      patchEstado((prev) => {
+        const checks = { ...(prev?.checks || {}) }
+        for (let i = 0; i < (slot.opciones || []).length; i += 1) {
+          const k = claveComidaPlan(diaPlan, slot.id, null, i)
+          checks[k] = i === opIdx
+        }
+        return { ...prev, checks }
+      })
     }
 
     if (onSyncPlanRegistro && inicio) {
