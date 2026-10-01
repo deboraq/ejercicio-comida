@@ -52,8 +52,18 @@ export function mergeStorageArrays(localArr = [], cloudArr = [], idKey = 'id', c
     if (item && item[idKey] != null) byId.set(String(item[idKey]), item)
   }
   const merged = [...byId.values()]
+  const seenNoId = new Set()
   for (const item of [...local, ...cloud]) {
-    if (!item || item[idKey] == null) merged.push(item)
+    if (!item || item[idKey] != null) continue
+    let sig
+    try {
+      sig = JSON.stringify(item)
+    } catch {
+      sig = String(item)
+    }
+    if (seenNoId.has(sig)) continue
+    seenNoId.add(sig)
+    merged.push(item)
   }
   return merged
 }

@@ -6,7 +6,7 @@ import {
   parseCargaMediaKg,
   nombresEjercicioCoinciden,
 } from '../utils/rutinaEjercicioDia'
-import { caloriasQuemadasRegistroRutina } from '../utils/calorias'
+import { caloriasQuemadasRegistroRutina, caloriasQuemadasRegistrosRutina } from '../utils/calorias'
 
 const RPE_OPTS = [6, 7, 8, 9, 10]
 
@@ -382,10 +382,7 @@ export default function SesionRegistroTitanium({
   }).length
 
   const pct = planItems.length > 0 ? Math.round((hechosCount / planItems.length) * 100) : 0
-  const kcalSesion = (registrosDeEstaSesion || []).reduce(
-    (s, r) => s + caloriasQuemadasRegistroRutina(r, pesoCfg),
-    0
-  )
+  const kcalSesion = caloriasQuemadasRegistrosRutina(registrosDeEstaSesion, pesoCfg)
 
   const patchDraft = (nombre, serieNum, patch) => {
     const key = `${nombre}::${serieNum}`

@@ -1,7 +1,14 @@
 import { normalizeStorageValue } from '../hooks/useLocalStorage'
+import { mergeCloudAndLocal } from './storageMerge'
+import { isSessionLostUnexpectedly } from './authSessionUi'
 
 /** Marca qué usuario dejó datos en claves legacy (sin prefijo) en este navegador. */
 export const LEGACY_STORAGE_OWNER_KEY = 'fp.storageOwnerUserId'
+
+/** Datos sin sesión iniciada (no mezclar con cuentas al loguearse). */
+export const GUEST_STORAGE_USER_ID = '__guest__'
+
+const LEGACY_GUEST_MIGRATED_KEY = 'fp.legacyGuestMigratedV1'
 
 /** Claves persistidas vía useStorage (para aislar legacy por usuario). */
 export const APP_STORAGE_LOGICAL_KEYS = [
@@ -31,11 +38,11 @@ export const APP_STORAGE_LOGICAL_KEYS = [
   'inicioAccesosFavoritos',
 ]
 
-/** Clave localStorage por usuario; sin sesión se usa la clave lógica (modo offline). */
+/** Clave localStorage por usuario; sin sesión → namespace invitado (no claves sueltas). */
 export function scopedStorageKey(logicalKey, userId) {
   if (!logicalKey) return logicalKey
-  if (!userId) return logicalKey
-  return `ud:${userId}:${logicalKey}`
+  const scope = userId || GUEST_STORAGE_USER_ID
+  return `ud:${scope}:${logicalKey}`
 }
 
 export function readLegacyStorageOwner() {
@@ -87,8 +94,6 @@ export function markLegacyStorageOwner(newUserId) {
     const prev = readLegacyStorageOwner()
     if (prev && prev !== newUserId) {
       sealLegacyStorageForUser(prev)
-    } else if (prev == null) {
-      moveLegacyKeyToScopedForUser(newUserId)
     }
     window.localStorage.setItem(LEGACY_STORAGE_OWNER_KEY, newUserId)
   } catch {
@@ -96,20 +101,53 @@ export function markLegacyStorageOwner(newUserId) {
   }
 }
 
-/** Solo cuando no había dueño: reclamar legacy huérfano para este usuario (mismo dispositivo, una cuenta). */
-function moveLegacyKeyToScopedForUser(userId) {
-  if (!userId) return
-  let hadLegacy = false
+/**
+ * Mueve claves sueltas (formato viejo) al namespace invitado.
+ * Evita que la siguiente cuenta que inicie sesión absorba datos ajenos.
+ */
+function inferStorageInitial(a, b) {
+  const sample = a ?? b
+  if (Array.isArray(sample)) return []
+  if (sample !== null && typeof sample === 'object') return {}
+  return null
+}
+
+/** Tras cerrarse la sesión sin aviso: recuperar lo guardado como invitado en la cuenta correcta. */
+export function mergeGuestStorageIntoUserIfSessionLost(userId) {
+  if (!userId || !isSessionLostUnexpectedly()) return
   for (const key of APP_STORAGE_LOGICAL_KEYS) {
+    const guestKey = scopedStorageKey(key, null)
+    const guestVal = readJsonKey(guestKey, null)
+    if (guestVal == null) continue
+    const userKey = scopedStorageKey(key, userId)
+    const userVal = readJsonKey(userKey, null)
+    const initial = inferStorageInitial(guestVal, userVal)
+    const merged = mergeCloudAndLocal(key, guestVal, userVal, initial, false)
     try {
-      if (window.localStorage.getItem(key) != null) hadLegacy = true
+      window.localStorage.setItem(userKey, JSON.stringify(merged))
+      window.localStorage.removeItem(guestKey)
     } catch {
-      /* ignore */
+      /* noop */
     }
   }
-  if (!hadLegacy) return
+}
+
+export function migrateUnscopedLegacyToGuest() {
+  if (typeof window === 'undefined') return
+  try {
+    if (window.localStorage.getItem(LEGACY_GUEST_MIGRATED_KEY) === '1') return
+  } catch {
+    return
+  }
+
   for (const key of APP_STORAGE_LOGICAL_KEYS) {
-    moveLegacyKeyToScoped(key, userId)
+    moveLegacyKeyToScoped(key, GUEST_STORAGE_USER_ID)
+  }
+
+  try {
+    window.localStorage.setItem(LEGACY_GUEST_MIGRATED_KEY, '1')
+  } catch {
+    /* noop */
   }
 }
 
@@ -132,7 +170,9 @@ function readJsonKey(storageKey, fallback = null) {
  */
 export function resolveUserLocalStorage(logicalKey, userId, initialValue, mergeArrays) {
   if (!userId) {
-    return normalizeStorageValue(readJsonKey(logicalKey, null), initialValue)
+    migrateUnscopedLegacyToGuest()
+    const guestKey = scopedStorageKey(logicalKey, null)
+    return normalizeStorageValue(readJsonKey(guestKey, null), initialValue)
   }
 
   const scopedKey = scopedStorageKey(logicalKey, userId)

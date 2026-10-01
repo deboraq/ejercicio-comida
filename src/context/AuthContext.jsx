@@ -5,6 +5,8 @@ import {
   markLegacyStorageOwner,
   sealLegacyStorageForUser,
   clearLegacyStorageOwner,
+  migrateUnscopedLegacyToGuest,
+  mergeGuestStorageIntoUserIfSessionLost,
 } from '../utils/storageKeys'
 import {
   fetchAllUserDataCloud,
@@ -13,6 +15,12 @@ import {
   refreshAllUserDataCloud,
 } from '../utils/userDataCloud'
 import { flushPendingCloudWrites } from '../utils/offlineDataSync'
+import {
+  clearGuestModeFlags,
+  consumeSignOutVoluntary,
+  markSessionLostUnexpectedly,
+  markSignOutVoluntary,
+} from '../utils/authSessionUi'
 
 const AuthContext = createContext(null)
 
@@ -22,11 +30,14 @@ export function AuthProvider({ children }) {
   const [authError, setAuthError] = useState(null)
   const prevUserIdRef = useRef(null)
   const cloudRefreshTimerRef = useRef(null)
+  const authBootstrapDoneRef = useRef(false)
+  const hadAuthenticatedUserRef = useRef(false)
 
-  const handleSessionUser = (u) => {
+  const handleSessionUser = async (u) => {
     const nextId = u?.id ?? null
     const prevId = prevUserIdRef.current
     if (prevId && prevId !== nextId) {
+      await flushPendingCloudWrites().catch(() => {})
       sealLegacyStorageForUser(prevId)
       invalidateUserDataCloudCache(prevId)
       invalidateAllUserDataCloudCache()
@@ -35,11 +46,24 @@ export function AuthProvider({ children }) {
       prevUserIdRef.current = nextId
     }
     if (nextId) {
+      hadAuthenticatedUserRef.current = true
+      migrateUnscopedLegacyToGuest()
+      mergeGuestStorageIntoUserIfSessionLost(nextId)
+      clearGuestModeFlags()
       markLegacyStorageOwner(nextId)
       fetchAllUserDataCloud(nextId).catch(() => {})
     } else {
       clearLegacyStorageOwner()
       if (prevId) invalidateAllUserDataCloudCache()
+      if (
+        authBootstrapDoneRef.current
+        && hadAuthenticatedUserRef.current
+        && !consumeSignOutVoluntary()
+      ) {
+        markSessionLostUnexpectedly()
+        window.dispatchEvent(new Event('fitnesspro-auth-session-lost'))
+      }
+      if (!nextId) hadAuthenticatedUserRef.current = false
     }
     setUser(u)
   }
@@ -57,12 +81,14 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    migrateUnscopedLegacyToGuest()
     if (!isSupabaseConfigured()) {
       setLoading(false)
       return
     }
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleSessionUser(session?.user ?? null)
+      authBootstrapDoneRef.current = true
       setLoading(false)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -185,6 +211,8 @@ export function AuthProvider({ children }) {
 
   const signOut = async () => {
     setAuthError(null)
+    markSignOutVoluntary()
+    await flushPendingCloudWrites().catch(() => {})
     const signingOutId = user?.id
     if (signingOutId) {
       sealLegacyStorageForUser(signingOutId)

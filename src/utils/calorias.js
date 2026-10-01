@@ -162,19 +162,84 @@ export function caloriasEjercicioRegistro(e, pesoKg = PESO_DEFAULT_KG) {
 
 /**
  * Registros de Rutina no traen minutos: estimamos ~2,5 min por serie (serie + descanso).
+ * Si hay `serieNum`, es una fila por serie (series suele ser 1). Sin `serieNum`, es bloque legacy con N series.
  * Tope por ejercicio para no inflar sesiones largas en un solo bloque.
  */
+const MINUTOS_POR_SERIE_RUTINA = 2.5
+
 export function minutosEstimadosRegistroRutina(reg) {
-  const s = Math.max(1, Math.round(Number(reg?.series)) || 1)
-  return Math.min(50, Math.max(2, Math.round(s * 2.5)))
+  const tieneSerieNum = reg?.serieNum != null && reg?.serieNum !== ''
+  const sets = tieneSerieNum
+    ? 1
+    : Math.max(1, Math.round(Number(reg?.series)) || 1)
+  const mins = sets * MINUTOS_POR_SERIE_RUTINA
+  return Math.min(50, Math.max(2, mins))
 }
 
-/** Kcal de un bloque de gimnasio: `kcalManual` si lo cargaste, si no estimación MET. */
+/** Clave para agrupar registros del mismo ejercicio en un día/sesión. */
+function claveEjercicioRegistroRutina(reg) {
+  return sinAcentos(String(reg?.ejercicio || '').trim()) || 'ejercicio'
+}
+
+/** Superserie: varios ejercicios comparten `serieNum` (= ronda), pero cada fila es un movimiento distinto → se suman todas. */
+function dedupeFilasPorSerieNum(grupo) {
+  const porSerie = grupo.filter((r) => r.serieNum != null && r.serieNum !== '')
+  if (porSerie.length === 0) return grupo
+  const map = new Map()
+  for (const r of porSerie) {
+    const sn = Number(r.serieNum)
+    if (!Number.isFinite(sn)) continue
+    map.set(sn, r)
+  }
+  return [...map.values()]
+}
+
+/**
+ * Evita duplicar kcal cuando conviven filas por serie (`serieNum`) y un bloque legacy con `series` total.
+ * Por ejercicio: si hay filas numeradas, solo esas; si no, el bloque legacy (el de más series si hay varios).
+ */
+export function registrosRutinaParaEstimacionKcal(registros) {
+  if (!registros?.length) return []
+  const porEjercicio = new Map()
+  for (const r of registros) {
+    const k = claveEjercicioRegistroRutina(r)
+    if (!porEjercicio.has(k)) porEjercicio.set(k, [])
+    porEjercicio.get(k).push(r)
+  }
+  const out = []
+  for (const grupo of porEjercicio.values()) {
+    const porSerie = grupo.filter((r) => r.serieNum != null && r.serieNum !== '')
+    if (porSerie.length > 0) {
+      out.push(...dedupeFilasPorSerieNum(porSerie))
+      continue
+    }
+    const legacy = grupo.filter((r) => r.serieNum == null || r.serieNum === '')
+    if (legacy.length <= 1) {
+      out.push(...legacy)
+      continue
+    }
+    const best = legacy.reduce((a, b) =>
+      (Number(b.series) || 0) > (Number(a.series) || 0) ? b : a,
+    )
+    out.push(best)
+  }
+  return out
+}
+
+/** Kcal de un bloque de gimnasio: `kcalManual` si lo cargaste, si no estimación MET (pesas_general ≈ 5 MET). */
 export function caloriasQuemadasRegistroRutina(reg, pesoKg = PESO_DEFAULT_KG) {
   const manual = Number(reg?.kcalManual)
   if (manual > 0) return Math.round(manual)
   const mins = minutosEstimadosRegistroRutina(reg)
   return caloriasQuemadas('pesas_general', mins, pesoKg)
+}
+
+/** Suma kcal de una lista de registros de rutina (con deduplicación por ejercicio). */
+export function caloriasQuemadasRegistrosRutina(registros, pesoKg = PESO_DEFAULT_KG) {
+  return registrosRutinaParaEstimacionKcal(registros || []).reduce(
+    (sum, r) => sum + caloriasQuemadasRegistroRutina(r, pesoKg),
+    0,
+  )
 }
 
 // Etiqueta legible para mostrar en historial (datos antiguos pueden tener "Cardio", nuevos tienen "caminata_rapida")
@@ -248,16 +313,20 @@ export function formatearFechaHoraLocal(valor) {
 
 export function caloriasQuemadasRutinaDia(registros, fechaIsoDia, pesoKg = PESO_DEFAULT_KG) {
   if (!registros?.length) return 0
-  return registros
-    .filter((r) => fechaSoloDia(r.fecha) === fechaIsoDia)
-    .reduce((sum, r) => sum + caloriasQuemadasRegistroRutina(r, pesoKg), 0)
+  const delDia = registros.filter((r) => fechaSoloDia(r.fecha) === fechaIsoDia)
+  return registrosRutinaParaEstimacionKcal(delDia).reduce(
+    (sum, r) => sum + caloriasQuemadasRegistroRutina(r, pesoKg),
+    0,
+  )
 }
 
 export function minutosRutinaDia(registros, fechaIsoDia) {
   if (!registros?.length) return 0
-  return registros
-    .filter((r) => fechaSoloDia(r.fecha) === fechaIsoDia)
-    .reduce((sum, r) => sum + minutosEstimadosRegistroRutina(r), 0)
+  const delDia = registros.filter((r) => fechaSoloDia(r.fecha) === fechaIsoDia)
+  return registrosRutinaParaEstimacionKcal(delDia).reduce(
+    (sum, r) => sum + minutosEstimadosRegistroRutina(r),
+    0,
+  )
 }
 
 /** Normaliza texto para búsqueda (minúsculas, sin tildes). */
