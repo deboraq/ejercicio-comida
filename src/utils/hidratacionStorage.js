@@ -29,15 +29,26 @@ export function actualizarVasosHidratacion(map, fecha, vasos) {
   return { ...base, [fecha]: n }
 }
 
-/** Por día gana el mayor número de vasos (nunca perder marcas). */
-export function mergeHidratacionPorDia(a, b) {
+/**
+ * Une mapas de hidratación.
+ * - `max`: útil en la misma pestaña (no perder clics recientes).
+ * - `preferSecond`: al sincronizar, gana el segundo lote en fechas en conflicto (nube o local).
+ */
+export function mergeHidratacionPorDia(a, b, strategy = 'max') {
   const left = normalizarHidratacionPorDia(a)
   const right = normalizarHidratacionPorDia(b)
-  const out = { ...left }
-  for (const [fecha, vasos] of Object.entries(right)) {
-    const prev = Number(out[fecha]) || 0
-    const next = Number(vasos) || 0
-    out[fecha] = Math.max(prev, next)
+
+  if (strategy === 'max') {
+    const out = { ...left }
+    for (const [fecha, vasos] of Object.entries(right)) {
+      const prev = Number(out[fecha]) || 0
+      const next = Number(vasos) || 0
+      out[fecha] = Math.max(prev, next)
+    }
+    return out
   }
-  return out
+
+  const primary = strategy === 'preferSecond' ? right : left
+  const secondary = strategy === 'preferSecond' ? left : right
+  return normalizarHidratacionPorDia({ ...secondary, ...primary })
 }

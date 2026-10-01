@@ -1,5 +1,6 @@
 import { mergeStorageArrays } from '../hooks/useLocalStorage'
 import { normalizarHidratacionPorDia, mergeHidratacionPorDia } from './hidratacionStorage'
+import { dedupeRegistrosSync } from './storageRecordDedupe'
 import { normalizarPesoHistorial } from './pesoStorage'
 import { normalizarMedidasHistorial } from './medidasStorage'
 import { normalizarSuplementosPorDia } from './suplementosStorage'
@@ -55,17 +56,25 @@ function mergeArraysForKey(key, localArr, cloudArr, preferCloud) {
       ),
     )
   }
-  return mergeStorageArrays(localArr, cloudArr)
+  const merged = mergeStorageArrays(localArr, cloudArr)
+  return dedupeRegistrosSync(key, merged)
 }
+
+const ARRAY_KEYS_DEDUPE = new Set(['ejercicios', 'comida', 'rutinaPesos'])
 
 /** Une local + nube según tipo de dato; la nube manda si el local está vacío o es el valor inicial. */
 export function mergeCloudAndLocal(key, localNorm, fromCloud, initial, preferCloud = false) {
   if (Array.isArray(initial)) {
     const localArr = Array.isArray(localNorm) ? localNorm : []
     const cloudArr = Array.isArray(fromCloud) ? fromCloud : []
-    if (isStorageInitial(localArr, initial) && cloudArr.length > 0) return cloudArr
-    if (cloudArr.length === 0 && localArr.length > 0) return localArr
-    return mergeArraysForKey(key, localArr, cloudArr, preferCloud)
+    if (isStorageInitial(localArr, initial) && cloudArr.length > 0) {
+      return ARRAY_KEYS_DEDUPE.has(key) ? dedupeRegistrosSync(key, cloudArr) : cloudArr
+    }
+    if (cloudArr.length === 0 && localArr.length > 0) {
+      return ARRAY_KEYS_DEDUPE.has(key) ? dedupeRegistrosSync(key, localArr) : localArr
+    }
+    const merged = mergeArraysForKey(key, localArr, cloudArr, preferCloud)
+    return ARRAY_KEYS_DEDUPE.has(key) ? dedupeRegistrosSync(key, merged) : merged
   }
 
   if (initial !== null && typeof initial === 'object') {
@@ -73,10 +82,12 @@ export function mergeCloudAndLocal(key, localNorm, fromCloud, initial, preferClo
       const cloudMap = normalizarHidratacionPorDia(fromCloud)
       const localMap = normalizarHidratacionPorDia(localNorm)
       if (isStorageInitial(localMap, initial) && Object.keys(cloudMap).length > 0) return cloudMap
-      if (preferCloud && Object.keys(cloudMap).length > 0) {
-        return mergeHidratacionPorDia(localMap, cloudMap)
+      if (Object.keys(cloudMap).length === 0) return localMap
+      if (Object.keys(localMap).length === 0) return cloudMap
+      if (preferCloud) {
+        return mergeHidratacionPorDia(localMap, cloudMap, 'preferSecond')
       }
-      return mergeHidratacionPorDia(cloudMap, localMap)
+      return mergeHidratacionPorDia(cloudMap, localMap, 'preferSecond')
     }
     return mergePlainObjects(fromCloud, localNorm, initial, preferCloud)
   }

@@ -12,6 +12,7 @@ import { normalizarSuplementosPorDia } from '../utils/suplementosStorage'
 import { normalizarHidratacionPorDia, mergeHidratacionPorDia } from '../utils/hidratacionStorage'
 import { isStorageKeyHydrated, markStorageKeyHydrated } from '../utils/storageHydration'
 import { dedupeRutinasPropias } from '../utils/rutinasStorage'
+import { dedupeRegistrosSync } from '../utils/storageRecordDedupe'
 import { isAppOnline, scheduleCloudPersist, hasPendingCloudWrite } from '../utils/offlineDataSync'
 import {
   fetchAllUserDataCloud,
@@ -97,6 +98,13 @@ function resolveMergedValue(userId, key, initial, cloudMap, localValRef, preferC
 function postProcessStorageKey(key, resolved, initial) {
   if (key === 'rutinas' && Array.isArray(initial) && Array.isArray(resolved)) {
     return dedupeRutinasPropias(resolved)
+  }
+  if (
+    (key === 'ejercicios' || key === 'comida' || key === 'rutinaPesos')
+    && Array.isArray(initial)
+    && Array.isArray(resolved)
+  ) {
+    return dedupeRegistrosSync(key, resolved)
   }
   return resolved
 }

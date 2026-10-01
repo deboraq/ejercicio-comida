@@ -4,7 +4,13 @@ import { useStorage } from '../hooks/useStorage'
 import { useAuth } from '../context/AuthContext'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { listAssignmentsForStudent, assignmentsToRutinasItems, deleteRoutineAssignment } from '../lib/profeDb'
-import { formatearFecha, fechaToISO, fechaSoloDia, caloriasQuemadasRegistroRutina } from '../utils/calorias'
+import {
+  formatearFecha,
+  fechaToISO,
+  fechaSoloDia,
+  caloriasQuemadasRegistroRutina,
+  caloriasQuemadasRegistrosRutina,
+} from '../utils/calorias'
 import { getRangoPorPeriodo } from '../utils/estadisticas'
 import { descargarRutinaPdf } from '../utils/rutinaPdf'
 import {
@@ -710,11 +716,7 @@ export default function Rutina() {
     const total = ejerciciosParaCargar.length
     // La barra sigue el conteo de ejercicios (misma cifra que el texto "X de Y")
     const pct = total > 0 ? Math.round((hechos / total) * 100) : 0
-    const kcal = registrosDeEstaSesion.reduce((s, r) => {
-      const ok = [...nombresCompletos].some((n) => nombresEjercicioCoinciden(n, r.ejercicio))
-      if (!ok) return s
-      return s + caloriasQuemadasRegistroRutina(r, pesoCfg)
-    }, 0)
+    const kcal = caloriasQuemadasRegistrosRutina(registrosDeEstaSesion, pesoCfg)
     return { hechos, total, pct, kcal, seriesHechas, seriesTotales }
   })()
 

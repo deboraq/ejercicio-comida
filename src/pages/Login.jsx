@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const TAB = { login: 'login', register: 'register', recover: 'recover' }
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const from =
+    typeof location.state?.from === 'string' && location.state.from.startsWith('/')
+      ? location.state.from
+      : '/'
   const { user, authError, setAuthError, isConfigured, signIn, signUp, resetPasswordForEmail } = useAuth()
   const [tab, setTab] = useState(TAB.login)
   const [email, setEmail] = useState('')
@@ -15,8 +20,8 @@ export default function Login() {
   const [enviado, setEnviado] = useState(false)
 
   useEffect(() => {
-    if (user) navigate('/', { replace: true })
-  }, [user, navigate])
+    if (user) navigate(from, { replace: true })
+  }, [user, navigate, from])
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -27,7 +32,7 @@ export default function Login() {
       return
     }
     const { error } = await signIn(correo, password)
-    if (!error) navigate('/', { replace: true })
+    if (!error) navigate(from, { replace: true })
   }
 
   const handleRegister = async (e) => {
