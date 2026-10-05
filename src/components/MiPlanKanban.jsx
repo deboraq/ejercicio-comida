@@ -32,6 +32,7 @@ import {
   clavesOpcionesSlot,
   diasDeSemanaPlan,
   distribucionMacrosTexto,
+  diasConComidasHechasEnEstado,
   diasConMarcasEnEstado,
   navegacionInicialPlanKanban,
   esquemaPlanActivo,
@@ -292,8 +293,8 @@ export default function MiPlanKanban({
       return { diaCalendario: null, ultimoMarca: null, diaSiguiente: null, diaToca: null }
     }
     const nav = navegacionInicialPlanKanban(inicio, estado)
-    const marcados = diasConMarcasEnEstado(estado)
-    const ultimoMarca = marcados.length ? marcados[marcados.length - 1] : null
+    const hechos = diasConComidasHechasEnEstado(estado)
+    const ultimoMarca = hechos.length ? hechos[hechos.length - 1] : null
     const diaSiguiente =
       ultimoMarca != null
         ? Math.min(PLAN_MES1_TOTAL_DIAS, ultimoMarca + 1)
@@ -333,17 +334,9 @@ export default function MiPlanKanban({
   ])
 
   useEffect(() => {
-    if (!planMobile || !tienePlan || diasAMostrar.length !== 1) return
-    const diaPlanMobile = diasAMostrar[0]
-    const built = buildComidasDiaKanban(diaPlanMobile, config, planPropio)
-    if (!built) return
-    const slots = built.comidas.filter((c) => !Boolean(estado?.omitidos?.[claveComidaPlan(diaPlanMobile, c.id)]))
-    const firstPending = slots.find((slot) => {
-      const ops = slot.opciones?.length ? slot.opciones : [{ id: 'op1' }]
-      return !ops.some((_, i) => Boolean(estado?.checks?.[claveComidaPlan(diaPlanMobile, slot.id, null, i)]))
-    })
-    setMobileOpenMealKey(firstPending ? `${diaPlanMobile}_${firstPending.id}` : null)
-  }, [planMobile, diasAMostrar, tienePlan, config, planPropio, estado?.checks, estado?.omitidos])
+    if (!planMobile || !tienePlan) return
+    setMobileOpenMealKey(null)
+  }, [planMobile, diasAMostrar, tienePlan])
 
   const parScrollDosDias = useMemo(() => {
     const t = contextoDiasPlan.diaCalendario ?? contextoDiasPlan.diaToca ?? 1
@@ -735,26 +728,6 @@ export default function MiPlanKanban({
   const isOmitido = (diaPlan, slotId) =>
     Boolean(estado?.omitidos?.[claveComidaPlan(diaPlan, slotId)])
 
-  const abrirSiguienteComidaMobile = useCallback(
-    (diaPlan, slotsBase, slotIdActual) => {
-      const idx = slotsBase.findIndex((s) => s.id === slotIdActual)
-      for (let i = idx + 1; i < slotsBase.length; i += 1) {
-        const slot = slotsBase[i]
-        if (isOmitido(diaPlan, slot.id)) continue
-        const ops = slot.opciones?.length ? slot.opciones : [{ id: 'op1' }]
-        const hecha = ops.some((_, oi) =>
-          Boolean(estado?.checks?.[claveComidaPlan(diaPlan, slot.id, null, oi)]),
-        )
-        if (!hecha) {
-          setMobileOpenMealKey(`${diaPlan}_${slot.id}`)
-          return
-        }
-      }
-      setMobileOpenMealKey(null)
-    },
-    [estado?.checks, estado?.omitidos],
-  )
-
   const emitSyncPlan = (payload) => {
     if (onSyncPlanRegistro && inicio) onSyncPlanRegistro(payload)
   }
@@ -818,7 +791,7 @@ export default function MiPlanKanban({
           }
         }
       } else {
-        checks[key] = false
+        delete checks[key]
       }
 
       if (inicio) {
@@ -850,14 +823,8 @@ export default function MiPlanKanban({
       return { ...prev, checks }
     })
 
-    if (planMobile && mobileSlotsContext && slot && !isExtra) {
-      if (willCheckMobile) {
-        queueMicrotask(() =>
-          abrirSiguienteComidaMobile(diaPlan, mobileSlotsContext, slot.id),
-        )
-      } else {
-        setMobileOpenMealKey(`${diaPlan}_${slot.id}`)
-      }
+    if (planMobile && slot && !isExtra && willCheckMobile) {
+      setMobileOpenMealKey(null)
     }
   }
 
@@ -904,7 +871,11 @@ export default function MiPlanKanban({
       }
       return { ...prev, checks }
     })
-    emitSyncPlan({ type: 'removeMany', planRefs: planRefsChecksDia(diaPlan, slots, extrasDia) })
+    emitSyncPlan({
+      type: 'removeMany',
+      planRefs: planRefsChecksDia(diaPlan, slots, extrasDia),
+      diaPlan,
+    })
   }
 
   const handleMarcarTodoElDia = (diaPlan, slots, extrasDia) => {

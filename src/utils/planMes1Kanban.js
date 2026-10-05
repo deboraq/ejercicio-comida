@@ -170,20 +170,30 @@ function numeroDiaDesdeClavePlan(key) {
   return n
 }
 
-/** Días del plan 1…30 que tienen al menos una marca, omisión o extra. */
-export function diasConMarcasEnEstado(estado) {
+/** Días con al menos una comida marcada Hecho (solo checks activos). */
+export function diasConComidasHechasEnEstado(estado) {
   const dias = new Set()
-  for (const key of Object.keys(estado?.checks || {})) {
+  for (const [key, val] of Object.entries(estado?.checks || {})) {
+    if (!val) continue
     const n = numeroDiaDesdeClavePlan(key)
     if (n) dias.add(n)
   }
-  for (const key of Object.keys(estado?.omitidos || {})) {
+  return [...dias].sort((a, b) => a - b)
+}
+
+/** Días del plan 1…30 con actividad (Hecho, comida omitida o colación extra). */
+export function diasConMarcasEnEstado(estado) {
+  const dias = new Set(diasConComidasHechasEnEstado(estado))
+  for (const [key, val] of Object.entries(estado?.omitidos || {})) {
+    if (!val) continue
     const n = numeroDiaDesdeClavePlan(key)
     if (n) dias.add(n)
   }
-  for (const key of Object.keys(estado?.extras || {})) {
+  for (const [key, raw] of Object.entries(estado?.extras || {})) {
     const n = Number(key)
-    if (n >= 1 && n <= PLAN_MES1_TOTAL_DIAS) dias.add(n)
+    if (n >= 1 && n <= PLAN_MES1_TOTAL_DIAS && Array.isArray(raw) && raw.length > 0) {
+      dias.add(n)
+    }
   }
   return [...dias].sort((a, b) => a - b)
 }
@@ -199,8 +209,8 @@ export function semanaDelDiaPlan(diaPlan) {
  * @returns {{ semana: number, diaEdit: number, diaScroll: number, diaCalendario: number|null, ultimoMarca: number|null }}
  */
 export function navegacionInicialPlanKanban(inicioISO, estado, hoyISO = fechaToISO(new Date())) {
-  const marcados = diasConMarcasEnEstado(estado)
-  const ultimoMarca = marcados.length ? marcados[marcados.length - 1] : null
+  const hechos = diasConComidasHechasEnEstado(estado)
+  const ultimoMarca = hechos.length ? hechos[hechos.length - 1] : null
   const diaCalendario = inicioISO ? diaPlanMes1(inicioISO, hoyISO) : null
 
   let diaEdit = 1

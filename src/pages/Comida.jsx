@@ -17,6 +17,7 @@ import {
   syncPlanChecksFromRegistros,
   removeRegistroPlan,
   removeRegistrosPlanMany,
+  removeRegistrosPlanDia,
   upsertRegistroPlan,
 } from '../utils/planRegistroSync'
 import { exportarComidasCsv, exportarComidasExcel, exportarComidasJson } from '../utils/exportData'
@@ -914,7 +915,13 @@ export default function Comida() {
       }
 
       if (payload.type === 'removeMany') {
-        setRegistros((prev) => removeRegistrosPlanMany(prev, payload.planRefs || []))
+        setRegistros((prev) => {
+          let next = removeRegistrosPlanMany(prev, payload.planRefs || [])
+          if (payload.diaPlan != null) {
+            next = removeRegistrosPlanDia(next, payload.diaPlan)
+          }
+          return next
+        })
         return
       }
 

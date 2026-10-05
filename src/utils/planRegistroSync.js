@@ -161,6 +161,13 @@ export function syncPlanChecksFromRegistros(estado, registros) {
     }
   }
 
+  for (const key of Object.keys(checks)) {
+    if (!checks[key]) {
+      delete checks[key]
+      changed = true
+    }
+  }
+
   if (!changed) return base
   return { ...base, checks }
 }
@@ -231,6 +238,17 @@ export function removeRegistroPlan(registros, planRef) {
 export function removeRegistrosPlanMany(registros, planRefs) {
   const set = new Set(planRefs)
   return (registros || []).filter((r) => !r.planRef || !set.has(r.planRef))
+}
+
+/** Quita todos los registros de Comida ligados al plan de un día (p. ej. al desmarcar todo el día). */
+export function removeRegistrosPlanDia(registros, diaPlan) {
+  const d = Number(diaPlan)
+  if (!Number.isFinite(d) || d < 1) return registros || []
+  return (registros || []).filter((r) => {
+    const p = parsePlanRef(r?.planRef)
+    if (!p) return true
+    return p.diaPlan !== d
+  })
 }
 
 /** @param {{ checked: boolean, diaPlan: number, inicioISO: string, config: object, slot?: object, opIdx?: number, extra?: object }} p */
