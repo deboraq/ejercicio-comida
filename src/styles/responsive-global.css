@@ -246,8 +246,14 @@ html {
     max-width: 100%;
   }
 
-  .plan-kanban-board {
+  .plan-kanban-board--zoom-1,
+  .plan-kanban-board--zoom-2 {
     min-width: min(100%, 680px);
+  }
+
+  .plan-kanban-board--zoom-semana,
+  .plan-kanban-board--zoom-mes {
+    min-width: 0;
   }
 }
 

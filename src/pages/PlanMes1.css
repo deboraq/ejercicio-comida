@@ -443,9 +443,15 @@
 }
 
 .plan-kanban-semana-btn.is-active {
-  background: #2563eb;
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  background: linear-gradient(
+    155deg,
+    rgba(147, 197, 253, 0.22) 0%,
+    rgba(59, 130, 246, 0.38) 50%,
+    rgba(30, 58, 138, 0.45) 100%
+  );
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  color: #eff6ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 14px rgba(37, 99, 235, 0.22);
 }
 
 .plan-kanban-board-wrap {
@@ -491,7 +497,10 @@
   gap: 0.65rem;
   padding: 0.85rem;
   border-radius: 16px;
-  background: rgba(21, 27, 43, 0.9);
+  background:
+    linear-gradient(165deg, rgba(59, 130, 246, 0.12) 0%, transparent 42%),
+    linear-gradient(345deg, rgba(56, 189, 248, 0.06) 0%, transparent 38%),
+    rgba(21, 27, 43, 0.92);
   border: 1px solid rgba(30, 41, 59, 0.85);
   transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
 }
@@ -638,9 +647,105 @@
 }
 
 .plan-kanban-zoom-btn.is-active {
-  background: rgba(59, 130, 246, 0.22);
-  border-color: rgba(59, 130, 246, 0.5);
-  color: #e0f2fe;
+  color: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.plan-kanban-zoom-btn--1:not(.is-active) {
+  background: var(--ti-pill-green-bg, rgba(30, 41, 59, 0.55));
+  border-color: var(--ti-pill-green-border, rgba(51, 65, 85, 0.7));
+  color: var(--ti-pill-green-text, #94a3b8);
+}
+
+.plan-kanban-zoom-btn--1.is-active {
+  background: linear-gradient(
+    155deg,
+    rgba(110, 231, 183, 0.32) 0%,
+    rgba(16, 185, 129, 0.42) 45%,
+    rgba(4, 120, 87, 0.5) 100%
+  );
+  border-color: rgba(110, 231, 183, 0.45);
+  color: #ecfdf5;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 14px rgba(16, 185, 129, 0.18);
+}
+
+.plan-kanban-zoom-btn--2:not(.is-active) {
+  background: var(--ti-pill-amber-bg, rgba(30, 41, 59, 0.55));
+  border-color: var(--ti-pill-amber-border, rgba(51, 65, 85, 0.7));
+  color: var(--ti-pill-amber-text, #94a3b8);
+}
+
+.plan-kanban-zoom-btn--2.is-active {
+  background: linear-gradient(
+    155deg,
+    rgba(253, 224, 71, 0.28) 0%,
+    rgba(245, 158, 11, 0.42) 45%,
+    rgba(180, 83, 9, 0.48) 100%
+  );
+  border-color: rgba(253, 224, 71, 0.4);
+  color: #fffbeb;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 14px rgba(245, 158, 11, 0.16);
+}
+
+.plan-kanban-zoom-btn--semana:not(.is-active) {
+  background: var(--ti-pill-blue-bg, rgba(30, 41, 59, 0.55));
+  border-color: var(--ti-pill-blue-border, rgba(51, 65, 85, 0.7));
+  color: var(--ti-pill-blue-text, #94a3b8);
+}
+
+.plan-kanban-zoom-btn--semana.is-active {
+  background: linear-gradient(
+    155deg,
+    rgba(147, 197, 253, 0.3) 0%,
+    rgba(59, 130, 246, 0.46) 45%,
+    rgba(37, 99, 235, 0.52) 100%
+  );
+  border-color: rgba(147, 197, 253, 0.42);
+  color: #eff6ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 16px rgba(59, 130, 246, 0.2);
+}
+
+.plan-kanban-zoom-btn--mes:not(.is-active) {
+  background: var(--ti-pill-violet-bg, rgba(30, 41, 59, 0.55));
+  border-color: var(--ti-pill-violet-border, rgba(51, 65, 85, 0.7));
+  color: var(--ti-pill-violet-text, #94a3b8);
+}
+
+.plan-kanban-zoom-btn--mes.is-active {
+  background: linear-gradient(
+    155deg,
+    rgba(196, 181, 253, 0.3) 0%,
+    rgba(124, 58, 237, 0.45) 45%,
+    rgba(91, 33, 182, 0.52) 100%
+  );
+  border-color: rgba(196, 181, 253, 0.4);
+  color: #f5f3ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 16px rgba(124, 58, 237, 0.18);
+}
+
+.plan-kanban-board-wrap--fade {
+  position: relative;
+}
+
+.plan-kanban-board-wrap--fade::before,
+.plan-kanban-board-wrap--fade::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0.35rem;
+  width: 1.35rem;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.plan-kanban-board-wrap--fade::before {
+  left: 0;
+  background: linear-gradient(90deg, rgba(13, 19, 34, 0.95) 0%, rgba(13, 19, 34, 0) 100%);
+}
+
+.plan-kanban-board-wrap--fade::after {
+  right: 0;
+  background: linear-gradient(270deg, rgba(13, 19, 34, 0.95) 0%, rgba(13, 19, 34, 0) 100%);
 }
 
 .plan-kanban-board--zoom-1 .plan-kanban-col {
@@ -1018,6 +1123,16 @@
   border: 1px solid rgba(59, 130, 246, 0.22);
 }
 
+.plan-kanban-day-tip--foot {
+  margin-top: 0.45rem;
+}
+
+.plan-kanban-day-tip p {
+  overflow: visible;
+  white-space: normal;
+  word-break: break-word;
+}
+
 .plan-kanban-meals {
   display: flex;
   flex-direction: column;
@@ -1030,12 +1145,36 @@
   --slot-a: 59, 130, 246;
   --slot-a2: 56, 189, 248;
   --slot-hi: #e2e8f0;
+  background: rgba(13, 19, 34, 0.72);
+  border: 1px solid rgba(51, 65, 85, 0.55);
+  transition:
+    background 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease,
+    filter 0.35s ease;
+}
+
+.plan-kanban-meal:not(.is-slot-started) .plan-kanban-meal-moment {
+  color: #94a3b8;
+}
+
+.plan-kanban-meal:not(.is-slot-started) .plan-kanban-option {
+  background: rgba(10, 15, 24, 0.82);
+  border-color: rgba(51, 65, 85, 0.45);
+}
+
+.plan-kanban-meal:not(.is-slot-started) .plan-kanban-option-label {
+  color: #94a3b8;
+  filter: none;
+}
+
+.plan-kanban-meal.is-slot-started {
   background:
     linear-gradient(155deg, rgba(var(--slot-a), 0.22) 0%, transparent 55%),
     linear-gradient(320deg, rgba(var(--slot-a2), 0.12) 0%, transparent 50%),
     #0d1322;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  border: 1px solid rgba(var(--slot-a), 0.38);
+  box-shadow: 0 0 0 1px rgba(var(--slot-a), 0.12);
 }
 
 .plan-kanban-meal--desayuno {
@@ -1074,18 +1213,16 @@
   --slot-hi: #fbcfe8;
 }
 
-.plan-kanban-meal--desayuno .plan-kanban-meal-moment,
-.plan-kanban-meal--media_manana .plan-kanban-meal-moment,
-.plan-kanban-meal--almuerzo .plan-kanban-meal-moment,
-.plan-kanban-meal--merienda .plan-kanban-meal-moment,
-.plan-kanban-meal--cena .plan-kanban-meal-moment,
-.plan-kanban-meal--colacion-extra .plan-kanban-meal-moment {
+.plan-kanban-meal--desayuno.is-slot-started .plan-kanban-meal-moment,
+.plan-kanban-meal--media_manana.is-slot-started .plan-kanban-meal-moment,
+.plan-kanban-meal--almuerzo.is-slot-started .plan-kanban-meal-moment,
+.plan-kanban-meal--merienda.is-slot-started .plan-kanban-meal-moment,
+.plan-kanban-meal--cena.is-slot-started .plan-kanban-meal-moment,
+.plan-kanban-meal--colacion-extra.is-slot-started .plan-kanban-meal-moment {
   color: var(--slot-hi);
 }
 
 .plan-kanban-meal.is-slot-started {
-  border-color: rgba(var(--slot-a), 0.55);
-  box-shadow: 0 0 0 1px rgba(var(--slot-a), 0.22);
   filter: saturate(1.08) brightness(1.04);
 }
 
@@ -1097,7 +1234,12 @@
 .plan-kanban-meal-head--slot {
   margin-bottom: 0.4rem;
   padding-bottom: 0.35rem;
-  border-bottom: 1px solid rgba(var(--slot-a), 0.18);
+  border-bottom: 1px solid rgba(51, 65, 85, 0.35);
+}
+
+.plan-kanban-meal.is-slot-started .plan-kanban-meal-head--slot,
+.plan-kanban-meal.is-slot-started .plan-kanban-meal-details .plan-kanban-meal-summary {
+  border-bottom-color: rgba(var(--slot-a), 0.22);
 }
 
 .plan-kanban-options {
@@ -1123,7 +1265,7 @@
     rgba(10, 15, 24, 0.75);
 }
 
-.plan-kanban-meal .plan-kanban-option-label {
+.plan-kanban-meal.is-slot-started .plan-kanban-option-label {
   color: rgba(var(--slot-a), 1);
   filter: brightness(1.2);
 }
@@ -1561,6 +1703,485 @@
     width: 100%;
     text-align: left;
   }
+}
+
+/* —— Plan en móvil: carrusel legible (Sem. / Mes) —— */
+.plan-kanban-scroll-hint-mobile {
+  display: none;
+}
+
+.plan-kanban-zoom-label-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .plan-kanban-scroll-hint-desktop {
+    display: none;
+  }
+
+  .plan-kanban-scroll-hint-mobile {
+    display: inline;
+  }
+
+  .plan-kanban-scroll-hint {
+    padding: 0.45rem 0.55rem;
+    border-radius: 10px;
+    background: rgba(37, 99, 235, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.28);
+    color: #bfdbfe;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .plan-kanban-toolbar-row--inicio {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+  }
+
+  .plan-kanban-inicio-dia {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .plan-kanban-inicio-dia select {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .plan-kanban-zoom {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.35rem;
+  }
+
+  .plan-kanban-zoom-btn {
+    width: 100%;
+    text-align: center;
+    padding: 0.5rem 0.25rem;
+    font-size: 0.72rem;
+  }
+
+  .plan-kanban-zoom-label-desktop {
+    display: none;
+  }
+
+  .plan-kanban-zoom-label-mobile {
+    display: inline;
+  }
+
+  .plan-kanban-semanas {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.35rem;
+  }
+
+  .plan-kanban-semana-btn {
+    width: 100%;
+    text-align: center;
+    padding: 0.48rem 0.2rem;
+    font-size: 0.7rem;
+  }
+
+  .plan-kanban-esquema {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+  }
+
+  .plan-kanban-esquema-btn {
+    width: 100%;
+    text-align: center;
+    padding: 0.48rem 0.65rem;
+    font-size: 0.74rem;
+  }
+
+  .plan-kanban--mobile-agenda.plan-kanban--mobile-one-day .plan-kanban-board-wrap {
+    overflow-x: hidden;
+    scroll-snap-type: none;
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+
+  .plan-kanban--mobile-agenda.plan-kanban--mobile-one-day .plan-kanban-board {
+    width: 100%;
+    min-width: 0 !important;
+    max-width: 100%;
+    gap: 0;
+    padding-bottom: 0.35rem;
+  }
+
+  .plan-kanban--mobile-agenda.plan-kanban--mobile-one-day .plan-kanban-col {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    scroll-snap-align: none;
+    padding: 0.45rem 0.5rem;
+    border: 1px solid rgba(30, 41, 59, 0.55);
+    background: rgba(15, 23, 42, 0.35);
+    box-shadow: none;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+
+  .plan-kanban-mobile-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .plan-kanban-semanas--agenda {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.3rem;
+    width: 100%;
+  }
+
+  .plan-kanban-semanas--agenda .plan-kanban-semana-btn {
+    padding: 0.38rem 0.2rem;
+    font-size: 0.72rem;
+  }
+
+  .plan-kanban-day-chips {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.28rem;
+    width: 100%;
+  }
+
+  .plan-kanban-day-chip {
+    appearance: none;
+    border: 1px solid rgba(51, 65, 85, 0.75);
+    background: rgba(15, 23, 42, 0.75);
+    color: #94a3b8;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.42rem 0;
+    border-radius: 8px;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .plan-kanban-day-chip.is-active {
+    border-color: rgba(59, 130, 246, 0.65);
+    background: rgba(37, 99, 235, 0.28);
+    color: #f0f9ff;
+  }
+
+  .plan-kanban-day-chip.is-hoy:not(.is-active) {
+    border-color: rgba(34, 197, 94, 0.45);
+    color: #bbf7d0;
+  }
+
+  .plan-kanban-day-chip.is-ultimo:not(.is-active) {
+    box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.35);
+  }
+
+  .plan-kanban-jump-hoy {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: #93c5fd;
+    font-size: 0.68rem;
+    font-weight: 650;
+    text-align: left;
+    padding: 0.15rem 0.1rem;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .plan-kanban-col-head--agenda {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.45);
+  }
+
+  .plan-kanban-col-head--agenda .plan-kanban-col-date {
+    font-size: 0.72rem;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .plan-kanban-mark-all--agenda {
+    font-size: 0.62rem;
+    max-width: none;
+    padding: 0.28rem 0.45rem;
+  }
+
+  .plan-kanban-meal-details {
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .plan-kanban-meal-details .plan-kanban-meal-summary {
+    border-bottom: 1px solid rgba(var(--slot-a), 0.14);
+  }
+
+  .plan-kanban-meal-details.is-done {
+    opacity: 0.92;
+  }
+
+  .plan-kanban-meal-details.is-done .plan-kanban-meal-summary {
+    cursor: default;
+  }
+
+  .plan-kanban-meal-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.45rem;
+    padding: 0.42rem 0.48rem;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .plan-kanban-meal-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .plan-kanban-meal-summary-main {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .plan-kanban-meal-summary-check {
+    color: #4ade80;
+    font-weight: 800;
+    font-size: 0.75rem;
+  }
+
+  .plan-kanban-meal-summary-kcal {
+    flex-shrink: 0;
+    font-size: 0.6rem;
+  }
+
+  .plan-kanban-meal-details-body {
+    padding: 0 0.45rem 0.45rem;
+    border-top: 1px solid rgba(51, 65, 85, 0.35);
+  }
+
+  .plan-kanban-meal-details .plan-kanban-options {
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+  }
+
+  .plan-kanban-option--agenda {
+    padding: 0.32rem 0.38rem;
+    border-radius: 8px;
+  }
+
+  .plan-kanban-quitar-comida {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: #f87171;
+    font-size: 0.62rem;
+    font-weight: 650;
+    margin-top: 0.35rem;
+    padding: 0.2rem 0;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .plan-kanban-inicio-dia--agenda {
+    width: 100%;
+    margin-bottom: 0.45rem;
+  }
+
+  .plan-kanban-toolbar-row--inicio:empty {
+    display: none;
+  }
+
+  .plan-kanban-col-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.45rem;
+  }
+
+  .plan-kanban-col-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .plan-kanban-mark-all {
+    white-space: normal;
+    text-align: right;
+    max-width: 11rem;
+    line-height: 1.25;
+  }
+
+  .plan-kanban-meal-check--block .plan-kanban-check-cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .plan-kanban-option-head {
+    gap: 0.45rem;
+  }
+
+  .plan-kanban-macros {
+    flex-wrap: wrap;
+  }
+
+  .plan-kanban-compact-fold-body {
+    overflow: visible;
+  }
+
+  /* Menos scroll vertical: comidas más densas */
+  .plan-kanban-col {
+    gap: 0.4rem;
+  }
+
+  .plan-kanban-day-done-msg {
+    display: none;
+  }
+
+  .plan-kanban-day-tip {
+    margin: 0;
+    padding: 0.45rem 0.55rem;
+    font-size: 0.68rem;
+    line-height: 1.45;
+    overflow: visible;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .plan-kanban-day-tip p {
+    overflow: visible;
+    display: block;
+  }
+
+  .plan-kanban-meals {
+    gap: 0.28rem;
+  }
+
+  .plan-kanban--mobile-agenda .plan-kanban-meals {
+    gap: 0.25rem;
+  }
+
+  .plan-kanban-meal {
+    padding: 0.38rem 0.42rem;
+    border-radius: 10px;
+  }
+
+  .plan-kanban-meal-head--slot {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+    margin-bottom: 0.28rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .plan-kanban-meal-moment {
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+
+  .plan-kanban-meal:not(.is-slot-started) .plan-kanban-options {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .plan-kanban-meal.is-slot-started .plan-kanban-option:not(.is-picked) {
+    display: none !important;
+  }
+
+  .plan-kanban-meal.is-slot-started {
+    padding: 0.32rem 0.38rem;
+  }
+
+  .plan-kanban-meal.is-slot-started .plan-kanban-option.is-picked {
+    padding: 0.28rem 0.35rem;
+  }
+
+  .plan-kanban-option-head {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.45rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .plan-kanban-option-title-row {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .plan-kanban-meal-check--block {
+    width: auto;
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .plan-kanban-meal-check--block .plan-kanban-check-cta {
+    width: auto;
+    white-space: nowrap;
+    padding: 0.28rem 0.45rem;
+    font-size: 0.62rem;
+  }
+
+  .plan-kanban-meal-text {
+    font-size: 0.68rem;
+    line-height: 1.38;
+    margin: 0 0 0.28rem;
+    overflow: visible;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .plan-kanban-meal.is-slot-started .plan-kanban-option.is-picked .plan-kanban-meal-text {
+    margin-bottom: 0.15rem;
+  }
+
+  .plan-kanban-pill--p,
+  .plan-kanban-pill--c,
+  .plan-kanban-pill--g {
+    display: none;
+  }
+
+  .plan-kanban-meal.is-slot-started .plan-kanban-option.is-picked .plan-kanban-macros {
+    margin-top: 0;
+  }
+
+  .plan-kanban-pill--kcal {
+    font-size: 0.62rem;
+    padding: 0.08rem 0.35rem;
+  }
+
+  .plan-kanban-col-head {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.35rem 0.5rem;
+  }
+
+  .plan-kanban-col-actions {
+    width: auto;
+    margin-left: auto;
+    justify-content: flex-end;
+  }
+
+  .plan-kanban-mark-all {
+    max-width: 9rem;
+    font-size: 0.62rem;
+  }
+
 }
 
 .plan-kanban-origen-badge {

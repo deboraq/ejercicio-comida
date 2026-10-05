@@ -118,6 +118,21 @@ const ESQUEMAS = [
   { id: 'ayuno168', label: 'Ayuno 16:8' },
 ]
 
+const PLAN_MOBILE_MQ = '(max-width: 767px)'
+
+function usePlanMobileLayout() {
+  const [mobile, setMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(PLAN_MOBILE_MQ).matches : false,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(PLAN_MOBILE_MQ)
+    const onChange = () => setMobile(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return mobile
+}
+
 /**
  * Vista Kanban semanal de Mi plan (Comida → pestaña Mi plan).
  * @param {{ onRegistrarComida?: (payload: object) => void, onSyncPlanRegistro?: (payload: object) => void, embedded?: boolean }} props
@@ -151,7 +166,13 @@ export default function MiPlanKanban({
   const [editorAbierto, setEditorAbierto] = useState(false)
   const [editDiaPlan, setEditDiaPlan] = useState(1)
   const [panelNuevoPlan, setPanelNuevoPlan] = useState(false)
-  const [vistaPlanZoom, setVistaPlanZoom] = useState('2')
+  const [vistaPlanZoom, setVistaPlanZoom] = useState(() => {
+    if (typeof window === 'undefined') return '2'
+    return window.matchMedia(PLAN_MOBILE_MQ).matches ? '1' : '2'
+  })
+  const planMobile = usePlanMobileLayout()
+  const [opcionVisibleMap, setOpcionVisibleMap] = useState({})
+  const [mobileOpenMealKey, setMobileOpenMealKey] = useState(null)
   const boardWrapRef = useRef(null)
   const planNavKey = planNutricionActivoId || config?.planNutricionId || ''
   const planNavAplicadoRef = useRef(null)
@@ -304,7 +325,25 @@ export default function MiPlanKanban({
     const sig = Math.min(PLAN_MES1_TOTAL_DIAS, diaAncla + 1)
     if (sig <= diaAncla) return [diaAncla]
     return [diaAncla, sig]
-  }, [vistaPlanZoom, diasSemana, contextoDiasPlan.diaCalendario, contextoDiasPlan.diaToca])
+  }, [
+    vistaPlanZoom,
+    diasSemana,
+    contextoDiasPlan.diaCalendario,
+    contextoDiasPlan.diaToca,
+  ])
+
+  useEffect(() => {
+    if (!planMobile || !tienePlan || diasAMostrar.length !== 1) return
+    const diaPlanMobile = diasAMostrar[0]
+    const built = buildComidasDiaKanban(diaPlanMobile, config, planPropio)
+    if (!built) return
+    const slots = built.comidas.filter((c) => !Boolean(estado?.omitidos?.[claveComidaPlan(diaPlanMobile, c.id)]))
+    const firstPending = slots.find((slot) => {
+      const ops = slot.opciones?.length ? slot.opciones : [{ id: 'op1' }]
+      return !ops.some((_, i) => Boolean(estado?.checks?.[claveComidaPlan(diaPlanMobile, slot.id, null, i)]))
+    })
+    setMobileOpenMealKey(firstPending ? `${diaPlanMobile}_${firstPending.id}` : null)
+  }, [planMobile, diasAMostrar, tienePlan, config, planPropio, estado?.checks, estado?.omitidos])
 
   const parScrollDosDias = useMemo(() => {
     const t = contextoDiasPlan.diaCalendario ?? contextoDiasPlan.diaToca ?? 1
@@ -342,13 +381,14 @@ export default function MiPlanKanban({
   }, [semanaActiva, diasSemana, tienePlan, scrollADiaPlan])
 
   useEffect(() => {
-    if (!tienePlan) return
+    if (!tienePlan || (planMobile && vistaPlanZoom === '1')) return
     const { t, s } = parScrollDosDias
     if (!t) return
     const diaB = vistaPlanZoom === '2' ? s : contextoDiasPlan.diaSiguiente
     const tm = window.setTimeout(() => scrollParDiasPlan(t, diaB), 120)
     return () => window.clearTimeout(tm)
   }, [
+    planMobile,
     vistaPlanZoom,
     parScrollDosDias,
     contextoDiasPlan.diaSiguiente,
@@ -672,17 +712,60 @@ export default function MiPlanKanban({
   const isChecked = (diaPlan, slotId, extraId = null, opcionIndex = null) =>
     Boolean(estado?.checks?.[claveComidaPlan(diaPlan, slotId, extraId, opcionIndex)])
 
+  const resolveOpVisible = useCallback(
+    (diaPlan, slotId, opciones) => {
+      const key = `${diaPlan}_${slotId}`
+      const fromState = opcionVisibleMap[key]
+      if (fromState != null && fromState >= 0 && fromState < opciones.length) return fromState
+      const picked = opciones.findIndex((_, i) =>
+        Boolean(estado?.checks?.[claveComidaPlan(diaPlan, slotId, null, i)]),
+      )
+      return picked >= 0 ? picked : 0
+    },
+    [opcionVisibleMap, estado?.checks],
+  )
+
+  const setOpVisible = useCallback((diaPlan, slotId, opIdx) => {
+    setOpcionVisibleMap((prev) => ({ ...prev, [`${diaPlan}_${slotId}`]: opIdx }))
+  }, [])
+
   const slotTieneAlgunaOpcionHecha = (diaPlan, slot) =>
     (slot.opciones || []).some((_, i) => isChecked(diaPlan, slot.id, null, i))
 
   const isOmitido = (diaPlan, slotId) =>
     Boolean(estado?.omitidos?.[claveComidaPlan(diaPlan, slotId)])
 
+  const abrirSiguienteComidaMobile = useCallback(
+    (diaPlan, slotsBase, slotIdActual) => {
+      const idx = slotsBase.findIndex((s) => s.id === slotIdActual)
+      for (let i = idx + 1; i < slotsBase.length; i += 1) {
+        const slot = slotsBase[i]
+        if (isOmitido(diaPlan, slot.id)) continue
+        const ops = slot.opciones?.length ? slot.opciones : [{ id: 'op1' }]
+        const hecha = ops.some((_, oi) =>
+          Boolean(estado?.checks?.[claveComidaPlan(diaPlan, slot.id, null, oi)]),
+        )
+        if (!hecha) {
+          setMobileOpenMealKey(`${diaPlan}_${slot.id}`)
+          return
+        }
+      }
+      setMobileOpenMealKey(null)
+    },
+    [estado?.checks, estado?.omitidos],
+  )
+
   const emitSyncPlan = (payload) => {
     if (onSyncPlanRegistro && inicio) onSyncPlanRegistro(payload)
   }
 
-  const handleToggleOpcion = (diaPlan, slotOrExtra, opIdx = null, extraIdLegacy = null) => {
+  const handleToggleOpcion = (
+    diaPlan,
+    slotOrExtra,
+    opIdx = null,
+    extraIdLegacy = null,
+    mobileSlotsContext = null,
+  ) => {
     const isExtra = slotOrExtra?.isExtra || (typeof slotOrExtra === 'string' && slotOrExtra === 'extra')
     let slot = null
     let extra = null
@@ -696,6 +779,13 @@ export default function MiPlanKanban({
     } else {
       slot = slotOrExtra
     }
+
+    const toggleKey = extra
+      ? claveComidaPlan(diaPlan, 'extra', extra.id)
+      : slot
+        ? claveComidaPlan(diaPlan, slot.id, null, opIndex)
+        : null
+    const willCheckMobile = toggleKey ? !estado?.checks?.[toggleKey] : false
 
     patchEstado((prev) => {
       const key = extra
@@ -759,6 +849,16 @@ export default function MiPlanKanban({
 
       return { ...prev, checks }
     })
+
+    if (planMobile && mobileSlotsContext && slot && !isExtra) {
+      if (willCheckMobile) {
+        queueMicrotask(() =>
+          abrirSiguienteComidaMobile(diaPlan, mobileSlotsContext, slot.id),
+        )
+      } else {
+        setMobileOpenMealKey(`${diaPlan}_${slot.id}`)
+      }
+    }
   }
 
   const clavesChecksDia = (diaPlan, slots, extrasDia) => {
@@ -1007,33 +1107,39 @@ export default function MiPlanKanban({
 
   const hidratacion = resumenHidratacionPlan(config)
 
+  const selectorDiaCalendarioHoy = (
+    <label className="plan-kanban-inicio-dia plan-kanban-inicio-dia--agenda">
+      <span className="plan-kanban-inicio-dia-label">Hoy</span>
+      <select
+        value={contextoDiasPlan.diaCalendario ?? 1}
+        onChange={(e) => ajustarInicioAlDia(Number(e.target.value))}
+        aria-label="Qué día del plan corresponde a hoy"
+      >
+        {Array.from({ length: PLAN_MES1_TOTAL_DIAS }, (_, i) => i + 1).map((d) => (
+          <option key={d} value={d}>
+            Día {d}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+
   const toolbarInicioYZoom = (
     <div className="plan-kanban-toolbar-row plan-kanban-toolbar-row--inicio">
-      <label className="plan-kanban-inicio-dia">
-        <span className="plan-kanban-inicio-dia-label">Hoy</span>
-        <select
-          value={contextoDiasPlan.diaCalendario ?? 1}
-          onChange={(e) => ajustarInicioAlDia(Number(e.target.value))}
-          aria-label="Qué día del plan corresponde a hoy"
-        >
-          {Array.from({ length: PLAN_MES1_TOTAL_DIAS }, (_, i) => i + 1).map((d) => (
-            <option key={d} value={d}>
-              Día {d}
-            </option>
-          ))}
-        </select>
-      </label>
+      {selectorDiaCalendarioHoy}
       <div className="plan-kanban-zoom" role="group" aria-label="Vista del tablero">
         {[
-          { id: '1', label: '1' },
-          { id: '2', label: '2' },
-          { id: 'semana', label: 'Sem.' },
-          { id: 'mes', label: 'Mes' },
+          { id: '1', label: '1', labelMobile: '1 día' },
+          { id: '2', label: '2', labelMobile: '2 días' },
+          { id: 'semana', label: 'Sem.', labelMobile: 'Semana' },
+          { id: 'mes', label: 'Mes', labelMobile: 'Mes' },
         ].map((z) => (
           <button
             key={z.id}
             type="button"
-            className={`plan-kanban-zoom-btn${vistaPlanZoom === z.id ? ' is-active' : ''}`}
+            className={`plan-kanban-zoom-btn plan-kanban-zoom-btn--${z.id}${
+              vistaPlanZoom === z.id ? ' is-active' : ''
+            }`}
             onClick={() => setVistaPlanZoom(z.id)}
             title={
               z.id === '1'
@@ -1045,10 +1151,28 @@ export default function MiPlanKanban({
                     : 'Mes completo'
             }
           >
-            {z.label}
+            <span className="plan-kanban-zoom-label-desktop">{z.label}</span>
+            <span className="plan-kanban-zoom-label-mobile">{z.labelMobile}</span>
           </button>
         ))}
       </div>
+    </div>
+  )
+
+  const selectorSemanasPlan = (vistaPlanZoom === 'semana' || vistaPlanZoom === 'mes') && (
+    <div className="plan-kanban-semanas" role="tablist" aria-label="Semanas del plan">
+      {[1, 2, 3, 4].map((s) => (
+        <button
+          key={s}
+          type="button"
+          role="tab"
+          aria-selected={semanaActiva === s}
+          className={`plan-kanban-semana-btn${semanaActiva === s ? ' is-active' : ''}`}
+          onClick={() => setSemanaActiva(s)}
+        >
+          Semana {s}
+        </button>
+      ))}
     </div>
   )
 
@@ -1066,22 +1190,7 @@ export default function MiPlanKanban({
           </button>
         ))}
       </div>
-      {(vistaPlanZoom === 'semana' || vistaPlanZoom === 'mes') && (
-        <div className="plan-kanban-semanas" role="tablist" aria-label="Semanas del plan">
-          {[1, 2, 3, 4].map((s) => (
-            <button
-              key={s}
-              type="button"
-              role="tab"
-              aria-selected={semanaActiva === s}
-              className={`plan-kanban-semana-btn${semanaActiva === s ? ' is-active' : ''}`}
-              onClick={() => setSemanaActiva(s)}
-            >
-              Semana {s}
-            </button>
-          ))}
-        </div>
-      )}
+      {selectorSemanasPlan}
       {esPlanPropio(config) && (
         <div className="plan-kanban-propio-tools">
           <label className="plan-kanban-edit-day">
@@ -1110,11 +1219,16 @@ export default function MiPlanKanban({
   )
 
   return (
-    <div className={`plan-kanban${embedded ? ' plan-kanban--embedded' : ''}`}>
+    <div
+      className={`plan-kanban${embedded ? ' plan-kanban--embedded' : ''}${
+        planMobile ? ' plan-kanban--mobile-agenda' : ''
+      }${planMobile && vistaPlanZoom === '1' ? ' plan-kanban--mobile-one-day' : ''}`}
+    >
       {embedded ? (
         <>
           <div className="plan-kanban-embedded-top">
             {toolbarInicioYZoom}
+            {planMobile ? selectorSemanasPlan : null}
             {contextoDiasPlan.desfaseInicio && contextoDiasPlan.ultimoMarca != null && (
               <div className="plan-kanban-desfase-inline" role="alert">
                 <p className="plan-kanban-desfase-inline-text mb-0">
@@ -1310,13 +1424,20 @@ export default function MiPlanKanban({
         />
       )}
 
-      {(vistaPlanZoom === 'semana' || vistaPlanZoom === 'mes') && (
+      {(vistaPlanZoom === '2' || vistaPlanZoom === 'semana' || vistaPlanZoom === 'mes') && (
         <p className="plan-kanban-scroll-hint mb-0">
-          Hay varios días en fila: deslizá horizontalmente o usá la barra de scroll debajo del tablero para verlos todos.
+          Hay varios días en fila: deslizá horizontalmente para verlos todos.
         </p>
       )}
 
-      <div className="plan-kanban-board-wrap" ref={boardWrapRef}>
+      <div
+        className={`plan-kanban-board-wrap${
+          vistaPlanZoom === '2' || vistaPlanZoom === 'semana' || vistaPlanZoom === 'mes'
+            ? ' plan-kanban-board-wrap--fade'
+            : ''
+        }`}
+        ref={boardWrapRef}
+      >
         <div className={`plan-kanban-board plan-kanban-board--zoom-${vistaPlanZoom}`}>
           {diasAMostrar.map((diaPlan) => {
             const built = buildComidasDiaKanban(diaPlan, config, planPropio)
@@ -1349,45 +1470,63 @@ export default function MiPlanKanban({
                   contextoDiasPlan.diaSiguiente === diaPlan ? ' is-plan-siguiente' : ''
                 }`}
               >
-                <header className="plan-kanban-col-head">
-                  <div>
-                    <h3 className="plan-kanban-col-title">
-                      Día {diaPlan}
-                      {contextoDiasPlan.diaCalendario === diaPlan ? (
-                        <span className="plan-kanban-col-tag">Hoy</span>
-                      ) : null}
-                    </h3>
-                    <p className="plan-kanban-col-date mb-0">
-                      {etiquetaFechaCorta(fecha)}
-                      <span className="plan-kanban-col-kcal">{Math.round(kcalDia).toLocaleString('es-AR')} kcal</span>
-                    </p>
-                  </div>
-                  <div className="plan-kanban-col-actions">
-                    {diaCompleto ? (
-                      <span className="plan-kanban-day-badge">✓ Día completado</span>
-                    ) : null}
-                    <button
-                      type="button"
-                      className={`plan-kanban-mark-all${diaCompleto || hayMarcasDia ? ' is-unmark' : ''}`}
-                      onClick={() =>
-                        handleToggleMarcarTodoDia(diaPlan, slotsBase, extrasList, diaCompleto)
-                      }
-                    >
-                      {diaCompleto || hayMarcasDia ? '↩ Desmarcar todo' : '✓ Marcar todo'}
-                    </button>
-                  </div>
+                <header className={`plan-kanban-col-head${planMobile ? ' plan-kanban-col-head--agenda' : ''}`}>
+                  {planMobile ? (
+                    <>
+                      <p className="plan-kanban-col-date mb-0">
+                        <strong>Día {diaPlan}</strong>
+                        {' · '}
+                        {etiquetaFechaCorta(fecha)}
+                        <span className="plan-kanban-col-kcal">
+                          {Math.round(kcalDia).toLocaleString('es-AR')} kcal
+                        </span>
+                      </p>
+                      <button
+                        type="button"
+                        className={`plan-kanban-mark-all plan-kanban-mark-all--agenda${diaCompleto || hayMarcasDia ? ' is-unmark' : ''}`}
+                        onClick={() =>
+                          handleToggleMarcarTodoDia(diaPlan, slotsBase, extrasList, diaCompleto)
+                        }
+                      >
+                        {diaCompleto || hayMarcasDia ? 'Desmarcar' : 'Marcar todo'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <h3 className="plan-kanban-col-title">
+                          Día {diaPlan}
+                          {contextoDiasPlan.diaCalendario === diaPlan ? (
+                            <span className="plan-kanban-col-tag">Hoy</span>
+                          ) : null}
+                        </h3>
+                        <p className="plan-kanban-col-date mb-0">
+                          {etiquetaFechaCorta(fecha)}
+                          <span className="plan-kanban-col-kcal">{Math.round(kcalDia).toLocaleString('es-AR')} kcal</span>
+                        </p>
+                      </div>
+                      <div className="plan-kanban-col-actions">
+                        {diaCompleto ? (
+                          <span className="plan-kanban-day-badge">✓ Día completado</span>
+                        ) : null}
+                        <button
+                          type="button"
+                          className={`plan-kanban-mark-all${diaCompleto || hayMarcasDia ? ' is-unmark' : ''}`}
+                          onClick={() =>
+                            handleToggleMarcarTodoDia(diaPlan, slotsBase, extrasList, diaCompleto)
+                          }
+                        >
+                          {diaCompleto || hayMarcasDia ? '↩ Desmarcar todo' : '✓ Marcar todo'}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </header>
 
                 {diaCompleto && (
                   <p className="plan-kanban-day-done-msg">
                     Objetivo diario alcanzado: todas las comidas registradas.
                   </p>
-                )}
-
-                {built.detalle.tip && (
-                  <div className="plan-kanban-day-tip">
-                    <p className="mb-0">{built.detalle.tip}</p>
-                  </div>
                 )}
 
                 <div className="plan-kanban-meals">
@@ -1398,6 +1537,124 @@ export default function MiPlanKanban({
                     const opciones = slot.opciones?.length
                       ? slot.opciones
                       : [{ id: 'op1', label: 'Opción 1', texto: slot.label }]
+                    const mealKey = `${diaPlan}_${slot.id}`
+                    const resumenKcal = Math.round(
+                      (opciones[0]?.items?.length
+                        ? totalesMacrosItems(opciones[0].items)
+                        : estimarMacrosComida(slot.id, config)
+                      ).kcal,
+                    )
+
+                    const opcionesNodes = (
+                      <div className="plan-kanban-options">
+                        {opciones.map((op, opIdx) => {
+                          if (planMobile && algunaHecha && !isChecked(diaPlan, slot.id, null, opIdx)) {
+                            return null
+                          }
+                          if (
+                            !planMobile
+                            && !algunaHecha
+                            && opciones.length > 1
+                            && opIdx !== resolveOpVisible(diaPlan, slot.id, opciones)
+                          ) {
+                            return null
+                          }
+                          const checked = isChecked(diaPlan, slot.id, null, opIdx)
+                          const macros = op.items?.length
+                            ? totalesMacrosItems(op.items)
+                            : estimarMacrosComida(slot.id, config)
+                          return (
+                            <div
+                              key={op.id || `op${opIdx}`}
+                              className={`plan-kanban-option${checked ? ' is-picked' : ''}${
+                                planMobile ? ' plan-kanban-option--agenda' : ''
+                              }`}
+                            >
+                              <div className="plan-kanban-option-head">
+                                <div className="plan-kanban-option-title-row">
+                                  <span className="plan-kanban-option-label">{op.label}</span>
+                                  <button
+                                    type="button"
+                                    className="plan-kanban-icon-btn"
+                                    aria-label={`Editar ${op.label} en registro de hoy`}
+                                    title="Editar en Registro de hoy"
+                                    onClick={() =>
+                                      handleEditarEnRegistroHoy(diaPlan, slot, op.texto, op.label, opIdx)
+                                    }
+                                  >
+                                    <IconPencil />
+                                  </button>
+                                </div>
+                                <PlanMealCheck
+                                  checked={checked}
+                                  onChange={() =>
+                                    handleToggleOpcion(diaPlan, slot, opIdx, null, slotsBase)
+                                  }
+                                />
+                              </div>
+                              <p className={`plan-kanban-meal-text${checked ? ' is-struck' : ''}`}>
+                                {op.texto}
+                              </p>
+                              <div className="plan-kanban-macros">
+                                <span className="plan-kanban-pill plan-kanban-pill--kcal">
+                                  {Math.round(macros.kcal)} kcal
+                                </span>
+                                {!planMobile ? (
+                                  <>
+                                    <span className="plan-kanban-pill plan-kanban-pill--p">P {macros.p}g</span>
+                                    <span className="plan-kanban-pill plan-kanban-pill--c">C {macros.h}g</span>
+                                    <span className="plan-kanban-pill plan-kanban-pill--g">G {macros.g}g</span>
+                                  </>
+                                ) : null}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+
+                    if (planMobile) {
+                      return (
+                        <details
+                          key={slot.id}
+                          className={`plan-kanban-meal plan-kanban-meal-details plan-kanban-meal--${slot.id}${
+                            algunaHecha ? ' is-slot-started is-done' : ''
+                          }`}
+                          open={!algunaHecha && mobileOpenMealKey === mealKey}
+                          onToggle={(e) => {
+                            if (algunaHecha) return
+                            if (e.currentTarget.open) setMobileOpenMealKey(mealKey)
+                            else if (mobileOpenMealKey === mealKey) setMobileOpenMealKey(null)
+                          }}
+                        >
+                          <summary className="plan-kanban-meal-summary">
+                            <span className="plan-kanban-meal-summary-main">
+                              <span className="plan-kanban-meal-moment">
+                                {icon} {slot.label} <time>{hora}</time>
+                              </span>
+                              {algunaHecha ? (
+                                <span className="plan-kanban-meal-summary-check" aria-hidden>
+                                  ✓
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="plan-kanban-pill plan-kanban-pill--kcal plan-kanban-meal-summary-kcal">
+                              {resumenKcal} kcal
+                            </span>
+                          </summary>
+                          <div className="plan-kanban-meal-details-body">
+                            {opcionesNodes}
+                            <button
+                              type="button"
+                              className="plan-kanban-quitar-comida"
+                              onClick={() => handleEliminarComida(diaPlan, slot, slot.label)}
+                            >
+                              Quitar del día
+                            </button>
+                          </div>
+                        </details>
+                      )
+                    }
 
                     return (
                       <div
@@ -1419,51 +1676,7 @@ export default function MiPlanKanban({
                             <IconTrash />
                           </button>
                         </div>
-
-                        <div className="plan-kanban-options">
-                          {opciones.map((op, opIdx) => {
-                            const checked = isChecked(diaPlan, slot.id, null, opIdx)
-                            const macros = op.items?.length
-                              ? totalesMacrosItems(op.items)
-                              : estimarMacrosComida(slot.id, config)
-                            return (
-                              <div
-                                key={op.id || `op${opIdx}`}
-                                className={`plan-kanban-option${checked ? ' is-picked' : ''}`}
-                              >
-                                <div className="plan-kanban-option-head">
-                                  <div className="plan-kanban-option-title-row">
-                                    <span className="plan-kanban-option-label">{op.label}</span>
-                                    <button
-                                      type="button"
-                                      className="plan-kanban-icon-btn"
-                                      aria-label={`Editar ${op.label} en registro de hoy`}
-                                      title="Editar en Registro de hoy"
-                                      onClick={() =>
-                                        handleEditarEnRegistroHoy(diaPlan, slot, op.texto, op.label, opIdx)
-                                      }
-                                    >
-                                      <IconPencil />
-                                    </button>
-                                  </div>
-                                  <PlanMealCheck
-                                    checked={checked}
-                                    onChange={() => handleToggleOpcion(diaPlan, slot, opIdx)}
-                                  />
-                                </div>
-                                <p className={`plan-kanban-meal-text${checked ? ' is-struck' : ''}`}>
-                                  {op.texto}
-                                </p>
-                                <div className="plan-kanban-macros">
-                                  <span className="plan-kanban-pill plan-kanban-pill--kcal">{Math.round(macros.kcal)} kcal</span>
-                                  <span className="plan-kanban-pill plan-kanban-pill--p">P {macros.p}g</span>
-                                  <span className="plan-kanban-pill plan-kanban-pill--c">C {macros.h}g</span>
-                                  <span className="plan-kanban-pill plan-kanban-pill--g">G {macros.g}g</span>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
+                        {opcionesNodes}
                       </div>
                     )
                   })}
@@ -1533,6 +1746,12 @@ export default function MiPlanKanban({
                 >
                   + Añadir colación extra
                 </button>
+
+                {built.detalle.tip && (
+                  <div className="plan-kanban-day-tip plan-kanban-day-tip--foot">
+                    <p className="mb-0">{built.detalle.tip}</p>
+                  </div>
+                )}
               </article>
             )
           })}

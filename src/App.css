@@ -16226,6 +16226,19 @@ select.ap-input {
   display: none;
 }
 
+@media (max-width: 1023px) {
+  .main-content.main-content--comida:has(.cd-layout--plan) {
+    overflow-x: visible;
+  }
+
+  .comida-page.comida-titanium .cd-layout--plan,
+  .comida-page.comida-titanium .cd-layout--plan .cd-main,
+  .comida-page.comida-titanium .cd-layout--plan .cd-plan-embed {
+    overflow-x: visible;
+    max-width: 100%;
+  }
+}
+
 .cd-plan-strip {
   display: flex;
   flex-wrap: wrap;
