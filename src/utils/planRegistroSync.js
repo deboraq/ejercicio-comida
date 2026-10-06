@@ -146,11 +146,6 @@ export function syncPlanChecksFromRegistros(estado, registros) {
         delete checks[key]
         changed = true
       }
-      continue
-    }
-    if (!activosPorCheck.has(key)) {
-      delete checks[key]
-      changed = true
     }
   }
 
@@ -300,4 +295,46 @@ export function aplicarBatchSyncPlan(registros, ops) {
     }
   }
   return next
+}
+
+/**
+ * Aplica un payload del plan sobre el listado de comida (marcar / desmarcar / batch).
+ * @param {(fn: (prev: object[]) => object[]) => void} setRegistros
+ * @param {object} payload
+ * @param {{ onUpsert?: (registro: object, payload: object) => void }} [hooks]
+ */
+export function applyPlanRegistroSyncPayload(setRegistros, payload, hooks = {}) {
+  if (!payload?.type || typeof setRegistros !== 'function') return
+
+  if (payload.type === 'remove') {
+    setRegistros((prev) => removeRegistroPlan(prev, payload.planRef))
+    return
+  }
+
+  if (payload.type === 'removeMany') {
+    setRegistros((prev) => {
+      let next = removeRegistrosPlanMany(prev, payload.planRefs || [])
+      if (payload.diaPlan != null) {
+        next = removeRegistrosPlanDia(next, payload.diaPlan)
+      }
+      return next
+    })
+    return
+  }
+
+  if (payload.type === 'batch') {
+    setRegistros((prev) => aplicarBatchSyncPlan(prev, payload.ops || []))
+    return
+  }
+
+  if (payload.type === 'upsert' && payload.planRef && payload.registro) {
+    setRegistros((prev) => {
+      const next = upsertRegistroPlan(prev, payload.planRef, payload.registro)
+      const saved = next.find((r) => r.planRef === payload.planRef)
+      if (saved && hooks.onUpsert) {
+        queueMicrotask(() => hooks.onUpsert(saved, payload))
+      }
+      return next
+    })
+  }
 }

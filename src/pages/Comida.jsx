@@ -11,14 +11,10 @@ import PlanMes1Panel from '../components/PlanMes1Panel'
 import { resumenPlanAlimenticioHoy } from '../utils/planPropio'
 import { nuevoIdRegistro } from '../utils/ids'
 import {
-  aplicarBatchSyncPlan,
   claveCheckDesdePlanRef,
   dedupeRegistrosPorPlanRef,
   syncPlanChecksFromRegistros,
-  removeRegistroPlan,
-  removeRegistrosPlanMany,
-  removeRegistrosPlanDia,
-  upsertRegistroPlan,
+  applyPlanRegistroSyncPayload,
 } from '../utils/planRegistroSync'
 import { exportarComidasCsv, exportarComidasExcel, exportarComidasJson } from '../utils/exportData'
 import { toggleFavoritoComida } from '../utils/comidaFavoritos'
@@ -377,7 +373,7 @@ function ListaComidaAgrupada({ bloques, onEliminar, onEditar }) {
 export default function Comida() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [registros, setRegistros] = useStorage('comida', [])
+  const [registros, setRegistros, comidaCloudReady] = useStorage('comida', [])
   const [, setPlanMes1Estado] = useStorage('planMes1Estado', {
     checks: {},
     omitidos: {},
@@ -426,11 +422,12 @@ export default function Comida() {
   }, [setRegistros])
 
   useEffect(() => {
+    if (!comidaCloudReady) return
     setPlanMes1Estado((prev) => {
       const next = syncPlanChecksFromRegistros(prev, registros)
       return next === prev ? prev : next
     })
-  }, [registros, setPlanMes1Estado])
+  }, [registros, setPlanMes1Estado, comidaCloudReady])
   const { desde, hasta } = getRangoPorPeriodo(periodo, desdeCustom, hastaCustom)
   const registrosEnRango = filtrarPorRango(registros, desde, hasta)
   const porFechaEnRango = registrosEnRango.reduce((acc, r) => {
@@ -907,52 +904,18 @@ export default function Comida() {
 
   const syncPlanRegistro = useCallback(
     (payload) => {
-      if (!payload?.type) return
-
-      if (payload.type === 'remove') {
-        setRegistros((prev) => removeRegistroPlan(prev, payload.planRef))
-        return
-      }
-
-      if (payload.type === 'removeMany') {
-        setRegistros((prev) => {
-          let next = removeRegistrosPlanMany(prev, payload.planRefs || [])
-          if (payload.diaPlan != null) {
-            next = removeRegistrosPlanDia(next, payload.diaPlan)
+      applyPlanRegistroSyncPayload(setRegistros, payload, {
+        onUpsert: (saved, p) => {
+          const fechaReg = p.registro?.fecha
+          if (fechaReg) setFechaInput(fechaReg)
+          if (p.abrirEdicion) {
+            setVistaComida('hoy')
+            editarRegistro(saved)
           }
-          return next
-        })
-        return
-      }
-
-      if (payload.type === 'batch') {
-        setRegistros((prev) => aplicarBatchSyncPlan(prev, payload.ops || []))
-        return
-      }
-
-      if (payload.type === 'upsert' && payload.planRef && payload.registro) {
-        setRegistros((prev) => {
-          const next = upsertRegistroPlan(prev, payload.planRef, payload.registro)
-          if (payload.abrirEdicion) {
-            const saved = next.find((r) => r.planRef === payload.planRef)
-            if (saved) {
-              queueMicrotask(() => {
-                editarRegistro(saved)
-              })
-            }
-          }
-          return next
-        })
-        const fechaReg = payload.registro?.fecha
-        if (fechaReg) {
-          setFechaInput(fechaReg)
-        }
-        if (payload.abrirEdicion) {
-          setVistaComida('hoy')
-        }
-      }
+        },
+      })
     },
-    [editarRegistro],
+    [editarRegistro, setRegistros],
   )
 
   const toggleDiaHistorial = (fecha) => {

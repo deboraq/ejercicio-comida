@@ -1,5 +1,7 @@
+import { useCallback } from 'react'
 import { useStorage } from '../hooks/useStorage'
 import { planMes1TieneInicio } from '../utils/planMes1'
+import { applyPlanRegistroSyncPayload } from '../utils/planRegistroSync'
 import MiPlanKanban from './MiPlanKanban'
 import '../pages/PlanMes1.css'
 
@@ -13,14 +15,21 @@ export default function PlanMes1Panel({
   abrirEditorInicial = false,
 }) {
   const [config] = useStorage('config', {})
+  const [, setRegistros] = useStorage('comida', [])
   const tienePlan = planMes1TieneInicio(config)
+
+  const syncPlanRegistroLocal = useCallback(
+    (payload) => applyPlanRegistroSyncPayload(setRegistros, payload),
+    [setRegistros],
+  )
+  const syncPlan = onSyncPlanRegistro || syncPlanRegistroLocal
 
   if (embedded) {
     return (
       <MiPlanKanban
         embedded
         onRegistrarComida={onRegistrarComida}
-        onSyncPlanRegistro={onSyncPlanRegistro}
+        onSyncPlanRegistro={syncPlan}
         abrirEditorInicial={abrirEditorInicial}
       />
     )
@@ -49,7 +58,7 @@ export default function PlanMes1Panel({
       <MiPlanKanban
         embedded={false}
         onRegistrarComida={onRegistrarComida}
-        onSyncPlanRegistro={onSyncPlanRegistro}
+        onSyncPlanRegistro={syncPlan}
       />
     </div>
   )
