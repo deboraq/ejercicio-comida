@@ -748,6 +748,22 @@
   background: linear-gradient(270deg, rgba(13, 19, 34, 0.95) 0%, rgba(13, 19, 34, 0) 100%);
 }
 
+.plan-kanban-board--zoom-semana .plan-kanban-options,
+.plan-kanban-board--zoom-mes .plan-kanban-options {
+  gap: 0.35rem;
+}
+
+.plan-kanban-board--zoom-semana .plan-kanban-option,
+.plan-kanban-board--zoom-mes .plan-kanban-option {
+  padding: 0.4rem 0.45rem;
+}
+
+.plan-kanban-board--zoom-semana .plan-kanban-meal-text,
+.plan-kanban-board--zoom-mes .plan-kanban-meal-text {
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
 .plan-kanban-board--zoom-1 .plan-kanban-col {
   width: min(100%, 22rem);
   max-width: 22rem;
@@ -1731,6 +1747,20 @@
     color: #bfdbfe;
     font-weight: 600;
     margin-bottom: 0.5rem;
+  }
+
+  /* Los degradés laterales se superponían a las columnas y parecían una “línea cortada”. */
+  .plan-kanban--mobile-agenda .plan-kanban-board-wrap--fade::before,
+  .plan-kanban--mobile-agenda .plan-kanban-board-wrap--fade::after {
+    display: none;
+  }
+
+  .plan-kanban--mobile-agenda .plan-kanban-board-wrap {
+    scroll-padding-inline: 0.35rem;
+  }
+
+  .plan-kanban--mobile-agenda .plan-kanban-board--zoom-2 .plan-kanban-col {
+    scroll-snap-align: center;
   }
 
   .plan-kanban-toolbar-row--inicio {

@@ -722,6 +722,10 @@ export default function MiPlanKanban({
     setOpcionVisibleMap((prev) => ({ ...prev, [`${diaPlan}_${slotId}`]: opIdx }))
   }, [])
 
+  /** En vista 1 día (escritorio) se muestra una opción hasta marcar; en 2 días / semana / mes, las dos. */
+  const mostrarSoloOpcionActivaDesktop =
+    !planMobile && vistaPlanZoom !== '2' && vistaPlanZoom !== 'semana' && vistaPlanZoom !== 'mes'
+
   const slotTieneAlgunaOpcionHecha = (diaPlan, slot) =>
     (slot.opciones || []).some((_, i) => isChecked(diaPlan, slot.id, null, i))
 
@@ -1523,7 +1527,7 @@ export default function MiPlanKanban({
                             return null
                           }
                           if (
-                            !planMobile
+                            mostrarSoloOpcionActivaDesktop
                             && !algunaHecha
                             && opciones.length > 1
                             && opIdx !== resolveOpVisible(diaPlan, slot.id, opciones)
