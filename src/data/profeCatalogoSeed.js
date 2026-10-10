@@ -1,5 +1,5 @@
 /** Versión del seed — al subir, se refrescan ejercicios seed_* (los tuyos con id ex_ no se tocan). */
-export const CATALOGO_SEED_VERSION = 4
+export const CATALOGO_SEED_VERSION = 5
 
 /** Categorías base del catálogo (sin Todos/Favoritos). */
 export const CATEGORIAS_BASE = [
@@ -74,6 +74,7 @@ export function buildProfeCatalogoSeed() {
       ['press_squeeze', 'Press squeeze en máquina'],
       ['cable_fly_baja', 'Cruces desde polea baja'],
       ['landmine_press', 'Landmine press'],
+      ['rec_press_incl_flex', 'Press inclinado con mancuernas o flexiones', 'Torso superior; progresión con peso corporal o mancuernas.'],
     ]),
     ...bloque('Espalda', [
       ['dominadas', 'Dominadas', 'Agarre prono, pecho al barra.'],
@@ -96,6 +97,9 @@ export function buildProfeCatalogoSeed() {
       ['hiperextension', 'Hiperextensiones lumbares'],
       ['encogimiento_barra', 'Encogimiento con barra (trapecio)'],
       ['remo_invertido', 'Remo invertido en barra'],
+      ['rec_jalon_neutro_prono', 'Jalón al pecho (agarre neutro o prono)', 'Fuerza base para dominada.'],
+      ['rec_remo_gironda', 'Remo en polea Gironda', 'Alternativa al remo unilateral; densidad de espalda y postura.'],
+      ['rec_dominada_excentrica', 'Dominada asistida / excéntrica', 'Bajadas controladas en 4–5 segundos.'],
     ]),
     ...bloque('Piernas', [
       ['sentadilla_barra', 'Sentadilla trasera con barra'],
@@ -126,6 +130,15 @@ export function buildProfeCatalogoSeed() {
       ['abductor_maquina', 'Abductores en máquina'],
       ['nordic_ham', 'Nordic hamstring'],
       ['sissy_squat', 'Sissy squat'],
+      ['rec_pmr_barra_manc', 'Peso muerto rumano con barra o mancuernas', 'Cadena posterior: isquios y glúteos.'],
+      ['rec_bulgara_prensa', 'Sentadilla búlgara / prensa de piernas', 'Escultura y forma de cuádriceps; 10 reps por pierna.'],
+      ['rec_sillon_cuadriceps', 'Sillón de cuádriceps (extensión de piernas)', 'Pausa 1 s arriba en la contracción.'],
+      ['rec_zancadas_manc', 'Zancadas caminando con mancuernas', 'Moldea muslos y glúteos; pasos por pierna.'],
+      ['rec_aductor_interno', 'Sillón aductor (cara interna del muslo)', 'Series pesadas; muslo interno y cadera.'],
+      ['rec_abductor_banda', 'Sillón abductor con banda elástica', 'Cadera alta; reduce vacíos laterales.'],
+      ['rec_gemelos_escalon', 'Elevación de talones de pie (escalón o máquina)', 'Bajada lenta; pausa 1 s arriba.'],
+      ['rec_gemelos_sentado_soleo', 'Elevación de talones sentada (sóleo)', '15–20 reps; foco en pantorrilla profunda.'],
+      ['rec_gemelos_una_pierna', 'Elevación de talones a una pierna (sin peso extra)', 'Pantorrilla intensiva; controlar balance.'],
     ]),
     ...bloque('Hombros', [
       ['press_militar_barra', 'Press militar con barra'],
@@ -142,6 +155,7 @@ export function buildProfeCatalogoSeed() {
       ['encogimiento_trapecio', 'Encogimiento de trapecio'],
       ['press_landmine_hombro', 'Landmine press unilateral'],
       ['cuban_rotation', 'Rotación cubana con mancuernas'],
+      ['rec_vuelos_laterales', 'Vuelos laterales para hombro', '12–15 reps; delto medio y anchura de hombros.'],
     ]),
     ...bloque('Brazos', [
       ['curl_barra', 'Curl con barra'],
@@ -162,6 +176,8 @@ export function buildProfeCatalogoSeed() {
       ['patada_triceps', 'Patada de tríceps'],
       ['ext_triceps_overhead', 'Extensión overhead con mancuerna'],
       ['fondos_banco', 'Fondos entre bancos'],
+      ['rec_curl_polea_ez', 'Curl de bíceps en polea / barra EZ', 'Tono y volumen en bíceps; superserie con tríceps.'],
+      ['rec_ext_triceps_cuerda_pausa', 'Extensión de tríceps con cuerda', 'Pausa 1 s abajo; brazo definido.'],
     ]),
     ...bloque('Core', [
       ['plancha_frontal', 'Plancha frontal', 'Cadera neutra.'],
@@ -179,6 +195,10 @@ export function buildProfeCatalogoSeed() {
       ['v_up', 'V-ups'],
       ['ab_wheel', 'Rueda desde rodillas'],
       ['side_plank_reach', 'Plancha lateral con alcance'],
+      ['rec_crunch_polea_alta', 'Crunch abdominal en polea alta', 'Alternativa: elevaciones de piernas colgada; con carga.'],
+      ['rec_elev_piernas_colg', 'Elevaciones de piernas colgada', 'Core con carga; controlar balanceo.'],
+      ['rec_plancha_lat_cadera', 'Plancha lateral con elevación de cadera', 'Oblicuos/flancos; 12 reps por lado.'],
+      ['rec_plancha_atlas', 'Plancha Atlas con disco / toco hombro-talón', '45 s o 15 reps; core anti-extensión.'],
     ]),
     ...bloque('Cardio', [
       ['cinta_correr', 'Cinta — caminata/carrera'],
