@@ -573,6 +573,12 @@ export default function Rutina() {
     if (rutinaActivaId === id) setRutinaActivaId(listaRutinas.find((r) => r.id !== id)?.id || '')
   }
 
+  const parsePesoKgRegistro = (pesoKg) => {
+    if (pesoKg === '' || pesoKg == null) return undefined
+    const n = Number(String(pesoKg).replace(',', '.').trim())
+    return Number.isFinite(n) ? n : undefined
+  }
+
   const agregarRegistrosVarios = (lista) => {
     const fecha = fechaInput || hoy
     const validos = lista.filter(({ ejercicio, series, repeticiones }) => {
@@ -591,7 +597,7 @@ export default function Rutina() {
         ejercicio,
         series: Number(series) || 1,
         repeticiones: repsStr,
-        pesoKg: pesoKg !== '' && pesoKg != null ? Number(pesoKg) : undefined,
+        pesoKg: parsePesoKgRegistro(pesoKg),
         notas: (notas || '').trim(),
       }
       if (serieNum != null && serieNum !== '') row.serieNum = Number(serieNum)

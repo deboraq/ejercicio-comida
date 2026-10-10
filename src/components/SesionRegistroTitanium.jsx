@@ -37,6 +37,29 @@ function anteriorPorSerie(historialEjercicio, serieNum) {
   return historialEjercicio.find((r) => r.pesoKg != null) || historialEjercicio[0] || null
 }
 
+function ultimoPesoEnSesion(regsHoy = []) {
+  const withPeso = (regsHoy || []).filter(
+    (r) => r.pesoKg != null && r.pesoKg !== '' && Number(r.pesoKg) >= 0,
+  )
+  if (!withPeso.length) return null
+  withPeso.sort((a, b) => Number(b.serieNum || 0) - Number(a.serieNum || 0))
+  return withPeso[0]
+}
+
+/** Prioriza lo ya cargado hoy (misma sesión) y luego el historial previo. */
+function referenciaPesoReps(hist, regsHoy, serieNum) {
+  const ya = regsHoy || []
+  const mismoNum = ya.find((r) => Number(r.serieNum) === serieNum)
+  if (mismoNum) return mismoNum
+  if (serieNum > 1) {
+    const prev = ya.find((r) => Number(r.serieNum) === serieNum - 1)
+    if (prev) return prev
+  }
+  const ultHoy = ultimoPesoEnSesion(ya)
+  if (ultHoy) return ultHoy
+  return anteriorPorSerie(hist, serieNum)
+}
+
 function historialDe(historialPorEjercicio, nombre) {
   if (historialPorEjercicio[nombre]?.length) return historialPorEjercicio[nombre]
   for (const [key, rows] of Object.entries(historialPorEjercicio || {})) {
@@ -45,8 +68,8 @@ function historialDe(historialPorEjercicio, nombre) {
   return []
 }
 
-function pesoKgSugerido(it, hist, serieNum) {
-  const ant = anteriorPorSerie(hist, serieNum)
+function pesoKgSugerido(it, hist, serieNum, regsHoy = []) {
+  const ant = referenciaPesoReps(hist, regsHoy, serieNum)
   if (ant?.pesoKg != null) return String(ant.pesoKg)
   const fromPlan = parseCargaMediaKg(it.carga)
   if (fromPlan > 0) return String(Math.round(fromPlan * 10) / 10)
@@ -85,19 +108,20 @@ function registroHechoParaSerie(ya, serieNum) {
   return null
 }
 
-function buildPayloadSerie(it, serieNum, d, notaEjercicio = '') {
+function buildPayloadSerie(it, serieNum, d, notaEjercicio = '', pesoFallback = '') {
   const reps = String(d.repeticiones || '').trim()
   if (!reps) return null
   const nota = String(notaEjercicio || '').trim()
   const notaParts = []
   if (d.rpe) notaParts.push(`RPE ${d.rpe}`)
   if (nota) notaParts.push(nota)
+  const pesoRaw = d.pesoKg !== '' && d.pesoKg != null ? d.pesoKg : pesoFallback
   return {
     ejercicio: it.nombre,
     series: 1,
     serieNum,
     repeticiones: reps,
-    pesoKg: d.pesoKg,
+    pesoKg: pesoRaw,
     rpe: d.rpe !== '' && d.rpe != null ? Number(d.rpe) : undefined,
     notas: notaParts.join(' · '),
   }
@@ -167,17 +191,17 @@ function repsPlanDefault(it, ant, esWarm = false) {
   return '10'
 }
 
-function draftEfectivoEjercicio(it, serieNum, drafts, historialPorEjercicio) {
+function draftEfectivoEjercicio(it, serieNum, drafts, historialPorEjercicio, regsHoy = []) {
   const key = `${it.nombre}::${serieNum}`
   const stored = drafts[key] || {}
   const hist = historialDe(historialPorEjercicio, it.nombre)
-  const ant = anteriorPorSerie(hist, serieNum)
+  const ant = referenciaPesoReps(hist, regsHoy, serieNum)
   const esWarm = esCalentamientoItem(it)
   const repsDefault = repsPlanDefault(it, ant, esWarm)
   return {
     pesoKg: stored.pesoKg != null && stored.pesoKg !== ''
       ? stored.pesoKg
-      : pesoKgSugerido(it, hist, serieNum),
+      : pesoKgSugerido(it, hist, serieNum, regsHoy),
     repeticiones: String(stored.repeticiones ?? '').trim() || repsDefault,
     rpe: stored.rpe ?? '',
   }
@@ -397,25 +421,47 @@ export default function SesionRegistroTitanium({
   }
 
   const guardarSerie = (it, serieNum) => {
-    const d = draftEfectivoEjercicio(it, serieNum, drafts, historialPorEjercicio)
-    const payload = buildPayloadSerie(it, serieNum, d, notas[it.nombre])
+    const ya = regsPorEjercicio[it.nombre] || []
+    const d = draftEfectivoEjercicio(it, serieNum, drafts, historialPorEjercicio, ya)
+    const ult = ultimoPesoEnSesion(ya)
+    const pesoFallback = ult?.pesoKg != null ? String(ult.pesoKg) : ''
+    const payload = buildPayloadSerie(it, serieNum, d, notas[it.nombre], pesoFallback)
     if (!payload) return
     onGuardarSerie(payload)
   }
 
   const guardarTodasMismoPeso = (it, pendientes, serieRef) => {
-    const dRef = draftEfectivoEjercicio(it, serieRef, drafts, historialPorEjercicio)
+    const ya = regsPorEjercicio[it.nombre] || []
+    let dRef = draftEfectivoEjercicio(it, serieRef, drafts, historialPorEjercicio, ya)
+    for (const s of pendientes) {
+      const dTry = draftEfectivoEjercicio(it, s, drafts, historialPorEjercicio, ya)
+      if (dTry.pesoKg !== '' && dTry.pesoKg != null) {
+        dRef = dTry
+        serieRef = s
+        break
+      }
+    }
     const repsRef = String(dRef.repeticiones || '').trim()
     if (!repsRef) return
+    let pesoRef = dRef.pesoKg
+    if (pesoRef === '' || pesoRef == null) {
+      const ult = ultimoPesoEnSesion(ya)
+      if (ult?.pesoKg != null) pesoRef = String(ult.pesoKg)
+    }
     const nota = notas[it.nombre] || ''
     const lista = pendientes
       .map((serieNum) => {
-        const d = draftEfectivoEjercicio(it, serieNum, drafts, historialPorEjercicio)
-        return buildPayloadSerie(it, serieNum, {
-          pesoKg: dRef.pesoKg,
-          repeticiones: String(d.repeticiones || repsRef).trim(),
-          rpe: dRef.rpe,
-        }, nota)
+        const d = draftEfectivoEjercicio(it, serieNum, drafts, historialPorEjercicio, ya)
+        return buildPayloadSerie(
+          it,
+          serieNum,
+          {
+            pesoKg: pesoRef,
+            repeticiones: String(d.repeticiones || repsRef).trim(),
+            rpe: dRef.rpe,
+          },
+          nota,
+        )
       })
       .filter(Boolean)
     guardarUnaOVarias(lista)
@@ -559,8 +605,8 @@ export default function SesionRegistroTitanium({
     const serieActual = Math.min(hechas + 1, nSeries)
     const completaSeries = hechas >= nSeries
     const pendientes = seriesPendientes(ya, nSeries)
-    const d = draftEfectivoEjercicio(it, serieActual, drafts, historialPorEjercicio)
-    const ant = anteriorPorSerie(hist, serieActual)
+    const d = draftEfectivoEjercicio(it, serieActual, drafts, historialPorEjercicio, ya)
+    const ant = referenciaPesoReps(hist, ya, serieActual)
     const repsObjetivo = repsPlanDefault(it, ant, esWarm)
     const resumenHecho = resumenRondasSs(ya)
     const esPesoCorporal = esPesoCorporalNombre(it.nombre)
@@ -800,9 +846,16 @@ export default function SesionRegistroTitanium({
     const hist = historialDe(historialPorEjercicio, it.nombre)
     const ant = referenciaAnteriorSs(hist, ya, ronda)
     return ssDrafts[draftKey] || {
-      pesoKg: pesoKgSugerido(it, hist, ronda),
+      pesoKg: pesoKgSugerido(it, hist, ronda, ya),
       repeticiones: repsPlanDefault(it, ant, false),
     }
+  }
+
+  const pesoKgParaGuardarSs = (d, it, hist, ya, ronda) => {
+    if (d.pesoKg !== '' && d.pesoKg != null) return d.pesoKg
+    const ult = ultimoPesoEnSesion(ya)
+    if (ult?.pesoKg != null) return String(ult.pesoKg)
+    return pesoKgSugerido(it, hist, ronda, ya)
   }
 
   const limpiarSuperserie = (bloque) => {
@@ -838,15 +891,20 @@ export default function SesionRegistroTitanium({
       return
     }
     const pendientes = []
+    const hist = historialDe(historialPorEjercicio, it.nombre)
+    let pesoLote = null
     for (let r = 1; r <= vueltas; r += 1) {
       if (ya.some((reg) => Number(reg.serieNum) === r)) continue
       const d = draftSsDe(bloque.id, it, r)
+      let peso = pesoKgParaGuardarSs(d, it, hist, ya, r)
+      if (peso !== '' && peso != null) pesoLote = peso
+      else if (pesoLote != null) peso = pesoLote
       pendientes.push({
         ejercicio: it.nombre,
         series: 1,
         serieNum: r,
         repeticiones: String(d.repeticiones || it.repeticiones || '10').trim(),
-        pesoKg: d.pesoKg,
+        pesoKg: peso,
         notas: buildNotasSuperserie(notas[it.nombre], label, r),
       })
     }
@@ -865,12 +923,13 @@ export default function SesionRegistroTitanium({
       if (ya.some((r) => Number(r.serieNum) === next)) continue
       const d = draftSsDe(bloque.id, it, next)
       const ssLabel = `${bloque.label}${i + 1}`
+      const hist = historialDe(historialPorEjercicio, it.nombre)
       pendientes.push({
         ejercicio: it.nombre,
         series: 1,
         serieNum: next,
         repeticiones: String(d.repeticiones || '10').trim(),
-        pesoKg: d.pesoKg,
+        pesoKg: pesoKgParaGuardarSs(d, it, hist, ya, next),
         notas: buildNotasSuperserie(notas[it.nombre], ssLabel, next),
       })
     }
@@ -885,15 +944,20 @@ export default function SesionRegistroTitanium({
       const it = bloque.items[i]
       const label = `${bloque.label}${i + 1}`
       const ya = regsPorEjercicio[it.nombre] || []
+      const hist = historialDe(historialPorEjercicio, it.nombre)
+      let pesoLote = null
       for (let r = 1; r <= vueltas; r += 1) {
         if (ya.some((reg) => Number(reg.serieNum) === r)) continue
         const d = draftSsDe(bloque.id, it, r)
+        let peso = pesoKgParaGuardarSs(d, it, hist, ya, r)
+        if (peso !== '' && peso != null) pesoLote = peso
+        else if (pesoLote != null) peso = pesoLote
         pendientes.push({
           ejercicio: it.nombre,
           series: 1,
           serieNum: r,
           repeticiones: String(d.repeticiones || it.repeticiones || '10').trim(),
-          pesoKg: d.pesoKg,
+          pesoKg: peso,
           notas: buildNotasSuperserie(notas[it.nombre], label, r),
         })
       }

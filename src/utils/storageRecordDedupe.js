@@ -44,9 +44,9 @@ export function registroSyncFingerprint(storageKey, item) {
       fechaSoloDia(item.fecha),
       String(item.ejercicio || '').trim().toLowerCase(),
       String(item.rutinaId || ''),
-      String(item.diaId || item.dia || ''),
+      String(item.diaRutinaId || item.diaId || item.dia || ''),
       String(item.serieNum ?? item.serie ?? ''),
-      String(item.reps ?? ''),
+      String(item.repeticiones ?? item.reps ?? ''),
       String(item.pesoKg ?? item.peso ?? ''),
     ].join('|')
   }
