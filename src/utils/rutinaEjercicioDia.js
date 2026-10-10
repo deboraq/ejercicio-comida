@@ -103,7 +103,14 @@ export const MUSCLE_KEYWORDS = [
   { key: 'Calentamiento', re: /bici|el[ií]ptic[oa]|cinta|cardio|calentamiento|spinning|movilidad/i },
   { key: 'Espalda', re: /espalda|jal[oó]n|dominada|pull.?up|dorsal|deadlift|peso muerto|face\s*pull|(?:^|[^a-záéíóú])remo(?:\s|$| con| unilateral)|trapecio|serrato/i },
   { key: 'Pecho', re: /pecho|press banca|bench|aperturas|push.?up|pectoral|fondos en paralelas|flexi[oó]n|flexo|apertura/i },
-  { key: 'Piernas', re: /sentadilla|squat|prensa|femoral|cu[aá]driceps|gemelo|zancada|hip thrust|gl[uú]teo|goblet|estocada|multisalto|salto|unipodal|cono|fg[\s-]|pierna|adductor|abductor|lunges?|step.?up/i },
+  {
+    key: 'Pantorrillas',
+    re: /pantorrilla|gemelo|tal[oó]n(?:es)?|elevaci[oó]n(?:es)? de talones|s[oó]leo|calf raise/i,
+  },
+  {
+    key: 'Piernas',
+    re: /sentadilla|squat|prensa|femoral|cu[aá]driceps|zancada|hip thrust|gl[uú]teo|goblet|estocada|multisalto|salto|unipodal|cono|fg[\s-]|pierna|adductor|abductor|lunges?|step.?up/i,
+  },
   { key: 'Hombros', re: /hombro|militar|elevaci[oó]n(?:es)?\s*lateral(?:es)?|delto|desarrollo|encogimiento|face\s*pull|press.*hombro|arnold|lateral/i },
   { key: 'Bíceps', re: /b[ií]ceps|curl(?!\s*femoral)|martillo|predicador|scott/i },
   { key: 'Tríceps', re: /tr[ií]ceps|extensi[oó]n(?!\s*de\s*cu[aá])|press franc[eé]s|fondos(?!\s*en\s*paralelas)|patada|polea.*tr[ií]ceps/i },
@@ -115,6 +122,7 @@ export const FILTROS_BIBLIOTECA = [
   { id: 'Espalda', label: 'Espalda' },
   { id: 'Pecho', label: 'Pecho' },
   { id: 'Piernas', label: 'Piernas' },
+  { id: 'Pantorrillas', label: 'Pantorrillas' },
   { id: 'Brazos', label: 'Brazos' },
   { id: 'Hombros', label: 'Hombros' },
   { id: 'Core', label: 'Core' },
@@ -159,6 +167,32 @@ export function inferirGruposMuscularesDia(ejercicios = []) {
   }
   if (arr.length === 1) return arr[0]
   return arr.slice(0, 2).join(' & ')
+}
+
+/** True si el nombre del día es vacío o solo «Día N» sin título propio. */
+export function esNombreDiaGenerico(nombre) {
+  const raw = String(nombre || '').trim()
+  return !raw || /^d[ií]a\s*\d+\s*$/i.test(raw)
+}
+
+/** Etiqueta visible del día: respeta el nombre guardado; si no, infiere grupos musculares. */
+export function etiquetaDiaRutina(d, indice = 0) {
+  const di = Number(indice) || 0
+  const raw = String(d?.nombre || '').trim()
+  if (!esNombreDiaGenerico(raw)) return raw
+  const enf = inferirGruposMuscularesDia(d?.ejercicios || [])
+  return enf ? `Día ${di + 1}: ${enf}` : raw || `Día ${di + 1}`
+}
+
+/** Subtítulo corto bajo «Día N» en el armador (nombre custom sin prefijo numérico). */
+export function subtituloDiaRutina(d, indice = 0) {
+  const di = Number(indice) || 0
+  const raw = String(d?.nombre || '').trim()
+  if (!esNombreDiaGenerico(raw)) {
+    const sinPrefijo = raw.replace(/^d[ií]a\s*\d+\s*:?\s*/i, '').trim()
+    return sinPrefijo || raw
+  }
+  return inferirGruposMuscularesDia(d?.ejercicios || []) || 'Sin enfoque'
 }
 
 /**

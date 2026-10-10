@@ -4,6 +4,8 @@ import {
   itemEjercicioDiaNormalizado,
   inferirGruposMuscularesDia,
   inferirGrupoMuscular,
+  etiquetaDiaRutina,
+  subtituloDiaRutina,
   resumenPlanDia,
   resumenPlanCompleto,
   GRUPOS_MUSCULARES_OPCIONES,
@@ -57,6 +59,7 @@ const DIST_COLORS = {
   Espalda: '#3b82f6',
   Pecho: '#60a5fa',
   Piernas: '#34d399',
+  Pantorrillas: '#2dd4bf',
   Hombros: '#a78bfa',
   Bíceps: '#c084fc',
   Tríceps: '#818cf8',
@@ -282,16 +285,10 @@ export default function ArmarPlanTitanium({
     onReordenar?.(desde, hasta)
   }
 
-  const promptRenombrar = (d) => {
-    const n = window.prompt('Nombre del día (ej. Día 1: Pecho & Espalda)', d.nombre)
-    if (n != null) onRenombrarDia(d.id, n)
-  }
-
-  const tituloDia = (d, di) => {
-    const raw = String(d.nombre || '').trim()
-    if (raw && !/^d[ií]a\s*\d+$/i.test(raw)) return raw
-    const enf = inferirGruposMuscularesDia(d.ejercicios || [])
-    return enf ? `Día ${di + 1}: ${enf}` : `Día ${di + 1}`
+  const promptRenombrar = (d, di) => {
+    const actual = etiquetaDiaRutina(d, di)
+    const n = window.prompt('Nombre del día (ej. Día 1: Pecho & Espalda)', actual)
+    if (n != null) onRenombrarDia(d.id, String(n).trim())
   }
 
   const diaTone = (diaIdx >= 0 ? diaIdx : 0) % 6
@@ -496,8 +493,7 @@ export default function ArmarPlanTitanium({
             {dias.map((d, di) => {
               const activo = diaEditando === d.id
               const cant = (d.ejercicios || []).length
-              const titulo = tituloDia(d, di)
-              const enf = inferirGruposMuscularesDia(d.ejercicios || [])
+              const foco = subtituloDiaRutina(d, di)
               return (
                 <div key={d.id} className={`ap-day ap-day--tone-${di % 6}${activo ? ' is-active' : ''}`}>
                   <button
@@ -511,7 +507,7 @@ export default function ArmarPlanTitanium({
                       <span className="ap-day-label">Día {di + 1}</span>
                       <span className="ap-day-count">{cant}</span>
                     </div>
-                    <span className="ap-day-focus">{enf || titulo.replace(/^Día\s*\d+:\s*/i, '') || 'Sin enfoque'}</span>
+                    <span className="ap-day-focus">{foco}</span>
                   </button>
                   {activo && origenEditable ? (
                     <div className="ap-day-tools">
@@ -524,7 +520,7 @@ export default function ArmarPlanTitanium({
                       <button type="button" className="ap-day-tool" onClick={() => onDuplicarDia?.(d.id)} title="Duplicar día" aria-label="Duplicar día">
                         <span className="ap-day-tool-txt">⧉</span>
                       </button>
-                      <button type="button" className="ap-day-tool" onClick={() => promptRenombrar(d)} title="Renombrar" aria-label="Renombrar">
+                      <button type="button" className="ap-day-tool" onClick={() => promptRenombrar(d, di)} title="Renombrar" aria-label="Renombrar">
                         <IconPencil />
                       </button>
                       <button type="button" className="ap-day-tool is-danger" disabled={dias.length <= 1} onClick={() => onQuitarDia(d.id)} title="Quitar" aria-label="Quitar">

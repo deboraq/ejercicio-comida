@@ -1,5 +1,5 @@
 /** Versión del seed — al subir, se refrescan ejercicios seed_* (los tuyos con id ex_ no se tocan). */
-export const CATALOGO_SEED_VERSION = 5
+export const CATALOGO_SEED_VERSION = 6
 
 /** Categorías base del catálogo (sin Todos/Favoritos). */
 export const CATEGORIAS_BASE = [
@@ -7,6 +7,7 @@ export const CATEGORIAS_BASE = [
   'Pecho',
   'Espalda',
   'Piernas',
+  'Pantorrillas',
   'Hombros',
   'Brazos',
   'Core',
@@ -123,9 +124,6 @@ export function buildProfeCatalogoSeed() {
       ['zancadas_estaticas', 'Zancadas estáticas'],
       ['zancadas_laterales', 'Zancadas laterales'],
       ['step_up', 'Step-up al cajón'],
-      ['gemelos_parado', 'Gemelos de pie'],
-      ['gemelos_sentado', 'Gemelos sentado'],
-      ['gemelos_prensa', 'Gemelos en prensa'],
       ['adductor_maquina', 'Adductores en máquina'],
       ['abductor_maquina', 'Abductores en máquina'],
       ['nordic_ham', 'Nordic hamstring'],
@@ -136,6 +134,11 @@ export function buildProfeCatalogoSeed() {
       ['rec_zancadas_manc', 'Zancadas caminando con mancuernas', 'Moldea muslos y glúteos; pasos por pierna.'],
       ['rec_aductor_interno', 'Sillón aductor (cara interna del muslo)', 'Series pesadas; muslo interno y cadera.'],
       ['rec_abductor_banda', 'Sillón abductor con banda elástica', 'Cadera alta; reduce vacíos laterales.'],
+    ]),
+    ...bloque('Pantorrillas', [
+      ['gemelos_parado', 'Gemelos de pie'],
+      ['gemelos_sentado', 'Gemelos sentado'],
+      ['gemelos_prensa', 'Gemelos en prensa'],
       ['rec_gemelos_escalon', 'Elevación de talones de pie (escalón o máquina)', 'Bajada lenta; pausa 1 s arriba.'],
       ['rec_gemelos_sentado_soleo', 'Elevación de talones sentada (sóleo)', '15–20 reps; foco en pantorrilla profunda.'],
       ['rec_gemelos_una_pierna', 'Elevación de talones a una pierna (sin peso extra)', 'Pantorrilla intensiva; controlar balance.'],

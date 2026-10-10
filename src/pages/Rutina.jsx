@@ -17,6 +17,7 @@ import {
   itemEjercicioDiaNormalizado,
   nombresEjerciciosDia,
   inferirGruposMuscularesDia,
+  etiquetaDiaRutina,
   ejercicioDiaAJson,
   inferirGrupoMuscular,
   parseNumSeriesPlan,
@@ -1119,10 +1120,9 @@ export default function Rutina() {
 
                 <div className="rut-day-chips" role="group" aria-label={`Día de ${rutinaActiva?.nombre || 'la rutina'}`}>
                   {dias.map((d, di) => {
-                    const grupos = inferirGruposMuscularesDia(d.ejercicios)
                     const cant = (d.ejercicios || []).length
                     const activo = diaSeleccionado === d.id
-                    const titulo = grupos || d.nombre || `Día ${di + 1}`
+                    const titulo = etiquetaDiaRutina(d, di)
                     return (
                       <button
                         key={d.id}
@@ -1133,7 +1133,7 @@ export default function Rutina() {
                         {activo && (
                           <span className="rut-day-chip-check" aria-hidden>✓</span>
                         )}
-                        <span className="rut-day-chip-name">Día {di + 1}: {titulo}</span>
+                        <span className="rut-day-chip-name">{titulo}</span>
                         <span className="rut-day-chip-badge">{cant} ejer.</span>
                       </button>
                     )

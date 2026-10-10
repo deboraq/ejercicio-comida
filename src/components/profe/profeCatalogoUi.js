@@ -4,6 +4,7 @@ export function grupoMuscularTone(grupo) {
   if (g.includes('calentamiento') || g.includes('cardio') || g.includes('running')) return 'core'
   if (g.includes('pecho')) return 'chest'
   if (g.includes('espalda')) return 'back'
+  if (g.includes('pantorrilla') || g.includes('gemelo') || g.includes('sóleo') || g.includes('soleo')) return 'calves'
   if (g.includes('pierna') || g.includes('glúteo')) return 'legs'
   if (g.includes('hombro') || g.includes('delto')) return 'shoulder'
   if (g.includes('bíceps') || g.includes('tríceps') || g.includes('brazo')) return 'arms'

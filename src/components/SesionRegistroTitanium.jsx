@@ -17,6 +17,7 @@ function etiquetaMusculo(nombre) {
   if (/pecho|banca|apertura|pectoral/.test(n) && !/jal[oó]n/.test(n)) return 'Pecho'
   if (/jal[oó]n|espalda|dorsal|dominada|pull.?up|remo(?!\s*erg)/.test(n)) return 'Espalda / Dorsal'
   if (/hombro|militar|elevaci[oó]n\s*lateral|delto/.test(n)) return 'Hombros'
+  if (/pantorrilla|gemelo|tal[oó]n|s[oó]leo|elevaci[oó]n(?:es)? de talones/.test(n)) return 'Pantorrillas'
   if (/sentadilla|prensa|femoral|zancada|gl[uú]teo|goblet/.test(n)) return 'Piernas'
   if (/b[ií]ceps|curl/.test(n)) return 'Bíceps'
   if (/tr[ií]ceps/.test(n)) return 'Tríceps'

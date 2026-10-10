@@ -7,6 +7,7 @@ import {
   esCalentamientoPlan,
   agruparPlanEnBloques,
   resumenPlanDia,
+  etiquetaDiaRutina,
 } from '../utils/rutinaEjercicioDia'
 
 function IconCloud({ className }) {
@@ -35,12 +36,6 @@ function badgeMusculo(grupo) {
   return grupo
 }
 
-function tituloDia(d, di) {
-  const raw = String(d.nombre || '').trim()
-  if (raw && !/^d[ií]a\s*\d+$/i.test(raw)) return raw
-  const enf = inferirGruposMuscularesDia(d.ejercicios || [])
-  return enf ? `Día ${di + 1}: ${enf}` : `Día ${di + 1}`
-}
 
 function formatearFechaAsignacion(fecha) {
   if (!fecha) return ''
@@ -196,7 +191,7 @@ function RutinaAsignadaCard({ rutina, diaIdx, onSelectDia, onCopiar, onQuitar })
                   className={`ra-day ra-day--tone-${i % 6}${i === diaIdx ? ' is-active' : ''}`}
                   onClick={(e) => handleSelectDia(i, e)}
                 >
-                  <span className="ra-day-label">{tituloDia(d, i)}</span>
+                  <span className="ra-day-label">{etiquetaDiaRutina(d, i)}</span>
                   <span className="ra-day-count">{(d.ejercicios || []).length} ej.</span>
                 </button>
               ))}

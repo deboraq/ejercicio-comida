@@ -291,6 +291,7 @@ export function distribucionMuscular(registros) {
     Espalda: '#8b5cf6',
     Hombros: '#06b6d4',
     Piernas: '#f59e0b',
+    Pantorrillas: '#14b8a6',
     Bíceps: '#a78bfa',
     Tríceps: '#60a5fa',
     Core: '#34d399',
