@@ -123,7 +123,7 @@ export default function Config() {
     planMes1Objetivo: '',
     planMes1Origen: 'guia',
   })
-  const [, setPlanPropio] = useStorage('planPropio', null)
+  const [, setPlanPropio] = useStorage('planPropio', { inactivo: true, dias: {} })
 
   const { counts: exportCounts, loadingBundle: exportLoading, ensureBundle } = useConfigExportData()
   const totalComidas = exportCounts.comidas

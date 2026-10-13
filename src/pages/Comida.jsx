@@ -385,7 +385,7 @@ export default function Comida() {
   const [historialMedidasRaw] = useStorage('medidasHistorial', [])
   const historialMedidas = normalizarMedidasHistorial(asArray(historialMedidasRaw))
   const [config] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
-  const [planPropio] = useStorage('planPropio', null)
+  const [planPropio] = useStorage('planPropio', { inactivo: true, dias: {} })
   const [comidaFavoritos, setComidaFavoritos] = useStorage('comidaFavoritos', [])
   const [comida, setComida] = useState('Desayuno')
   const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))

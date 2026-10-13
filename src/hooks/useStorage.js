@@ -24,6 +24,7 @@ import {
   USER_DATA_CLOUD_REFRESH,
   didLastCloudFetchSucceed,
 } from '../utils/userDataCloud'
+import { normalizarPlanPropioEnStorage } from '../utils/planPropio.js'
 
 function mergeLocalWithLive(key, fromLs, fromLive, initial) {
   if (Array.isArray(initial)) {
@@ -110,12 +111,18 @@ function postProcessStorageKey(key, resolved, initial) {
   ) {
     return dedupeRegistrosSync(key, resolved)
   }
+  if (key === 'planPropio') {
+    return normalizarPlanPropioEnStorage(resolved)
+  }
   return resolved
 }
 
 function persistUserData(userId, key, value) {
   if (!supabase || !userId) return Promise.resolve({ error: null })
-  scheduleCloudPersist(userId, key, value)
+  let payload = value
+  if (key === 'planPropio') payload = normalizarPlanPropioEnStorage(value)
+  if (payload === undefined) return Promise.resolve({ error: null })
+  scheduleCloudPersist(userId, key, payload)
   return Promise.resolve({ error: null })
 }
 

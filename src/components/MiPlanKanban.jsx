@@ -25,6 +25,9 @@ import {
   crearPlanPropioDesdeGuia,
   esPlanPropio,
   labelOrigenPlan,
+  normalizarPlanPropioEnStorage,
+  PLAN_PROPIO_STORAGE_VACIO,
+  planPropioStorageActivo,
 } from '../utils/planPropio'
 import PlanPropioEditor from './PlanPropioEditor'
 import {
@@ -156,7 +159,7 @@ export default function MiPlanKanban({
     planMes1CincoComidas: true,
     planMes1Esquema: '5',
   })
-  const [planPropio, setPlanPropio] = useStorage('planPropio', null)
+  const [planPropio, setPlanPropio] = useStorage('planPropio', PLAN_PROPIO_STORAGE_VACIO)
   const [estado, setEstado, estadoCloudReady] = useStorage('planMes1Estado', {
     checks: {},
     omitidos: {},
@@ -457,7 +460,7 @@ export default function MiPlanKanban({
     setPlanesNutricion(lista)
     const { configPatch, planPropio: pp, estado: est } = aplicarSnapshot(entry)
     setConfig((c) => ({ ...c, ...configPatch }))
-    setPlanPropio(pp)
+    setPlanPropio(normalizarPlanPropioEnStorage(pp))
     setEstado(est)
     setPlanNutricionActivoId(id)
     setEditorAbierto(entry.origen === 'propio')
@@ -494,7 +497,7 @@ export default function MiPlanKanban({
     const nextConfig = { ...config, ...patchMes(config, hoy), planNutricionId: id }
     const nombre = nombrePlanGuiadoSistema(nextConfig)
     const listaBase = persistirPlanActivoEnBiblioteca()
-    setPlanPropio(null)
+    setPlanPropio(PLAN_PROPIO_STORAGE_VACIO)
     setConfig(nextConfig)
     setEstado(estadoVacio)
     registrarPlanNuevoEnBiblioteca(id, nombre, 'guia', hoy, null, nextConfig, listaBase)
@@ -550,7 +553,7 @@ export default function MiPlanKanban({
         planNutricionId: '',
         planMes1Origen: 'guia',
       }))
-      setPlanPropio(null)
+      setPlanPropio(PLAN_PROPIO_STORAGE_VACIO)
       setEstado(estadoVacio)
       setPlanNutricionActivoId('')
       setEditorAbierto(false)
@@ -560,7 +563,7 @@ export default function MiPlanKanban({
     const otro = nextList[0]
     const { configPatch, planPropio: pp, estado: est } = aplicarSnapshot(otro)
     setConfig((c) => ({ ...c, ...configPatch }))
-    setPlanPropio(pp)
+    setPlanPropio(normalizarPlanPropioEnStorage(pp))
     setEstado(est)
     setPlanNutricionActivoId(otro.id)
     setEditorAbierto(otro.origen === 'propio')
@@ -1449,7 +1452,7 @@ export default function MiPlanKanban({
         </div>
       )}
 
-      {editorAbierto && esPlanPropio(config) && planPropio && (
+      {editorAbierto && esPlanPropio(config) && planPropioStorageActivo(planPropio) && (
         <PlanPropioEditor
           diaPlan={editDiaPlan}
           planPropio={planPropio}

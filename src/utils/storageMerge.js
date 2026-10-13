@@ -2,6 +2,7 @@ import { mergeStorageArrays } from '../hooks/useLocalStorage'
 import { normalizarHidratacionPorDia, mergeHidratacionPorDia } from './hidratacionStorage'
 import { dedupeRegistrosSync } from './storageRecordDedupe'
 import { dedupeRegistrosPorPlanRef, slotKeyDesdeCheckKey } from './planRegistroSync'
+import { normalizarPlanPropioEnStorage } from './planPropio.js'
 import { normalizarPesoHistorial } from './pesoStorage'
 import { normalizarMedidasHistorial } from './medidasStorage'
 import { normalizarSuplementosPorDia } from './suplementosStorage'
@@ -133,6 +134,11 @@ export function mergeCloudAndLocal(key, localNorm, fromCloud, initial, preferClo
     }
     if (key === 'planMes1Estado') {
       return mergePlanMes1Estado(localNorm, fromCloud, initial, preferCloud)
+    }
+    if (key === 'planPropio') {
+      const local = normalizarPlanPropioEnStorage(localNorm)
+      const cloud = normalizarPlanPropioEnStorage(fromCloud)
+      return mergePlainObjects(cloud, local, normalizarPlanPropioEnStorage(initial), preferCloud)
     }
     return mergePlainObjects(fromCloud, localNorm, initial, preferCloud)
   }

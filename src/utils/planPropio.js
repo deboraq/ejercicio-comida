@@ -10,6 +10,22 @@ import {
 } from './planMes1.js'
 import { esPlanMes2, getDiaPlanMes2 } from './planMes2.js'
 
+/** Valor en storage/nube cuando no hay plan propio activo (evita `null` en Supabase). */
+export const PLAN_PROPIO_STORAGE_VACIO = Object.freeze({ inactivo: true, dias: {} })
+
+export function normalizarPlanPropioEnStorage(value) {
+  if (value == null) return { inactivo: true, dias: {} }
+  if (value.inactivo === true && !value.nombre?.trim()) {
+    return { inactivo: true, dias: value.dias && typeof value.dias === 'object' ? value.dias : {} }
+  }
+  return value
+}
+
+export function planPropioStorageActivo(value) {
+  const p = normalizarPlanPropioEnStorage(value)
+  return !p.inactivo && Boolean(p.dias && typeof p.dias === 'object')
+}
+
 export function esPlanPropio(config) {
   return config?.planMes1Origen === 'propio'
 }
@@ -56,6 +72,7 @@ export function crearPlanPropioDesdeGuia(config = null) {
 }
 
 export function getDiaPlanPropio(diaPlan, planPropio) {
+  if (planPropio?.inactivo) return null
   if (diaPlan < 1 || diaPlan > PLAN_MES1_TOTAL_DIAS || !planPropio?.dias) return null
   const raw = planPropio.dias[String(diaPlan)]
   if (!raw) return null
@@ -89,7 +106,7 @@ export function getDiaPlanPropio(diaPlan, planPropio) {
 }
 
 export function getDiaPlanAlimenticio(diaPlan, config, planPropio) {
-  if (esPlanPropio(config) && planPropio) {
+  if (esPlanPropio(config) && planPropioStorageActivo(planPropio)) {
     return getDiaPlanPropio(diaPlan, planPropio)
   }
   if (esPlanMes2(config)) return getDiaPlanMes2(diaPlan)

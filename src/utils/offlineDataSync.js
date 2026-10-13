@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { patchUserDataCloudCache } from './userDataCloud'
+import { normalizarPlanPropioEnStorage } from './planPropio.js'
 
 const QUEUE_STORAGE_KEY = 'fitnesspro_offline_sync_v1'
 const SYNC_EVENT = 'fitnesspro-sync-status'
@@ -52,7 +53,8 @@ function loadQueueFromDisk() {
       if (!keys || typeof keys !== 'object') continue
       const map = new Map()
       for (const [key, value] of Object.entries(keys)) {
-        map.set(key, value)
+        const prepared = prepareValueForCloud(key, value)
+        if (prepared !== undefined) map.set(key, prepared)
       }
       if (map.size) pendingByUser.set(userId, map)
     }
@@ -80,12 +82,25 @@ export function hasPendingCloudWrite(userId, key) {
   return pendingByUser.get(userId)?.has(key) ?? false
 }
 
+function prepareValueForCloud(key, value) {
+  if (value === undefined) return undefined
+  if (key === 'planPropio') return normalizarPlanPropioEnStorage(value)
+  if (value === null) return null
+  try {
+    return JSON.parse(JSON.stringify(value))
+  } catch {
+    return null
+  }
+}
+
 /** Encola o sube un valor de user_data (localStorage ya actualizado en useStorage). */
 export function scheduleCloudPersist(userId, key, value) {
   if (!userId || key == null) return
-  patchUserDataCloudCache(userId, key, value)
+  const prepared = prepareValueForCloud(key, value)
+  if (prepared === undefined) return
+  patchUserDataCloudCache(userId, key, prepared)
   if (!pendingByUser.has(userId)) pendingByUser.set(userId, new Map())
-  pendingByUser.get(userId).set(key, value)
+  pendingByUser.get(userId).set(key, prepared)
   persistQueueToDisk()
   emitSyncStatus()
   clearTimeout(flushTimer)
@@ -146,14 +161,17 @@ export async function flushPendingCloudWrites() {
       continue
     }
 
-    // eslint-disable-next-line no-await-in-loop
-    const { error } = await supabase.from('user_data').upsert(upsertRows, { onConflict: 'user_id,key' })
-    if (error) {
-      errors.push(error)
-      continue
+    for (const row of upsertRows) {
+      if (row.value == null) continue
+      // eslint-disable-next-line no-await-in-loop
+      const { error } = await supabase.from('user_data').upsert([row], { onConflict: 'user_id,key' })
+      if (error) {
+        errors.push(error)
+        continue
+      }
+      flushed += 1
+      keyMap.delete(row.key)
     }
-    flushed += upsertRows.length
-    for (const row of upsertRows) keyMap.delete(row.key)
     if (keyMap.size === 0) pendingByUser.delete(userId)
   }
 
