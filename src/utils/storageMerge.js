@@ -3,6 +3,7 @@ import { normalizarHidratacionPorDia, mergeHidratacionPorDia } from './hidrataci
 import { dedupeRegistrosSync } from './storageRecordDedupe'
 import { dedupeRegistrosPorPlanRef, slotKeyDesdeCheckKey } from './planRegistroSync'
 import { normalizarPlanPropioEnStorage } from './planPropio.js'
+import { migrarEstadoLegacyAMes1, normalizarEstadoMultiplan } from './planEstadoStorage.js'
 import { normalizarPesoHistorial } from './pesoStorage'
 import { normalizarMedidasHistorial } from './medidasStorage'
 import { normalizarSuplementosPorDia } from './suplementosStorage'
@@ -29,25 +30,47 @@ function normalizePlanMes1ChecksOnePerSlot(estado) {
   return { ...estado, checks }
 }
 
+function mergePlanMes1EstadoByPlanId(localRoot, cloudRoot, preferCloud = false) {
+  const local = normalizarEstadoMultiplan(localRoot)
+  const cloud = normalizarEstadoMultiplan(cloudRoot)
+  const ids = new Set([...Object.keys(local.byPlanId), ...Object.keys(cloud.byPlanId)])
+  const byPlanId = {}
+  for (const id of ids) {
+    const l = local.byPlanId[id] || { checks: {}, omitidos: {}, extras: {} }
+    const c = cloud.byPlanId[id] || { checks: {}, omitidos: {}, extras: {} }
+    const primary = preferCloud ? c : l
+    const secondary = preferCloud ? l : c
+    byPlanId[id] = normalizePlanMes1ChecksOnePerSlot({
+      checks: { ...(secondary.checks || {}), ...(primary.checks || {}) },
+      omitidos: { ...(secondary.omitidos || {}), ...(primary.omitidos || {}) },
+      extras: { ...(secondary.extras || {}), ...(primary.extras || {}) },
+    })
+  }
+  return migrarEstadoLegacyAMes1({ version: 2, byPlanId }, [])
+}
+
 function mergePlanMes1Estado(localObj, cloudObj, initial, preferCloud = false) {
-  const cloud = cloudObj && typeof cloudObj === 'object' && !Array.isArray(cloudObj) ? cloudObj : initial
-  const local = localObj && typeof localObj === 'object' && !Array.isArray(localObj) ? localObj : initial
-  if (isStorageInitial(local, initial) && !isStorageInitial(cloud, initial)) {
-    return normalizePlanMes1ChecksOnePerSlot(cloud)
+  const localNorm = normalizarEstadoMultiplan(localObj)
+  const cloudNorm = normalizarEstadoMultiplan(cloudObj)
+  const localEmpty =
+    Object.keys(localNorm.byPlanId).length === 0
+    || Object.values(localNorm.byPlanId).every(
+      (s) => !Object.keys(s?.checks || {}).length && !Object.keys(s?.omitidos || {}).length,
+    )
+  const cloudEmpty =
+    Object.keys(cloudNorm.byPlanId).length === 0
+    || Object.values(cloudNorm.byPlanId).every(
+      (s) => !Object.keys(s?.checks || {}).length && !Object.keys(s?.omitidos || {}).length,
+    )
+  if (localEmpty && !cloudEmpty) return mergePlanMes1EstadoByPlanId(localNorm, cloudNorm, true)
+  if (cloudEmpty && !localEmpty) return mergePlanMes1EstadoByPlanId(localNorm, cloudNorm, false)
+  if (isStorageInitial(localObj, initial) && !isStorageInitial(cloudObj, initial)) {
+    return mergePlanMes1EstadoByPlanId(localNorm, cloudNorm, true)
   }
-  if (isStorageInitial(cloud, initial) && !isStorageInitial(local, initial)) {
-    return normalizePlanMes1ChecksOnePerSlot(local)
+  if (isStorageInitial(cloudObj, initial) && !isStorageInitial(localObj, initial)) {
+    return mergePlanMes1EstadoByPlanId(localNorm, cloudNorm, false)
   }
-  const primary = preferCloud ? cloud : local
-  const secondary = preferCloud ? local : cloud
-  const merged = {
-    ...secondary,
-    ...primary,
-    checks: { ...(secondary.checks || {}), ...(primary.checks || {}) },
-    omitidos: { ...(secondary.omitidos || {}), ...(primary.omitidos || {}) },
-    extras: { ...(secondary.extras || {}), ...(primary.extras || {}) },
-  }
-  return normalizePlanMes1ChecksOnePerSlot(merged)
+  return mergePlanMes1EstadoByPlanId(localNorm, cloudNorm, preferCloud)
 }
 
 function mergePlainObjects(cloudObj, localObj, initial, preferCloud = false) {

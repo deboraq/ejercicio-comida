@@ -25,6 +25,7 @@ import {
   didLastCloudFetchSucceed,
 } from '../utils/userDataCloud'
 import { normalizarPlanPropioEnStorage } from '../utils/planPropio.js'
+import { migrarEstadoLegacyAMes1, normalizarEstadoMultiplan } from '../utils/planEstadoStorage.js'
 
 function mergeLocalWithLive(key, fromLs, fromLive, initial) {
   if (Array.isArray(initial)) {
@@ -114,6 +115,9 @@ function postProcessStorageKey(key, resolved, initial) {
   if (key === 'planPropio') {
     return normalizarPlanPropioEnStorage(resolved)
   }
+  if (key === 'planMes1Estado') {
+    return migrarEstadoLegacyAMes1(normalizarEstadoMultiplan(resolved), [])
+  }
   return resolved
 }
 
@@ -140,6 +144,7 @@ export function useStorage(key, initialValue) {
   const valueRef = useRef(localVal)
   const localValRef = useRef(localVal)
   const pendingCloudPersistRef = useRef(null)
+  const cloudOwnerUserIdRef = useRef(null)
   const initial = initialRef.current
 
   useEffect(() => {
@@ -147,7 +152,9 @@ export function useStorage(key, initialValue) {
   }, [localVal])
 
   const value = useMemo(() => {
-    if (!user || !isConfigured || !cloudReady) return localVal
+    if (!user || !isConfigured || !cloudReady || cloudOwnerUserIdRef.current !== user.id) {
+      return localVal
+    }
     return cloudVal ?? localVal
   }, [user, isConfigured, cloudReady, localVal, cloudVal])
 
@@ -156,18 +163,22 @@ export function useStorage(key, initialValue) {
 
   useEffect(() => {
     if (!user || !isConfigured || !supabase) {
+      cloudOwnerUserIdRef.current = null
+      pendingCloudPersistRef.current = null
       setCloudReady(false)
       setCloudVal(null)
       return
     }
 
-    let cancelled = false
-    const cacheHit = userDataCloudCached(user.id)
-    const alreadyHydrated = isStorageKeyHydrated(user.id, key)
-    if (!cacheHit && !alreadyHydrated) {
+    if (cloudOwnerUserIdRef.current !== user.id) {
+      cloudOwnerUserIdRef.current = user.id
+      pendingCloudPersistRef.current = null
       setCloudReady(false)
       setCloudVal(null)
     }
+
+    let cancelled = false
+    const alreadyHydrated = isStorageKeyHydrated(user.id, key)
 
     const applyResolved = (resolved) => {
       setCloudVal(resolved)
@@ -226,9 +237,11 @@ export function useStorage(key, initialValue) {
       applyResolved(resolved)
 
       const pending = pendingCloudPersistRef.current
-      if (pending != null) {
+      if (pending != null && pending.userId === user.id) {
         pendingCloudPersistRef.current = null
-        persistUserData(user.id, key, pending)
+        persistUserData(user.id, key, pending.value)
+      } else if (pending != null && pending.userId !== user.id) {
+        pendingCloudPersistRef.current = null
       }
     }
 
@@ -269,7 +282,7 @@ export function useStorage(key, initialValue) {
         pendingCloudPersistRef.current = null
         persistUserData(user.id, key, normalizedFinal)
       } else if (user && isConfigured && supabase) {
-        pendingCloudPersistRef.current = normalizedFinal
+        pendingCloudPersistRef.current = { userId: user.id, value: normalizedFinal }
       }
     },
     [user?.id, isConfigured, key, initial, setLocalVal, cloudReady],

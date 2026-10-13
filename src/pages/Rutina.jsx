@@ -36,6 +36,7 @@ import {
   rutinasListChanged,
   RUTINA_PRINCIPAL_ID_PREFERIDO,
 } from '../utils/rutinasStorage'
+import { scopedStorageKey } from '../utils/storageKeys'
 
 function crearDia(num) {
   return { id: `d${Date.now()}_${num}`, nombre: `Día ${num}`, ejercicios: [] }
@@ -179,7 +180,8 @@ export default function Rutina() {
     if (seedRutinaInicialRef.current) return
     seedRutinaInicialRef.current = true
     try {
-      const old = localStorage.getItem('rutinaPlantilla')
+      const legacyKey = scopedStorageKey('rutinaPlantilla', user?.id ?? null)
+      const old = localStorage.getItem(legacyKey)
       if (old) {
         const plantilla = JSON.parse(old)
         const migrada = migrarPlantillaAntigua(plantilla)
@@ -194,7 +196,7 @@ export default function Rutina() {
     }
     setRutinas(RUTINA_INICIAL)
     setRutinaActivaId(RUTINA_PRINCIPAL_ID_PREFERIDO)
-  }, [rutinas, rutinasCloudReady, setRutinas, setRutinaActivaId])
+  }, [rutinas, rutinasCloudReady, setRutinas, setRutinaActivaId, user?.id])
 
   useEffect(() => {
     if (!rutinasCloudReady || !Array.isArray(rutinas) || rutinas.length === 0) return

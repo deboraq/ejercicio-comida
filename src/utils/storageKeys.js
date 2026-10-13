@@ -38,6 +38,9 @@ export const APP_STORAGE_LOGICAL_KEYS = [
   'inicioAccesosFavoritos',
 ]
 
+/** Claves legacy fuera de useStorage que igual deben aislar por usuario en este navegador. */
+export const LEGACY_EXTRA_STORAGE_KEYS = ['rutinaPlantilla']
+
 /** Clave localStorage por usuario; sin sesión → namespace invitado (no claves sueltas). */
 export function scopedStorageKey(logicalKey, userId) {
   if (!logicalKey) return logicalKey
@@ -72,6 +75,9 @@ function moveLegacyKeyToScoped(logicalKey, userId) {
 export function sealLegacyStorageForUser(userId) {
   if (!userId) return
   for (const key of APP_STORAGE_LOGICAL_KEYS) {
+    moveLegacyKeyToScoped(key, userId)
+  }
+  for (const key of LEGACY_EXTRA_STORAGE_KEYS) {
     moveLegacyKeyToScoped(key, userId)
   }
 }
@@ -140,7 +146,7 @@ export function migrateUnscopedLegacyToGuest() {
     return
   }
 
-  for (const key of APP_STORAGE_LOGICAL_KEYS) {
+  for (const key of [...APP_STORAGE_LOGICAL_KEYS, ...LEGACY_EXTRA_STORAGE_KEYS]) {
     moveLegacyKeyToScoped(key, GUEST_STORAGE_USER_ID)
   }
 

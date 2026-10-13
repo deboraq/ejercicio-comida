@@ -21,6 +21,7 @@ import { toggleFavoritoComida } from '../utils/comidaFavoritos'
 import { vasosHidratacionDia, actualizarVasosHidratacion } from '../utils/hidratacionStorage'
 import { normalizarMedidasHistorial } from '../utils/medidasStorage'
 import { asArray } from '../hooks/useLocalStorage'
+import { PLAN_ESTADO_MULTIPLAN_VACIO } from '../utils/planEstadoStorage'
 
 const COMIDAS = MOMENTOS_COMIDA
 
@@ -374,11 +375,8 @@ export default function Comida() {
   const location = useLocation()
   const navigate = useNavigate()
   const [registros, setRegistros, comidaCloudReady] = useStorage('comida', [])
-  const [, setPlanMes1Estado] = useStorage('planMes1Estado', {
-    checks: {},
-    omitidos: {},
-    extras: {},
-  })
+  const [, setPlanMes1Estado] = useStorage('planMes1Estado', PLAN_ESTADO_MULTIPLAN_VACIO)
+  const [planNutricionActivoId] = useStorage('planNutricionActivoId', '')
   const dedupePlanRef = useRef(false)
   const [ejercicios] = useStorage('ejercicios', [])
   const [registrosRutina] = useStorage('rutinaPesos', [])
@@ -423,11 +421,19 @@ export default function Comida() {
 
   useEffect(() => {
     if (!comidaCloudReady) return
+    const planId = planNutricionActivoId || config?.planNutricionId || null
+    if (!planId) return
     setPlanMes1Estado((prev) => {
-      const next = syncPlanChecksFromRegistros(prev, registros, config?.planNutricionId || null)
+      const next = syncPlanChecksFromRegistros(prev, registros, planId)
       return next === prev ? prev : next
     })
-  }, [registros, setPlanMes1Estado, comidaCloudReady, config?.planNutricionId])
+  }, [
+    registros,
+    setPlanMes1Estado,
+    comidaCloudReady,
+    planNutricionActivoId,
+    config?.planNutricionId,
+  ])
   const { desde, hasta } = getRangoPorPeriodo(periodo, desdeCustom, hastaCustom)
   const registrosEnRango = filtrarPorRango(registros, desde, hasta)
   const porFechaEnRango = registrosEnRango.reduce((acc, r) => {

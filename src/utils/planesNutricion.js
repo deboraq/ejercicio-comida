@@ -1,6 +1,22 @@
 import { labelVariantePlan, variantePlanDesdeObjetivo } from './planMes1.js'
 import { esPlanMes2 } from './planMes2.js'
 import { esPlanPropio } from './planPropio.js'
+import { getEstadoPlanActivo } from './planEstadoStorage.js'
+
+function estadoSliceForSnapshot(estado) {
+  if (!estado || typeof estado !== 'object' || estado.version === 2) {
+    return { checks: {}, omitidos: {}, extras: {} }
+  }
+  return {
+    checks: { ...(estado.checks || {}) },
+    omitidos: { ...(estado.omitidos || {}) },
+    extras: { ...(estado.extras || {}) },
+  }
+}
+
+export function snapshotEstadoParaPlan(estadoRoot, planNutricionId) {
+  return estadoSliceForSnapshot(getEstadoPlanActivo(estadoRoot, planNutricionId))
+}
 
 export function newPlanNutricionId() {
   return `pn${Date.now()}`
@@ -24,6 +40,22 @@ export function etiquetaOrigenPlanBiblioteca(entry) {
   return entry?.origen === 'propio' ? 'Propio' : 'Sistema'
 }
 
+/** Config efectiva según el plan elegido en la biblioteca (Mes 1 vs Mes 2). */
+export function configConPlanBibliotecaActivo(config, planesNutricion, planActivoId) {
+  const id = planActivoId || config?.planNutricionId
+  if (!id || !config) return config
+  const entry = (planesNutricion || []).find((p) => p.id === id)
+  if (!entry) return config
+  return {
+    ...config,
+    planNutricionId: id,
+    planMesGuia: entry.planMesGuia === 'mes2' ? 'mes2' : 'mes1',
+    planMes1Inicio: entry.planMes1Inicio || config.planMes1Inicio,
+    planMes1Variante: entry.planMes1Variante ?? config.planMes1Variante,
+    planMes1Origen: entry.origen === 'propio' ? 'propio' : 'guia',
+  }
+}
+
 function clonarJson(val) {
   if (val == null) return null
   try {
@@ -45,11 +77,7 @@ export function snapshotFromRuntime(config, planPropio, estado, idOverride, nomb
     planMes1Esquema: config?.planMes1Esquema ?? '5',
     planMes1CincoComidas: config?.planMes1CincoComidas !== false,
     planMesGuia: config?.planMesGuia === 'mes2' ? 'mes2' : 'mes1',
-    estado: {
-      checks: { ...(estado?.checks || {}) },
-      omitidos: { ...(estado?.omitidos || {}) },
-      extras: { ...(estado?.extras || {}) },
-    },
+    estado: estadoSliceForSnapshot(estado),
     planPropio: esPlanPropio(config) && planPropio ? clonarJson(planPropio) : null,
   }
   return entry

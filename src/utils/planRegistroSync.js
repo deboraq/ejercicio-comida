@@ -5,6 +5,11 @@ import {
   estimarMacrosComida,
   fechaCalendarioDiaPlan,
 } from './planMes1Kanban.js'
+import {
+  getEstadoPlanActivo,
+  normalizarEstadoMultiplan,
+  setEstadoPlanActivo,
+} from './planEstadoStorage.js'
 import { textoDesdeItems, totalesMacrosItems } from './planOpcionComida.js'
 
 export function planRefRegistro(
@@ -153,7 +158,9 @@ function registroPertenecePlanActivo(planRef, planNutricionId) {
 
 /** Alinea checks del plan con lo que hay en comida (evita “marcado + pendiente”). */
 export function syncPlanChecksFromRegistros(estado, registros, planNutricionId = null) {
-  const base = estado && typeof estado === 'object' ? estado : { checks: {}, omitidos: {}, extras: {} }
+  const root = normalizarEstadoMultiplan(estado)
+  if (!planNutricionId) return root
+  const base = getEstadoPlanActivo(root, planNutricionId)
   const checks = { ...(base.checks || {}) }
   let changed = false
 
@@ -197,8 +204,8 @@ export function syncPlanChecksFromRegistros(estado, registros, planNutricionId =
     }
   }
 
-  if (!changed) return base
-  return { ...base, checks }
+  if (!changed) return root
+  return setEstadoPlanActivo(root, planNutricionId, { ...base, checks })
 }
 
 export function buildRegistroPlanEntry({

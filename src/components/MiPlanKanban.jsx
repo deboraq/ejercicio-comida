@@ -61,9 +61,19 @@ import {
   etiquetaOrigenPlanBiblioteca,
   newPlanNutricionId,
   nombrePlanGuiadoSistema,
+  configConPlanBibliotecaActivo,
+  snapshotEstadoParaPlan,
   snapshotFromRuntime,
   upsertPlanEnLista,
 } from '../utils/planesNutricion'
+import {
+  getEstadoPlanActivo,
+  migrarEstadoLegacyAMes1,
+  normalizarEstadoMultiplan,
+  PLAN_ESTADO_MULTIPLAN_VACIO,
+  PLAN_ESTADO_SLICE_VACIO,
+  setEstadoPlanActivo,
+} from '../utils/planEstadoStorage'
 import '../pages/PlanMes1.css'
 
 function sexoLabel(sexo) {
@@ -160,11 +170,7 @@ export default function MiPlanKanban({
     planMes1Esquema: '5',
   })
   const [planPropio, setPlanPropio] = useStorage('planPropio', PLAN_PROPIO_STORAGE_VACIO)
-  const [estado, setEstado, estadoCloudReady] = useStorage('planMes1Estado', {
-    checks: {},
-    omitidos: {},
-    extras: {},
-  })
+  const [estado, setEstado, estadoCloudReady] = useStorage('planMes1Estado', PLAN_ESTADO_MULTIPLAN_VACIO)
 
   const [planesNutricion, setPlanesNutricion] = useStorage('planesNutricion', [])
   const [planNutricionActivoId, setPlanNutricionActivoId] = useStorage('planNutricionActivoId', '')
@@ -180,7 +186,16 @@ export default function MiPlanKanban({
   const [opcionVisibleMap, setOpcionVisibleMap] = useState({})
   const [mobileOpenMealKey, setMobileOpenMealKey] = useState(null)
   const boardWrapRef = useRef(null)
-  const planNavKey = planNutricionActivoId || config?.planNutricionId || ''
+  const planActivoId = planNutricionActivoId || config?.planNutricionId || ''
+  const configPlan = useMemo(
+    () => configConPlanBibliotecaActivo(config, planesNutricion, planActivoId),
+    [config, planesNutricion, planActivoId],
+  )
+  const estadoActivo = useMemo(
+    () => getEstadoPlanActivo(estado, planActivoId),
+    [estado, planActivoId],
+  )
+  const planNavKey = `${planActivoId}|${configPlan?.planMesGuia || 'mes1'}|${configPlan?.planMes1Inicio || ''}`
   const planNavAplicadoRef = useRef(null)
   const planNavMarcasRef = useRef('')
   const pendingScrollDiaRef = useRef(null)
@@ -218,34 +233,46 @@ export default function MiPlanKanban({
     [],
   )
 
-  const inicio = config?.planMes1Inicio || ''
-  const tienePlan = planMes1TieneInicio(config)
+  const inicio = configPlan?.planMes1Inicio || config?.planMes1Inicio || ''
+  const tienePlan = planMes1TieneInicio(configPlan)
 
   const syncBibliotecaEstado = useCallback(
-    (est) => {
-      const id = planNutricionActivoId || config?.planNutricionId
-      if (!id || !planMes1TieneInicio(config)) return
+    (estRoot) => {
+      const id = planActivoId
+      if (!id || !planMes1TieneInicio(configPlan)) return
+      const slice = snapshotEstadoParaPlan(estRoot, id)
       setPlanesNutricion((prev) =>
-        upsertPlanEnLista(prev, snapshotFromRuntime(config, planPropio, est, id)),
+        upsertPlanEnLista(prev, snapshotFromRuntime(configPlan, planPropio, slice, id)),
       )
     },
-    [config, planPropio, planNutricionActivoId, setPlanesNutricion],
+    [configPlan, planPropio, planActivoId, setPlanesNutricion],
   )
 
   const patchEstado = useCallback(
     (updater) => {
-      setEstado((prev) => {
-        const next = typeof updater === 'function' ? updater(prev) : updater
-        queueMicrotask(() => syncBibliotecaEstado(next))
-        return next
+      const id = planActivoId
+      if (!id) return
+      setEstado((prevRoot) => {
+        const slice = getEstadoPlanActivo(prevRoot, id)
+        const nextSlice = typeof updater === 'function' ? updater(slice) : updater
+        const nextRoot = setEstadoPlanActivo(normalizarEstadoMultiplan(prevRoot), id, nextSlice)
+        queueMicrotask(() => syncBibliotecaEstado(nextRoot))
+        return nextRoot
       })
     },
-    [setEstado, syncBibliotecaEstado],
+    [setEstado, syncBibliotecaEstado, planActivoId],
   )
 
-  const marcadosKeyMemo = useMemo(() => diasConMarcasEnEstado(estado).join(','), [estado])
-  const estadoRef = useRef(estado)
-  estadoRef.current = estado
+  useEffect(() => {
+    setEstado((prev) => migrarEstadoLegacyAMes1(normalizarEstadoMultiplan(prev), planesNutricion))
+  }, [planesNutricion, setEstado])
+
+  const marcadosKeyMemo = useMemo(
+    () => diasConMarcasEnEstado(estadoActivo).join(','),
+    [estadoActivo],
+  )
+  const estadoRef = useRef(estadoActivo)
+  estadoRef.current = estadoActivo
 
   useEffect(() => {
     const dias = diasDeSemanaPlan(semanaActiva)
@@ -253,8 +280,8 @@ export default function MiPlanKanban({
   }, [semanaActiva])
 
   useEffect(() => {
-    if (!planMes1TieneInicio(config)) return
-    const inicioISO = config.planMes1Inicio
+    if (!planMes1TieneInicio(configPlan)) return
+    const inicioISO = configPlan.planMes1Inicio
     const key = planNavKey || inicioISO
     if (!inicioISO || !key) return
 
@@ -278,13 +305,14 @@ export default function MiPlanKanban({
     planNavMarcasRef.current = marcadosKey
   }, [
     planNavKey,
-    config?.planMes1Inicio,
+    configPlan?.planMes1Inicio,
     marcadosKeyMemo,
     configCloudReady,
     estadoCloudReady,
     user,
     isConfigured,
     aplicarNavegacionInicial,
+    configPlan,
   ])
 
   useEffect(() => {
@@ -297,8 +325,8 @@ export default function MiPlanKanban({
     if (!inicio) {
       return { diaCalendario: null, ultimoMarca: null, diaSiguiente: null, diaToca: null }
     }
-    const nav = navegacionInicialPlanKanban(inicio, estado)
-    const hechos = diasConComidasHechasEnEstado(estado)
+    const nav = navegacionInicialPlanKanban(inicio, estadoActivo)
+    const hechos = diasConComidasHechasEnEstado(estadoActivo)
     const ultimoMarca = hechos.length ? hechos[hechos.length - 1] : null
     const diaSiguiente =
       ultimoMarca != null
@@ -313,7 +341,7 @@ export default function MiPlanKanban({
       desfaseInicio: nav.desfaseInicio,
       inicioPlan: inicio,
     }
-  }, [inicio, estado])
+  }, [inicio, estadoActivo])
 
   const diasSemana = useMemo(() => diasDeSemanaPlan(semanaActiva), [semanaActiva])
 
@@ -352,18 +380,19 @@ export default function MiPlanKanban({
   const metaKcal = metaCaloriasPlan(config?.sexo)
   const esquema = esquemaPlanActivo(config)
   const objetivoLabel = OBJETIVOS.find((o) => o.value === config?.objetivo)?.label
-  const nombrePlanSistema = useMemo(() => nombrePlanGuiadoSistema(config), [config])
-  const metaTitulo = esPlanPropio(config)
+  const nombrePlanSistema = useMemo(() => nombrePlanGuiadoSistema(configPlan), [configPlan])
+  const metaTitulo = esPlanPropio(configPlan)
     ? planPropio?.nombre || 'Mi plan propio'
     : nombrePlanSistema
       || objetivoLabel
       || labelVariantePlan(config?.planMes1Variante || variantePlanDesdeObjetivo(config?.objetivo))
 
   useEffect(() => {
-    if (!planMes1TieneInicio(config)) return
+    if (!planMes1TieneInicio(configPlan)) return
     if (planesNutricion?.length > 0) return
-    const id = config?.planNutricionId || newPlanNutricionId()
-    const snap = snapshotFromRuntime(config, planPropio, estado, id)
+    const id = planActivoId || config?.planNutricionId || newPlanNutricionId()
+    const slice = snapshotEstadoParaPlan(estado, id)
+    const snap = snapshotFromRuntime(configPlan, planPropio, slice, id)
     setPlanesNutricion([snap])
     setPlanNutricionActivoId(id)
     if (!config?.planNutricionId) {
@@ -400,13 +429,12 @@ export default function MiPlanKanban({
 
   const listoGenerar = perfilListoParaGenerarPlan(config)
 
-  const estadoVacio = { checks: {}, omitidos: {}, extras: {} }
-
   const persistirPlanActivoEnBiblioteca = () => {
-    if (!planMes1TieneInicio(config)) return planesNutricion || []
-    const id = planNutricionActivoId || config?.planNutricionId
+    if (!planMes1TieneInicio(configPlan)) return planesNutricion || []
+    const id = planActivoId
     if (!id) return planesNutricion || []
-    const snap = snapshotFromRuntime(config, planPropio, estado, id)
+    const slice = snapshotEstadoParaPlan(estado, id)
+    const snap = snapshotFromRuntime(configPlan, planPropio, slice, id)
     return upsertPlanEnLista(planesNutricion, snap)
   }
 
@@ -420,7 +448,8 @@ export default function MiPlanKanban({
     if (id) {
       setPlanesNutricion((prev) => {
         const cfg = { ...config, planMes1Inicio: nuevoInicio }
-        return upsertPlanEnLista(prev, snapshotFromRuntime(cfg, planPropio, estado, id))
+        const slice = snapshotEstadoParaPlan(estado, id)
+        return upsertPlanEnLista(prev, snapshotFromRuntime(cfg, planPropio, slice, id))
       })
     }
     planNavAplicadoRef.current = null
@@ -430,7 +459,7 @@ export default function MiPlanKanban({
   const confirmarActivacionPlan = (mesGuia = 'mes1') => {
     if (!tienePlan) return true
     const pasandoAMes2 =
-      mesGuia === 'mes2' && !esPlanPropio(config) && !esPlanMes2(config)
+      mesGuia === 'mes2' && !esPlanPropio(configPlan) && !esPlanMes2(configPlan)
     if (pasandoAMes2) {
       return window.confirm(
         'Vas a empezar el Mes 2 (día 1 desde hoy).\n\n'
@@ -461,7 +490,13 @@ export default function MiPlanKanban({
     const { configPatch, planPropio: pp, estado: est } = aplicarSnapshot(entry)
     setConfig((c) => ({ ...c, ...configPatch }))
     setPlanPropio(normalizarPlanPropioEnStorage(pp))
-    setEstado(est)
+    setEstado((prev) =>
+      setEstadoPlanActivo(
+        normalizarEstadoMultiplan(prev),
+        id,
+        est || { ...PLAN_ESTADO_SLICE_VACIO },
+      ),
+    )
     setPlanNutricionActivoId(id)
     setEditorAbierto(entry.origen === 'propio')
     setPanelNuevoPlan(false)
@@ -480,7 +515,9 @@ export default function MiPlanKanban({
   ) => {
     const listaBase = listaBasePre ?? persistirPlanActivoEnBiblioteca()
     const cfgForEntry = nextConfig || config
-    const entry = entradaPlanVacio(id, nombre, origen, hoy, cfgForEntry, ppData, estadoVacio)
+    const entry = entradaPlanVacio(id, nombre, origen, hoy, cfgForEntry, ppData, {
+      ...PLAN_ESTADO_SLICE_VACIO,
+    })
     setPlanesNutricion(upsertPlanEnLista(listaBase, entry))
     setPlanNutricionActivoId(id)
   }
@@ -499,7 +536,9 @@ export default function MiPlanKanban({
     const listaBase = persistirPlanActivoEnBiblioteca()
     setPlanPropio(PLAN_PROPIO_STORAGE_VACIO)
     setConfig(nextConfig)
-    setEstado(estadoVacio)
+    setEstado((prev) =>
+      setEstadoPlanActivo(normalizarEstadoMultiplan(prev), id, { ...PLAN_ESTADO_SLICE_VACIO }),
+    )
     registrarPlanNuevoEnBiblioteca(id, nombre, 'guia', hoy, null, nextConfig, listaBase)
     setEditorAbierto(false)
     setPanelNuevoPlan(false)
@@ -524,7 +563,9 @@ export default function MiPlanKanban({
     const listaBase = persistirPlanActivoEnBiblioteca()
     setPlanPropio(pp)
     setConfig(nextConfig)
-    setEstado(estadoVacio)
+    setEstado((prev) =>
+      setEstadoPlanActivo(normalizarEstadoMultiplan(prev), id, { ...PLAN_ESTADO_SLICE_VACIO }),
+    )
     registrarPlanNuevoEnBiblioteca(id, nombre, 'propio', hoy, pp, nextConfig, listaBase)
     setEditorAbierto(true)
     setPanelNuevoPlan(false)
@@ -554,7 +595,7 @@ export default function MiPlanKanban({
         planMes1Origen: 'guia',
       }))
       setPlanPropio(PLAN_PROPIO_STORAGE_VACIO)
-      setEstado(estadoVacio)
+      setEstado(PLAN_ESTADO_MULTIPLAN_VACIO)
       setPlanNutricionActivoId('')
       setEditorAbierto(false)
       setPanelNuevoPlan(false)
@@ -564,7 +605,13 @@ export default function MiPlanKanban({
     const { configPatch, planPropio: pp, estado: est } = aplicarSnapshot(otro)
     setConfig((c) => ({ ...c, ...configPatch }))
     setPlanPropio(normalizarPlanPropioEnStorage(pp))
-    setEstado(est)
+    setEstado((prev) =>
+      setEstadoPlanActivo(
+        normalizarEstadoMultiplan(prev),
+        otro.id,
+        est || { ...PLAN_ESTADO_SLICE_VACIO },
+      ),
+    )
     setPlanNutricionActivoId(otro.id)
     setEditorAbierto(otro.origen === 'propio')
     planNavAplicadoRef.current = null
@@ -643,9 +690,9 @@ export default function MiPlanKanban({
       : planNutricionActivoId || config?.planNutricionId
         ? [
             snapshotFromRuntime(
-              config,
+              configPlan,
               planPropio,
-              estado,
+              snapshotEstadoParaPlan(estado, planNutricionActivoId || config?.planNutricionId),
               planNutricionActivoId || config?.planNutricionId,
             ),
           ]
@@ -742,7 +789,7 @@ export default function MiPlanKanban({
   }
 
   const isChecked = (diaPlan, slotId, extraId = null, opcionIndex = null) =>
-    Boolean(estado?.checks?.[claveComidaPlan(diaPlan, slotId, extraId, opcionIndex)])
+    Boolean(estadoActivo?.checks?.[claveComidaPlan(diaPlan, slotId, extraId, opcionIndex)])
 
   const resolveOpVisible = useCallback(
     (diaPlan, slotId, opciones) => {
@@ -750,11 +797,11 @@ export default function MiPlanKanban({
       const fromState = opcionVisibleMap[key]
       if (fromState != null && fromState >= 0 && fromState < opciones.length) return fromState
       const picked = opciones.findIndex((_, i) =>
-        Boolean(estado?.checks?.[claveComidaPlan(diaPlan, slotId, null, i)]),
+        Boolean(estadoActivo?.checks?.[claveComidaPlan(diaPlan, slotId, null, i)]),
       )
       return picked >= 0 ? picked : 0
     },
-    [opcionVisibleMap, estado?.checks],
+    [opcionVisibleMap, estadoActivo?.checks],
   )
 
   const setOpVisible = useCallback((diaPlan, slotId, opIdx) => {
@@ -769,7 +816,7 @@ export default function MiPlanKanban({
     (slot.opciones || []).some((_, i) => isChecked(diaPlan, slot.id, null, i))
 
   const isOmitido = (diaPlan, slotId) =>
-    Boolean(estado?.omitidos?.[claveComidaPlan(diaPlan, slotId)])
+    Boolean(estadoActivo?.omitidos?.[claveComidaPlan(diaPlan, slotId)])
 
   const emitSyncPlan = (payload) => {
     if (onSyncPlanRegistro && inicio) onSyncPlanRegistro(payload)
@@ -790,7 +837,7 @@ export default function MiPlanKanban({
     if (isExtra) {
       extra = typeof slotOrExtra === 'object' && slotOrExtra.id ? slotOrExtra : null
       if (!extra && extraIdLegacy) {
-        extra = (estado?.extras?.[diaPlan] || []).find((e) => e.id === extraIdLegacy)
+        extra = (estadoActivo?.extras?.[diaPlan] || []).find((e) => e.id === extraIdLegacy)
       }
     } else {
       slot = slotOrExtra
@@ -801,7 +848,7 @@ export default function MiPlanKanban({
       : slot
         ? claveComidaPlan(diaPlan, slot.id, null, opIndex)
         : null
-    const willCheckMobile = toggleKey ? !estado?.checks?.[toggleKey] : false
+    const willCheckMobile = toggleKey ? !estadoActivo?.checks?.[toggleKey] : false
 
     patchEstado((prev) => {
       const key = extra
@@ -825,7 +872,7 @@ export default function MiPlanKanban({
               payloadSyncPlanToggle({
                 diaPlan,
                 inicioISO: inicio,
-                config,
+                configPlan,
                 slot,
                 opIdx: i,
                 checked: false,
@@ -842,14 +889,14 @@ export default function MiPlanKanban({
           ? payloadSyncPlanToggle({
               diaPlan,
               inicioISO: inicio,
-              config,
+              config: configPlan,
               extra,
               checked: willCheck,
             })
           : payloadSyncPlanToggle({
               diaPlan,
               inicioISO: inicio,
-              config,
+              config: configPlan,
               slot,
               opIdx: opIndex,
               checked: willCheck,
@@ -885,7 +932,7 @@ export default function MiPlanKanban({
   }
 
   const diaTieneAlgunaMarca = (diaPlan, slots, extrasDia) =>
-    clavesChecksDia(diaPlan, slots, extrasDia).some((k) => estado?.checks?.[k])
+    clavesChecksDia(diaPlan, slots, extrasDia).some((k) => estadoActivo?.checks?.[k])
 
   /** @returns {number[] | null} índices 0/1 o ambos; null si canceló */
   const preguntarOpcionesMarcarTodo = () => {
@@ -916,9 +963,9 @@ export default function MiPlanKanban({
     })
     emitSyncPlan({
       type: 'removeMany',
-      planRefs: planRefsChecksDia(diaPlan, slots, extrasDia, config?.planNutricionId),
+      planRefs: planRefsChecksDia(diaPlan, slots, extrasDia, configPlan?.planNutricionId),
       diaPlan,
-      planNutricionId: config?.planNutricionId || null,
+      planNutricionId: configPlan?.planNutricionId || null,
     })
   }
 
@@ -948,7 +995,7 @@ export default function MiPlanKanban({
           payloadSyncPlanToggle({
             diaPlan,
             inicioISO: inicio,
-            config,
+            config: configPlan,
             slot,
             opIdx: i,
             checked: indices.includes(i),
@@ -961,7 +1008,7 @@ export default function MiPlanKanban({
         payloadSyncPlanToggle({
           diaPlan,
           inicioISO: inicio,
-          config,
+          config: configPlan,
           extra: ex,
           checked: true,
         }),
@@ -993,7 +1040,7 @@ export default function MiPlanKanban({
         checks,
       }
     })
-    const planId = config?.planNutricionId || null
+    const planId = configPlan?.planNutricionId || null
     const refs = (slot.opciones || []).map((_, i) =>
       planRefRegistro(diaPlan, slot.id, null, i, planId),
     )
@@ -1014,7 +1061,7 @@ export default function MiPlanKanban({
     })
     emitSyncPlan({
       type: 'remove',
-      planRef: planRefRegistro(diaPlan, 'extra', extraId, null, config?.planNutricionId || null),
+      planRef: planRefRegistro(diaPlan, 'extra', extraId, null, configPlan?.planNutricionId || null),
     })
   }
 
@@ -1054,7 +1101,7 @@ export default function MiPlanKanban({
       const built = payloadSyncPlanToggle({
         diaPlan,
         inicioISO: inicio,
-        config,
+        config: configPlan,
         slot,
         opIdx,
         checked: true,
@@ -1088,7 +1135,7 @@ export default function MiPlanKanban({
       const built = payloadSyncPlanToggle({
         diaPlan,
         inicioISO: inicio,
-        config,
+        config: configPlan,
         extra,
         checked: true,
       })
@@ -1198,7 +1245,7 @@ export default function MiPlanKanban({
   )
 
   const bloqueMes2Guia =
-    !esPlanPropio(config) && esPlanMes2(config) ? (
+    !esPlanPropio(configPlan) && esPlanMes2(configPlan) ? (
       <details className="plan-kanban-meta-details mb-2">
         <summary>Mes 2 · Lección y cantidades</summary>
         <div className="plan-kanban-compact-fold-body">
@@ -1325,10 +1372,13 @@ export default function MiPlanKanban({
           <div>
             <p className="plan-kanban-kicker">Meta sincronizada</p>
             <p className="plan-kanban-meta-obj mb-0">
-              {esPlanPropio(config) ? planPropio?.nombre || 'Mi plan propio' : metaTitulo}
+              {esPlanPropio(configPlan) ? planPropio?.nombre || 'Mi plan propio' : metaTitulo}
             </p>
-            <span className={`plan-kanban-origen-badge${esPlanPropio(config) ? ' is-propio' : ''}`}>
-              {labelOrigenPlan(config)}
+            <span className={`plan-kanban-origen-badge${esPlanPropio(configPlan) ? ' is-propio' : ''}`}>
+              {labelOrigenPlan(configPlan)}
+              {!esPlanPropio(configPlan) ? (
+                <> · {esPlanMes2(configPlan) ? 'Mes 2' : 'Mes 1'}</>
+              ) : null}
             </span>
           </div>
           <div className="plan-kanban-meta-actions">
@@ -1371,6 +1421,11 @@ export default function MiPlanKanban({
           || contextoDiasPlan.ultimoMarca != null
           || contextoDiasPlan.diaToca != null) && (
           <div className="plan-kanban-nav-banner" role="status">
+            {!esPlanPropio(configPlan) && (
+              <span className="plan-kanban-nav-chip plan-kanban-nav-chip--menu">
+                Menú activo: <strong>{esPlanMes2(configPlan) ? 'Mes 2 avanzado' : 'Mes 1 tonificación'}</strong>
+              </span>
+            )}
             {contextoDiasPlan.diaToca != null && (
               <span className="plan-kanban-nav-chip plan-kanban-nav-chip--hoy">
                 Te toca: <strong>Día {contextoDiasPlan.diaToca}</strong>
@@ -1478,15 +1533,15 @@ export default function MiPlanKanban({
       >
         <div className={`plan-kanban-board plan-kanban-board--zoom-${vistaPlanZoom}`}>
           {diasAMostrar.map((diaPlan) => {
-            const built = buildComidasDiaKanban(diaPlan, config, planPropio)
+            const built = buildComidasDiaKanban(diaPlan, configPlan, planPropio)
             if (!built) return null
             const fecha = fechaCalendarioDiaPlan(inicio, diaPlan)
-            const extras = (estado?.extras?.[diaPlan] || []).map((ex) => ({
+            const extras = (estadoActivo?.extras?.[diaPlan] || []).map((ex) => ({
               ...ex,
               isExtra: true,
             }))
             const slotsBase = built.comidas.filter((c) => !isOmitido(diaPlan, c.id))
-            const extrasList = estado?.extras?.[diaPlan] || []
+            const extrasList = estadoActivo?.extras?.[diaPlan] || []
             const hayMarcasDia = diaTieneAlgunaMarca(diaPlan, slotsBase, extrasList)
             const slotHecho = (slot) => slotTieneAlgunaOpcionHecha(diaPlan, slot)
             const extraHecho = (ex) => isChecked(diaPlan, 'extra', ex.id)
@@ -1495,8 +1550,8 @@ export default function MiPlanKanban({
               && (extrasList.length === 0 || extrasList.every(extraHecho))
               && slotsBase.length > 0
             const kcalDia =
-              totalKcalDiaEstimado(slotsVisiblesParaEsquema(esquema), config)
-              + extrasList.length * estimarMacrosComida('media_manana', config).kcal
+              totalKcalDiaEstimado(slotsVisiblesParaEsquema(esquema), configPlan)
+              + extrasList.length * estimarMacrosComida('media_manana', configPlan).kcal
 
             return (
               <article
@@ -1803,7 +1858,7 @@ export default function MiPlanKanban({
           </span>
           <div>
             <p className="plan-kanban-foot-title mb-1">Tip del nutricionista fitness pro</p>
-            <p className="plan-kanban-foot-text mb-0">{tipNutricionistaPlan(config)}</p>
+            <p className="plan-kanban-foot-text mb-0">{tipNutricionistaPlan(configPlan)}</p>
           </div>
           <button type="button" className="plan-kanban-foot-link" onClick={() => setSemanaActiva(4)}>
             Ver recetas sugeridas de cena →
@@ -1812,7 +1867,7 @@ export default function MiPlanKanban({
       </footer>
 
       <p className="plan-kanban-foot-note mb-0">
-        {esPlanMes2(config) ? 'Mes 2 avanzado · ' : esPlanPropio(config) ? '' : 'Mes 1 · '}
+        {esPlanMes2(configPlan) ? 'Mes 2 avanzado · ' : esPlanPropio(configPlan) ? '' : 'Mes 1 · '}
         Plan de {PLAN_MES1_TOTAL_DIAS} días · semana {semanaActiva} · {labelEsquemaPlan(esquema)}
       </p>
     </div>
