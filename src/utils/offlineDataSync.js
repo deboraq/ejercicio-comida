@@ -109,22 +109,52 @@ export async function flushPendingCloudWrites() {
   const errors = []
 
   for (const [userId, keyMap] of [...pendingByUser.entries()]) {
-    const rows = [...keyMap.entries()].map(([key, value]) => ({
-      user_id: userId,
-      key,
-      value,
-      updated_at: new Date().toISOString(),
-    }))
-    if (!rows.length) continue
+    const upsertRows = []
+    const deleteKeys = []
+
+    for (const [key, value] of keyMap.entries()) {
+      if (value === undefined) continue
+      if (value === null) {
+        deleteKeys.push(key)
+        continue
+      }
+      upsertRows.push({
+        user_id: userId,
+        key,
+        value,
+        updated_at: new Date().toISOString(),
+      })
+    }
+
+    for (const key of deleteKeys) {
+      // eslint-disable-next-line no-await-in-loop
+      const { error: delErr } = await supabase
+        .from('user_data')
+        .delete()
+        .eq('user_id', userId)
+        .eq('key', key)
+      if (delErr) {
+        errors.push(delErr)
+      } else {
+        flushed += 1
+        keyMap.delete(key)
+      }
+    }
+
+    if (!upsertRows.length) {
+      if (keyMap.size === 0) pendingByUser.delete(userId)
+      continue
+    }
 
     // eslint-disable-next-line no-await-in-loop
-    const { error } = await supabase.from('user_data').upsert(rows, { onConflict: 'user_id,key' })
+    const { error } = await supabase.from('user_data').upsert(upsertRows, { onConflict: 'user_id,key' })
     if (error) {
       errors.push(error)
       continue
     }
-    flushed += rows.length
-    pendingByUser.delete(userId)
+    flushed += upsertRows.length
+    for (const row of upsertRows) keyMap.delete(row.key)
+    if (keyMap.size === 0) pendingByUser.delete(userId)
   }
 
   if (pendingByUser.size === 0) clearQueueOnDisk()
