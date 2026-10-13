@@ -2,11 +2,11 @@ import { fechaToISO } from './calorias.js'
 import {
   PLAN_MES1_TOTAL_DIAS,
   diaPlanMes1,
-  getDiaPlanMes1,
   metaCaloriasPlan,
   aguaMlObjetivoPlan,
   litrosAguaPlan,
 } from './planMes1.js'
+import { esPlanMes2, metaCaloriasPlanMes2 } from './planMes2.js'
 import { getDiaPlanAlimenticio } from './planPropio.js'
 import { PLAN_MES1_SLOTS } from '../data/planMes1Semanas.js'
 
@@ -104,8 +104,12 @@ export function diasDeSemanaPlan(semana) {
   return Array.from({ length: 7 }, (_, i) => start + i).filter((d) => d <= 30)
 }
 
+function rangoCaloriasPlan(config) {
+  return esPlanMes2(config) ? metaCaloriasPlanMes2(config?.sexo) : metaCaloriasPlan(config?.sexo)
+}
+
 export function estimarMacrosComida(slotId, config) {
-  const rango = metaCaloriasPlan(config?.sexo)
+  const rango = rangoCaloriasPlan(config)
   const peso = PESO_KCAL_SLOT[slotId] ?? 0.2
   const kcal = Math.round(((rango.min + rango.max) / 2) * peso)
   const p = Math.round(((rango.p[0] + rango.p[1]) / 2) * peso)

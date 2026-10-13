@@ -250,7 +250,7 @@ export default function Config() {
   const crearPlanPropio = (desdeGuia = false) => {
     if (!planListoPropio) return
     const hoy = fechaToISO(new Date())
-    setPlanPropio(desdeGuia ? crearPlanPropioDesdeGuia() : crearPlantillaPlanPropioVacia())
+    setPlanPropio(desdeGuia ? crearPlanPropioDesdeGuia(config) : crearPlantillaPlanPropioVacia())
     setConfig((c) => ({ ...c, ...buildActivacionPlanPropio(c, hoy) }))
     navigate('/comida', { state: { vistaComida: 'plan', abrirEditorPlan: true } })
   }

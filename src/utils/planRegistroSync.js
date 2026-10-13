@@ -7,19 +7,27 @@ import {
 } from './planMes1Kanban.js'
 import { textoDesdeItems, totalesMacrosItems } from './planOpcionComida.js'
 
-export function planRefRegistro(diaPlan, slotId, extraId = null, opcionIndex = null) {
-  return `plan_${claveComidaPlan(diaPlan, slotId, extraId, opcionIndex)}`
+export function planRefRegistro(
+  diaPlan,
+  slotId,
+  extraId = null,
+  opcionIndex = null,
+  planNutricionId = null,
+) {
+  const inner = claveComidaPlan(diaPlan, slotId, extraId, opcionIndex)
+  if (planNutricionId) return `plan_${planNutricionId}_${inner}`
+  return `plan_${inner}`
 }
 
-export function planRefsChecksDia(diaPlan, slots, extrasDia) {
+export function planRefsChecksDia(diaPlan, slots, extrasDia, planNutricionId = null) {
   const refs = []
   for (const slot of slots) {
     for (let i = 0; i < (slot.opciones || []).length; i += 1) {
-      refs.push(planRefRegistro(diaPlan, slot.id, null, i))
+      refs.push(planRefRegistro(diaPlan, slot.id, null, i, planNutricionId))
     }
   }
   for (const ex of extrasDia) {
-    refs.push(planRefRegistro(diaPlan, 'extra', ex.id, null))
+    refs.push(planRefRegistro(diaPlan, 'extra', ex.id, null, planNutricionId))
   }
   return refs
 }
@@ -31,10 +39,7 @@ export function fechaRegistroDesdePlanDia(inicioISO, diaPlan, hoyISO = fechaToIS
   return fechaSlot || hoy
 }
 
-/** Interpreta planRef guardado en un registro de comida. */
-export function parsePlanRef(planRef) {
-  if (!planRef || !String(planRef).startsWith('plan_')) return null
-  const key = String(planRef).slice(5)
+function parsePlanRefKey(key) {
   const extra = key.match(/^(\d+)_extra_(.+)$/)
   if (extra) {
     return {
@@ -56,6 +61,21 @@ export function parsePlanRef(planRef) {
   return null
 }
 
+/** Interpreta planRef guardado en un registro de comida. */
+export function parsePlanRef(planRef) {
+  if (!planRef || !String(planRef).startsWith('plan_')) return null
+  let key = String(planRef).slice(5)
+  let planNutricionId = null
+  const scoped = key.match(/^(pn\d+)_(.+)$/)
+  if (scoped) {
+    planNutricionId = scoped[1]
+    key = scoped[2]
+  }
+  const parsed = parsePlanRefKey(key)
+  if (!parsed) return null
+  return { ...parsed, planNutricionId }
+}
+
 export function claveCheckDesdePlanRef(planRef) {
   const p = parsePlanRef(planRef)
   if (!p) return null
@@ -63,12 +83,13 @@ export function claveCheckDesdePlanRef(planRef) {
   return claveComidaPlan(p.diaPlan, p.slotId, null, p.opcionIndex)
 }
 
-/** Clave de slot (día + comida) sin distinguir opción 1 / 2. */
+/** Clave de slot (plan + día + comida) sin distinguir opción 1 / 2. */
 export function planRefSlotKey(planRef) {
   const p = parsePlanRef(planRef)
   if (!p) return null
-  if (p.slotId === 'extra') return `${p.diaPlan}_extra_${p.extraId}`
-  return `${p.diaPlan}_${p.slotId}`
+  const planScope = p.planNutricionId || '__legacy__'
+  if (p.slotId === 'extra') return `${planScope}:${p.diaPlan}_extra_${p.extraId}`
+  return `${planScope}:${p.diaPlan}_${p.slotId}`
 }
 
 export function slotKeyDesdeCheckKey(checkKey) {
@@ -92,9 +113,11 @@ export function removeRegistrosPlanMismoSlot(registros, planRef) {
   })
 }
 
-export function planRefsOpcionesSlot(diaPlan, slotId, opcionesCount) {
+export function planRefsOpcionesSlot(diaPlan, slotId, opcionesCount, planNutricionId = null) {
   const n = Math.max(0, Number(opcionesCount) || 0)
-  return Array.from({ length: n }, (_, i) => planRefRegistro(diaPlan, slotId, null, i))
+  return Array.from({ length: n }, (_, i) =>
+    planRefRegistro(diaPlan, slotId, null, i, planNutricionId),
+  )
 }
 
 /** Una sola opción registrada por slot del plan; gana la primera entrada (más reciente en lista). */
@@ -118,8 +141,18 @@ export function dedupeRegistrosPorPlanRef(registros) {
   return out.length === list.length ? list : out
 }
 
+function registroPertenecePlanActivo(planRef, planNutricionId) {
+  const p = parsePlanRef(planRef)
+  if (!p) return false
+  if (planNutricionId) {
+    if (p.planNutricionId) return p.planNutricionId === planNutricionId
+    return false
+  }
+  return !p.planNutricionId
+}
+
 /** Alinea checks del plan con lo que hay en comida (evita “marcado + pendiente”). */
-export function syncPlanChecksFromRegistros(estado, registros) {
+export function syncPlanChecksFromRegistros(estado, registros, planNutricionId = null) {
   const base = estado && typeof estado === 'object' ? estado : { checks: {}, omitidos: {}, extras: {} }
   const checks = { ...(base.checks || {}) }
   let changed = false
@@ -128,6 +161,7 @@ export function syncPlanChecksFromRegistros(estado, registros) {
   const checkGanadorPorSlot = new Map()
   for (const r of registros || []) {
     if (!r?.planRef) continue
+    if (!registroPertenecePlanActivo(r.planRef, planNutricionId)) continue
     const checkKey = claveCheckDesdePlanRef(r.planRef)
     const slotKey = planRefSlotKey(r.planRef)
     if (!checkKey || !slotKey) continue
@@ -186,6 +220,7 @@ export function buildRegistroPlanEntry({
     slotId === 'extra' ? 'extra' : slotId,
     extraId,
     slotId === 'extra' ? null : opcionIndex,
+    config?.planNutricionId || null,
   )
   const macroSlot = slotId === 'extra' ? 'media_manana' : slotId
   let macros = estimarMacrosComida(macroSlot, config)
@@ -235,22 +270,30 @@ export function removeRegistrosPlanMany(registros, planRefs) {
   return (registros || []).filter((r) => !r.planRef || !set.has(r.planRef))
 }
 
-/** Quita todos los registros de Comida ligados al plan de un día (p. ej. al desmarcar todo el día). */
-export function removeRegistrosPlanDia(registros, diaPlan) {
+/** Quita registros de Comida del plan en un día (opcionalmente solo del plan activo). */
+export function removeRegistrosPlanDia(registros, diaPlan, planNutricionId = null) {
   const d = Number(diaPlan)
   if (!Number.isFinite(d) || d < 1) return registros || []
   return (registros || []).filter((r) => {
     const p = parsePlanRef(r?.planRef)
     if (!p) return true
-    return p.diaPlan !== d
+    if (p.diaPlan !== d) return true
+    if (planNutricionId) {
+      if (p.planNutricionId && p.planNutricionId !== planNutricionId) return true
+      if (!p.planNutricionId) return true
+    } else if (p.planNutricionId) {
+      return true
+    }
+    return false
   })
 }
 
 /** @param {{ checked: boolean, diaPlan: number, inicioISO: string, config: object, slot?: object, opIdx?: number, extra?: object }} p */
 export function payloadSyncPlanToggle(p) {
   const { diaPlan, inicioISO, config, slot, opIdx, extra, checked } = p
+  const planId = config?.planNutricionId || null
   if (extra) {
-    const planRef = planRefRegistro(diaPlan, 'extra', extra.id, null)
+    const planRef = planRefRegistro(diaPlan, 'extra', extra.id, null, planId)
     if (!checked) return { type: 'remove', planRef }
     const built = buildRegistroPlanEntry({
       diaPlan,
@@ -269,7 +312,7 @@ export function payloadSyncPlanToggle(p) {
     return { type: 'upsert', ...built }
   }
   const op = slot?.opciones?.[opIdx]
-  const planRef = planRefRegistro(diaPlan, slot.id, null, opIdx)
+  const planRef = planRefRegistro(diaPlan, slot.id, null, opIdx, planId)
   if (!checked) return { type: 'remove', planRef }
   const built = buildRegistroPlanEntry({
     diaPlan,
@@ -315,7 +358,7 @@ export function applyPlanRegistroSyncPayload(setRegistros, payload, hooks = {}) 
     setRegistros((prev) => {
       let next = removeRegistrosPlanMany(prev, payload.planRefs || [])
       if (payload.diaPlan != null) {
-        next = removeRegistrosPlanDia(next, payload.diaPlan)
+        next = removeRegistrosPlanDia(next, payload.diaPlan, payload.planNutricionId || null)
       }
       return next
     })

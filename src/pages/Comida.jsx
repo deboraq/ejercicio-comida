@@ -424,10 +424,10 @@ export default function Comida() {
   useEffect(() => {
     if (!comidaCloudReady) return
     setPlanMes1Estado((prev) => {
-      const next = syncPlanChecksFromRegistros(prev, registros)
+      const next = syncPlanChecksFromRegistros(prev, registros, config?.planNutricionId || null)
       return next === prev ? prev : next
     })
-  }, [registros, setPlanMes1Estado, comidaCloudReady])
+  }, [registros, setPlanMes1Estado, comidaCloudReady, config?.planNutricionId])
   const { desde, hasta } = getRangoPorPeriodo(periodo, desdeCustom, hastaCustom)
   const registrosEnRango = filtrarPorRango(registros, desde, hasta)
   const porFechaEnRango = registrosEnRango.reduce((acc, r) => {

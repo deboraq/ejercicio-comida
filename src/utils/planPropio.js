@@ -8,6 +8,7 @@ import {
   diaPlanMes1,
   getDiaPlanMes1,
 } from './planMes1.js'
+import { esPlanMes2, getDiaPlanMes2 } from './planMes2.js'
 
 export function esPlanPropio(config) {
   return config?.planMes1Origen === 'propio'
@@ -35,10 +36,10 @@ export function crearPlantillaPlanPropioVacia(nombre = 'Mi plan propio') {
 }
 
 /** Copia el menú guiado actual como punto de partida editable. */
-export function crearPlanPropioDesdeGuia() {
+export function crearPlanPropioDesdeGuia(config = null) {
   const dias = {}
   for (let d = 1; d <= PLAN_MES1_TOTAL_DIAS; d += 1) {
-    const det = getDiaPlanMes1(d)
+    const det = getDiaPlanAlimenticio(d, config, null)
     const key = String(d)
     dias[key] = { tip: det?.tip || '' }
     for (const slot of PLAN_MES1_SLOTS) {
@@ -91,6 +92,7 @@ export function getDiaPlanAlimenticio(diaPlan, config, planPropio) {
   if (esPlanPropio(config) && planPropio) {
     return getDiaPlanPropio(diaPlan, planPropio)
   }
+  if (esPlanMes2(config)) return getDiaPlanMes2(diaPlan)
   return getDiaPlanMes1(diaPlan)
 }
 

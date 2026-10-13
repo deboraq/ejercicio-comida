@@ -1,4 +1,5 @@
 import { labelVariantePlan, variantePlanDesdeObjetivo } from './planMes1.js'
+import { esPlanMes2 } from './planMes2.js'
 import { esPlanPropio } from './planPropio.js'
 
 export function newPlanNutricionId() {
@@ -13,7 +14,10 @@ export function nombreSugeridoPlan(config, planPropio) {
 /** Nombre fijo que usa la app para el menú guiado de 30 días. */
 export function nombrePlanGuiadoSistema(config) {
   const v = config?.planMes1Variante || variantePlanDesdeObjetivo(config?.objetivo)
-  return `Plan guiado · ${labelVariantePlan(v)} (30 días)`
+  if (esPlanMes2(config)) {
+    return `Plan guiado · Mes 2 avanzado · ${labelVariantePlan(v)} (30 días)`
+  }
+  return `Plan guiado · Mes 1 · ${labelVariantePlan(v)} (30 días)`
 }
 
 export function etiquetaOrigenPlanBiblioteca(entry) {
@@ -40,6 +44,7 @@ export function snapshotFromRuntime(config, planPropio, estado, idOverride, nomb
     planMes1Variante: config?.planMes1Variante,
     planMes1Esquema: config?.planMes1Esquema ?? '5',
     planMes1CincoComidas: config?.planMes1CincoComidas !== false,
+    planMesGuia: config?.planMesGuia === 'mes2' ? 'mes2' : 'mes1',
     estado: {
       checks: { ...(estado?.checks || {}) },
       omitidos: { ...(estado?.omitidos || {}) },
@@ -58,6 +63,7 @@ export function patchConfigFromSnapshot(entry) {
     planMes1Esquema: entry.planMes1Esquema ?? '5',
     planMes1CincoComidas: entry.planMes1CincoComidas !== false,
     planMes1Origen: entry.origen === 'propio' ? 'propio' : 'guia',
+    planMesGuia: entry.planMesGuia === 'mes2' ? 'mes2' : 'mes1',
   }
 }
 
@@ -92,6 +98,7 @@ export function entradaPlanVacio(id, nombre, origen, hoyISO, config, planPropioD
     planMes1Variante: config?.planMes1Variante || variantePlanDesdeObjetivo(config?.objetivo),
     planMes1Esquema: config?.planMes1Esquema ?? '5',
     planMes1CincoComidas: config?.planMes1CincoComidas !== false,
+    planMesGuia: config?.planMesGuia === 'mes2' ? 'mes2' : 'mes1',
     estado: estadoVacio || { checks: {}, omitidos: {}, extras: {} },
     planPropio: origen === 'propio' ? clonarJson(planPropioData) : null,
   }

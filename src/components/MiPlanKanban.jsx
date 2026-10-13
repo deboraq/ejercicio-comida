@@ -17,6 +17,8 @@ import {
   sugerenciasCatalogoParaTexto,
   variantePlanDesdeObjetivo,
 } from '../utils/planMes1'
+import { buildActivacionPlanMes2, esPlanMes2 } from '../utils/planMes2'
+import { PLAN_MES2_CANTIDADES_RESUMEN, PLAN_MES2_INTRO_RESUMEN } from '../data/planMes2Intro'
 import {
   buildActivacionPlanPropio,
   crearPlantillaPlanPropioVacia,
@@ -347,9 +349,12 @@ export default function MiPlanKanban({
   const metaKcal = metaCaloriasPlan(config?.sexo)
   const esquema = esquemaPlanActivo(config)
   const objetivoLabel = OBJETIVOS.find((o) => o.value === config?.objetivo)?.label
-  const metaTitulo =
-    objetivoLabel
-    || labelVariantePlan(config?.planMes1Variante || variantePlanDesdeObjetivo(config?.objetivo))
+  const nombrePlanSistema = useMemo(() => nombrePlanGuiadoSistema(config), [config])
+  const metaTitulo = esPlanPropio(config)
+    ? planPropio?.nombre || 'Mi plan propio'
+    : nombrePlanSistema
+      || objetivoLabel
+      || labelVariantePlan(config?.planMes1Variante || variantePlanDesdeObjetivo(config?.objetivo))
 
   useEffect(() => {
     if (!planMes1TieneInicio(config)) return
@@ -391,7 +396,6 @@ export default function MiPlanKanban({
   ])
 
   const listoGenerar = perfilListoParaGenerarPlan(config)
-  const nombrePlanSistema = useMemo(() => nombrePlanGuiadoSistema(config), [config])
 
   const estadoVacio = { checks: {}, omitidos: {}, extras: {} }
 
@@ -420,10 +424,22 @@ export default function MiPlanKanban({
     planNavMarcasRef.current = ''
   }
 
-  const confirmarReemplazoPlan = () => {
+  const confirmarActivacionPlan = (mesGuia = 'mes1') => {
     if (!tienePlan) return true
+    const pasandoAMes2 =
+      mesGuia === 'mes2' && !esPlanPropio(config) && !esPlanMes2(config)
+    if (pasandoAMes2) {
+      return window.confirm(
+        'Vas a empezar el Mes 2 (día 1 desde hoy).\n\n'
+          + 'El Mes 1 y todo lo que marcaste queda guardado en la lista «Plan activo». '
+          + 'Podés volver al Mes 1 cuando quieras.\n\n'
+          + '¿Continuar al Mes 2?',
+      )
+    }
     return window.confirm(
-      'Vas a empezar un plan nuevo (día 1 desde hoy). Se borran las marcas del tablero. ¿Continuar?'
+      'Vas a empezar un plan nuevo (día 1 desde hoy).\n\n'
+        + 'Si ya tenías otro plan, sus marcas se guardan en la lista antes de continuar.\n\n'
+        + '¿Continuar?',
     )
   }
 
@@ -450,26 +466,38 @@ export default function MiPlanKanban({
     planNavMarcasRef.current = ''
   }
 
-  const registrarPlanNuevoEnBiblioteca = (id, nombre, origen, hoy, ppData) => {
-    const listaBase = persistirPlanActivoEnBiblioteca()
-    const entry = entradaPlanVacio(id, nombre, origen, hoy, config, ppData, estadoVacio)
+  const registrarPlanNuevoEnBiblioteca = (
+    id,
+    nombre,
+    origen,
+    hoy,
+    ppData,
+    nextConfig,
+    listaBasePre = null,
+  ) => {
+    const listaBase = listaBasePre ?? persistirPlanActivoEnBiblioteca()
+    const cfgForEntry = nextConfig || config
+    const entry = entradaPlanVacio(id, nombre, origen, hoy, cfgForEntry, ppData, estadoVacio)
     setPlanesNutricion(upsertPlanEnLista(listaBase, entry))
     setPlanNutricionActivoId(id)
   }
 
-  const activarPlanGuiado = () => {
+  const activarPlanGuiado = (mesGuia = 'mes1') => {
     if (!listoGenerar) {
       window.alert('Completá sexo, peso y objetivo en Config para crear el plan guiado de 30 días.')
       return
     }
-    if (!confirmarReemplazoPlan()) return
-    const nombre = nombrePlanSistema
+    if (!confirmarActivacionPlan(mesGuia)) return
+    const patchMes = mesGuia === 'mes2' ? buildActivacionPlanMes2 : buildActivacionPlanMes1
     const hoy = fechaToISO(new Date())
     const id = newPlanNutricionId()
-    setEstado(estadoVacio)
+    const nextConfig = { ...config, ...patchMes(config, hoy), planNutricionId: id }
+    const nombre = nombrePlanGuiadoSistema(nextConfig)
+    const listaBase = persistirPlanActivoEnBiblioteca()
     setPlanPropio(null)
-    setConfig((c) => ({ ...c, ...buildActivacionPlanMes1(c, hoy), planNutricionId: id }))
-    registrarPlanNuevoEnBiblioteca(id, nombre, 'guia', hoy, null)
+    setConfig(nextConfig)
+    setEstado(estadoVacio)
+    registrarPlanNuevoEnBiblioteca(id, nombre, 'guia', hoy, null, nextConfig, listaBase)
     setEditorAbierto(false)
     setPanelNuevoPlan(false)
     planNavAplicadoRef.current = null
@@ -481,18 +509,20 @@ export default function MiPlanKanban({
       window.alert('Completá sexo y peso en Config (o arriba en tu perfil) antes de crear el plan.')
       return
     }
-    if (!confirmarReemplazoPlan()) return
+    if (!confirmarActivacionPlan('mes1')) return
     const sugerido = 'Mi plan propio'
     const nombre = promptNombrePlan(sugerido)
     if (nombre === null) return
     const hoy = fechaToISO(new Date())
-    const pp = desdeGuia ? crearPlanPropioDesdeGuia() : crearPlantillaPlanPropioVacia(nombre)
+    const pp = desdeGuia ? crearPlanPropioDesdeGuia(config) : crearPlantillaPlanPropioVacia(nombre)
     if (nombre && pp.nombre !== nombre) pp.nombre = nombre
     const id = newPlanNutricionId()
+    const nextConfig = { ...config, ...buildActivacionPlanPropio(config, hoy), planNutricionId: id }
+    const listaBase = persistirPlanActivoEnBiblioteca()
     setPlanPropio(pp)
+    setConfig(nextConfig)
     setEstado(estadoVacio)
-    setConfig((c) => ({ ...c, ...buildActivacionPlanPropio(c, hoy), planNutricionId: id }))
-    registrarPlanNuevoEnBiblioteca(id, nombre, 'propio', hoy, pp)
+    registrarPlanNuevoEnBiblioteca(id, nombre, 'propio', hoy, pp, nextConfig, listaBase)
     setEditorAbierto(true)
     setPanelNuevoPlan(false)
     planNavAplicadoRef.current = null
@@ -540,24 +570,30 @@ export default function MiPlanKanban({
 
   const bloquePlanSistema = () => (
     <div className="plan-kanban-create-section">
-      <p className="plan-kanban-create-section-kicker mb-0">Plan del sistema</p>
-      <p className="plan-kanban-create-sys-name mb-0">{nombrePlanSistema}</p>
-      <p className="plan-kanban-create-bar-sub mb-0">
-        Menú de 30 días según tu objetivo y perfil en Config.
+      <p className="plan-kanban-create-section-kicker mb-0">Plan del sistema TMV</p>
+      <p className="plan-kanban-create-bar-sub mb-2">
+        Menú de 30 días según tu objetivo y perfil en Config. Al pasar al Mes 2, el Mes 1 queda en «Plan activo» con tus marcas; podés volver cuando quieras.
       </p>
-      <button
-        type="button"
-        className="plan-kanban-create-btn plan-kanban-create-btn--primary plan-kanban-create-btn--wide"
-        onClick={activarPlanGuiado}
-        disabled={!listoGenerar}
-        title={
-          listoGenerar
-            ? 'Usar este menú guiado'
-            : 'Completá sexo, peso y objetivo en Config'
-        }
-      >
-        Usar plan del sistema
-      </button>
+      <div className="plan-kanban-create-row plan-kanban-create-row--tight">
+        <button
+          type="button"
+          className="plan-kanban-create-btn plan-kanban-create-btn--primary"
+          onClick={() => activarPlanGuiado('mes1')}
+          disabled={!listoGenerar}
+          title={listoGenerar ? 'Mes 1 tonificación' : 'Completá sexo, peso y objetivo en Config'}
+        >
+          Mes 1 · Tonificación
+        </button>
+        <button
+          type="button"
+          className="plan-kanban-create-btn plan-kanban-create-btn--soft"
+          onClick={() => activarPlanGuiado('mes2')}
+          disabled={!listoGenerar}
+          title={listoGenerar ? 'Mes 2 plan avanzado' : 'Completá sexo, peso y objetivo en Config'}
+        >
+          Mes 2 · Avanzado
+        </button>
+      </div>
     </div>
   )
 
@@ -877,8 +913,9 @@ export default function MiPlanKanban({
     })
     emitSyncPlan({
       type: 'removeMany',
-      planRefs: planRefsChecksDia(diaPlan, slots, extrasDia),
+      planRefs: planRefsChecksDia(diaPlan, slots, extrasDia, config?.planNutricionId),
       diaPlan,
+      planNutricionId: config?.planNutricionId || null,
     })
   }
 
@@ -953,7 +990,10 @@ export default function MiPlanKanban({
         checks,
       }
     })
-    const refs = (slot.opciones || []).map((_, i) => planRefRegistro(diaPlan, slot.id, null, i))
+    const planId = config?.planNutricionId || null
+    const refs = (slot.opciones || []).map((_, i) =>
+      planRefRegistro(diaPlan, slot.id, null, i, planId),
+    )
     emitSyncPlan({ type: 'removeMany', planRefs: refs })
   }
 
@@ -969,7 +1009,10 @@ export default function MiPlanKanban({
         checks,
       }
     })
-    emitSyncPlan({ type: 'remove', planRef: planRefRegistro(diaPlan, 'extra', extraId, null) })
+    emitSyncPlan({
+      type: 'remove',
+      planRef: planRefRegistro(diaPlan, 'extra', extraId, null, config?.planNutricionId || null),
+    })
   }
 
   const handleAnadirColacion = (diaPlan) => {
@@ -1151,6 +1194,21 @@ export default function MiPlanKanban({
     </div>
   )
 
+  const bloqueMes2Guia =
+    !esPlanPropio(config) && esPlanMes2(config) ? (
+      <details className="plan-kanban-meta-details mb-2">
+        <summary>Mes 2 · Lección y cantidades</summary>
+        <div className="plan-kanban-compact-fold-body">
+          <p className="plan-kanban-create-bar-sub mb-2">{PLAN_MES2_INTRO_RESUMEN}</p>
+          <ul className="plan-kanban-create-bar-sub mb-0">
+            {PLAN_MES2_CANTIDADES_RESUMEN.map((line) => (
+              <li key={line.slice(0, 40)}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      </details>
+    ) : null
+
   const bloqueEsquemaYEditor = (
     <>
       <div className="plan-kanban-esquema" role="group" aria-label="Esquema de comidas">
@@ -1231,6 +1289,7 @@ export default function MiPlanKanban({
               <summary>Gestionar plan</summary>
               <div className="plan-kanban-compact-fold-body">
                 {accionesCrearPlan('bar', true)}
+                {bloqueMes2Guia}
                 <details className="plan-kanban-meta-details plan-kanban-meta-details--nested">
                   <summary>Perfil y metas</summary>
                   <div className="plan-kanban-sync-grid plan-kanban-sync-grid--compact">
@@ -1278,6 +1337,7 @@ export default function MiPlanKanban({
         </div>
 
         {accionesCrearPlan('bar')}
+        {bloqueMes2Guia}
 
         {contextoDiasPlan.desfaseInicio && contextoDiasPlan.ultimoMarca != null && (
           <div className="plan-kanban-desfase-alert" role="alert">
@@ -1749,6 +1809,7 @@ export default function MiPlanKanban({
       </footer>
 
       <p className="plan-kanban-foot-note mb-0">
+        {esPlanMes2(config) ? 'Mes 2 avanzado · ' : esPlanPropio(config) ? '' : 'Mes 1 · '}
         Plan de {PLAN_MES1_TOTAL_DIAS} días · semana {semanaActiva} · {labelEsquemaPlan(esquema)}
       </p>
     </div>

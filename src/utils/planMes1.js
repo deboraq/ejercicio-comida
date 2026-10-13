@@ -183,6 +183,7 @@ export function buildActivacionPlanMes1(config, hoyISO = fechaToISO(new Date()))
     planMes1CincoComidas: config?.planMes1CincoComidas !== false,
     planMes1Objetivo: config?.objetivo || '',
     planMes1Origen: 'guia',
+    planMesGuia: 'mes1',
   }
   if (!config?.metaCalorias) patch.metaCalorias = String(kcalMedia)
   if (!config?.metaProteina) patch.metaProteina = String(Math.round((rango.p[0] + rango.p[1]) / 2))
