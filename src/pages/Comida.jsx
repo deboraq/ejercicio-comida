@@ -9,6 +9,7 @@ import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias } from '
 import ComidaTitanium from '../components/ComidaTitanium'
 import PlanMes1Panel from '../components/PlanMes1Panel'
 import { resumenPlanAlimenticioHoy } from '../utils/planPropio'
+import { configConPlanBibliotecaActivo } from '../utils/planesNutricion'
 import { nuevoIdRegistro } from '../utils/ids'
 import {
   claveCheckDesdePlanRef,
@@ -383,6 +384,7 @@ export default function Comida() {
   const [historialMedidasRaw] = useStorage('medidasHistorial', [])
   const historialMedidas = normalizarMedidasHistorial(asArray(historialMedidasRaw))
   const [config] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
+  const [planesNutricion] = useStorage('planesNutricion', [])
   const [planPropio] = useStorage('planPropio', { inactivo: true, dias: {} })
   const [comidaFavoritos, setComidaFavoritos] = useStorage('comidaFavoritos', [])
   const [comida, setComida] = useState('Desayuno')
@@ -949,7 +951,15 @@ export default function Comida() {
     || consejosSemanales.find((c) => c.tipo === 'nutricion')?.texto
     || tipNutricionFallback
 
-  const planResumen = useMemo(() => resumenPlanAlimenticioHoy(config, planPropio), [config, planPropio])
+  const planActivoId = planNutricionActivoId || config?.planNutricionId || ''
+  const configPlan = useMemo(
+    () => configConPlanBibliotecaActivo(config, planesNutricion, planActivoId),
+    [config, planesNutricion, planActivoId],
+  )
+  const planResumen = useMemo(
+    () => resumenPlanAlimenticioHoy(configPlan, planPropio),
+    [configPlan, planPropio],
+  )
 
   const onRegistrarDesdePlan = (pre) => {
     if (pre?.fecha && /^\d{4}-\d{2}-\d{2}$/.test(pre.fecha)) {

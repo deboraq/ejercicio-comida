@@ -62,6 +62,7 @@ import {
   newPlanNutricionId,
   nombrePlanGuiadoSistema,
   configConPlanBibliotecaActivo,
+  normalizarBibliotecaPlanesNutricion,
   snapshotEstadoParaPlan,
   snapshotFromRuntime,
   upsertPlanEnLista,
@@ -266,6 +267,37 @@ export default function MiPlanKanban({
   useEffect(() => {
     setEstado((prev) => migrarEstadoLegacyAMes1(normalizarEstadoMultiplan(prev), planesNutricion))
   }, [planesNutricion, setEstado])
+
+  useEffect(() => {
+    const next = normalizarBibliotecaPlanesNutricion(planesNutricion)
+    if (next !== planesNutricion) setPlanesNutricion(next)
+  }, [planesNutricion, setPlanesNutricion])
+
+  useEffect(() => {
+    if (!planActivoId || !planMes1TieneInicio(configPlan)) return
+    if (
+      config?.planNutricionId === planActivoId
+      && config?.planMesGuia === configPlan?.planMesGuia
+      && (config?.planMes1Inicio || '') === (configPlan?.planMes1Inicio || '')
+    ) {
+      return
+    }
+    setConfig((c) => ({
+      ...c,
+      planNutricionId: planActivoId,
+      planMesGuia: configPlan.planMesGuia || 'mes1',
+      planMes1Inicio: configPlan.planMes1Inicio || c.planMes1Inicio,
+      planMes1Variante: configPlan.planMes1Variante ?? c.planMes1Variante,
+      planMes1Origen: configPlan.planMes1Origen ?? c.planMes1Origen,
+    }))
+  }, [
+    planActivoId,
+    configPlan,
+    config?.planNutricionId,
+    config?.planMesGuia,
+    config?.planMes1Inicio,
+    setConfig,
+  ])
 
   const marcadosKeyMemo = useMemo(
     () => diasConMarcasEnEstado(estadoActivo).join(','),
@@ -1567,7 +1599,9 @@ export default function MiPlanKanban({
                   {planMobile ? (
                     <>
                       <p className="plan-kanban-col-date mb-0">
-                        <strong>Día {diaPlan}</strong>
+                        <strong>
+                          {esPlanMes2(configPlan) ? `Mes 2 · Día ${diaPlan}` : `Día ${diaPlan}`}
+                        </strong>
                         {' · '}
                         {etiquetaFechaCorta(fecha)}
                         <span className="plan-kanban-col-kcal">
@@ -1588,7 +1622,7 @@ export default function MiPlanKanban({
                     <>
                       <div>
                         <h3 className="plan-kanban-col-title">
-                          Día {diaPlan}
+                          {esPlanMes2(configPlan) ? `Mes 2 · Día ${diaPlan}` : `Día ${diaPlan}`}
                           {contextoDiasPlan.diaCalendario === diaPlan ? (
                             <span className="plan-kanban-col-tag">Hoy</span>
                           ) : null}

@@ -26,6 +26,7 @@ import {
 } from '../utils/userDataCloud'
 import { normalizarPlanPropioEnStorage } from '../utils/planPropio.js'
 import { migrarEstadoLegacyAMes1, normalizarEstadoMultiplan } from '../utils/planEstadoStorage.js'
+import { normalizarBibliotecaPlanesNutricion } from '../utils/planesNutricion.js'
 
 function mergeLocalWithLive(key, fromLs, fromLive, initial) {
   if (Array.isArray(initial)) {
@@ -117,6 +118,9 @@ function postProcessStorageKey(key, resolved, initial) {
   }
   if (key === 'planMes1Estado') {
     return migrarEstadoLegacyAMes1(normalizarEstadoMultiplan(resolved), [])
+  }
+  if (key === 'planesNutricion' && Array.isArray(resolved)) {
+    return normalizarBibliotecaPlanesNutricion(resolved)
   }
   return resolved
 }

@@ -3,6 +3,32 @@ import { esPlanMes2 } from './planMes2.js'
 import { esPlanPropio } from './planPropio.js'
 import { getEstadoPlanActivo } from './planEstadoStorage.js'
 
+/** Mes 1 vs Mes 2: campo guardado o nombre del plan en biblioteca. */
+export function planMesGuiaFromEntry(entry, config = null) {
+  if (!entry) return 'mes1'
+  if (entry.planMesGuia === 'mes2') return 'mes2'
+  if (entry.planMesGuia === 'mes1') return 'mes1'
+  const nombre = String(entry.nombre || '')
+  if (/mes\s*2|mes2|\bavanzado\b/i.test(nombre) && !/mes\s*1|tonificaci/i.test(nombre)) {
+    return 'mes2'
+  }
+  if (config?.planNutricionId === entry.id && config?.planMesGuia === 'mes2') return 'mes2'
+  return 'mes1'
+}
+
+/** Repara entradas viejas sin planMesGuia (evita menú Mes 1 en plan «Mes 2»). */
+export function normalizarBibliotecaPlanesNutricion(lista) {
+  if (!Array.isArray(lista) || !lista.length) return lista || []
+  let changed = false
+  const next = lista.map((p) => {
+    const guia = planMesGuiaFromEntry(p, null)
+    if (p.planMesGuia === guia) return p
+    changed = true
+    return { ...p, planMesGuia: guia }
+  })
+  return changed ? next : lista
+}
+
 function estadoSliceForSnapshot(estado) {
   if (!estado || typeof estado !== 'object' || estado.version === 2) {
     return { checks: {}, omitidos: {}, extras: {} }
@@ -46,10 +72,11 @@ export function configConPlanBibliotecaActivo(config, planesNutricion, planActiv
   if (!id || !config) return config
   const entry = (planesNutricion || []).find((p) => p.id === id)
   if (!entry) return config
+  const planMesGuia = planMesGuiaFromEntry(entry, config)
   return {
     ...config,
     planNutricionId: id,
-    planMesGuia: entry.planMesGuia === 'mes2' ? 'mes2' : 'mes1',
+    planMesGuia,
     planMes1Inicio: entry.planMes1Inicio || config.planMes1Inicio,
     planMes1Variante: entry.planMes1Variante ?? config.planMes1Variante,
     planMes1Origen: entry.origen === 'propio' ? 'propio' : 'guia',
@@ -76,7 +103,7 @@ export function snapshotFromRuntime(config, planPropio, estado, idOverride, nomb
     planMes1Variante: config?.planMes1Variante,
     planMes1Esquema: config?.planMes1Esquema ?? '5',
     planMes1CincoComidas: config?.planMes1CincoComidas !== false,
-    planMesGuia: config?.planMesGuia === 'mes2' ? 'mes2' : 'mes1',
+    planMesGuia: planMesGuiaFromEntry({ planMesGuia: config?.planMesGuia, nombre: nombreOverride || nombreSugeridoPlan(config, planPropio) }, config),
     estado: estadoSliceForSnapshot(estado),
     planPropio: esPlanPropio(config) && planPropio ? clonarJson(planPropio) : null,
   }
@@ -91,7 +118,7 @@ export function patchConfigFromSnapshot(entry) {
     planMes1Esquema: entry.planMes1Esquema ?? '5',
     planMes1CincoComidas: entry.planMes1CincoComidas !== false,
     planMes1Origen: entry.origen === 'propio' ? 'propio' : 'guia',
-    planMesGuia: entry.planMesGuia === 'mes2' ? 'mes2' : 'mes1',
+    planMesGuia: planMesGuiaFromEntry(entry),
   }
 }
 
@@ -126,7 +153,10 @@ export function entradaPlanVacio(id, nombre, origen, hoyISO, config, planPropioD
     planMes1Variante: config?.planMes1Variante || variantePlanDesdeObjetivo(config?.objetivo),
     planMes1Esquema: config?.planMes1Esquema ?? '5',
     planMes1CincoComidas: config?.planMes1CincoComidas !== false,
-    planMesGuia: config?.planMesGuia === 'mes2' ? 'mes2' : 'mes1',
+    planMesGuia: planMesGuiaFromEntry(
+      { planMesGuia: config?.planMesGuia, nombre, origen },
+      config,
+    ),
     estado: estadoVacio || { checks: {}, omitidos: {}, extras: {} },
     planPropio: origen === 'propio' ? clonarJson(planPropioData) : null,
   }
