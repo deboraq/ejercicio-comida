@@ -652,7 +652,7 @@ export default function MiPlanKanban({
 
   const bloquePlanSistema = () => (
     <div className="plan-kanban-create-section">
-      <p className="plan-kanban-create-section-kicker mb-0">Plan del sistema TMV</p>
+      <p className="plan-kanban-create-section-kicker mb-0">Plan guiado del sistema</p>
       <p className="plan-kanban-create-bar-sub mb-2">
         Menú de 30 días según tu objetivo y perfil en Config. Al pasar al Mes 2, el Mes 1 queda en «Plan activo» con tus marcas; podés volver cuando quieras.
       </p>

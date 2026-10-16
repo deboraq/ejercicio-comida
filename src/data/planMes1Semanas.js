@@ -1,5 +1,5 @@
 /**
- * Menús semanales Mes 1 tonificación (texto del plan TMV).
+ * Menús semanales Mes 1 tonificación (plan guiado 30 días).
  * Semanas 3–4 reutilizan estas plantillas con otros tips (ver planMes1.js).
  */
 

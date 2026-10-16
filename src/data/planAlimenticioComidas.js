@@ -1,5 +1,5 @@
 /**
- * Alimentos del plan alimenticio TMV (4 semanas): ensaladas, recetas, ingredientes
+ * Alimentos del plan alimenticio (4 semanas): ensaladas, recetas, ingredientes
  * y platos combinados frecuentes. Macros estimados por porción del plan.
  */
 

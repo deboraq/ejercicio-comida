@@ -5,6 +5,7 @@ import { useMyProfile } from '../hooks/useMyProfile'
 import { useRoleNav } from '../context/RoleNavContext'
 import { isNavModuleBlocked } from '../utils/navModules'
 import InicioAccesosSection from '../components/InicioAccesosSection'
+import InicioPlanesHoy from '../components/InicioPlanesHoy'
 import { useStorage } from '../hooks/useStorage'
 import {
   caloriasEjercicioRegistro,
@@ -449,6 +450,8 @@ export default function Inicio() {
           mostrarProfe={mostrarProfe}
           mostrarAdmin={mostrarAdmin}
         />
+
+        <InicioPlanesHoy fechaISO={diaEnVista} />
 
         <div className="inicio-week-strip">
           <div className="inicio-week-toolbar">

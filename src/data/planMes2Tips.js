@@ -1,11 +1,11 @@
-/** Tips diarios — Plan Mes 2 TMV (30 días). */
+/** Tips diarios — Plan Mes 2 (30 días). */
 export const PLAN_MES2_TIPS = [
   'Utilizá el día para aprender bien todo del mes 2 y estudiar el conteo de nutrientes de la lección correspondiente. Hidratate y respetá bien las comidas.',
-  'Pasá por lesiones TMV mes 2 (cansancio, contracturas, inflamación intestinal). Si podés, mirá el reto 10 días mes 2 si ya hiciste el del mes 1.',
+  'Pasá por lesiones frecuentes del mes 2 (cansancio, contracturas, inflamación intestinal). Si podés, mirá el reto 10 días mes 2 si ya hiciste el del mes 1.',
   'Conectá con los básicos: agradecimiento en cada comida, meditar 5 minutos, agua, respetar comidas, comer en paz sin estrés.',
   'Escuchá las píldoras 11 y 12. Preguntate cómo venimos avanzando y qué sentís.',
   'Seguí estudiando el módulo de entrenamiento, movelo, generá actividad y usá un cuaderno para objetivos físicos (el del reto si lo hacés).',
-  'Terminá de mirar lecciones TMV mes 2. Tomate 3 momentos al día de presencia total, 5 minutos cada uno.',
+  'Terminá de mirar lecciones del mes 2. Tomate 3 momentos al día de presencia total, 5 minutos cada uno.',
   'Cumpliste la primera semana del mes 2: agradecimiento, analizá cuánto aprendés, priorizate y cuidá los básicos.',
   'Si ya estás con el reto, enfocate a full hoy; si no, empezá urgente. Escuchá el impulso 4 del mes 2.',
   'Escuchá la píldora 13.',
@@ -13,9 +13,9 @@ export const PLAN_MES2_TIPS = [
   'Conectá con sabores reales: sacá azúcar, edulcorantes y saborizantes; reducilos al máximo si no podés eliminarlos.',
   'Día sin picoteos: respetá comidas, hidratate, nutrición correcta. Infusiones sin azúcar ni edulcorantes libres. Píldora 14.',
   'Mejorá postura corporal; repetí estiramientos del módulo entrenamiento. Meditación 4 «La sanación» (mes 2 meditaciones).',
-  'Terminá el módulo mes 2 de lecciones TMV y del plan si falta. Repasá listas nutricionales y conteo de macronutrientes.',
+  'Terminá el módulo mes 2 de lecciones y del plan si falta. Repasá listas nutricionales y conteo de macronutrientes.',
   'Hidratación todo el día, comidas a horario, actividad física. Píldora 18 si podés.',
-  'Decreto en la comunidad TMV: lo que estás logrando y un decreto para 1 mes y 6 meses.',
+  'Decreto en tu comunidad o grupo: lo que estás logrando y un decreto para 1 mes y 6 meses.',
   'Sabores reales, menos edulcorantes y picoteos; hidratate. Escuchá la píldora que más te atrape y reflexioná.',
   '10 minutos pensando cómo sería tu vida con constancia real; meditá 5 min sintiendo que ya está materializado.',
   'Escribí 5 cosas de gratitud en el cuaderno. Reconectá con el reto mes 2 o repetí un día del mes 1 si aún no empezaste.',

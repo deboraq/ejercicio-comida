@@ -144,7 +144,12 @@ export default function Rutina() {
       setOrigenRutinas((prev) => (st.rutinaOrigen === 'asignadas' ? prev : 'propias'))
       if (st.rutinaOrigen !== 'asignadas') setVista(st.rutinaVista)
     }
-    if (st.rutinaOrigen || st.rutinaVista) {
+    if (st.rutinaDiaId) {
+      setDiaSeleccionado(String(st.rutinaDiaId))
+      setVista('registrar')
+      setOrigenRutinas('propias')
+    }
+    if (st.rutinaOrigen || st.rutinaVista || st.rutinaDiaId) {
       navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: nextState })
     }
   }, [location.pathname, location.search, location.state, navigate])
@@ -583,7 +588,7 @@ export default function Rutina() {
   }
 
   const agregarRegistrosVarios = (lista) => {
-    const fecha = fechaInput || hoy
+    const fecha = fechaSoloDia(fechaInput || hoy)
     const validos = lista.filter(({ ejercicio, series, repeticiones }) => {
       const repsStr = typeof repeticiones === 'string' ? repeticiones.trim() : String(repeticiones ?? '').trim()
       return ejercicio && series !== '' && series != null && repsStr
@@ -637,8 +642,8 @@ export default function Rutina() {
     if (fecha.length >= 7) setMesCalendario(fecha.slice(0, 7))
     const delDia = registros.filter(
       (r) =>
-        r.fecha === fecha &&
-        (r.rutinaId === rutinaIdActual || !r.rutinaId)
+        fechaSoloDia(r.fecha) === fechaSoloDia(fecha)
+        && (r.rutinaId === rutinaIdActual || !r.rutinaId)
     )
     if (delDia.length === 0) return
     const conteo = {}
@@ -652,8 +657,9 @@ export default function Rutina() {
     }
   }
 
+  const fechaSesionActiva = fechaSoloDia(fechaInput || hoy)
   const registrosDeEstaSesion = registros.filter((r) => {
-    if (r.fecha !== (fechaInput || hoy)) return false
+    if (fechaSoloDia(r.fecha) !== fechaSesionActiva) return false
     if (r.rutinaId && r.rutinaId !== rutinaIdActual) return false
     if (r.diaRutinaId && r.diaRutinaId === diaSeleccionado) return true
     // Legacy / sin día, o día distinto pero mismo ejercicio del plan (huérfanos tras renombrar/cambiar día)

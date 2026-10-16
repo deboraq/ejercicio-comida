@@ -1,4 +1,4 @@
-/** Menú diario Plan Mes 2 TMV — generado por scripts/build-plan-mes2-dias.mjs */
+/** Menú diario Plan Mes 2 — generado por scripts/build-plan-mes2-dias.mjs */
 export const PLAN_MES2_TOTAL_DIAS = 30
 
 /** @type {Record<'desayuno'|'media_manana'|'almuerzo'|'merienda'|'cena', [string, string]>[]} */

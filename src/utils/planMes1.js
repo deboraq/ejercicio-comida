@@ -7,7 +7,7 @@ import {
 import { fechaToISO } from './calorias.js'
 import { buscarAlimentos } from './referenciaComidas.js'
 
-export const PLAN_MES1_ID = 'tmv_mes1_tonificacion'
+export const PLAN_MES1_ID = 'mes1_tonificacion'
 export const PLAN_MES1_TOTAL_DIAS = 30
 
 export const PLAN_MES1_VARIANTES = [

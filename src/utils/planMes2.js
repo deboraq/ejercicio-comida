@@ -13,7 +13,7 @@ import {
 } from './planMes1.js'
 import { fechaToISO } from './calorias.js'
 
-export const PLAN_MES2_ID = 'tmv_mes2_avanzado'
+export const PLAN_MES2_ID = 'mes2_avanzado'
 export { PLAN_MES2_TOTAL_DIAS }
 
 /** Rangos levemente superiores al mes 1 (plan avanzado). */

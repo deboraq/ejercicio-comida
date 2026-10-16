@@ -1,5 +1,5 @@
 /**
- * Genera src/data/planMes2Dias.js desde datos embebidos (plan TMV mes 2).
+ * Genera src/data/planMes2Dias.js desde datos embebidos (plan mes 2).
  * Ejecutar: node scripts/build-plan-mes2-dias.mjs
  */
 import fs from 'fs'
@@ -576,7 +576,7 @@ if (DIAS.length !== 30) {
   process.exit(1)
 }
 
-const body = `/** Menú diario Plan Mes 2 TMV — generado por scripts/build-plan-mes2-dias.mjs */
+const body = `/** Menú diario Plan Mes 2 — generado por scripts/build-plan-mes2-dias.mjs */
 export const PLAN_MES2_TOTAL_DIAS = 30
 
 /** @type {Record<'desayuno'|'media_manana'|'almuerzo'|'merienda'|'cena', [string, string]>[]} */

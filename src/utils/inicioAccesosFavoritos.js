@@ -26,7 +26,7 @@ export const INICIO_ACCESOS_CATALOGO = [
   {
     id: 'comida-plan',
     label: 'Plan alimenticio',
-    desc: 'Kanban del plan TMV',
+    desc: 'Kanban del plan de 30 días',
     icon: '📋',
     tone: 'plan',
     navModule: 'comida',

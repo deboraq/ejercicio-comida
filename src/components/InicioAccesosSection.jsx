@@ -40,18 +40,11 @@ export default function InicioAccesosSection({
     [filtroCtx],
   )
 
-  const personalizado = Array.isArray(favoritos) && favoritos.length > 0
-
   return (
     <div className="box inicio-accesos-card">
       <div className="inicio-accesos-head">
         <div>
           <h2 className="inicio-card-title mb-0">Accesos rápidos</h2>
-          <p className="inicio-card-sub mb-0">
-            {personalizado
-              ? 'Tus atajos favoritos al plan, rutina y más.'
-              : 'Sugeridos — personalizalos cuando quieras.'}
-          </p>
         </div>
         <button
           type="button"

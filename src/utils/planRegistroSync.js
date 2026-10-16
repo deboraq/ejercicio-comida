@@ -295,6 +295,63 @@ export function removeRegistrosPlanDia(registros, diaPlan, planNutricionId = nul
   })
 }
 
+/**
+ * Marca / desmarca una opción del tablero (misma regla que MiPlanKanban).
+ * @returns {{ nextSlice: object, syncPayload: object | null }}
+ */
+export function togglePlanOpcionCheck({
+  slice,
+  diaPlan,
+  slot,
+  opIdx,
+  inicioISO,
+  configPlan,
+}) {
+  const key = claveComidaPlan(diaPlan, slot.id, null, opIdx)
+  const willCheck = !slice?.checks?.[key]
+  const checks = { ...(slice?.checks || {}) }
+  const syncOps = []
+
+  if (willCheck) {
+    for (let i = 0; i < (slot.opciones || []).length; i += 1) {
+      const k = claveComidaPlan(diaPlan, slot.id, null, i)
+      if (i === opIdx) {
+        checks[k] = true
+      } else if (checks[k]) {
+        checks[k] = false
+        syncOps.push(
+          payloadSyncPlanToggle({
+            diaPlan,
+            inicioISO,
+            config: configPlan,
+            slot,
+            opIdx: i,
+            checked: false,
+          }),
+        )
+      }
+    }
+  } else {
+    delete checks[key]
+  }
+
+  const mainPayload = payloadSyncPlanToggle({
+    diaPlan,
+    inicioISO,
+    config: configPlan,
+    slot,
+    opIdx,
+    checked: willCheck,
+  })
+  const syncPayload =
+    inicioISO && (syncOps.length ? { type: 'batch', ops: [...syncOps, mainPayload] } : mainPayload)
+
+  return {
+    nextSlice: { ...slice, checks },
+    syncPayload: syncPayload || null,
+  }
+}
+
 /** @param {{ checked: boolean, diaPlan: number, inicioISO: string, config: object, slot?: object, opIdx?: number, extra?: object }} p */
 export function payloadSyncPlanToggle(p) {
   const { diaPlan, inicioISO, config, slot, opIdx, extra, checked } = p
