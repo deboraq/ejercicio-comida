@@ -349,6 +349,76 @@ export function formatKg(n, digits = 1) {
   return `${Number(n).toFixed(digits)} kg`
 }
 
+/** Agrega por día: volumen, series y ejercicios distintos (toda la rutina). */
+export function seriesDiariasGeneral(registros) {
+  const porFecha = {}
+  for (const r of registros || []) {
+    const f = fechaSoloDia(r.fecha)
+    if (!f) continue
+    if (!porFecha[f]) porFecha[f] = []
+    porFecha[f].push(r)
+  }
+  return Object.keys(porFecha)
+    .sort()
+    .map((fecha) => {
+      const lista = porFecha[fecha]
+      let vol = 0
+      let series = 0
+      const ejSet = new Set()
+      for (const r of lista) {
+        vol += volumenDeRegistro(r)
+        series += Number(r.series) || 1
+        if (r.ejercicio) ejSet.add(r.ejercicio)
+      }
+      return {
+        fecha,
+        volumen: vol,
+        series,
+        ejercicios: ejSet.size,
+        carga: null,
+        rm: null,
+        reps: null,
+        rpe: null,
+        esPr: false,
+      }
+    })
+    .filter((d) => d.volumen > 0)
+}
+
+/** Puntos diarios con volumen mapeado a `carga` para el gráfico general. */
+export function puntosVolumenDiario(registros) {
+  let maxV = 0
+  return seriesDiariasGeneral(registros).map((p) => {
+    const esPr = p.volumen > maxV
+    if (p.volumen > maxV) maxV = p.volumen
+    return { ...p, carga: p.volumen, esPr }
+  })
+}
+
+export function resumenKpisGeneral(regsPeriodo = [], regsPrev = []) {
+  const pts = seriesDiariasGeneral(regsPeriodo)
+  const ptsPrev = seriesDiariasGeneral(regsPrev)
+  const volumen = pts.reduce((s, p) => s + (p.volumen || 0), 0)
+  const volPrev = ptsPrev.reduce((s, p) => s + (p.volumen || 0), 0)
+  const pctVol = volPrev > 0 ? Math.round(((volumen - volPrev) / volPrev) * 1000) / 10 : null
+  const sesiones = pts.length
+  const sesionesPrev = ptsPrev.length
+  const pctSesiones =
+    sesionesPrev > 0 ? Math.round(((sesiones - sesionesPrev) / sesionesPrev) * 1000) / 10 : null
+  const ejercicios = new Set((regsPeriodo || []).map((r) => r.ejercicio).filter(Boolean)).size
+  const seriesTot = totalSeriesRegistros(regsPeriodo)
+  const fechaUltima = pts.length ? pts[pts.length - 1].fecha : null
+  return {
+    volumen,
+    pctVol,
+    sesiones,
+    pctSesiones,
+    ejercicios,
+    seriesTot,
+    fechaUltima,
+  }
+}
+
 export function formatVolumen(kg) {
   if (!(kg > 0)) return '0 kg'
   if (kg >= 10000) return `${(kg / 1000).toFixed(kg >= 100000 ? 0 : 2)} ton`

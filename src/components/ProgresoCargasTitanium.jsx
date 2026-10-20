@@ -13,9 +13,13 @@ import {
   seriesPorSemana,
   rpePromedio,
   sugerenciaSobrecarga,
+  seriesDiariasGeneral,
+  puntosVolumenDiario,
+  resumenKpisGeneral,
   formatearFechaCorta,
   formatearFechaLarga,
   formatearFechaMedia,
+  formatVolumenKg,
 } from '../utils/progresoCargas'
 import { fechaToISO } from '../utils/calorias'
 import { nombreDisplayPlan } from '../utils/rutinaEjercicioDia'
@@ -203,7 +207,7 @@ function buildSmoothAreaBetween(data, keyTop, keyBottom, xAt, yAt, yFloor) {
   return `${topCurve} ${bottomCurve} Z`
 }
 
-function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats = null }) {
+function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats = null, general = false }) {
   const [hover, setHover] = useState(null)
   const [modo, setModo] = useState('linea')
   const W = 900
@@ -214,7 +218,7 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
 
   const data = useMemo(() => {
     const base = [...(puntos || [])]
-    if (base.length < 1) return base
+    if (general || base.length < 1) return base
     const last = base[base.length - 1]
     if (last?.carga == null) return base
     const proyCarga = Math.round((last.carga + 2.5) * 2) / 2
@@ -237,7 +241,7 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
         esProyeccion: true,
       },
     ]
-  }, [puntos])
+  }, [puntos, general])
 
   // Hover inicial en el PR (como el mock)
   const defaultHover = useMemo(() => {
@@ -251,7 +255,9 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
 
   const active = hover != null ? hover : defaultHover
 
-  const ys = data.flatMap((p) => [p.carga, p.rm]).filter((v) => v != null && v > 0)
+  const ys = data
+    .flatMap((p) => (general ? [p.carga] : [p.carga, p.rm]))
+    .filter((v) => v != null && v > 0)
   if (metaKg) ys.push(metaKg)
   const yMaxRaw = ys.length ? Math.max(...ys) : 50
   const yMax = Math.max(10, Math.ceil((yMaxRaw * 1.08) / 10) * 10)
@@ -331,10 +337,16 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
   const legendAndModes = (
     <div className="pc-chart-head-right">
       <div className="pc-chart-legend-top">
-        <span><i className="pc-leg-dot is-rm" /> 1RM Est.</span>
-        <span><i className="pc-leg-dot is-carga" /> Carga Real</span>
-        {metaKg != null && (
-          <span><i className="pc-leg-meta" /> Meta Mes ({metaKg}kg)</span>
+        {general ? (
+          <span><i className="pc-leg-dot is-carga" /> Volumen del día</span>
+        ) : (
+          <>
+            <span><i className="pc-leg-dot is-rm" /> 1RM Est.</span>
+            <span><i className="pc-leg-dot is-carga" /> Carga Real</span>
+            {metaKg != null && (
+              <span><i className="pc-leg-meta" /> Meta Mes ({metaKg}kg)</span>
+            )}
+          </>
         )}
       </div>
       <div className="pc-chart-modes" role="group" aria-label="Tipo de gráfico">
@@ -365,11 +377,15 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
       <div className="pc-chart-head">
         <div className="pc-chart-head-left">
           <div className="pc-title-row">
-            <h2 className="pc-panel-title">Curva de Sobrecarga Progresiva &amp; 1RM Estimada</h2>
+            <h2 className="pc-panel-title">
+              {general ? 'Volumen por sesión (toda la rutina)' : 'Curva de Sobrecarga Progresiva & 1RM Estimada'}
+            </h2>
             <span className="pc-badge-live">Interactivo</span>
           </div>
           <p className="pc-panel-sub mb-0">
-            Comparativa de carga efectiva levantada (kg) vs proyección teórica de fuerza máxima por sesión.
+            {general
+              ? 'Tonelaje total levantado cada día que entrenaste, sumando todos los ejercicios.'
+              : 'Comparativa de carga efectiva levantada (kg) vs proyección teórica de fuerza máxima por sesión.'}
           </p>
         </div>
         {legendAndModes}
@@ -415,7 +431,7 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
                 className="pc-chart-grid"
               />
               <text x={pad.l - 10} y={yAt(t) + 4} className="pc-chart-axis" textAnchor="end">
-                {t} kg
+                {general ? Math.round(t).toLocaleString('es-AR') : `${t} kg`}
               </text>
             </g>
           ))}
@@ -437,32 +453,35 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
                 className="pc-chart-area-carga"
                 fill="url(#pcGradCarga)"
               />
-              <path
-                d={buildSmoothAreaBetween(data, 'rm', 'carga', xAt, yAt, yMin)}
-                className="pc-chart-area-rm"
-                fill="url(#pcGradRm)"
-              />
+              {!general ? (
+                <>
+                  <path
+                    d={buildSmoothAreaBetween(data, 'rm', 'carga', xAt, yAt, yMin)}
+                    className="pc-chart-area-rm"
+                    fill="url(#pcGradRm)"
+                  />
+                  <path
+                    d={buildCurvePathSlice(rmPts, 0, lastRealIdx)}
+                    className="pc-chart-line-rm"
+                    fill="none"
+                    filter="url(#pcGlowRm)"
+                  />
+                  {lastRealIdx < data.length - 1 && (
+                    <path
+                      d={buildCurvePathSlice(rmPts, lastRealIdx, data.length - 1)}
+                      className="pc-chart-line-rm is-proy-line"
+                      fill="none"
+                    />
+                  )}
+                </>
+              ) : null}
 
               <path
-                d={buildCurvePathSlice(rmPts, 0, lastRealIdx)}
-                className="pc-chart-line-rm"
-                fill="none"
-                filter="url(#pcGlowRm)"
-              />
-              {lastRealIdx < data.length - 1 && (
-                <path
-                  d={buildCurvePathSlice(rmPts, lastRealIdx, data.length - 1)}
-                  className="pc-chart-line-rm is-proy-line"
-                  fill="none"
-                />
-              )}
-
-              <path
-                d={buildCurvePathSlice(cargaPts, 0, lastRealIdx)}
+                d={buildCurvePathSlice(cargaPts, 0, general ? data.length - 1 : lastRealIdx)}
                 className="pc-chart-line-carga"
                 fill="none"
               />
-              {lastRealIdx < data.length - 1 && (
+              {!general && lastRealIdx < data.length - 1 && (
                 <path
                   d={buildCurvePathSlice(cargaPts, lastRealIdx, data.length - 1)}
                   className="pc-chart-line-carga is-proy-line"
@@ -470,17 +489,19 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
                 />
               )}
 
-              {data.map((p, i) =>
-                p.rm != null ? (
-                  <circle
-                    key={`rm-${p.fecha}`}
-                    cx={xAt(i)}
-                    cy={yAt(p.rm)}
-                    r={active === i ? 7 : 5}
-                    className={`pc-chart-dot-rm${p.esProyeccion ? ' is-proy' : ''}${active === i ? ' is-hover' : ''}`}
-                  />
-                ) : null
-              )}
+              {!general
+                ? data.map((p, i) =>
+                    p.rm != null ? (
+                      <circle
+                        key={`rm-${p.fecha}`}
+                        cx={xAt(i)}
+                        cy={yAt(p.rm)}
+                        r={active === i ? 7 : 5}
+                        className={`pc-chart-dot-rm${p.esProyeccion ? ' is-proy' : ''}${active === i ? ' is-hover' : ''}`}
+                      />
+                    ) : null,
+                  )
+                : null}
               {data.map((p, i) =>
                 p.carga != null ? (
                   <circle
@@ -490,7 +511,7 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
                     r={active === i ? 5 : 3.5}
                     className={`pc-chart-dot-carga${p.esProyeccion ? ' is-proy' : ''}${active === i ? ' is-hover' : ''}`}
                   />
-                ) : null
+                ) : null,
               )}
             </>
           )}
@@ -504,7 +525,7 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
             return (
               <g key={`bar-${p.fecha}`} opacity={p.esProyeccion ? 0.45 : 1}>
                 <rect x={x} y={y} width={bw} height={Math.max(hBar, 0)} rx="4" className="pc-chart-bar-carga" />
-                {p.rm != null && (
+                {!general && p.rm != null && (
                   <circle cx={xAt(i)} cy={yAt(p.rm)} r="4" className="pc-chart-dot-rm" />
                 )}
               </g>
@@ -530,32 +551,51 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
               {h.esPr ? ' (Récord Personal)' : ''}
               {h.esProyeccion ? ' (Proyección)' : ''}
             </p>
-            <p className="pc-tip-row mb-0">
-              Carga levantada:{' '}
-              <strong>
-                {h.carga != null ? `${h.carga} kg` : '—'}
-                {h.reps ? ` × ${h.reps} reps` : ''}
-              </strong>
-            </p>
-            <p className="pc-tip-row mb-0">
-              1RM Estimada:{' '}
-              <strong className="is-rm">
-                {h.rm != null ? `${h.rm} kg` : '—'}
-              </strong>
-              {deltaRm != null && deltaRm !== 0 && (
-                <span className="is-delta"> ({deltaRm > 0 ? '+' : ''}{deltaRm} kg)</span>
-              )}
-            </p>
-            {h.rpe != null && (
-              <p className="pc-tip-row mb-0">
-                RPE / Esfuerzo:{' '}
-                <strong>
-                  {h.rpe.toFixed(1)}
-                  {rpeLabel(h.rpe) ? (
-                    <span className="is-opt"> ({rpeLabel(h.rpe)})</span>
-                  ) : null}
-                </strong>
-              </p>
+            {general ? (
+              <>
+                <p className="pc-tip-row mb-0">
+                  Volumen del día:{' '}
+                  <strong>{h.carga != null ? formatVolumenKg(h.carga) : '—'}</strong>
+                </p>
+                {h.series != null && (
+                  <p className="pc-tip-row mb-0">
+                    Series: <strong>{h.series}</strong>
+                    {h.ejercicios != null ? (
+                      <> · Ejercicios: <strong>{h.ejercicios}</strong></>
+                    ) : null}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="pc-tip-row mb-0">
+                  Carga levantada:{' '}
+                  <strong>
+                    {h.carga != null ? `${h.carga} kg` : '—'}
+                    {h.reps ? ` × ${h.reps} reps` : ''}
+                  </strong>
+                </p>
+                <p className="pc-tip-row mb-0">
+                  1RM Estimada:{' '}
+                  <strong className="is-rm">
+                    {h.rm != null ? `${h.rm} kg` : '—'}
+                  </strong>
+                  {deltaRm != null && deltaRm !== 0 && (
+                    <span className="is-delta"> ({deltaRm > 0 ? '+' : ''}{deltaRm} kg)</span>
+                  )}
+                </p>
+                {h.rpe != null && (
+                  <p className="pc-tip-row mb-0">
+                    RPE / Esfuerzo:{' '}
+                    <strong>
+                      {h.rpe.toFixed(1)}
+                      {rpeLabel(h.rpe) ? (
+                        <span className="is-opt"> ({rpeLabel(h.rpe)})</span>
+                      ) : null}
+                    </strong>
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}
@@ -572,7 +612,7 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
               {labelIndices.includes(i) ? (
                 p.esPr ? (
                   <span className="pc-xchip is-pr">
-                    {formatearFechaCorta(p.fecha)} (PR {p.carga} kg)
+                    {formatearFechaCorta(p.fecha)} (PR {general ? formatVolumenKg(p.carga) : `${p.carga} kg`})
                   </span>
                 ) : p.esProyeccion ? (
                   <span className="pc-xchip is-proy">
@@ -581,7 +621,7 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
                 ) : (
                   <span className="pc-xchip">
                     {formatearFechaCorta(p.fecha)}
-                    {p.carga != null ? ` (${p.carga} kg)` : ''}
+                    {p.carga != null ? ` (${general ? formatVolumenKg(p.carga) : `${p.carga} kg`})` : ''}
                   </span>
                 )
               ) : null}
@@ -593,10 +633,14 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
       {(metaSesion || stats) && (
         <div className="pc-chart-stats">
           <article className="pc-stat">
-            <p className="pc-stat-label mb-0">Sobrecarga Total en {stats?.periodoLabel || '30D'}</p>
+            <p className="pc-stat-label mb-0">
+              {general ? `Cambio de volumen (${stats?.periodoLabel || '30D'})` : `Sobrecarga Total en ${stats?.periodoLabel || '30D'}`}
+            </p>
             <p className={`pc-stat-value mb-0 ${stats?.deltaCarga != null && stats.deltaCarga >= 0 ? 'is-up' : 'is-down'}`}>
               {stats?.deltaCarga != null
-                ? `${stats.deltaCarga >= 0 ? '↑ +' : '↓ '}${Math.abs(stats.deltaCarga).toFixed(1)} kg${stats.pctCarga != null ? ` (${stats.pctCarga >= 0 ? '+' : ''}${stats.pctCarga}%)` : ''}`
+                ? general
+                  ? `${stats.deltaCarga >= 0 ? '↑ +' : '↓ '}${formatVolumenKg(Math.abs(stats.deltaCarga))}${stats.pctCarga != null ? ` (${stats.pctCarga >= 0 ? '+' : ''}${stats.pctCarga}%)` : ''}`
+                  : `${stats.deltaCarga >= 0 ? '↑ +' : '↓ '}${Math.abs(stats.deltaCarga).toFixed(1)} kg${stats.pctCarga != null ? ` (${stats.pctCarga >= 0 ? '+' : ''}${stats.pctCarga}%)` : ''}`
                 : '—'}
             </p>
           </article>
@@ -608,20 +652,31 @@ function ChartProgresion({ puntos = [], metaKg = null, metaSesion = null, stats 
                 : '—'}
             </p>
           </article>
-          <article className="pc-stat">
-            <p className="pc-stat-label mb-0">Repeticiones en RIR 2</p>
-            <p className="pc-stat-value mb-0 is-blue">
-              {stats?.pctEfectivas != null ? `${stats.pctEfectivas}% Efectivas` : '—'}
-            </p>
-          </article>
-          <article className="pc-stat pc-stat--meta">
-            <p className="pc-stat-label mb-0">Meta Siguiente Sesión</p>
-            <p className="pc-stat-value mb-0 is-gold">
-              {metaSesion
-                ? `${metaSesion.carga} kg × ${metaSesion.reps || 6} reps`
-                : '—'}
-            </p>
-          </article>
+          {general ? (
+            <article className="pc-stat">
+              <p className="pc-stat-label mb-0">Sesiones en el período</p>
+              <p className="pc-stat-value mb-0 is-blue">
+                {stats?.sesiones != null ? stats.sesiones : '—'}
+              </p>
+            </article>
+          ) : (
+            <>
+              <article className="pc-stat">
+                <p className="pc-stat-label mb-0">Repeticiones en RIR 2</p>
+                <p className="pc-stat-value mb-0 is-blue">
+                  {stats?.pctEfectivas != null ? `${stats.pctEfectivas}% Efectivas` : '—'}
+                </p>
+              </article>
+              <article className="pc-stat pc-stat--meta">
+                <p className="pc-stat-label mb-0">Meta Siguiente Sesión</p>
+                <p className="pc-stat-value mb-0 is-gold">
+                  {metaSesion
+                    ? `${metaSesion.carga} kg × ${metaSesion.reps || 6} reps`
+                    : '—'}
+                </p>
+              </article>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -651,6 +706,8 @@ export default function ProgresoCargasTitanium({
 
   const [ejercicio, setEjercicio] = useState(() => ejerciciosDisponibles[0]?.nombre || '')
   const [periodo, setPeriodo] = useState('30d')
+  const [vistaAnalisis, setVistaAnalisis] = useState('general')
+  const esGeneral = vistaAnalisis === 'general'
 
   // Si cambia la lista y el seleccionado desaparece, re-seleccionar
   const ejercicioActivo = useMemo(() => {
@@ -683,18 +740,29 @@ export default function ProgresoCargasTitanium({
   )
 
   const puntos = useMemo(
-    () => marcarPRs(seriesDiariasEjercicio(regsEj, ejercicioActivo)),
-    [regsEj, ejercicioActivo]
+    () => (esGeneral
+      ? marcarPRs(puntosVolumenDiario(regsPeriodo))
+      : marcarPRs(seriesDiariasEjercicio(regsEj, ejercicioActivo))),
+    [esGeneral, regsPeriodo, regsEj, ejercicioActivo]
   )
   const puntosPrev = useMemo(
-    () => seriesDiariasEjercicio(regsEjPrev, ejercicioActivo),
-    [regsEjPrev, ejercicioActivo]
+    () => (esGeneral
+      ? seriesDiariasGeneral(regsPrev)
+      : seriesDiariasEjercicio(regsEjPrev, ejercicioActivo)),
+    [esGeneral, regsPrev, regsEjPrev, ejercicioActivo]
   )
-  const kpis = useMemo(() => resumenKpisEjercicio(puntos, puntosPrev), [puntos, puntosPrev])
+  const kpisEj = useMemo(() => resumenKpisEjercicio(
+    esGeneral ? [] : puntos,
+    esGeneral ? [] : puntosPrev,
+  ), [esGeneral, puntos, puntosPrev])
+  const kpisGen = useMemo(
+    () => resumenKpisGeneral(regsPeriodo, regsPrev),
+    [regsPeriodo, regsPrev]
+  )
   const metaKg = useMemo(() => {
-    if (kpis.cargaMax == null) return null
-    return Math.round((kpis.cargaMax + 2.5) * 2) / 2
-  }, [kpis.cargaMax])
+    if (esGeneral || kpisEj.cargaMax == null) return null
+    return Math.round((kpisEj.cargaMax + 2.5) * 2) / 2
+  }, [esGeneral, kpisEj.cargaMax])
 
   const [verTodosProg, setVerTodosProg] = useState(false)
 
@@ -741,13 +809,13 @@ export default function ProgresoCargasTitanium({
         : null
     }
     const volSesion = conCarga.length
-      ? conCarga.reduce((s, p) => s + (p.volumen || 0), 0) / conCarga.length
+      ? conCarga.reduce((s, p) => s + (p.volumen ?? p.carga ?? 0), 0) / conCarga.length
       : null
     const conRpe = puntos.filter((p) => p.rpe != null)
     const efectivas = conRpe.filter((p) => p.rpe >= 7 && p.rpe <= 9).length
     const pctEfectivas = conRpe.length
       ? Math.round((efectivas / conRpe.length) * 100)
-      : (kpis.adherencia != null ? kpis.adherencia : null)
+      : (!esGeneral && kpisEj.adherencia != null ? kpisEj.adherencia : null)
     const periodoLabel = ({
       '7d': '7D',
       '30d': '30D',
@@ -755,8 +823,9 @@ export default function ProgresoCargasTitanium({
       '6m': '6M',
       '1y': '1A',
     })[periodo] || '30D'
-    return { deltaCarga, pctCarga, volSesion, pctEfectivas, periodoLabel }
-  }, [puntos, periodo, kpis.adherencia])
+    const sesiones = esGeneral ? conCarga.length : null
+    return { deltaCarga, pctCarga, volSesion, pctEfectivas, periodoLabel, sesiones }
+  }, [puntos, periodo, esGeneral, kpisEj.adherencia])
 
   const chips = useMemo(() => {
     const planSet = new Set(ejerciciosPlan || [])
@@ -781,9 +850,15 @@ export default function ProgresoCargasTitanium({
   const rangoLabel = `${formatearFechaMedia(desde)} — ${formatearFechaMedia(hasta)}`
 
   const adherenciaLabel = (() => {
-    if (kpis.adherencia == null) return 'Sin datos aún'
-    if (kpis.adherencia >= 85) return 'Excelente ritmo de adaptación neuromuscular'
-    if (kpis.adherencia >= 60) return 'Buen ritmo; mantené la constancia'
+    if (esGeneral) {
+      if (kpisGen.pctSesiones == null && kpisGen.sesiones === 0) return 'Sin sesiones en el período'
+      if (kpisGen.pctSesiones != null && kpisGen.pctSesiones >= 10) return 'Más volumen y constancia que el período anterior'
+      if (kpisGen.pctSesiones != null && kpisGen.pctSesiones >= 0) return 'Ritmo estable respecto al período anterior'
+      return 'Menos sesiones que el período anterior; sumá continuidad'
+    }
+    if (kpisEj.adherencia == null) return 'Sin datos aún'
+    if (kpisEj.adherencia >= 85) return 'Excelente ritmo de adaptación neuromuscular'
+    if (kpisEj.adherencia >= 60) return 'Buen ritmo; mantené la constancia'
     return 'Hay huecos: priorizá no bajar la carga'
   })()
 
@@ -797,50 +872,85 @@ export default function ProgresoCargasTitanium({
     return Math.round((sug.cargaSugerida - lastPt.carga) * 10) / 10
   }, [sug, lastPt])
 
+  const irAEjercicio = (nombre) => {
+    setEjercicio(nombre)
+    setVistaAnalisis('ejercicio')
+  }
+
   return (
     <div className="pc-dash">
       <div className="pc-toolbar">
-        <div className="pc-tb-ex">
-          <label className="pc-label-block" htmlFor="pc-ex">
-            Ejercicio analizado
-          </label>
-          <div className="pc-tb-ex-row">
-            <div className="pc-select-wrap pc-select-wrap--block">
-              <select
-                id="pc-ex"
-                className="pc-select"
-                value={ejercicioActivo}
-                onChange={(e) => setEjercicio(e.target.value)}
-                aria-label="Ejercicio analizado"
-              >
-                {ejerciciosDisponibles.length === 0 && <option value="">Sin ejercicios</option>}
-                {ejerciciosDisponibles.map((e) => (
-                  <option key={e.nombre} value={e.nombre}>
-                    {nombreDisplayPlan(e.nombre)}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="pc-tb-vista">
+          <span className="pc-label-block">Vista</span>
+          <div className="pc-vista-toggle" role="group" aria-label="Vista de análisis">
+            <button
+              type="button"
+              className={`pc-vista-btn${esGeneral ? ' is-active' : ''}`}
+              onClick={() => setVistaAnalisis('general')}
+            >
+              General
+            </button>
+            <button
+              type="button"
+              className={`pc-vista-btn${!esGeneral ? ' is-active' : ''}`}
+              onClick={() => setVistaAnalisis('ejercicio')}
+            >
+              Por ejercicio
+            </button>
           </div>
         </div>
 
-        {chips.length > 0 && (
-          <div className="pc-rapidos">
-            <span className="pc-label-block pc-rapidos-label">Rápidos</span>
-            <div className="pc-rapidos-chips">
-              {chips.map((c) => (
-                <button
-                  key={c.nombre}
-                  type="button"
-                  className={`pc-chip${c.nombre === ejercicioActivo ? ' is-active' : ''}`}
-                  onClick={() => setEjercicio(c.nombre)}
-                  title={nombreDisplayPlan(c.nombre)}
-                >
-                  {c.label}
-                </button>
-              ))}
+        {!esGeneral && (
+          <>
+            <div className="pc-tb-ex">
+              <label className="pc-label-block" htmlFor="pc-ex">
+                Ejercicio analizado
+              </label>
+              <div className="pc-tb-ex-row">
+                <div className="pc-select-wrap pc-select-wrap--block">
+                  <select
+                    id="pc-ex"
+                    className="pc-select"
+                    value={ejercicioActivo}
+                    onChange={(e) => setEjercicio(e.target.value)}
+                    aria-label="Ejercicio analizado"
+                  >
+                    {ejerciciosDisponibles.length === 0 && <option value="">Sin ejercicios</option>}
+                    {ejerciciosDisponibles.map((e) => (
+                      <option key={e.nombre} value={e.nombre}>
+                        {nombreDisplayPlan(e.nombre)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
-          </div>
+
+            {chips.length > 0 && (
+              <div className="pc-rapidos">
+                <span className="pc-label-block pc-rapidos-label">Rápidos</span>
+                <div className="pc-rapidos-chips">
+                  {chips.map((c) => (
+                    <button
+                      key={c.nombre}
+                      type="button"
+                      className={`pc-chip${c.nombre === ejercicioActivo ? ' is-active' : ''}`}
+                      onClick={() => irAEjercicio(c.nombre)}
+                      title={nombreDisplayPlan(c.nombre)}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {esGeneral && (
+          <p className="pc-vista-hint mb-0">
+            Métricas de todos los ejercicios del período. Tocá uno en la lista de progresión para ver su curva.
+          </p>
         )}
 
         <div className="pc-tb-meta">
@@ -867,124 +977,200 @@ export default function ProgresoCargasTitanium({
       </div>
 
       <div className="pc-kpis">
-        <article className="pc-kpi pc-kpi--rm">
-          <div className="pc-kpi-top">
-            <p className="pc-kpi-label mb-0">1RM Estimada (PR)</p>
-            <span className="pc-kpi-ico is-blue"><IconBolt /></span>
-          </div>
-          <div className="pc-kpi-value-row">
-            <p className="pc-kpi-value mb-0">
-              {kpis.rmMax != null ? (
-                <>
-                  <span>{Number(kpis.rmMax).toFixed(1)}</span>
+        {esGeneral ? (
+          <>
+            <article className="pc-kpi pc-kpi--vol">
+              <div className="pc-kpi-top">
+                <p className="pc-kpi-label mb-0">Volumen acumulado</p>
+                <span className="pc-kpi-ico is-green" aria-hidden>↗</span>
+              </div>
+              <div className="pc-kpi-value-row">
+                <p className="pc-kpi-value mb-0">
+                  <span>
+                    {kpisGen.volumen > 0
+                      ? Math.round(kpisGen.volumen).toLocaleString('es-AR')
+                      : '0'}
+                  </span>
                   <span className="pc-kpi-unit">kg</span>
-                </>
-              ) : '—'}
-            </p>
-            {kpis.deltaRm != null && kpis.deltaRm !== 0 ? (
-              <span className={`pc-badge ${kpis.deltaRm > 0 ? 'is-up' : 'is-down'}`}>
-                {kpis.deltaRm > 0 ? '↑ +' : '↓ '}{Math.abs(kpis.deltaRm)} kg
-              </span>
-            ) : null}
-          </div>
-          <p className="pc-kpi-foot-line mb-0">
-            {kpis.pctRm != null ? (
-              <>
-                <span className={kpis.pctRm >= 0 ? 'is-up' : 'is-down'}>
-                  {kpis.pctRm > 0 ? '+' : ''}{kpis.pctRm}%
+                </p>
+                {kpisGen.pctVol != null && (
+                  <span className={`pc-badge-round ${kpisGen.pctVol >= 0 ? 'is-up' : 'is-down'}`}>
+                    <span className="pc-badge-arrow" aria-hidden>{kpisGen.pctVol >= 0 ? '↑' : '↓'}</span>
+                    <span>{kpisGen.pctVol > 0 ? '+' : ''}{Math.abs(kpisGen.pctVol)}%</span>
+                  </span>
+                )}
+              </div>
+              <p className="pc-kpi-foot-line mb-0">Tonelaje total de todos los ejercicios</p>
+            </article>
+
+            <article className="pc-kpi pc-kpi--adh">
+              <div className="pc-kpi-top">
+                <p className="pc-kpi-label mb-0">Sesiones de entrenamiento</p>
+                <span className="pc-kpi-ico is-amber" aria-hidden>✓</span>
+              </div>
+              <div className="pc-kpi-value-row">
+                <p className="pc-kpi-value mb-0">
+                  <span>{kpisGen.sesiones}</span>
+                </p>
+                {kpisGen.pctSesiones != null && (
+                  <span className={`pc-badge ${kpisGen.pctSesiones >= 0 ? 'is-up' : 'is-down'}`}>
+                    {kpisGen.pctSesiones > 0 ? '+' : ''}{kpisGen.pctSesiones}%
+                  </span>
+                )}
+              </div>
+              <p className="pc-kpi-foot-line mb-0">Días con volumen registrado en el período</p>
+            </article>
+
+            <article className="pc-kpi pc-kpi--carga">
+              <div className="pc-kpi-top">
+                <p className="pc-kpi-label mb-0">Ejercicios distintos</p>
+                <span className="pc-kpi-ico is-violet"><IconTrophy /></span>
+              </div>
+              <div className="pc-kpi-value-row">
+                <p className="pc-kpi-value mb-0">
+                  <span>{kpisGen.ejercicios || '—'}</span>
+                </p>
+              </div>
+              <p className="pc-kpi-foot-line mb-0">Con al menos una serie en el período</p>
+            </article>
+
+            <article className="pc-kpi pc-kpi--rm">
+              <div className="pc-kpi-top">
+                <p className="pc-kpi-label mb-0">Series totales</p>
+                <span className="pc-kpi-ico is-blue"><IconBolt /></span>
+              </div>
+              <div className="pc-kpi-value-row">
+                <p className="pc-kpi-value mb-0">
+                  <span>{kpisGen.seriesTot > 0 ? kpisGen.seriesTot : '—'}</span>
+                </p>
+              </div>
+              <p className="pc-kpi-foot-line mb-0">
+                {kpisGen.fechaUltima
+                  ? `Última sesión: ${formatearFechaLarga(kpisGen.fechaUltima)}`
+                  : adherenciaLabel}
+              </p>
+            </article>
+          </>
+        ) : (
+          <>
+            <article className="pc-kpi pc-kpi--rm">
+              <div className="pc-kpi-top">
+                <p className="pc-kpi-label mb-0">1RM Estimada (PR)</p>
+                <span className="pc-kpi-ico is-blue"><IconBolt /></span>
+              </div>
+              <div className="pc-kpi-value-row">
+                <p className="pc-kpi-value mb-0">
+                  {kpisEj.rmMax != null ? (
+                    <>
+                      <span>{Number(kpisEj.rmMax).toFixed(1)}</span>
+                      <span className="pc-kpi-unit">kg</span>
+                    </>
+                  ) : '—'}
+                </p>
+                {kpisEj.deltaRm != null && kpisEj.deltaRm !== 0 ? (
+                  <span className={`pc-badge ${kpisEj.deltaRm > 0 ? 'is-up' : 'is-down'}`}>
+                    {kpisEj.deltaRm > 0 ? '↑ +' : '↓ '}{Math.abs(kpisEj.deltaRm)} kg
+                  </span>
+                ) : null}
+              </div>
+              <p className="pc-kpi-foot-line mb-0">
+                {kpisEj.pctRm != null ? (
+                  <>
+                    <span className={kpisEj.pctRm >= 0 ? 'is-up' : 'is-down'}>
+                      {kpisEj.pctRm > 0 ? '+' : ''}{kpisEj.pctRm}%
+                    </span>
+                    {' '}vs mes anterior (fórmula Brzycki)
+                  </>
+                ) : kpisEj.rmMax != null ? (
+                  'vs mes anterior (fórmula Brzycki)'
+                ) : (
+                  'Sin baseline · vs mes anterior (fórmula Brzycki)'
+                )}
+              </p>
+            </article>
+
+            <article className="pc-kpi pc-kpi--carga">
+              <div className="pc-kpi-top">
+                <p className="pc-kpi-label mb-0">Carga máx. levantada</p>
+                <span className="pc-kpi-ico is-violet"><IconTrophy /></span>
+              </div>
+              <div className="pc-kpi-value-row">
+                <p className="pc-kpi-value mb-0">
+                  {kpisEj.cargaMax != null ? (
+                    <>
+                      <span>{Number(kpisEj.cargaMax).toFixed(1)}</span>
+                      <span className="pc-kpi-unit">kg</span>
+                    </>
+                  ) : '—'}
+                </p>
+                {kpisEj.cargaMax != null ? (
+                  <span className="pc-badge is-pr">PR ACTUAL</span>
+                ) : null}
+              </div>
+              <p className="pc-kpi-foot-line mb-0">
+                {kpisEj.fechaPr
+                  ? `Alcanzado el ${formatearFechaLarga(kpisEj.fechaPr)}`
+                  : 'Sin registros'}
+              </p>
+            </article>
+
+            <article className="pc-kpi pc-kpi--vol">
+              <div className="pc-kpi-top">
+                <p className="pc-kpi-label mb-0">Volumen acumulado</p>
+                <span className="pc-kpi-ico is-green" aria-hidden>↗</span>
+              </div>
+              <div className="pc-kpi-value-row">
+                <p className="pc-kpi-value mb-0">
+                  <span>
+                    {kpisEj.volumen > 0
+                      ? Math.round(kpisEj.volumen).toLocaleString('es-AR')
+                      : '0'}
+                  </span>
+                  <span className="pc-kpi-unit">kg</span>
+                </p>
+                {kpisEj.pctVol != null && (
+                  <span className={`pc-badge-round ${kpisEj.pctVol >= 0 ? 'is-up' : 'is-down'}`}>
+                    <span className="pc-badge-arrow" aria-hidden>{kpisEj.pctVol >= 0 ? '↑' : '↓'}</span>
+                    <span>{kpisEj.pctVol > 0 ? '+' : ''}{Math.abs(kpisEj.pctVol)}%</span>
+                  </span>
+                )}
+              </div>
+              <p className="pc-kpi-foot-line mb-0">Sobrecarga progresiva de tonelaje total</p>
+            </article>
+
+            <article className="pc-kpi pc-kpi--adh">
+              <div className="pc-kpi-top">
+                <p className="pc-kpi-label mb-0">Adherencia de sobrecarga</p>
+                <span className="pc-kpi-ico is-amber" aria-hidden>✓</span>
+              </div>
+              <div className="pc-kpi-value-row">
+                <p className="pc-kpi-value mb-0">
+                  {kpisEj.adherencia != null ? (
+                    <>
+                      <span>{kpisEj.adherencia}</span>
+                      <span className="pc-kpi-unit">%</span>
+                    </>
+                  ) : '—'}
+                </p>
+                <span className="pc-kpi-side">
+                  {kpisEj.sesionesComparables > 0
+                    ? `${kpisEj.sesionesConProgreso} de ${kpisEj.sesionesComparables} Sesiones`
+                    : `${kpisEj.sesiones || 0} Sesiones`}
                 </span>
-                {' '}vs mes anterior (fórmula Brzycki)
-              </>
-            ) : kpis.rmMax != null ? (
-              'vs mes anterior (fórmula Brzycki)'
-            ) : (
-              'Sin baseline · vs mes anterior (fórmula Brzycki)'
-            )}
-          </p>
-        </article>
-
-        <article className="pc-kpi pc-kpi--carga">
-          <div className="pc-kpi-top">
-            <p className="pc-kpi-label mb-0">Carga máx. levantada</p>
-            <span className="pc-kpi-ico is-violet"><IconTrophy /></span>
-          </div>
-          <div className="pc-kpi-value-row">
-            <p className="pc-kpi-value mb-0">
-              {kpis.cargaMax != null ? (
-                <>
-                  <span>{Number(kpis.cargaMax).toFixed(1)}</span>
-                  <span className="pc-kpi-unit">kg</span>
-                </>
-              ) : '—'}
-            </p>
-            {kpis.cargaMax != null ? (
-              <span className="pc-badge is-pr">PR ACTUAL</span>
-            ) : null}
-          </div>
-          <p className="pc-kpi-foot-line mb-0">
-            {kpis.fechaPr
-              ? `Alcanzado el ${formatearFechaLarga(kpis.fechaPr)}`
-              : 'Sin registros'}
-          </p>
-        </article>
-
-        <article className="pc-kpi pc-kpi--vol">
-          <div className="pc-kpi-top">
-            <p className="pc-kpi-label mb-0">Volumen acumulado</p>
-            <span className="pc-kpi-ico is-green" aria-hidden>↗</span>
-          </div>
-          <div className="pc-kpi-value-row">
-            <p className="pc-kpi-value mb-0">
-              <span>
-                {kpis.volumen > 0
-                  ? Math.round(kpis.volumen).toLocaleString('es-AR')
-                  : '0'}
-              </span>
-              <span className="pc-kpi-unit">kg</span>
-            </p>
-            {kpis.pctVol != null && (
-              <span className={`pc-badge-round ${kpis.pctVol >= 0 ? 'is-up' : 'is-down'}`}>
-                <span className="pc-badge-arrow" aria-hidden>{kpis.pctVol >= 0 ? '↑' : '↓'}</span>
-                <span>{kpis.pctVol > 0 ? '+' : ''}{Math.abs(kpis.pctVol)}%</span>
-              </span>
-            )}
-          </div>
-          <p className="pc-kpi-foot-line mb-0">Sobrecarga progresiva de tonelaje total</p>
-        </article>
-
-        <article className="pc-kpi pc-kpi--adh">
-          <div className="pc-kpi-top">
-            <p className="pc-kpi-label mb-0">Adherencia de sobrecarga</p>
-            <span className="pc-kpi-ico is-amber" aria-hidden>✓</span>
-          </div>
-          <div className="pc-kpi-value-row">
-            <p className="pc-kpi-value mb-0">
-              {kpis.adherencia != null ? (
-                <>
-                  <span>{kpis.adherencia}</span>
-                  <span className="pc-kpi-unit">%</span>
-                </>
-              ) : '—'}
-            </p>
-            <span className="pc-kpi-side">
-              {kpis.sesionesComparables > 0
-                ? `${kpis.sesionesConProgreso} de ${kpis.sesionesComparables} Sesiones`
-                : `${kpis.sesiones || 0} Sesiones`}
-            </span>
-          </div>
-          <p className="pc-kpi-foot-line mb-0">
-            <span className="is-up">{adherenciaLabel.split(' ')[0]}</span>
-            {' '}{adherenciaLabel.split(' ').slice(1).join(' ')}
-          </p>
-        </article>
+              </div>
+              <p className="pc-kpi-foot-line mb-0">{adherenciaLabel}</p>
+            </article>
+          </>
+        )}
       </div>
 
       <section className="pc-panel pc-panel--chart">
         <ChartProgresion
           puntos={puntos}
           metaKg={metaKg}
-          metaSesion={metaSesion}
+          metaSesion={esGeneral ? null : metaSesion}
           stats={chartStats}
+          general={esGeneral}
         />
       </section>
 
@@ -1013,7 +1199,7 @@ export default function ProgresoCargasTitanium({
                     <button
                       type="button"
                       className={`pc-pr-row${p.nombre === ejercicioActivo ? ' is-active' : ''}`}
-                      onClick={() => setEjercicio(p.nombre)}
+                      onClick={() => irAEjercicio(p.nombre)}
                     >
                       <div className="pc-pr-main">
                         <div className="pc-pr-title-row">
@@ -1102,7 +1288,20 @@ export default function ProgresoCargasTitanium({
               <div className="pc-suggest-body">
                 <h2 className="pc-suggest-title">Sugerencia de Sobrecarga Inteligente</h2>
                 <p className="pc-suggest-text mb-0">
-                  {lastPt?.carga != null && sug.cargaSugerida != null && sugDelta != null ? (
+                  {esGeneral ? (
+                    <>
+                      En vista general no hay meta por ejercicio. Elegí uno en{' '}
+                      <strong>Progresión por Ejercicio</strong> o cambiá a{' '}
+                      <button
+                        type="button"
+                        className="pc-suggest-inline"
+                        onClick={() => setVistaAnalisis('ejercicio')}
+                      >
+                        Por ejercicio
+                      </button>
+                      {' '}para ver cargas sugeridas.
+                    </>
+                  ) : lastPt?.carga != null && sug.cargaSugerida != null && sugDelta != null ? (
                     <>
                       Completaste tu objetivo en el{' '}
                       <strong>{nombreDisplayPlan(ejercicioActivo)}</strong> con{' '}
@@ -1116,7 +1315,7 @@ export default function ProgresoCargasTitanium({
                     sug.texto
                   )}
                 </p>
-                {sug.aplicable && sug.cargaSugerida != null && (
+                {!esGeneral && sug.aplicable && sug.cargaSugerida != null && (
                   <button
                     type="button"
                     className="pc-suggest-link"

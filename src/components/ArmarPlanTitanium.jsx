@@ -538,8 +538,8 @@ export default function ArmarPlanTitanium({
 
           {origenEditable ? (
             <div className={`ap-ws-block pf-ws-exercise-panel pf-ws-day-tone-${diaTone}`}>
-              <p className="ap-add-label mb-2">
-                Agregar ejercicios al {diaActual?.nombre || `Día ${diaIdx + 1}`}
+              <p className="ap-add-label mb-1">
+                Agregar al {diaActual?.nombre || `día ${diaIdx + 1}`}
               </p>
               <div className="pf-ws-exercise-toolbar">
                 <div className="pf-ws-exercise-toolbar-top">
@@ -555,7 +555,7 @@ export default function ArmarPlanTitanium({
                       onFocus={() => busqueda.trim() && setSuggestOpen(true)}
                       onBlur={() => window.setTimeout(() => setSuggestOpen(false), 120)}
                       onKeyDown={onBusquedaKeyDown}
-                      placeholder="Buscar ejercicio del catálogo (ej. Press banca…)"
+                      placeholder="Buscar ejercicio…"
                       autoComplete="off"
                       role="combobox"
                       aria-expanded={suggestOpen && Boolean(busqueda.trim())}

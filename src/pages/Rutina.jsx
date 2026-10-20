@@ -17,6 +17,7 @@ import {
   nombresEjerciciosDia,
   inferirGruposMuscularesDia,
   etiquetaDiaRutina,
+  subtituloDiaRutina,
   ejercicioDiaAJson,
   inferirGrupoMuscular,
   parseNumSeriesPlan,
@@ -75,6 +76,64 @@ function clonarRutinaParaMisRutinas(orig) {
     nombre: orig.nombre || 'Rutina',
     dias,
   }
+}
+
+/** Progreso de ejercicios completados en una sesión (misma regla que la UI de series). */
+function calcProgresoEjerciciosSesion(ejercicios = [], registrosSesion = [], pesoCfg = 70) {
+  let hechos = 0
+  let seriesTotales = 0
+  let seriesHechas = 0
+  for (const it of ejercicios) {
+    const ya = registrosSesion.filter((r) => nombresEjercicioCoinciden(r.ejercicio, it.nombre))
+    const esWarm =
+      /calentamiento/i.test(String(it.grupoMuscular || '')) ||
+      /bici|el[ií]ptic[oa]|cinta|cardio|calentamiento|spinning|movilidad/i.test(String(it.nombre || ''))
+    let nPlan
+    if (esWarm) {
+      nPlan = 1
+    } else if (it.superserie) {
+      nPlan = Math.max(
+        1,
+        Number(it.superserie.vueltas) || parseNumSeriesPlan(it.series) || 4
+      )
+    } else {
+      nPlan = parseNumSeriesPlan(it.series)
+    }
+    seriesTotales += nPlan
+    if (ya.length === 0) continue
+
+    if (it.superserie) {
+      const hechasSs = Array.from({ length: nPlan }, (_, i) => i + 1).filter((sn) =>
+        ya.some((r) => Number(r.serieNum) === sn)
+      ).length
+      seriesHechas += hechasSs
+      if (hechasSs >= nPlan) hechos += 1
+      continue
+    }
+
+    const legacy = ya.find((r) => r.serieNum == null && Number(r.series) >= nPlan)
+    if (legacy) {
+      hechos += 1
+      seriesHechas += nPlan
+      continue
+    }
+
+    const conSerie = ya.filter((r) => r.serieNum != null)
+    let hechasEx = 0
+    if (conSerie.length > 0) {
+      hechasEx = Array.from({ length: nPlan }, (_, i) => i + 1).filter((sn) =>
+        conSerie.some((r) => Number(r.serieNum) === sn)
+      ).length
+    } else if (esWarm) {
+      hechasEx = ya.length > 0 ? 1 : 0
+    }
+    seriesHechas += hechasEx
+    if (hechasEx >= nPlan) hechos += 1
+  }
+  const total = ejercicios.length
+  const pct = total > 0 ? Math.round((hechos / total) * 100) : 0
+  const kcal = caloriasQuemadasRegistrosRutina(registrosSesion, pesoCfg)
+  return { hechos, total, pct, kcal, seriesHechas, seriesTotales }
 }
 
 export default function Rutina({ embeddedInEntrenamiento = false, onFechaSesionChange }) {
@@ -664,82 +723,60 @@ export default function Rutina({ embeddedInEntrenamiento = false, onFechaSesionC
   }
 
   const fechaSesionActiva = fechaSoloDia(fechaInput || hoy)
-  const registrosDeEstaSesion = registros.filter((r) => {
-    if (fechaSoloDia(r.fecha) !== fechaSesionActiva) return false
-    if (r.rutinaId && r.rutinaId !== rutinaIdActual) return false
-    if (r.diaRutinaId && r.diaRutinaId === diaSeleccionado) return true
-    // Legacy / sin día, o día distinto pero mismo ejercicio del plan (huérfanos tras renombrar/cambiar día)
-    return ejerciciosParaCargar.some((it) => nombresEjercicioCoinciden(it.nombre, r.ejercicio))
-  })
+  const registrosSesionDia = useCallback(
+    (diaId, ejerciciosDia) => {
+      const lista = (ejerciciosDia || [])
+        .map(itemEjercicioDiaNormalizado)
+        .filter(Boolean)
+      return registros.filter((r) => {
+        if (fechaSoloDia(r.fecha) !== fechaSesionActiva) return false
+        if (r.rutinaId && r.rutinaId !== rutinaIdActual) return false
+        if (r.diaRutinaId && r.diaRutinaId === diaId) return true
+        return lista.some((it) => nombresEjercicioCoinciden(it.nombre, r.ejercicio))
+      })
+    },
+    [registros, fechaSesionActiva, rutinaIdActual]
+  )
 
-  const progresoSesion = (() => {
-    let hechos = 0
-    let seriesTotales = 0
-    let seriesHechas = 0
-    const nombresCompletos = new Set()
-    for (const it of ejerciciosParaCargar) {
-      const ya = registrosDeEstaSesion.filter((r) => nombresEjercicioCoinciden(r.ejercicio, it.nombre))
-      const esWarm =
-        /calentamiento/i.test(String(it.grupoMuscular || '')) ||
-        /bici|el[ií]ptic[oa]|cinta|cardio|calentamiento|spinning|movilidad/i.test(String(it.nombre || ''))
-      let nPlan
-      if (esWarm) {
-        nPlan = 1
-      } else if (it.superserie) {
-        nPlan = Math.max(
-          1,
-          Number(it.superserie.vueltas) || parseNumSeriesPlan(it.series) || 4
-        )
-      } else {
-        nPlan = parseNumSeriesPlan(it.series)
-      }
-      seriesTotales += nPlan
-      if (ya.length === 0) continue
+  const registrosDeEstaSesion = useMemo(
+    () => registrosSesionDia(diaSeleccionado, diaParaRegistrar?.ejercicios),
+    [registrosSesionDia, diaSeleccionado, diaParaRegistrar?.ejercicios]
+  )
 
-      if (it.superserie) {
-        // Misma regla que la UI: cada vuelta (serieNum 1..N) debe existir
-        const hechasSs = Array.from({ length: nPlan }, (_, i) => i + 1).filter((sn) =>
-          ya.some((r) => Number(r.serieNum) === sn)
-        ).length
-        seriesHechas += hechasSs
-        if (hechasSs >= nPlan) {
-          hechos += 1
-          nombresCompletos.add(it.nombre)
-        }
-        continue
-      }
-
-      // Un solo registro legacy con N series cubre el plan
-      const legacy = ya.find((r) => r.serieNum == null && Number(r.series) >= nPlan)
-      if (legacy) {
-        hechos += 1
-        seriesHechas += nPlan
-        nombresCompletos.add(it.nombre)
-        continue
-      }
-
-      // Contar solo series numeradas 1..N (ignora registros huérfanos sin serieNum)
-      const conSerie = ya.filter((r) => r.serieNum != null)
-      let hechasEx = 0
-      if (conSerie.length > 0) {
-        hechasEx = Array.from({ length: nPlan }, (_, i) => i + 1).filter((sn) =>
-          conSerie.some((r) => Number(r.serieNum) === sn)
-        ).length
-      } else if (esWarm) {
-        hechasEx = ya.length > 0 ? 1 : 0
-      }
-      seriesHechas += hechasEx
-      if (hechasEx >= nPlan) {
-        hechos += 1
-        nombresCompletos.add(it.nombre)
-      }
+  const progresoPorDia = useMemo(() => {
+    const map = {}
+    for (let di = 0; di < dias.length; di += 1) {
+      const d = dias[di]
+      const ej = (d.ejercicios || []).map(itemEjercicioDiaNormalizado).filter(Boolean)
+      const regs = registrosSesionDia(d.id, d.ejercicios)
+      map[d.id] = calcProgresoEjerciciosSesion(ej, regs, pesoCfg)
     }
-    const total = ejerciciosParaCargar.length
-    // La barra sigue el conteo de ejercicios (misma cifra que el texto "X de Y")
+    return map
+  }, [dias, registrosSesionDia, pesoCfg])
+
+  const progresoSesion = useMemo(
+    () => progresoPorDia[diaSeleccionado] || calcProgresoEjerciciosSesion(ejerciciosParaCargar, registrosDeEstaSesion, pesoCfg),
+    [progresoPorDia, diaSeleccionado, ejerciciosParaCargar, registrosDeEstaSesion, pesoCfg]
+  )
+
+  const progresoGeneralRutina = useMemo(() => {
+    let hechos = 0
+    let total = 0
+    for (const d of dias) {
+      const p = progresoPorDia[d.id]
+      if (!p) continue
+      hechos += p.hechos
+      total += p.total
+    }
     const pct = total > 0 ? Math.round((hechos / total) * 100) : 0
-    const kcal = caloriasQuemadasRegistrosRutina(registrosDeEstaSesion, pesoCfg)
-    return { hechos, total, pct, kcal, seriesHechas, seriesTotales }
-  })()
+    const regsHoy = registros.filter(
+      (r) =>
+        fechaSoloDia(r.fecha) === fechaSesionActiva
+        && (!r.rutinaId || r.rutinaId === rutinaIdActual)
+    )
+    const kcal = caloriasQuemadasRegistrosRutina(regsHoy, pesoCfg)
+    return { hechos, total, pct, kcal }
+  }, [dias, progresoPorDia, registros, fechaSesionActiva, rutinaIdActual, pesoCfg])
 
   const registrosRutina = registros.filter((r) => !r.rutinaId || r.rutinaId === rutinaIdActual)
   const porFecha = registrosRutina.reduce((acc, r) => {
@@ -1074,78 +1111,108 @@ export default function Rutina({ embeddedInEntrenamiento = false, onFechaSesionC
         {vista === 'registrar' && (
           <div className="rut-sesion-layout">
             <div className="rut-sesion-main">
-              <div className="rut-day-panel">
-                <div className="rut-day-panel-top">
-                  <p className="rut-day-fecha mb-0">
-                    <span className="rut-day-fecha-label">
-                      {(fechaInput || hoy) === hoy ? 'Hoy:' : 'Sesión:'}
-                    </span>{' '}
-                    {(() => {
-                      try {
-                        const base = fechaInput || hoy
-                        const [y, m, d] = base.split('-').map(Number)
-                        return new Date(y, m - 1, d).toLocaleDateString('es-AR', {
-                          weekday: 'long',
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric',
-                        })
-                      } catch {
-                        return fechaInput || hoy
-                      }
-                    })()}
-                  </p>
-                </div>
-
-                <div className="rut-day-chips" role="group" aria-label={`Día de ${rutinaActiva?.nombre || 'la rutina'}`}>
-                  {dias.map((d, di) => {
-                    const cant = (d.ejercicios || []).length
-                    const activo = diaSeleccionado === d.id
-                    const titulo = etiquetaDiaRutina(d, di)
-                    return (
-                      <button
-                        key={d.id}
-                        type="button"
-                        className={`rut-day-chip rut-day-chip--tone-${di % 6}${activo ? ' is-active' : ''}`}
-                        onClick={() => setDiaSeleccionado(d.id)}
-                      >
-                        {activo && (
-                          <span className="rut-day-chip-check" aria-hidden>✓</span>
-                        )}
-                        <span className="rut-day-chip-name">{titulo}</span>
-                        <span className="rut-day-chip-badge">{cant} ejer.</span>
-                      </button>
-                    )
-                  })}
-                  <button
-                    type="button"
-                    className="rut-day-chip rut-day-chip--add"
-                    onClick={() => { setVista('configurar'); añadirDia() }}
-                  >
-                    + Añadir día
-                  </button>
-                </div>
-
+              <div className={`rut-day-panel rut-day-panel--compact rut-day-panel--tone-${tonoDiaRegistro}`}>
                 {(() => {
-                  const { hechos, total, pct, kcal } = progresoSesion
+                  const { hechos, total, pct } = progresoSesion
+                  const gen = progresoGeneralRutina
+                  let fechaCorta = fechaInput || hoy
+                  try {
+                    const base = fechaInput || hoy
+                    const [y, m, d] = base.split('-').map(Number)
+                    fechaCorta = new Date(y, m - 1, d).toLocaleDateString('es-AR', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                    })
+                  } catch { /* keep iso */ }
                   return (
-                    <div className={`rut-day-progress rut-day-progress--tone-${tonoDiaRegistro}`}>
-                      <div className="rut-day-progress-top">
-                        <p className="mb-0">
-                          Progreso de la sesión:{' '}
-                          <strong className="rut-day-progress-hi">
-                            {hechos} de {total} ejercicios
-                          </strong>{' '}
-                          completados
+                    <>
+                      <div className="rut-day-panel-head">
+                        <p className="rut-day-fecha-compact mb-0">
+                          <span className="rut-day-fecha-label">
+                            {(fechaInput || hoy) === hoy ? 'Hoy' : 'Sesión'}
+                          </span>
+                          {' · '}
+                          <span className="rut-day-fecha-text">{fechaCorta}</span>
                         </p>
-                        <p className="rut-day-progress-meta mb-0">
-                          {pct}% · Estimado: ~{kcal} kcal gastadas
+                        <p className="rut-day-prog-inline mb-0" aria-live="polite" title="Progreso del día seleccionado">
+                          Día: <strong className="rut-day-progress-hi">{hechos}/{total}</strong>
+                          <span className="rut-day-prog-sep" aria-hidden> · </span>
+                          <span className="rut-day-prog-pct">{pct}%</span>
                         </p>
                       </div>
-                      <div className="rut-day-progress-bar" aria-hidden>
-                        <span style={{ width: pct > 0 ? `${pct}%` : '0%' }} />
+
+                      <div
+                        className="ap-days ap-days--sesion"
+                        role="tablist"
+                        aria-label={`Día de ${rutinaActiva?.nombre || 'la rutina'}`}
+                      >
+                        {dias.map((d, di) => {
+                          const activo = diaSeleccionado === d.id
+                          const cant = (d.ejercicios || []).length
+                          const prog = progresoPorDia[d.id] || { hechos: 0, total: 0 }
+                          const foco = subtituloDiaRutina(d, di)
+                          const titulo = etiquetaDiaRutina(d, di)
+                          const pctDia = prog.total > 0 ? Math.round((prog.hechos / prog.total) * 100) : 0
+                          return (
+                            <div
+                              key={d.id}
+                              className={`ap-day ap-day--sesion ap-day--tone-${di % 6}${activo ? ' is-active' : ''}`}
+                            >
+                              <button
+                                type="button"
+                                className="ap-day-main"
+                                role="tab"
+                                aria-selected={activo}
+                                onClick={() => setDiaSeleccionado(d.id)}
+                                title={titulo}
+                              >
+                                <div className="ap-day-top">
+                                  <span className="ap-day-label">Día {di + 1}</span>
+                                  <span className="ap-day-count" title={`${prog.hechos} de ${cant} ejercicios hechos hoy`}>
+                                    {prog.hechos > 0 ? `${prog.hechos}/${cant}` : cant}
+                                  </span>
+                                </div>
+                                <span className="ap-day-focus">{foco}</span>
+                                <span
+                                  className="ap-day-sesion-bar"
+                                  role="progressbar"
+                                  aria-valuenow={pctDia}
+                                  aria-valuemin={0}
+                                  aria-valuemax={100}
+                                  aria-label={`Progreso día ${di + 1}: ${prog.hechos} de ${prog.total}`}
+                                >
+                                  <span style={{ width: pctDia > 0 ? `${pctDia}%` : '0%' }} />
+                                </span>
+                              </button>
+                            </div>
+                          )
+                        })}
                       </div>
-                    </div>
+
+                      <div className={`rut-day-rutina-prog rut-day-progress--tone-${tonoDiaRegistro}`}>
+                        <div className="rut-day-rutina-prog-head">
+                          <span className="rut-day-rutina-prog-label">Rutina completa</span>
+                          <span className="rut-day-rutina-prog-meta">
+                            <strong>{gen.hechos}/{gen.total}</strong>
+                            {' · '}
+                            {gen.pct}%
+                            {' · ~'}
+                            {gen.kcal} kcal
+                          </span>
+                        </div>
+                        <div
+                          className="rut-day-progress-bar rut-day-progress-bar--slim"
+                          role="progressbar"
+                          aria-valuenow={gen.pct}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-label={`Progreso de la rutina hoy: ${gen.hechos} de ${gen.total} ejercicios`}
+                        >
+                          <span style={{ width: gen.pct > 0 ? `${gen.pct}%` : '0%' }} />
+                        </div>
+                      </div>
+                    </>
                   )
                 })()}
               </div>
