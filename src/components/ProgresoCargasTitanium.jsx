@@ -635,10 +635,6 @@ export default function ProgresoCargasTitanium({
   registros = [],
   ejerciciosPlan = [],
   onAplicarSugerencia,
-  onExportarExcel,
-  onExportarCsv,
-  onExportarJson,
-  totalExport = 0,
 }) {
   const hoy = fechaToISO(new Date())
   const ejerciciosDisponibles = useMemo(() => {
@@ -825,25 +821,6 @@ export default function ProgresoCargasTitanium({
                 ))}
               </select>
             </div>
-            {(onExportarExcel || onExportarCsv || onExportarJson) && (
-              <div className="pc-export buttons are-small mb-0">
-                {onExportarExcel && (
-                  <button type="button" className="button is-small is-link is-light" onClick={onExportarExcel}>
-                    Excel ({totalExport})
-                  </button>
-                )}
-                {onExportarCsv && (
-                  <button type="button" className="button is-small is-light" onClick={onExportarCsv}>
-                    CSV
-                  </button>
-                )}
-                {onExportarJson && (
-                  <button type="button" className="button is-small is-light" onClick={onExportarJson}>
-                    JSON
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         </div>
 

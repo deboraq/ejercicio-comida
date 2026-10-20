@@ -12,7 +12,6 @@ import {
   caloriasQuemadasRegistrosRutina,
 } from '../utils/calorias'
 import { getRangoPorPeriodo } from '../utils/estadisticas'
-import { descargarRutinaPdf } from '../utils/rutinaPdf'
 import {
   itemEjercicioDiaNormalizado,
   nombresEjerciciosDia,
@@ -30,7 +29,6 @@ import ProgresoCargasTitanium from '../components/ProgresoCargasTitanium'
 import RutinasAsignadasTitanium from '../components/RutinasAsignadasTitanium'
 import { AppNotificacionesCampana } from '../context/AppNotificationsContext'
 import { nuevoIdRegistro } from '../utils/ids'
-import { exportarGymCsv, exportarGymExcel, exportarGymJson } from '../utils/exportData'
 import {
   dedupeRutinasPropias,
   rutinasListChanged,
@@ -868,10 +866,6 @@ export default function Rutina({ embeddedInEntrenamiento = false, onFechaSesionC
     }
   }
 
-  const avisoSinSeriesGym = () => {
-    window.alert('No hay entrenamientos de gym registrados para exportar todavía.')
-  }
-
   return (
     <section
       className={`section py-2 rutina-titanium rutina-layout${embeddedInEntrenamiento ? ' rutina-layout--embedded' : ''}`}
@@ -928,45 +922,24 @@ export default function Rutina({ embeddedInEntrenamiento = false, onFechaSesionC
                 >
                   +
                 </button>
-              </div>
-
-              <div className="rut-head-actions-tools">
-              <button
-                type="button"
-                className="rut-btn-pdf"
-                disabled={origenRutinas !== 'propias'}
-                onClick={() => {
-                  try {
-                    descargarRutinaPdf(rutinaActiva)
-                  } catch (e) {
-                    window.alert(e?.message || 'No se pudo generar el PDF.')
-                  }
-                }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
-                  <path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M5 21h14" />
-                </svg>
-                <span className="rut-btn-label rut-btn-label--long">Exportar PDF</span>
-                <span className="rut-btn-label rut-btn-label--short">PDF</span>
-              </button>
-
-              <button
-                type="button"
-                className="rut-ico-btn rut-ico-btn--delete"
-                disabled={origenRutinas !== 'propias' || listaRutinas.length <= 1}
-                onClick={() => window.confirm('¿Eliminar esta rutina?') && eliminarRutina(rutinaIdActual)}
-                title="Eliminar rutina"
-                aria-label="Eliminar rutina"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-                  <path d="M4 7h16" /><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" /><path d="M18 7l-.8 12.2A2 2 0 0115.2 21H8.8a2 2 0 01-2-1.8L6 7" /><path d="M10 11v6M14 11v6" />
-                </svg>
-                <span className="rut-btn-label rut-btn-label--mobile-only">Eliminar</span>
-              </button>
-
-              <div className="rut-campana">
-                <AppNotificacionesCampana />
-              </div>
+                <button
+                  type="button"
+                  className="rut-ico-btn rut-ico-btn--delete rut-ico-btn--in-group"
+                  disabled={origenRutinas !== 'propias' || listaRutinas.length <= 1}
+                  onClick={() => window.confirm('¿Eliminar esta rutina?') && eliminarRutina(rutinaIdActual)}
+                  title="Eliminar rutina"
+                  aria-label="Eliminar rutina"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                    <path d="M4 7h16" /><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" /><path d="M18 7l-.8 12.2A2 2 0 0115.2 21H8.8a2 2 0 01-2-1.8L6 7" /><path d="M10 11v6M14 11v6" />
+                  </svg>
+                  <span className="rut-btn-label rut-btn-label--mobile-only">Eliminar</span>
+                </button>
+                {!embeddedInEntrenamiento ? (
+                  <div className="rut-campana rut-campana--in-group">
+                    <AppNotificacionesCampana />
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -1056,19 +1029,6 @@ export default function Rutina({ embeddedInEntrenamiento = false, onFechaSesionC
                 )
               ),
             ]}
-            totalExport={registros.length}
-            onExportarExcel={() => {
-              if (!registros.length) return avisoSinSeriesGym()
-              exportarGymExcel(registros)
-            }}
-            onExportarCsv={() => {
-              if (!registros.length) return avisoSinSeriesGym()
-              exportarGymCsv(registros)
-            }}
-            onExportarJson={() => {
-              if (!registros.length) return avisoSinSeriesGym()
-              exportarGymJson(registros, rutinas, rutinaActivaId)
-            }}
             onAplicarSugerencia={({ ejercicio, carga }) => {
               setVista('registrar')
               window.alert(
@@ -1107,13 +1067,6 @@ export default function Rutina({ embeddedInEntrenamiento = false, onFechaSesionC
             onReordenar={reordenarEjercicioDelDia}
             onVincularSuperserie={vincularSuperserie}
             onDesvincularSuperserie={desvincularSuperserie}
-            onExportarPdf={() => {
-              try {
-                descargarRutinaPdf(rutinaActiva)
-              } catch (err) {
-                window.alert(err?.message || 'No se pudo exportar el PDF.')
-              }
-            }}
           />
           </>
         )}

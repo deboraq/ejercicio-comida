@@ -3,7 +3,6 @@ import { useStorage } from '../hooks/useStorage'
 import {
   caloriasEjercicioRegistro,
   fechaSoloDia,
-  fechaToISO,
   sinAcentos,
   etiquetaTipo,
   getCategoriaTipo,
@@ -18,16 +17,6 @@ function tituloDiaHistorial(fecha) {
   return d
     .toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
     .toUpperCase()
-}
-
-function exportarEjerciciosJson(ejercicios) {
-  const blob = new Blob([JSON.stringify(ejercicios, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `actividades-${fechaToISO(new Date())}.json`
-  a.click()
-  URL.revokeObjectURL(url)
 }
 
 /**
@@ -121,21 +110,11 @@ export default function HistorialActividades({ onRegistrarActividad }) {
   return (
     <section className="section ejercicios-page ejercicios-page--embedded ejercicios-page--cardio-full">
       <div className="container app-page-container ejercicios-container">
-        <header className="entren-cardio-page-head entren-cardio-page-head--simple">
-          <div>
-            <h2 className="entren-cardio-page-title mb-0">Historial de actividades</h2>
-            <p className="entren-cardio-page-sub mb-0">
-              Buscá, editá o exportá. Para cargar una sesión usá el hub o «Registrar actividad».
-            </p>
-          </div>
-          <div className="ej-header-actions">
-            <button type="button" className="button ej-export-btn" onClick={() => exportarEjerciciosJson(ejercicios)}>
-              ↗ Exportar
-            </button>
-            <button type="button" className="button ej-nuevo-btn" onClick={registrar}>
-              + Registrar actividad
-            </button>
-          </div>
+        <header className="entren-hist-page-head">
+          <h2 className="entren-hist-page-title mb-0">Historial de actividades</h2>
+          <button type="button" className="button ej-nuevo-btn entren-hist-page-registrar" onClick={registrar}>
+            + Registrar actividad
+          </button>
         </header>
 
         <div className="ejercicios-hist-panel">

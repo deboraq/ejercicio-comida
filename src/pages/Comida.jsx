@@ -17,7 +17,6 @@ import {
   syncPlanChecksFromRegistros,
   applyPlanRegistroSyncPayload,
 } from '../utils/planRegistroSync'
-import { exportarComidasCsv, exportarComidasExcel, exportarComidasJson } from '../utils/exportData'
 import { toggleFavoritoComida } from '../utils/comidaFavoritos'
 import { vasosHidratacionDia, actualizarVasosHidratacion } from '../utils/hidratacionStorage'
 import { normalizarMedidasHistorial } from '../utils/medidasStorage'
@@ -984,10 +983,6 @@ export default function Comida() {
 
   const caloriasActivas = Math.round(contextoDia?.caloriasQuemadas || 0)
 
-  const avisoSinComidas = () => {
-    window.alert('No hay comidas registradas para exportar todavía.')
-  }
-
   return (
     <section className="section py-2 comida-page comida-titanium">
       <div className="container app-page-container comida-container">
@@ -1076,19 +1071,6 @@ export default function Comida() {
           renderDiaHistorial={(lista) => (
             <ListaComidaAgrupada bloques={agruparComidasPorMomento(lista)} onEliminar={eliminar} onEditar={editarRegistro} />
           )}
-          totalExport={registros.length}
-          onExportarExcel={() => {
-            if (!registros.length) return avisoSinComidas()
-            exportarComidasExcel(registros)
-          }}
-          onExportarCsv={() => {
-            if (!registros.length) return avisoSinComidas()
-            exportarComidasCsv(registros)
-          }}
-          onExportarJson={() => {
-            if (!registros.length) return avisoSinComidas()
-            exportarComidasJson(registros)
-          }}
           comidaFavoritos={comidaFavoritos}
           onToggleFavoritoComida={(nombre) => toggleFavoritoComida(setComidaFavoritos, nombre)}
           planResumen={planResumen}

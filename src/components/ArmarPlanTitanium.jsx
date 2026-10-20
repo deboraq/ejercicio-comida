@@ -126,7 +126,6 @@ export default function ArmarPlanTitanium({
   onReordenar,
   onVincularSuperserie,
   onDesvincularSuperserie,
-  onExportarPdf,
   onToast,
 }) {
   const [busqueda, setBusqueda] = useState('')
@@ -723,13 +722,6 @@ export default function ArmarPlanTitanium({
           )}
         </div>
 
-        <div className="ap-side-actions">
-          {onExportarPdf && (
-            <button type="button" className="ap-btn ap-btn--ghost ap-btn--block" onClick={onExportarPdf}>
-              ⬇ Descargar plantilla imprimible
-            </button>
-          )}
-        </div>
       </aside>
 
       <ProfeCatalogoPickerModal

@@ -12599,6 +12599,28 @@ button.entren-cardio-ver-mas {
   margin-top: 0.2rem;
 }
 
+.entren-hist-page-head {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  margin-bottom: 0.55rem;
+  padding: 0 0.05rem;
+}
+
+.entren-hist-page-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #ecfdf5;
+  line-height: 1.25;
+}
+
+.entren-hist-page-registrar {
+  width: 100%;
+  min-height: 2.35rem;
+  justify-content: center;
+}
+
 .rutina-layout--embedded .rut-head {
   padding-top: 0.15rem;
 }
@@ -12726,8 +12748,9 @@ button.entren-cardio-ver-mas {
   }
 
   .entren-cardio-page-head .ej-header-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     gap: 0.35rem;
     width: 100%;
   }
@@ -12944,7 +12967,7 @@ button.entren-cardio-ver-mas {
   width: 2.15rem;
   height: 2.15rem;
   flex-shrink: 0;
-  border-radius: 0 10px 10px 0;
+  border-radius: 0;
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-left: 1px solid rgba(148, 163, 184, 0.12);
   background: #151b2b;
@@ -12952,6 +12975,48 @@ button.entren-cardio-ver-mas {
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1;
+}
+
+.rut-activa-group .rut-ico-btn--delete.rut-ico-btn--in-group {
+  width: 2.15rem;
+  height: 2.15rem;
+  flex-shrink: 0;
+  border-radius: 0;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-left: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(127, 29, 29, 0.25);
+  color: #fca5a5;
+}
+
+.rut-activa-group .rut-ico-btn--delete.rut-ico-btn--in-group:last-child {
+  border-radius: 0 10px 10px 0;
+}
+
+.rut-activa-group .rut-campana--in-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  flex-shrink: 0;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-left: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 0 10px 10px 0;
+  background: #151b2b;
+  box-sizing: border-box;
+}
+
+.rut-activa-group .rut-campana--in-group .button {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.rut-activa-group .rut-ico-btn--delete.rut-ico-btn--in-group:disabled {
+  opacity: 0.35;
 }
 
 .rut-activa-group .rut-ico-btn--add:hover:not(:disabled) {
@@ -13470,12 +13535,18 @@ button.entren-cardio-ver-mas {
     gap: 0.35rem;
   }
 
+  .rutina-titanium .rut-activa-group {
+    width: 100%;
+  }
+
   .rutina-titanium .rut-head-actions-tools {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 2.5rem 2.5rem;
+    display: flex !important;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
     gap: 0.32rem;
     width: 100%;
-    align-items: stretch;
+    min-height: 0;
   }
 
   .rutina-titanium .rut-activa-group {
@@ -13501,7 +13572,26 @@ button.entren-cardio-ver-mas {
     min-width: 2.75rem;
     height: 2.35rem;
     min-height: 2.35rem;
+    border-radius: 0;
+  }
+
+  .rutina-titanium .rut-activa-group .rut-ico-btn--delete.rut-ico-btn--in-group {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.35rem;
+    min-height: 2.35rem;
+    border-radius: 0;
+  }
+
+  .rutina-titanium .rut-activa-group .rut-ico-btn--delete.rut-ico-btn--in-group:last-child {
     border-radius: 0 10px 10px 0;
+  }
+
+  .rutina-titanium .rut-activa-group .rut-campana--in-group {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.35rem;
+    min-height: 2.35rem;
   }
 
   .rutina-titanium .rut-activa-label {

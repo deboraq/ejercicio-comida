@@ -59,16 +59,6 @@ function rachaSemanasConActividad(ejercicios) {
   return racha
 }
 
-function exportarEjerciciosJson(ejercicios) {
-  const blob = new Blob([JSON.stringify(ejercicios, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `ejercicios-${fechaToISO(new Date())}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
 export default function Ejercicios({
   embedded = false,
   variant = 'default',
@@ -271,13 +261,6 @@ export default function Ejercicios({
     <div className="ej-header-actions">
       <button
         type="button"
-        className="button ej-export-btn"
-        onClick={() => exportarEjerciciosJson(ejercicios)}
-      >
-        ↗ Exportar
-      </button>
-      <button
-        type="button"
         className="button ej-nuevo-btn"
         onClick={esVistaHistorialEntren && onRegistrarActividad ? onRegistrarActividad : abrirNuevoEjercicio}
       >
@@ -297,7 +280,7 @@ export default function Ejercicios({
           <header className="entren-cardio-page-head entren-cardio-page-head--simple">
             <div>
               <h2 className="entren-cardio-page-title mb-0">Historial de actividades</h2>
-              <p className="entren-cardio-page-sub mb-0">Buscá, editá o exportá. Para cargar una sesión usá el hub o «Registrar actividad».</p>
+              <p className="entren-cardio-page-sub mb-0">Buscá y editá. Exportar datos: Config. Para cargar una sesión usá el hub o «Registrar actividad».</p>
             </div>
             {headerActions}
           </header>
