@@ -79,7 +79,7 @@ function clonarRutinaParaMisRutinas(orig) {
   }
 }
 
-export default function Rutina() {
+export default function Rutina({ embeddedInEntrenamiento = false, onFechaSesionChange }) {
   const { user, isConfigured } = useAuth()
   const [searchParams] = useSearchParams()
   const location = useLocation()
@@ -124,7 +124,10 @@ export default function Rutina() {
       setFechaHistorial(fechaParam)
       setMesCalendario(fechaParam.slice(0, 7))
     }
-    if (searchParams.get('fecha') || searchParams.get('iniciar') === '1') {
+    const gymParam = searchParams.get('gym')
+    if (gymParam === 'configurar' || gymParam === 'progreso' || gymParam === 'registrar') {
+      setVista(gymParam)
+    } else if (searchParams.get('fecha') || searchParams.get('iniciar') === '1') {
       setVista('registrar')
       setOrigenRutinas('propias')
     }
@@ -156,6 +159,11 @@ export default function Rutina() {
 
   const hoy = fechaToISO(new Date())
   const pesoCfg = config?.pesoKg || 70
+
+  useEffect(() => {
+    if (typeof onFechaSesionChange !== 'function') return
+    onFechaSesionChange(fechaSoloDia(fechaInput || hoy))
+  }, [fechaInput, hoy, onFechaSesionChange])
 
   function getDiasDelMes(yearMonth) {
     const [y, m] = yearMonth.split('-').map(Number)
@@ -865,20 +873,30 @@ export default function Rutina() {
   }
 
   return (
-    <section className="section py-2 rutina-titanium rutina-layout">
+    <section
+      className={`section py-2 rutina-titanium rutina-layout${embeddedInEntrenamiento ? ' rutina-layout--embedded' : ''}`}
+    >
       <div className="rutina-chrome">
         <div className="container app-page-container rutina-container">
-        <header className="rut-head">
+        <header className={`rut-head${embeddedInEntrenamiento ? ' rut-head--embedded' : ''}`}>
           <div className="rut-head-top">
-            <div className="rut-head-titles">
-              <h1 className="rut-head-title">
-                <span className="rut-head-title-text rut-head-title-text--long">Gestión de Rutinas y Entrenamiento</span>
-                <span className="rut-head-title-text rut-head-title-text--short">Rutinas</span>
-              </h1>
-              <p className="rut-head-sub rut-head-sub--desktop">
-                Cargas, progresión y métricas de tu entrenamiento.
-              </p>
-            </div>
+            {!embeddedInEntrenamiento ? (
+              <div className="rut-head-titles">
+                <h1 className="rut-head-title">
+                  <span className="rut-head-title-text rut-head-title-text--long">Gestión de Rutinas y Entrenamiento</span>
+                  <span className="rut-head-title-text rut-head-title-text--short">Rutinas</span>
+                </h1>
+                <p className="rut-head-sub rut-head-sub--desktop">
+                  Cargas, progresión y métricas de tu entrenamiento.
+                </p>
+              </div>
+            ) : (
+              <div className="rut-head-titles rut-head-titles--compact">
+                <p className="rut-head-sub rut-head-sub--desktop mb-0">
+                  Modo atleta · rutina activa y sesión del día
+                </p>
+              </div>
+            )}
 
             <div className="rut-head-actions">
               <span className="rut-modo">Modo Atleta</span>
@@ -1224,6 +1242,7 @@ export default function Rutina() {
 
             </div>
 
+            {!embeddedInEntrenamiento ? (
             <aside className="rut-aside">
               <div className="rut-aside-card">
                 <h2 className="rut-aside-title">Consistencia mensual</h2>
@@ -1412,6 +1431,7 @@ export default function Rutina() {
                 </div>
               )}
             </aside>
+            ) : null}
           </div>
         )}
         </>

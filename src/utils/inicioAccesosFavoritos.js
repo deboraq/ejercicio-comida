@@ -51,7 +51,7 @@ export const INICIO_ACCESOS_CATALOGO = [
     tone: 'rutina',
     navModule: 'rutina',
     pathname: '/rutina',
-    search: 'iniciar=1',
+    search: 'vista=hoy',
   },
   {
     id: 'rutina-plan',
@@ -61,7 +61,7 @@ export const INICIO_ACCESOS_CATALOGO = [
     tone: 'rutina',
     navModule: 'rutina',
     pathname: '/rutina',
-    state: { rutinaVista: 'configurar' },
+    search: 'vista=gym&gym=configurar',
   },
   {
     id: 'rutina-progreso',
@@ -71,7 +71,7 @@ export const INICIO_ACCESOS_CATALOGO = [
     tone: 'rutina',
     navModule: 'rutina',
     pathname: '/rutina',
-    state: { rutinaVista: 'progreso' },
+    search: 'vista=gym&gym=progreso',
   },
   {
     id: 'rutina-asignadas',
@@ -85,12 +85,13 @@ export const INICIO_ACCESOS_CATALOGO = [
   },
   {
     id: 'ejercicios',
-    label: 'Ejercicios',
-    desc: 'Catálogo y registro',
+    label: 'Actividades',
+    desc: 'Historial deportes y cardio',
     icon: '🏃',
     tone: 'ejercicio',
     navModule: 'ejercicios',
-    pathname: '/ejercicios',
+    pathname: '/rutina',
+    search: 'vista=actividades',
   },
   {
     id: 'config',

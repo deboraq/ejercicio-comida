@@ -1,22 +1,17 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { createPortal } from 'react-dom'
+import { useState, useEffect, useMemo } from 'react'
 import { useStorage } from '../hooks/useStorage'
 import {
   caloriasEjercicioRegistro,
   fechaToISO,
   fechaSoloDia,
-  minutosDesdeKm,
   sinAcentos,
-  tipoAdmiteKilometros,
-  TIPOS_EJERCICIO_AGRUPADOS,
   etiquetaTipo,
   getCategoriaTipo,
 } from '../utils/calorias'
 import PageHeader from '../components/PageHeader'
+import ModalNuevoEjercicio from '../components/ModalNuevoEjercicio'
 import { getUltimosNDias } from '../utils/estadisticas'
 import { getIconoActividad } from '../utils/iconosActividad'
-
-const TIPO_DEFAULT = TIPOS_EJERCICIO_AGRUPADOS[0].opciones[0].value
 
 const RAPIDOS_BASE = [
   { nombre: 'Pádel', tipo: 'padel', duracion: 90 },
@@ -74,17 +69,13 @@ function exportarEjerciciosJson(ejercicios) {
   URL.revokeObjectURL(url)
 }
 
-export default function Ejercicios() {
+export default function Ejercicios({
+  embedded = false,
+  variant = 'default',
+  onRegistrarActividad,
+}) {
   const [ejercicios, setEjercicios] = useStorage('ejercicios', [])
   const [config] = useStorage('config', { pesoKg: 70 })
-  const [nombre, setNombre] = useState('')
-  const [tipo, setTipo] = useState(TIPO_DEFAULT)
-  const [duracion, setDuracion] = useState('')
-  const [modoMedida, setModoMedida] = useState('minutos')
-  const [distanciaKm, setDistanciaKm] = useState('')
-  const [caloriasManual, setCaloriasManual] = useState('')
-  const [notas, setNotas] = useState('')
-  const [fechaInput, setFechaInput] = useState(() => fechaToISO(new Date()))
   const [filtroTexto, setFiltroTexto] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('Todos')
   const [filtroDesde, setFiltroDesde] = useState('')
@@ -94,120 +85,22 @@ export default function Ejercicios() {
   const [histLimit, setHistLimit] = useState(7)
   const [diasExpandidos, setDiasExpandidos] = useState(() => new Set())
   const [formAbierto, setFormAbierto] = useState(false)
-  const extrasDetailsRef = useRef(null)
-
-  useEffect(() => {
-    if (!tipoAdmiteKilometros(tipo) && modoMedida === 'km') setModoMedida('minutos')
-  }, [tipo, modoMedida])
 
   useEffect(() => {
     setDiasExpandidos(new Set())
   }, [filtroTexto, filtroCategoria, filtroDesde, filtroHasta])
 
-  useEffect(() => {
-    if (!formAbierto) return
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const onKey = (ev) => {
-      if (ev.key === 'Escape') cerrarFormulario()
-    }
-    document.addEventListener('keydown', onKey)
-    if (extrasDetailsRef.current) {
-      extrasDetailsRef.current.open = window.matchMedia('(min-width: 769px)').matches
-    }
-    return () => {
-      document.body.style.overflow = prevOverflow
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [formAbierto])
-
   const pesoKg = config?.pesoKg || 70
   const metaMinHoy = Number(config?.metaMinutosEjercicio) || 60
 
-  const limpiarFormulario = () => {
-    setNombre('')
-    setTipo(TIPO_DEFAULT)
-    setDuracion('')
-    setModoMedida('minutos')
-    setDistanciaKm('')
-    setCaloriasManual('')
-    setNotas('')
-    setFechaInput(fechaToISO(new Date()))
-    setEditandoId(null)
-  }
-
   const abrirNuevoEjercicio = () => {
-    limpiarFormulario()
+    setEditandoId(null)
     setFormAbierto(true)
   }
 
   const cerrarFormulario = () => {
-    limpiarFormulario()
+    setEditandoId(null)
     setFormAbierto(false)
-  }
-
-  const parseManualCal = () => {
-    const n = parseFloat(String(caloriasManual).replace(',', '.'))
-    return Number.isFinite(n) && n > 0 ? Math.round(n) : null
-  }
-
-  const kcalEstimadasPreview = (() => {
-    const m = parseManualCal()
-    const kmP = modoMedida === 'km' && tipoAdmiteKilometros(tipo) && Number(distanciaKm) > 0
-    const minP = modoMedida === 'minutos' && Number(duracion) > 0
-    if (!tipo || (!m && !kmP && !minP)) return null
-    const durEst = kmP ? minutosDesdeKm(tipo, Number(distanciaKm)) : Number(duracion) || 0
-    return caloriasEjercicioRegistro({ tipo, duracion: durEst, caloriasManual: m || undefined }, pesoKg)
-  })()
-
-  const agregar = (e) => {
-    e.preventDefault()
-    if (!nombre.trim()) return
-    const fecha = fechaInput || fechaToISO(new Date())
-    const manualVal = parseManualCal()
-    const kmVal = Number(distanciaKm)
-    const kmOk = modoMedida === 'km' && tipoAdmiteKilometros(tipo) && kmVal > 0
-    const minVal = Number(duracion)
-    const minOk = modoMedida === 'minutos' && minVal > 0
-    if (!manualVal && !kmOk && !minOk) return
-
-    let duracionFinal = 0
-    let distanciaKmSave
-    if (kmOk) {
-      distanciaKmSave = kmVal
-      duracionFinal = minutosDesdeKm(tipo, kmVal)
-    } else if (minOk) {
-      duracionFinal = Math.round(minVal)
-    }
-
-    const camposBase = {
-      nombre: nombre.trim(),
-      tipo,
-      duracion: duracionFinal,
-      notas: notas.trim(),
-      fecha,
-    }
-    if (manualVal) camposBase.caloriasManual = manualVal
-    if (kmOk) camposBase.distanciaKm = distanciaKmSave
-
-    if (editandoId) {
-      setEjercicios((prev) =>
-        prev.map((item) => {
-          if (item.id !== editandoId) return item
-          const durF = kmOk || minOk ? duracionFinal : manualVal ? Number(item.duracion) || 0 : duracionFinal
-          const merged = { ...item, ...camposBase, duracion: durF }
-          if (!manualVal) delete merged.caloriasManual
-          if (kmOk) merged.distanciaKm = distanciaKmSave
-          else delete merged.distanciaKm
-          return merged
-        })
-      )
-    } else {
-      const nuevo = { id: crypto.randomUUID(), ...camposBase }
-      if (!kmOk) delete nuevo.distanciaKm
-      setEjercicios((prev) => [nuevo, ...prev])
-    }
-    cerrarFormulario()
   }
 
   const registrarRapido = (preset) => {
@@ -226,21 +119,6 @@ export default function Ejercicios() {
 
   const iniciarEdicion = (item) => {
     setEditandoId(item.id)
-    setNombre(item.nombre || '')
-    const t = item.tipo || TIPO_DEFAULT
-    setTipo(t)
-    if (item.distanciaKm != null && Number(item.distanciaKm) > 0 && tipoAdmiteKilometros(t)) {
-      setModoMedida('km')
-      setDistanciaKm(String(item.distanciaKm))
-      setDuracion('')
-    } else {
-      setModoMedida('minutos')
-      setDistanciaKm('')
-      setDuracion(item.duracion != null ? String(item.duracion) : '')
-    }
-    setCaloriasManual(item.caloriasManual != null && Number(item.caloriasManual) > 0 ? String(item.caloriasManual) : '')
-    setNotas(item.notas || '')
-    setFechaInput(fechaSoloDia(item.fecha) || fechaToISO(new Date()))
     setFormAbierto(true)
   }
 
@@ -258,10 +136,10 @@ export default function Ejercicios() {
     })
   }
 
-  const ajustarDuracion = (delta) => {
-    const actual = Number(duracion) || 0
-    setDuracion(String(Math.max(0, actual + delta)))
-  }
+  const ejercicioEditando = useMemo(
+    () => (editandoId ? ejercicios.find((e) => e.id === editandoId) || null : null),
+    [editandoId, ejercicios],
+  )
 
   const ejerciciosFiltrados = ejercicios.filter((e) => {
     if (filtroTexto.trim()) {
@@ -387,56 +265,82 @@ export default function Ejercicios() {
       ? Math.round((disciplinaTop.minutos / minutosTotales7) * 100)
       : null
 
+  const esVistaHistorialEntren = embedded && variant === 'cardio'
+
+  const headerActions = (
+    <div className="ej-header-actions">
+      <button
+        type="button"
+        className="button ej-export-btn"
+        onClick={() => exportarEjerciciosJson(ejercicios)}
+      >
+        ↗ Exportar
+      </button>
+      <button
+        type="button"
+        className="button ej-nuevo-btn"
+        onClick={esVistaHistorialEntren && onRegistrarActividad ? onRegistrarActividad : abrirNuevoEjercicio}
+      >
+        {esVistaHistorialEntren ? '+ Registrar actividad' : '+ Nuevo ejercicio'}
+      </button>
+    </div>
+  )
+
+  const esVistaCardio = esVistaHistorialEntren
+
   return (
-    <section className="section ejercicios-page">
+    <section
+      className={`section ejercicios-page${embedded ? ' ejercicios-page--embedded' : ''}${esVistaCardio ? ' ejercicios-page--cardio-full' : ''}`}
+    >
       <div className="container app-page-container ejercicios-container">
-        <PageHeader
-          title="Ejercicios"
-          subtitle="Registra y monitorea tu actividad física, gasto calórico y rendimiento diario."
-          action={(
-            <div className="ej-header-actions">
-              <button
-                type="button"
-                className="button ej-export-btn"
-                onClick={() => exportarEjerciciosJson(ejercicios)}
-              >
-                ↗ Exportar
-              </button>
-              <button
-                type="button"
-                className="button ej-nuevo-btn"
-                onClick={abrirNuevoEjercicio}
-              >
-                + Nuevo ejercicio
-              </button>
+        {esVistaCardio ? (
+          <header className="entren-cardio-page-head entren-cardio-page-head--simple">
+            <div>
+              <h2 className="entren-cardio-page-title mb-0">Historial de actividades</h2>
+              <p className="entren-cardio-page-sub mb-0">Buscá, editá o exportá. Para cargar una sesión usá el hub o «Registrar actividad».</p>
             </div>
-          )}
-        />
-
-        {/* Chips rápidos */}
-        <div className="ej-rapidos">
-          <span className="ej-rapidos-label">⚡ Registros rápidos:</span>
-          <div className="ej-rapidos-row">
-            {chipsRapidos.map((chip) => {
-              const ui = getIconoActividad(chip.tipo, chip.nombre)
-              return (
-                <button
-                  key={`${chip.nombre}-${chip.tipo}-${chip.duracion}`}
-                  type="button"
-                  className="ej-rapido-chip"
-                  onClick={() => registrarRapido(chip)}
-                  title={`Registrar ${chip.nombre} · ${chip.duracion} min`}
-                >
-                  <span aria-hidden>{ui.icon}</span>
-                  <span>{chip.nombre}</span>
-                  <span className="ej-rapido-min">({chip.duracion} min)</span>
-                </button>
-              )
-            })}
+            {headerActions}
+          </header>
+        ) : embedded ? (
+          <div className="ej-embedded-head">
+            <p className="ej-embedded-lead mb-0">
+              Pádel, cardio, deportes y otras actividades fuera del plan de rutina.
+            </p>
+            {headerActions}
           </div>
-        </div>
+        ) : (
+          <PageHeader
+            title="Ejercicios"
+            subtitle="Registra y monitorea tu actividad física, gasto calórico y rendimiento diario."
+            action={headerActions}
+          />
+        )}
 
-        {/* 4 KPIs — mock */}
+        {!esVistaHistorialEntren ? (
+          <div className="ej-rapidos">
+            <span className="ej-rapidos-label">⚡ Registros rápidos:</span>
+            <div className="ej-rapidos-row">
+              {chipsRapidos.map((chip) => {
+                const ui = getIconoActividad(chip.tipo, chip.nombre)
+                return (
+                  <button
+                    key={`${chip.nombre}-${chip.tipo}-${chip.duracion}`}
+                    type="button"
+                    className="ej-rapido-chip"
+                    onClick={() => registrarRapido(chip)}
+                    title={`Registrar ${chip.nombre} · ${chip.duracion} min`}
+                  >
+                    <span aria-hidden>{ui.icon}</span>
+                    <span>{chip.nombre}</span>
+                    <span className="ej-rapido-min">({chip.duracion} min)</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {!esVistaHistorialEntren ? (
         <div className="ej-kpi-grid">
           <article className="ej-kpi-card">
             <div className="ej-kpi-top">
@@ -520,15 +424,15 @@ export default function Ejercicios() {
             )}
           </article>
         </div>
+        ) : null}
 
-        {/* Historial */}
         <div className="ejercicios-hist-panel">
-          <div className="ej-hist-toolbar mb-3">
+          <div className={`ej-hist-toolbar mb-3${esVistaHistorialEntren ? ' ej-hist-toolbar--compact' : ''}`}>
             <div className="ej-hist-search">
               <span className="ej-hist-search-icon" aria-hidden>🔍</span>
               <input
                 type="text"
-                placeholder="Buscar por nombre, actividad..."
+                placeholder={esVistaHistorialEntren ? 'Buscar…' : 'Buscar por nombre, actividad...'}
                 value={filtroTexto}
                 onChange={(e) => setFiltroTexto(e.target.value)}
               />
@@ -658,199 +562,12 @@ export default function Ejercicios() {
         </div>
       </div>
 
-      {formAbierto && typeof document !== 'undefined' && createPortal(
-        <div className="ej-modal" role="dialog" aria-modal="true" aria-labelledby="ej-modal-title">
-          <button type="button" className="ej-modal-backdrop" aria-label="Cerrar" onClick={cerrarFormulario} />
-          <div className="ej-modal-panel">
-            <div className="ej-modal-head">
-              <div className="ej-modal-head-left">
-                <span className="ej-modal-icon" aria-hidden>+</span>
-                <div>
-                  <h2 id="ej-modal-title" className="ej-modal-title mb-0">
-                    {editandoId ? 'Editar ejercicio' : 'Nuevo ejercicio'}
-                  </h2>
-                  <p className="ej-modal-sub mb-0">
-                    Registra los detalles de tu actividad para el cálculo calórico.
-                  </p>
-                </div>
-              </div>
-              <button type="button" className="ej-modal-close" onClick={cerrarFormulario}>
-                Cerrar
-              </button>
-            </div>
-
-            <form onSubmit={agregar} className="ej-form">
-              <div className="ej-form-body">
-              <div className="ej-form-grid">
-                <div className="ej-form-col">
-                  <div className="field ej-form-field--fecha">
-                    <label className="ej-form-label" htmlFor="ej-fecha">Fecha</label>
-                    <div className="control">
-                      <input
-                        id="ej-fecha"
-                        className="input"
-                        type="date"
-                        value={fechaInput}
-                        onChange={(e) => setFechaInput(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="field ej-form-field--nombre">
-                    <label className="ej-form-label" htmlFor="ej-nombre">Nombre del ejercicio</label>
-                    <div className="control">
-                      <input
-                        id="ej-nombre"
-                        className="input"
-                        type="text"
-                        value={nombre}
-                        onChange={(e) => setNombre(e.target.value)}
-                        placeholder="Ej: Padel, Correr, Pesas..."
-                        autoComplete="off"
-                        autoFocus
-                      />
-                    </div>
-                    <p className="ej-form-suggest mb-0">Sugerencia rápida: Tenis, Calistenia, Spinning, Boxeo.</p>
-                  </div>
-
-                  <div className="field ej-form-field--tipo">
-                    <label className="ej-form-label" htmlFor="ej-tipo">Tipo de actividad</label>
-                    <div className="control">
-                      <div className="select is-fullwidth">
-                        <select
-                          id="ej-tipo"
-                          value={tipo}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            setTipo(v)
-                            if (!tipoAdmiteKilometros(v)) setModoMedida('minutos')
-                          }}
-                        >
-                          {TIPOS_EJERCICIO_AGRUPADOS.map((g) => (
-                            <optgroup key={g.categoria} label={g.categoria}>
-                              {g.opciones.map((op) => (
-                                <option key={op.value} value={op.value}>{op.label}</option>
-                              ))}
-                            </optgroup>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="ej-form-col">
-                  {tipoAdmiteKilometros(tipo) && (
-                    <div className="field ej-form-field--medida">
-                      <label className="ej-form-label">Medida</label>
-                      <div className="ti-segmented ej-medida-seg">
-                        <button
-                          type="button"
-                          className={modoMedida === 'minutos' ? 'is-active' : ''}
-                          onClick={() => setModoMedida('minutos')}
-                        >
-                          Minutos
-                        </button>
-                        <button
-                          type="button"
-                          className={modoMedida === 'km' ? 'is-active' : ''}
-                          onClick={() => setModoMedida('km')}
-                        >
-                          Kilómetros
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="field ej-form-field--duracion">
-                    <label className="ej-form-label" htmlFor="ej-duracion">
-                      {tipoAdmiteKilometros(tipo) && modoMedida === 'km' ? 'Distancia (km)' : 'Duración (min)'}
-                    </label>
-                    {tipoAdmiteKilometros(tipo) && modoMedida === 'km' ? (
-                      <div className="control">
-                        <input
-                          id="ej-duracion"
-                          className="input"
-                          type="number"
-                          min="0.1"
-                          step="0.1"
-                          value={distanciaKm}
-                          onChange={(e) => setDistanciaKm(e.target.value)}
-                          placeholder="Ej: 5"
-                        />
-                      </div>
-                    ) : (
-                      <div className="ej-duracion-stepper">
-                        <input
-                          id="ej-duracion"
-                          className="input"
-                          type="number"
-                          min="1"
-                          value={duracion}
-                          onChange={(e) => setDuracion(e.target.value)}
-                          placeholder="30"
-                        />
-                        <button type="button" className="ej-step-btn" onClick={() => ajustarDuracion(-15)} aria-label="Restar 15 min">−</button>
-                        <button type="button" className="ej-step-btn" onClick={() => ajustarDuracion(15)} aria-label="Sumar 15 min">+</button>
-                      </div>
-                    )}
-                  </div>
-
-                  <details ref={extrasDetailsRef} className="ej-form-details ej-form-field--extras">
-                    <summary className="ej-form-details-summary">Kcal y notas (opcional)</summary>
-                    <div className="ej-form-details-body">
-                      <div className="field">
-                        <div className="ej-kcal-label-row">
-                          <label className="ej-form-label mb-0" htmlFor="ej-kcal">Kcal manual</label>
-                          {kcalEstimadasPreview != null && (
-                            <span className="ej-kcal-badge">~{kcalEstimadasPreview} kcal estimadas</span>
-                          )}
-                        </div>
-                        <div className="control">
-                          <input
-                            id="ej-kcal"
-                            className="input"
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={caloriasManual}
-                            onChange={(e) => setCaloriasManual(e.target.value)}
-                            placeholder="Reemplaza el cálculo automático"
-                          />
-                        </div>
-                      </div>
-                      <div className="field ej-form-notas mb-0">
-                        <label className="ej-form-label" htmlFor="ej-notas">Notas</label>
-                        <div className="control">
-                          <textarea
-                            id="ej-notas"
-                            className="textarea"
-                            rows={2}
-                            value={notas}
-                            onChange={(e) => setNotas(e.target.value)}
-                            placeholder="Intensidad, cómo te sentiste, sets..."
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </details>
-                </div>
-              </div>
-              </div>
-
-              <div className="ej-form-actions">
-                <button type="submit" className="button is-link ej-form-submit">
-                  ✓ {editandoId ? 'Guardar cambios' : 'Guardar ejercicio'}
-                </button>
-                <button type="button" className="button is-light ej-form-cancel" onClick={cerrarFormulario}>
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body,
-      )}
+      <ModalNuevoEjercicio
+        open={formAbierto}
+        onClose={cerrarFormulario}
+        editItem={ejercicioEditando}
+        contexto="ejercicios"
+      />
     </section>
   )
 }

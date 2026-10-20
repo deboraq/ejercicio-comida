@@ -1,10 +1,10 @@
 import { Link, useLocation } from 'react-router-dom'
 import { NAV_ITEMS, NavIcon } from './AppNavMenu'
 
-const BOTTOM_PRIMARY_KEYS = ['inicio', 'rutina', 'comida', 'ejercicios']
+const BOTTOM_PRIMARY_KEYS = ['inicio', 'rutina', 'comida']
 
 const SHORT_LABELS = {
-  ejercicios: 'Ejerc.',
+  rutina: 'Entreno',
 }
 
 function navActive(pathname, to) {

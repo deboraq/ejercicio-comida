@@ -2,8 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 export const NAV_ITEMS = [
   { to: '/', key: 'inicio', label: 'Inicio', icon: 'home' },
-  { to: '/ejercicios', key: 'ejercicios', label: 'Ejercicios', icon: 'dumbbell' },
-  { to: '/rutina', key: 'rutina', label: 'Rutina', icon: 'routine' },
+  { to: '/rutina', key: 'rutina', label: 'Entrenamiento', icon: 'routine' },
   { to: '/comida', key: 'comida', label: 'Comida', icon: 'food' },
   { to: '/profe', key: 'profe', label: 'Profe', icon: 'coach', requiresProfe: true },
   { to: '/admin', key: 'admin', label: 'Admin', icon: 'admin', requiresAdmin: true },

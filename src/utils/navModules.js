@@ -11,8 +11,8 @@ export const BLOCKABLE_NAV_KEYS = ['inicio', 'ejercicios', 'rutina', 'comida', '
 
 export const BLOCKABLE_LABELS = {
   inicio: 'Inicio',
-  ejercicios: 'Ejercicios',
-  rutina: 'Rutina',
+  ejercicios: 'Actividades',
+  rutina: 'Gym / rutina',
   comida: 'Comida',
   config: 'Config',
   profe: 'Profe',

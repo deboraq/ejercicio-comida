@@ -5,8 +5,8 @@ import { ProfileProvider } from './context/ProfileContext'
 import { AppNotificationsProvider } from './context/AppNotificationsContext'
 import { RoleNavProvider, useRoleNav } from './context/RoleNavContext'
 import Inicio from './pages/Inicio'
-import Ejercicios from './pages/Ejercicios'
-import Rutina from './pages/Rutina'
+import Entrenamiento from './pages/Entrenamiento'
+import EntrenamientoModuleGate from './components/EntrenamientoModuleGate'
 import Comida from './pages/Comida'
 import Config from './pages/Config'
 import Profe from './pages/Profe'
@@ -141,8 +141,18 @@ function AppRoutes() {
         <main className={`main-content${location.pathname === '/' ? ' main-content--inicio' : ''}${location.pathname.startsWith('/rutina') ? ' main-content--rutina' : ''}${location.pathname.startsWith('/comida') ? ' main-content--comida' : ''}${location.pathname.startsWith('/plan-mes1') ? ' main-content--plan' : ''}${location.pathname.startsWith('/ejercicios') ? ' main-content--ejercicios' : ''}${location.pathname.startsWith('/profe') ? ' main-content--profe' : ''}${location.pathname.startsWith('/config') ? ' main-content--config' : ''}${location.pathname.startsWith('/admin') ? ' main-content--admin' : ''}`}>
           <Routes>
             <Route path="/" element={<ModuleGate module="inicio" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Inicio /></ModuleGate>} />
-            <Route path="/ejercicios" element={<ModuleGate module="ejercicios" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Ejercicios /></ModuleGate>} />
-            <Route path="/rutina" element={<ModuleGate module="rutina" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Rutina /></ModuleGate>} />
+            <Route
+              path="/ejercicios"
+              element={<Navigate to="/rutina?vista=actividades" replace />}
+            />
+            <Route
+              path="/rutina"
+              element={
+                <EntrenamientoModuleGate profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}>
+                  <Entrenamiento profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap} />
+                </EntrenamientoModuleGate>
+              }
+            />
             <Route path="/comida" element={<ModuleGate module="comida" profile={profile} profileLoading={profileLoading} roleNavMap={roleNavMap}><Comida /></ModuleGate>} />
             <Route path="/plan-mes1" element={<Navigate to="/comida" replace state={{ vistaComida: 'plan' }} />} />
             <Route
