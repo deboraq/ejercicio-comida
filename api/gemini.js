@@ -67,13 +67,6 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Iniciá sesión para usar las consultas con IA.' })
   }
 
-  const consultasOn = await consultasIaHabilitadasGlobal(sesion.token)
-  if (!consultasOn) {
-    return res.status(503).json({
-      error: 'Las consultas con IA están desactivadas. Probá más tarde.',
-    })
-  }
-
   const geminiKey = process.env.GEMINI_API_KEY
   if (!geminiKey) {
     return res.status(503).json({
@@ -94,11 +87,17 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Supabase no configurado en el servidor.' })
   }
 
-  let { map, error: userDataError } = await fetchUserDataForAsistente(
-    env,
-    sesion.token,
-    sesion.user.id,
-  )
+  const [consultasOn, userDataFirst] = await Promise.all([
+    consultasIaHabilitadasGlobal(sesion.token),
+    fetchUserDataForAsistente(env, sesion.token, sesion.user.id),
+  ])
+  if (!consultasOn) {
+    return res.status(503).json({
+      error: 'Las consultas con IA están desactivadas. Probá más tarde.',
+    })
+  }
+
+  let { map, error: userDataError } = userDataFirst
   if (userDataError) {
     return res.status(502).json({
       error: 'No se pudieron cargar tus datos. Reintentá en unos segundos.',
@@ -116,7 +115,7 @@ export default async function handler(req, res) {
     }
   })()
   if (comidaRegistrosCliente > 0 && comidaEnNube === 0) {
-    await new Promise((r) => setTimeout(r, 450))
+    await new Promise((r) => setTimeout(r, 180))
     const retry = await fetchUserDataForAsistente(env, sesion.token, sesion.user.id)
     if (!retry.error) map = retry.map
   }

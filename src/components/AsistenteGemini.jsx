@@ -122,13 +122,13 @@ export default function AsistenteGemini({
     try {
       let accessToken = null
       if (user && isSupabaseConfigured()) {
-        await flushPendingCloudWrites().catch(() => {})
+        flushPendingCloudWrites().catch(() => {})
         const { data } = await supabase.auth.getSession()
         accessToken = data.session?.access_token ?? null
       }
 
       const contexto = buildAsistenteContexto({ ...contextoBase, pregunta })
-      const historial = mensajes.map((m) => ({ role: m.role, text: m.text }))
+      const historial = mensajes.slice(-4).map((m) => ({ role: m.role, text: m.text }))
       const res = await consultarGemini({
         accessToken,
         apiKey: ajustesAsistenteAdmin ? config.geminiApiKey : '',
@@ -234,16 +234,53 @@ export default function AsistenteGemini({
             ))}
           </div>
 
-          <div className="cd-asistente-chat" ref={listRef} aria-live="polite">
-            {mensajes.length === 0 && (
-              <p className="cd-asistente-empty">Escribí una pregunta o tocá un ejemplo.</p>
-            )}
-            {mensajes.map((m, i) => (
-              <div key={`${i}-${m.role}`} className={`cd-asistente-msg cd-asistente-msg--${m.role}`}>
-                {m.text}
+          <div
+            className={`cd-asistente-compose${mensajes.length > 0 || cargando ? ' has-history' : ''}`}
+          >
+            {(mensajes.length > 0 || cargando) && (
+              <div className="cd-asistente-chat" ref={listRef} aria-live="polite">
+                {mensajes.map((m, i) => (
+                  <div key={`${i}-${m.role}`} className={`cd-asistente-msg cd-asistente-msg--${m.role}`}>
+                    {m.text}
+                  </div>
+                ))}
+                {cargando && <p className="cd-asistente-loading mb-0">Pensando…</p>}
               </div>
-            ))}
-            {cargando && <p className="cd-asistente-loading mb-0">Pensando…</p>}
+            )}
+
+            <form
+              className="cd-asistente-form"
+              onSubmit={(e) => {
+                e.preventDefault()
+                enviar()
+              }}
+            >
+              <input
+                ref={inputRef}
+                className="input cd-asistente-input"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onFocus={() => {
+                  if (modoFlotante) {
+                    requestAnimationFrame(() => {
+                      inputRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+                    })
+                  }
+                }}
+                placeholder={mensajes.length === 0 ? 'Tu pregunta…' : 'Escribí…'}
+                disabled={cargando || !datosListos}
+                autoComplete="off"
+                enterKeyHint="send"
+                aria-label="Pregunta para el asistente"
+              />
+              <button
+                type="submit"
+                className="cd-btn cd-btn--primary"
+                disabled={cargando || !datosListos || !input.trim()}
+              >
+                Enviar
+              </button>
+            </form>
           </div>
 
           {error && <p className="cd-asistente-error mb-2">{error}</p>}
@@ -281,39 +318,6 @@ export default function AsistenteGemini({
               </button>
             </div>
           )}
-
-          <form
-            className="cd-asistente-form"
-            onSubmit={(e) => {
-              e.preventDefault()
-              enviar()
-            }}
-          >
-            <input
-              ref={inputRef}
-              className="input cd-asistente-input"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onFocus={() => {
-                if (modoFlotante) {
-                  requestAnimationFrame(() => {
-                    inputRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
-                  })
-                }
-              }}
-              placeholder="Preguntá sobre tu mes, tu día o un alimento…"
-              disabled={cargando || !datosListos}
-              autoComplete="off"
-              enterKeyHint="send"
-            />
-            <button
-              type="submit"
-              className="cd-btn cd-btn--primary"
-              disabled={cargando || !datosListos || !input.trim()}
-            >
-              Enviar
-            </button>
-          </form>
 
           {ajustesAsistenteAdmin && (
             <details className="cd-asistente-context mt-2">

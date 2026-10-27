@@ -78,8 +78,13 @@ export async function consultarGemini({
     try {
       return await consultarGeminiServidor(accessToken, params)
     } catch (err) {
-      if (err.status === 503 && apiKey?.trim()) {
+      if (apiKey?.trim() && (err.status === 503 || err.status === 404)) {
         return consultarGeminiCliente(apiKey, params)
+      }
+      if (import.meta.env.DEV && err.status === 404) {
+        throw new Error(
+          'No hay API en este puerto (solo front con Vite). Reiniciá con el proxy en vite.config o usá `npx vercel dev`. También podés probar la app publicada en Vercel.',
+        )
       }
       throw new Error(err.message || mensajeErrorGemini(err))
     }

@@ -18722,6 +18722,31 @@ select.ap-input {
   text-align: left;
 }
 
+.cd-asistente-compose {
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(2, 6, 23, 0.5);
+  overflow: hidden;
+  margin-bottom: 0.55rem;
+}
+
+.cd-asistente-compose .cd-asistente-form {
+  padding: 0.32rem 0.4rem 0.38rem;
+  margin: 0;
+  gap: 0.32rem;
+}
+
+.cd-asistente-compose.has-history .cd-asistente-form {
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.cd-asistente-compose:not(.has-history) .cd-asistente-input {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
 .cd-asistente-chat {
   max-height: min(42vh, 22rem);
   overflow-y: auto;
@@ -18729,10 +18754,10 @@ select.ap-input {
   flex-direction: column;
   gap: 0.45rem;
   padding: 0.55rem;
-  margin-bottom: 0.55rem;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: rgba(2, 6, 23, 0.45);
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .cd-asistente-msg {
@@ -18766,7 +18791,29 @@ select.ap-input {
 .cd-asistente-input {
   flex: 1 1 auto;
   min-width: 0;
+  min-height: 2rem;
+  height: 2rem;
+  padding: 0.28rem 0.45rem !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.25;
+}
+
+.cd-asistente-compose .cd-asistente-form .cd-btn {
+  min-height: 2rem;
+  height: 2rem;
+  padding: 0 0.65rem;
+  font-size: 0.75rem;
+}
+
+.ai-asistente-float .cd-asistente-input {
   font-size: 16px !important;
+  min-height: 2.15rem;
+  height: 2.15rem;
+}
+
+.ai-asistente-float .cd-asistente-compose .cd-asistente-form .cd-btn {
+  min-height: 2.15rem;
+  height: 2.15rem;
 }
 
 .cd-asistente-error {
@@ -18905,17 +18952,11 @@ select.ap-input {
     flex: 1;
   }
 
-  .app-ia-float-panel.is-centered-mobile .cd-asistente-form {
-    position: sticky;
-    bottom: 0;
-    z-index: 2;
-    padding-top: 0.35rem;
-    background: linear-gradient(180deg, transparent, rgba(15, 23, 42, 0.97) 28%);
+  .app-ia-float-panel.is-centered-mobile .cd-asistente-compose {
+    flex-shrink: 0;
   }
 
-  .app-ia-float-panel.is-centered-mobile .cd-asistente-chat {
-    flex: 1;
-    min-height: 6rem;
+  .app-ia-float-panel.is-centered-mobile .cd-asistente-compose.has-history .cd-asistente-chat {
     max-height: min(38vh, 14rem);
   }
 }

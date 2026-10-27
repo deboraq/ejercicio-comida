@@ -52,6 +52,14 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
+    /** Vite no ejecuta serverless: reenvía /api/* al deploy (misma sesión Supabase). */
+    proxy: {
+      '/api': {
+        target: process.env.VITE_DEV_API_PROXY || 'https://ejercicio-comida.vercel.app',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
   },
   preview: {
     host: true,
