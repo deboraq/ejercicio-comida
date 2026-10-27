@@ -822,6 +822,7 @@ export default function ComidaTitanium({
   config = {},
   ejercicios = [],
   onAgregarDesdeAsistente,
+  mostrarAsistenteGemini = false,
 }) {
   const itemsPorMomento = useMemo(() => {
     const map = {}
@@ -1132,15 +1133,17 @@ export default function ComidaTitanium({
               <span className="cd-module-tab-badge">{registrosMesCount}</span>
             )}
           </button>
-          <button
-            type="button"
-            className={`cd-module-tab cd-module-tab--asistente${vistaComida === 'asistente' ? ' is-active' : ''}`}
-            onClick={() => setVistaComida?.('asistente')}
-            aria-current={vistaComida === 'asistente' ? 'page' : undefined}
-          >
-            <span className="cd-tab-label cd-tab-label--long">Consultas IA</span>
-            <span className="cd-tab-label cd-tab-label--short">Consultas</span>
-          </button>
+          {mostrarAsistenteGemini ? (
+            <button
+              type="button"
+              className={`cd-module-tab cd-module-tab--asistente${vistaComida === 'asistente' ? ' is-active' : ''}`}
+              onClick={() => setVistaComida?.('asistente')}
+              aria-current={vistaComida === 'asistente' ? 'page' : undefined}
+            >
+              <span className="cd-tab-label cd-tab-label--long">Consultas IA</span>
+              <span className="cd-tab-label cd-tab-label--short">Consultas</span>
+            </button>
+          ) : null}
         </nav>
       </div>
 

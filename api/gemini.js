@@ -1,23 +1,43 @@
 import { ejecutarConsultaGemini, mensajeErrorGemini } from '../lib/geminiCore.js'
 
-async function validarUsuarioSupabase(authHeader) {
+function supabaseEnv() {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !anonKey) return null
+  return { supabaseUrl: supabaseUrl.replace(/\/$/, ''), anonKey }
+}
+
+async function validarAdminSupabase(authHeader) {
   if (!authHeader?.startsWith('Bearer ')) return null
   const token = authHeader.slice(7).trim()
   if (!token) return null
 
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
-  if (!supabaseUrl || !anonKey) return null
+  const env = supabaseEnv()
+  if (!env) return null
+  const { supabaseUrl, anonKey } = env
 
-  const res = await fetch(`${supabaseUrl.replace(/\/$/, '')}/auth/v1/user`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      apikey: anonKey,
-    },
+  const resUser = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: { Authorization: `Bearer ${token}`, apikey: anonKey },
   })
-  if (!res.ok) return null
-  const user = await res.json()
-  return user?.id ? user : null
+  if (!resUser.ok) return null
+  const user = await resUser.json()
+  const userId = user?.id
+  if (!userId) return null
+
+  const resProfile = await fetch(
+    `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=role`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: anonKey,
+        Accept: 'application/json',
+      },
+    },
+  )
+  if (!resProfile.ok) return null
+  const rows = await resProfile.json()
+  if (rows?.[0]?.role !== 'admin') return null
+  return user
 }
 
 export default async function handler(req, res) {
@@ -28,9 +48,9 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
 
-  const user = await validarUsuarioSupabase(req.headers.authorization)
+  const user = await validarAdminSupabase(req.headers.authorization)
   if (!user) {
-    return res.status(401).json({ error: 'Iniciá sesión para usar el asistente.' })
+    return res.status(403).json({ error: 'El asistente Gemini solo está disponible para administradores.' })
   }
 
   const geminiKey = process.env.GEMINI_API_KEY

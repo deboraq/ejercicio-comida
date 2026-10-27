@@ -51,6 +51,7 @@ import {
   exportarTodoJson,
 } from '../utils/exportData'
 import { GEMINI_MODELOS_SUGERIDOS } from '../utils/geminiAsistente'
+import { puedeUsarAsistenteGemini } from '../utils/asistenteGeminiAccess'
 import '../components/config/ConfigTitanium.css'
 
 const OBJETIVO_DETALLE = {
@@ -237,6 +238,7 @@ export default function Config() {
 
   const cargandoPerfilNube = Boolean(user && isConfigured && profileLoading)
   const esProfe = profile?.role === 'profe'
+  const mostrarAsistenteGemini = puedeUsarAsistenteGemini(profile)
   const mostrarSeccionesAlumno = !user || !isConfigured || profile?.role !== 'profe'
   const objetivosSeleccionados = useMemo(() => normalizeObjetivosConfig(config), [config])
   const objetivoPrimarioId = useMemo(() => objetivoPrimario(config), [config])
@@ -377,6 +379,7 @@ export default function Config() {
           </div>
         )}
 
+        {mostrarAsistenteGemini && (
         <section className="cfg-ti-gemini mb-4" id="asistente-gemini">
           <h2 className="cfg-ti-gemini-title">Asistente Gemini</h2>
           <p className="cfg-ti-gemini-hint mb-2">
@@ -439,6 +442,7 @@ export default function Config() {
             Abrir Consultas en Comida
           </Link>
         </section>
+        )}
 
         {user && (
           <SeguimientoCaja
