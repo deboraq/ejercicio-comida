@@ -16,7 +16,8 @@ import { getIconoActividad } from '../utils/iconosActividad'
 const RAPIDOS_BASE = [
   { nombre: 'Pádel', tipo: 'padel', duracion: 90 },
   { nombre: 'Natación', tipo: 'nadar_moderado', duracion: 40 },
-  { nombre: 'Trote suave', tipo: 'correr_8', duracion: 45 },
+  { nombre: 'Trote', tipo: 'trote', duracion: 30 },
+  { nombre: 'Trekking', tipo: 'trekking', duracion: 120 },
   { nombre: 'Musculación', tipo: 'pesas_general', duracion: 60 },
 ]
 

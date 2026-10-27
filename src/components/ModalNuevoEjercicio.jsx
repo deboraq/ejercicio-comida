@@ -9,6 +9,8 @@ import {
   minutosDesdeKm,
   sinAcentos,
   tipoAdmiteKilometros,
+  tipoPrefiereKilometros,
+  normalizarTipoCarrera,
   TIPOS_EJERCICIO_AGRUPADOS,
   etiquetaTipo,
 } from '../utils/calorias'
@@ -19,14 +21,15 @@ const TIPO_DEFAULT = TIPOS_EJERCICIO_AGRUPADOS[0].opciones[0].value
 const PRESETS_DEPORTES = [
   { nombre: 'Pádel', tipo: 'padel', duracion: 90 },
   { nombre: 'Fútbol 7 / 11', tipo: 'futbol', duracion: 90 },
-  { nombre: 'Running / Fondo', tipo: 'correr_10', duracion: 45 },
+  { nombre: 'Trote', tipo: 'trote', duracion: 30 },
+  { nombre: 'Correr', tipo: 'correr', duracion: 30 },
   { nombre: 'Caminata activa', tipo: 'caminata_rapida', duracion: 40 },
 ]
 
 const RAPIDOS_BASE = [
   { nombre: 'Pádel', tipo: 'padel', duracion: 90 },
   { nombre: 'Natación', tipo: 'nadar_moderado', duracion: 40 },
-  { nombre: 'Trote suave', tipo: 'correr_8', duracion: 45 },
+  { nombre: 'Trote', tipo: 'trote', duracion: 30 },
   { nombre: 'Musculación', tipo: 'pesas_general', duracion: 60 },
 ]
 
@@ -84,11 +87,15 @@ export default function ModalNuevoEjercicio({
   const cargarItem = (item) => {
     setEditandoId(item.id)
     setNombre(item.nombre || '')
-    const t = item.tipo || TIPO_DEFAULT
+    const t = normalizarTipoCarrera(item.tipo || TIPO_DEFAULT)
     setTipo(t)
     if (item.distanciaKm != null && Number(item.distanciaKm) > 0 && tipoAdmiteKilometros(t)) {
       setModoMedida('km')
       setDistanciaKm(String(item.distanciaKm))
+      setDuracion('')
+    } else if (tipoPrefiereKilometros(t)) {
+      setModoMedida('km')
+      setDistanciaKm('')
       setDuracion('')
     } else {
       setModoMedida('minutos')
@@ -155,7 +162,8 @@ export default function ModalNuevoEjercicio({
     const seen = new Set()
     const pushUnique = (chip) => {
       const k = sinAcentos((chip.nombre || '').trim())
-      if (!k || seen.has(k) || out.length >= 4) return
+      const maxChips = contexto === 'deportes' ? 5 : 4
+      if (!k || seen.has(k) || out.length >= maxChips) return
       seen.add(k)
       out.push(chip)
     }
@@ -192,9 +200,15 @@ export default function ModalNuevoEjercicio({
     setPresetActivo(p)
     setNombre(p.nombre)
     setTipo(p.tipo)
-    setModoMedida('minutos')
-    setDistanciaKm('')
-    setDuracion(String(p.duracion))
+    if (tipoPrefiereKilometros(p.tipo)) {
+      setModoMedida('km')
+      setDistanciaKm('')
+      setDuracion('')
+    } else {
+      setModoMedida('minutos')
+      setDistanciaKm('')
+      setDuracion(String(p.duracion))
+    }
   }
 
   const guardarPresetRapido = (p) => {
@@ -395,7 +409,10 @@ export default function ModalNuevoEjercicio({
                         onChange={(ev) => {
                           const v = ev.target.value
                           setTipo(v)
-                          if (!tipoAdmiteKilometros(v)) setModoMedida('minutos')
+                          if (tipoPrefiereKilometros(v)) {
+                            setModoMedida('km')
+                            setDistanciaKm('')
+                          } else if (!tipoAdmiteKilometros(v)) setModoMedida('minutos')
                         }}
                       >
                         {TIPOS_EJERCICIO_AGRUPADOS.map((g) => (

@@ -166,3 +166,102 @@ export async function exportarEjerciciosActividadExcel(ejercicios = []) {
   await descargarExcel('ejercicios-actividad', COLUMNAS_ACTIVIDAD, lista, 'Actividad')
   return lista.length
 }
+
+const COLUMNAS_RUTINA_PLAN = [
+  { key: 'rutinaId', label: 'ID rutina' },
+  { key: 'rutinaNombre', label: 'Rutina' },
+  { key: 'diaId', label: 'ID día' },
+  { key: 'diaNombre', label: 'Día' },
+  { key: 'ejercicio', label: 'Ejercicio' },
+  { key: 'series', label: 'Series' },
+  { key: 'reps', label: 'Reps' },
+  { key: 'grupoMuscular', label: 'Grupo muscular' },
+]
+
+function filasRutinasPlan(rutinas = []) {
+  const filas = []
+  for (const r of rutinas || []) {
+    const rid = r.id || ''
+    const rn = r.nombre || ''
+    for (const d of r.dias || []) {
+      const did = d.id || ''
+      const dn = d.nombre || ''
+      for (const ej of d.ejercicios || []) {
+        if (typeof ej === 'string') {
+          filas.push({
+            rutinaId: rid,
+            rutinaNombre: rn,
+            diaId: did,
+            diaNombre: dn,
+            ejercicio: ej,
+            series: '',
+            reps: '',
+            grupoMuscular: '',
+          })
+          continue
+        }
+        filas.push({
+          rutinaId: rid,
+          rutinaNombre: rn,
+          diaId: did,
+          diaNombre: dn,
+          ejercicio: ej.nombre || ej.ejercicio || '',
+          series: ej.series ?? '',
+          reps: ej.repeticiones ?? ej.reps ?? '',
+          grupoMuscular: ej.grupoMuscular ?? '',
+        })
+      }
+    }
+  }
+  return filas
+}
+
+async function descargarExcelMulti(nombreBase, hojas = []) {
+  const XLSX = await loadXlsx()
+  const fecha = fechaToISO(new Date())
+  const book = XLSX.utils.book_new()
+  for (const h of hojas) {
+    const sheet = XLSX.utils.aoa_to_sheet(filasTabulares(h.columnas, h.filas))
+    XLSX.utils.book_append_sheet(book, sheet, h.nombreHoja.slice(0, 31))
+  }
+  const buffer = XLSX.write(book, { bookType: 'xlsx', type: 'array' })
+  descargarBlob(
+    `${nombreBase}-${fecha}.xlsx`,
+    buffer,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  )
+}
+
+/** Respaldo completo en un solo JSON (comidas, gym, actividad y plan). */
+export function exportarTodoJson(bundle = {}) {
+  const payload = {
+    exportadoEl: fechaToISO(new Date()),
+    comidas: [...(bundle.comidas || [])].sort(ordenarPorFechaDesc),
+    rutinaPesos: [...(bundle.rutinaPesos || [])].sort(ordenarPorFechaDesc),
+    ejerciciosActividad: [...(bundle.ejerciciosActividad || [])].sort(ordenarPorFechaDesc),
+    rutinas: bundle.rutinas || [],
+    rutinaActivaId: bundle.rutinaActivaId || null,
+  }
+  descargarJson('mi-rutina-backup', payload)
+  return (
+    payload.comidas.length
+    + payload.rutinaPesos.length
+    + payload.ejerciciosActividad.length
+  )
+}
+
+/** Excel con una hoja por categoría (y plan de rutinas si hay). */
+export async function exportarTodoExcel(bundle = {}) {
+  const comidas = [...(bundle.comidas || [])].sort(ordenarPorFechaDesc)
+  const gym = [...(bundle.rutinaPesos || [])].sort(ordenarPorFechaDesc)
+  const actividad = [...(bundle.ejerciciosActividad || [])].sort(ordenarPorFechaDesc)
+  const plan = filasRutinasPlan(bundle.rutinas)
+  const hojas = []
+  if (comidas.length) hojas.push({ nombreHoja: 'Comidas', columnas: COLUMNAS_COMIDA, filas: comidas })
+  if (gym.length) hojas.push({ nombreHoja: 'Gimnasio', columnas: COLUMNAS_GYM, filas: gym })
+  if (actividad.length) hojas.push({ nombreHoja: 'Actividad', columnas: COLUMNAS_ACTIVIDAD, filas: actividad })
+  if (plan.length) hojas.push({ nombreHoja: 'Plan rutinas', columnas: COLUMNAS_RUTINA_PLAN, filas: plan })
+  if (hojas.length === 0) return 0
+  await descargarExcelMulti('mi-rutina-completo', hojas)
+  return comidas.length + gym.length + actividad.length
+}

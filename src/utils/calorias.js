@@ -8,9 +8,9 @@ export const TIPOS_EJERCICIO_AGRUPADOS = [
     opciones: [
       { value: 'caminata_lenta', label: 'Caminata lenta (pasear)' },
       { value: 'caminata_rapida', label: 'Caminata rápida' },
-      { value: 'correr_8', label: 'Correr (8 km/h aprox.)' },
-      { value: 'correr_10', label: 'Correr (10 km/h aprox.)' },
-      { value: 'correr_12', label: 'Correr (12+ km/h)' },
+      { value: 'trekking', label: 'Trekking / senderismo' },
+      { value: 'trote', label: 'Trote' },
+      { value: 'correr', label: 'Correr / running' },
       { value: 'bici_estatica_ligera', label: 'Bicicleta estática (ligera)' },
       { value: 'bici_estatica_moderada', label: 'Bicicleta estática (moderada)' },
       { value: 'bici_estatica_intensa', label: 'Bicicleta estática (intensa)' },
@@ -73,6 +73,9 @@ export const MET_POR_TIPO = {
   // Cardio
   caminata_lenta: 2.5,
   caminata_rapida: 5,
+  trekking: 7,
+  trote: 7.5,
+  correr: 10,
   correr_8: 8,
   correr_10: 10,
   correr_12: 12.5,
@@ -125,6 +128,9 @@ const PESO_DEFAULT_KG = 70
 export const VELOCIDAD_KM_H_POR_TIPO = {
   caminata_lenta: 3.2,
   caminata_rapida: 5.5,
+  trekking: 4.5,
+  trote: 8,
+  correr: 10,
   correr_8: 8,
   correr_10: 10,
   correr_12: 12,
@@ -138,6 +144,24 @@ export const VELOCIDAD_KM_H_POR_TIPO = {
 
 export function tipoAdmiteKilometros(tipo) {
   return tipo != null && Object.prototype.hasOwnProperty.call(VELOCIDAD_KM_H_POR_TIPO, tipo)
+}
+
+/** Correr/trote: la distancia la cargás vos (km), no velocidades fijas en el selector. */
+export function tipoPrefiereKilometros(tipo) {
+  return tipo === 'trote' || tipo === 'correr'
+}
+
+/** Registros viejos con correr_8/10/12 → tipos nuevos al editar. */
+export function normalizarTipoCarrera(tipo) {
+  if (tipo === 'correr_8') return 'trote'
+  if (tipo === 'correr_10' || tipo === 'correr_12') return 'correr'
+  return tipo
+}
+
+const ETIQUETAS_TIPO_LEGACY = {
+  correr_8: 'Trote',
+  correr_10: 'Correr / running',
+  correr_12: 'Correr / running (intenso)',
 }
 
 /** Minutos equivalentes a recorrer `km` a la velocidad típica del tipo (mínimo 1). */
@@ -249,6 +273,7 @@ export function etiquetaTipo(tipo) {
     const op = g.opciones.find((o) => o.value === tipo)
     if (op) return op.label
   }
+  if (ETIQUETAS_TIPO_LEGACY[tipo]) return ETIQUETAS_TIPO_LEGACY[tipo]
   return tipo
 }
 
@@ -268,6 +293,7 @@ export function getCategoriaTipo(tipo) {
     }
   }
   if (['Cardio', 'Fuerza', 'Flexibilidad', 'Deportes', 'Otro'].includes(tipo)) return tipo
+  if (ETIQUETAS_TIPO_LEGACY[tipo]) return 'Cardio'
   return 'Otro'
 }
 

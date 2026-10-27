@@ -515,7 +515,7 @@ export default function Comida() {
 
   useEffect(() => {
     const v = location.state?.vistaComida
-    if (v === 'plan' || v === 'historial') {
+    if (v === 'plan' || v === 'historial' || v === 'asistente') {
       setVistaComida(v)
       const abrirEditor = v === 'plan' && location.state?.abrirEditorPlan
       navigate('/comida', {
@@ -968,6 +968,21 @@ export default function Comida() {
     cambiarVistaComida('hoy')
   }
 
+  const agregarDesdeAsistente = (est) => {
+    if (!est?.descripcion) return
+    cambiarVistaComida('hoy')
+    iniciarEntradaManual(est.descripcion)
+    setManualForm({
+      descripcion: est.descripcion,
+      calorias: est.calorias ? String(est.calorias) : '',
+      proteinas: est.proteinas ? String(est.proteinas) : '',
+      carbohidratos: est.carbohidratos ? String(est.carbohidratos) : '',
+      grasas: est.grasas ? String(est.grasas) : '',
+      porciones: est.porcion || '1 porción (estimado IA)',
+    })
+    setPanelPulse({ at: Date.now(), modo: 'agregar' })
+  }
+
   const onToggleVaso = (index) => {
     const n = index + 1
     const current = vasosHidratacionDia(hidratacionStore, fechaVista)
@@ -1082,6 +1097,9 @@ export default function Comida() {
               abrirEditorInicial={Boolean(location.state?.abrirEditorPlan)}
             />
           }
+          config={config}
+          ejercicios={ejercicios}
+          onAgregarDesdeAsistente={agregarDesdeAsistente}
         />
       </div>
     </section>

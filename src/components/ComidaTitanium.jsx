@@ -11,6 +11,7 @@ import {
   esFavoritoComida,
   emojiComida,
 } from '../utils/comidaFavoritos'
+import AsistenteGemini from './AsistenteGemini'
 
 function numeroFlexibleO(valor, fallback = 0) {
   const n = parseFloat(String(valor ?? '').replace(',', '.'))
@@ -818,6 +819,9 @@ export default function ComidaTitanium({
   onToggleFavoritoComida,
   planResumen = null,
   planPanel = null,
+  config = {},
+  ejercicios = [],
+  onAgregarDesdeAsistente,
 }) {
   const itemsPorMomento = useMemo(() => {
     const map = {}
@@ -1128,6 +1132,15 @@ export default function ComidaTitanium({
               <span className="cd-module-tab-badge">{registrosMesCount}</span>
             )}
           </button>
+          <button
+            type="button"
+            className={`cd-module-tab cd-module-tab--asistente${vistaComida === 'asistente' ? ' is-active' : ''}`}
+            onClick={() => setVistaComida?.('asistente')}
+            aria-current={vistaComida === 'asistente' ? 'page' : undefined}
+          >
+            <span className="cd-tab-label cd-tab-label--long">Consultas IA</span>
+            <span className="cd-tab-label cd-tab-label--short">Consultas</span>
+          </button>
         </nav>
       </div>
 
@@ -1163,9 +1176,17 @@ export default function ComidaTitanium({
         </div>
       )}
 
-      <div className={`cd-layout cd-layout--${vistaComida}${vistaComida === 'historial' ? ' cd-layout--historial' : ''}${vistaComida === 'plan' ? ' cd-layout--plan' : ''}`}>
+      <div className={`cd-layout cd-layout--${vistaComida}${vistaComida === 'historial' ? ' cd-layout--historial' : ''}${vistaComida === 'plan' ? ' cd-layout--plan' : ''}${vistaComida === 'asistente' ? ' cd-layout--asistente' : ''}`}>
         <div className="cd-main">
-          {vistaComida === 'plan' ? (
+          {vistaComida === 'asistente' ? (
+            <AsistenteGemini
+              config={config}
+              comida={registros}
+              ejercicios={ejercicios}
+              fechaRef={fechaVista}
+              onAgregarEstimacion={onAgregarDesdeAsistente}
+            />
+          ) : vistaComida === 'plan' ? (
             <section className="cd-plan-embed plan-mes1-page">{planPanel}</section>
           ) : vistaComida === 'hoy' ? (
             <>

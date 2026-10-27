@@ -1185,6 +1185,13 @@
   letter-spacing: 0.05em;
 }
 
+.cfg-ti-page .cfg-ti-export-all {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.28rem;
+  margin-bottom: 0.4rem !important;
+}
+
 .cfg-ti-page .cfg-ti-export-grid {
   display: grid !important;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1196,7 +1203,8 @@
   margin-bottom: 0 !important;
 }
 
-.cfg-ti-page .cfg-ti-export-grid .button {
+.cfg-ti-page .cfg-ti-export-grid .button,
+.cfg-ti-page .cfg-ti-export-all .button {
   width: 100% !important;
   min-width: 0 !important;
   min-height: var(--cfg-control-h) !important;
@@ -1215,19 +1223,22 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
 }
 
-.cfg-ti-page .cfg-ti-export-grid .button.is-link.is-light {
+.cfg-ti-page .cfg-ti-export-grid .button.is-link.is-light,
+.cfg-ti-page .cfg-ti-export-all .button.is-link.is-light {
   background: var(--ti-pill-blue-bg) !important;
   border: 1px solid var(--ti-pill-blue-border) !important;
   color: var(--ti-pill-blue-text) !important;
 }
 
-.cfg-ti-page .cfg-ti-export-grid .button.is-light:not(.is-link) {
+.cfg-ti-page .cfg-ti-export-grid .button.is-light:not(.is-link),
+.cfg-ti-page .cfg-ti-export-all .button.is-light:not(.is-link) {
   background: #0d1322 !important;
   border: 1px solid rgba(148, 163, 184, 0.16) !important;
   color: #cbd5e1 !important;
 }
 
-.cfg-ti-page .cfg-ti-export-grid .button:hover {
+.cfg-ti-page .cfg-ti-export-grid .button:hover,
+.cfg-ti-page .cfg-ti-export-all .button:hover {
   filter: brightness(1.08);
 }
 
@@ -1318,4 +1329,48 @@
   font-size: 0.72rem;
   color: #fca5a5;
   margin-top: 0.35rem;
+}
+
+.cfg-ti-gemini {
+  padding: 0.85rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid var(--cfg-border);
+  background: var(--cfg-card);
+}
+
+.cfg-ti-gemini-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.35rem;
+}
+
+.cfg-ti-gemini-hint {
+  font-size: var(--cfg-hint-fs);
+  color: var(--cfg-muted);
+  line-height: 1.45;
+}
+
+.cfg-ti-gemini-hint code {
+  font-size: 0.62rem;
+  color: #cbd5e1;
+}
+
+.cfg-ti-gemini-label {
+  display: block;
+  font-size: var(--cfg-label-fs);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cfg-muted);
+  margin-bottom: 0.25rem;
+}
+
+.cfg-ti-gemini-check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: var(--cfg-hint-fs);
+  color: var(--cfg-text);
+  cursor: pointer;
 }

@@ -1078,7 +1078,8 @@ body {
     font-size: var(--app-fs-body) !important;
   }
 
-  .app-shell--mobile-tabbar .cfg-ti-page .cfg-ti-export-grid .button {
+  .app-shell--mobile-tabbar .cfg-ti-page .cfg-ti-export-grid .button,
+  .app-shell--mobile-tabbar .cfg-ti-page .cfg-ti-export-all .button {
     font-size: var(--cfg-control-fs, 0.65rem) !important;
     font-weight: 650 !important;
     line-height: 1.1 !important;
@@ -8139,20 +8140,11 @@ body {
   .ej-modal-panel--deportes .ej-modal-rapidos {
     padding: 0 0 0.3rem;
     margin-bottom: 0.05rem;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .ej-modal-panel--deportes .ej-modal-rapidos::-webkit-scrollbar {
-    display: none;
   }
 
   .ej-modal-panel--deportes .entren-cardio-rapido {
-    flex-shrink: 0;
-    padding: 0.22rem 0.42rem;
-    font-size: 0.62rem;
+    padding: 0.22rem 0.32rem;
+    font-size: 0.56rem;
   }
 
   .ej-modal-panel--deportes .ej-form-grid--deportes-fit {
@@ -12806,6 +12798,32 @@ body {
   margin-bottom: 0.15rem;
 }
 
+/* Chips del modal: fila horizontal deslizable */
+.ej-modal .entren-cardio-rapidos.ej-modal-rapidos {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.35rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+.ej-modal .entren-cardio-rapidos.ej-modal-rapidos::-webkit-scrollbar {
+  display: none;
+}
+
+.ej-modal .entren-cardio-rapidos.ej-modal-rapidos .entren-cardio-rapido {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .ej-modal-panel .entren-cardio-modal-foot {
   padding: 0 1.15rem 1rem;
   text-align: center;
@@ -13013,6 +13031,43 @@ button.entren-cardio-ver-mas {
     flex-shrink: 0;
     font-size: 0.64rem;
     padding: 0.35rem 0.5rem;
+  }
+
+  /* Modal: 2×2 — no compartir fila horizontal del bloque cardio (evita width:100% + flex) */
+  .ej-modal .entren-cardio-rapidos.ej-modal-rapidos {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0.35rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0.35rem;
+    margin-bottom: 0.15rem;
+    scrollbar-width: none;
+  }
+
+  .ej-modal .entren-cardio-rapidos.ej-modal-rapidos::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ej-modal .entren-cardio-rapidos.ej-modal-rapidos .entren-cardio-rapido {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1.15;
+    font-size: 0.58rem;
+    padding: 0.28rem 0.45rem;
   }
 
   .entren-cardio-form {
@@ -18581,6 +18636,144 @@ select.ap-input {
   justify-content: center;
   gap: 0.5rem;
   margin-top: 1rem;
+}
+
+/* Asistente Gemini (Comida → Consultas) */
+.cd-asistente {
+  padding: 0.85rem 0.75rem;
+}
+
+.cd-asistente-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.cd-asistente-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.cd-asistente-config-link {
+  font-size: 0.65rem;
+  color: #93c5fd;
+  text-decoration: none;
+}
+
+.cd-asistente-hint {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.cd-asistente-steps {
+  font-size: 0.68rem;
+  color: #cbd5e1;
+  padding-left: 1.1rem;
+  line-height: 1.45;
+}
+
+.cd-asistente-ejemplos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.cd-asistente-chip {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.55);
+  color: #cbd5e1;
+  font: inherit;
+  font-size: 0.58rem;
+  padding: 0.32rem 0.45rem;
+  border-radius: 999px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cd-asistente-chat {
+  max-height: min(42vh, 22rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.55rem;
+  margin-bottom: 0.55rem;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(2, 6, 23, 0.45);
+}
+
+.cd-asistente-msg {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
+
+.cd-asistente-msg--user {
+  align-self: flex-end;
+  max-width: 92%;
+  background: rgba(59, 130, 246, 0.2);
+  color: #e2e8f0;
+}
+
+.cd-asistente-msg--model {
+  align-self: flex-start;
+  max-width: 96%;
+  background: rgba(30, 41, 59, 0.65);
+  color: #e2e8f0;
+}
+
+.cd-asistente-form {
+  display: flex;
+  gap: 0.4rem;
+  align-items: stretch;
+}
+
+.cd-asistente-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 16px !important;
+}
+
+.cd-asistente-error {
+  font-size: 0.68rem;
+  color: #fca5a5;
+}
+
+.cd-asistente-sugerido {
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.08);
+  font-size: 0.68rem;
+  color: #d1fae5;
+}
+
+.cd-asistente-context summary {
+  font-size: 0.62rem;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.cd-asistente-context-pre {
+  font-size: 0.55rem;
+  max-height: 10rem;
+  overflow: auto;
+  color: #94a3b8;
+  margin: 0.35rem 0 0;
+}
+
+.cd-module-tab--asistente.is-active {
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.15);
+  color: #ede9fe;
 }
 
 /* Tabs Registro / Historial */

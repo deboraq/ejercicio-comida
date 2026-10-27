@@ -5,6 +5,9 @@ const ICONO_POR_TIPO = {
   // Cardio / Aeróbico
   caminata_lenta: { icon: '🚶', tone: 'green' },
   caminata_rapida: { icon: '🚶‍♂️', tone: 'green' },
+  trekking: { icon: '🥾', tone: 'green' },
+  trote: { icon: '🏃‍♀️', tone: 'green' },
+  correr: { icon: '🏃', tone: 'green' },
   correr_8: { icon: '🏃', tone: 'green' },
   correr_10: { icon: '🏃', tone: 'green' },
   correr_12: { icon: '🏃‍♂️', tone: 'green' },
@@ -66,6 +69,7 @@ function iconoPorFragmento(tipo) {
   if (/nadar|natac|swim/.test(t)) return { icon: '🏊', tone: 'blue' }
   if (/correr|trote|run|jog/.test(t)) return { icon: '🏃', tone: 'green' }
   if (/camin|walk|paseo/.test(t)) return { icon: '🚶', tone: 'green' }
+  if (/trek|sender|hik/.test(t)) return { icon: '🥾', tone: 'green' }
   if (/bici|cicl|bike/.test(t)) return { icon: '🚴', tone: 'green' }
   if (/remo|row/.test(t)) return { icon: '🚣', tone: 'blue' }
   if (/patin|skat|roller/.test(t)) return { icon: '⛸️', tone: 'blue' }

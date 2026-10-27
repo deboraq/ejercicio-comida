@@ -47,7 +47,10 @@ import {
   exportarGymCsv,
   exportarGymExcel,
   exportarGymJson,
+  exportarTodoExcel,
+  exportarTodoJson,
 } from '../utils/exportData'
+import { GEMINI_MODELOS_SUGERIDOS } from '../utils/geminiAsistente'
 import '../components/config/ConfigTitanium.css'
 
 const OBJETIVO_DETALLE = {
@@ -122,6 +125,9 @@ export default function Config() {
     planMes1CincoComidas: true,
     planMes1Objetivo: '',
     planMes1Origen: 'guia',
+    geminiApiKey: '',
+    geminiHabilitado: true,
+    geminiModelo: 'gemini-2.0-flash',
   })
   const [, setPlanPropio] = useStorage('planPropio', { inactivo: true, dias: {} })
 
@@ -129,6 +135,7 @@ export default function Config() {
   const totalComidas = exportCounts.comidas
   const totalSeriesGym = exportCounts.series
   const totalActividad = exportCounts.actividad
+  const totalExportTodo = totalComidas + totalSeriesGym + totalActividad
 
   const exportarConDatos = async (fn) => {
     const data = await ensureBundle()
@@ -370,6 +377,69 @@ export default function Config() {
           </div>
         )}
 
+        <section className="cfg-ti-gemini mb-4" id="asistente-gemini">
+          <h2 className="cfg-ti-gemini-title">Asistente Gemini</h2>
+          <p className="cfg-ti-gemini-hint mb-2">
+            <strong>Uso normal:</strong> cada persona con <strong>su cuenta</strong> usa Consultas en Comida. La API key
+            de Google va <strong>una sola vez en Vercel</strong> (<code>GEMINI_API_KEY</code>), no por usuario.
+          </p>
+          <p className="cfg-ti-gemini-hint mb-2">
+            Vercel → proyecto → Settings → Environment Variables →{' '}
+            <code>GEMINI_API_KEY</code> = tu key de{' '}
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
+              AI Studio
+            </a>
+            . Redeploy. También necesitás <code>SUPABASE_URL</code> y <code>SUPABASE_ANON_KEY</code> (o las{' '}
+            <code>VITE_*</code> que ya uses).
+          </p>
+          <details className="cfg-ti-gemini-advanced mb-2">
+            <summary>Desarrollo local: API key personal (opcional)</summary>
+            <p className="cfg-ti-gemini-hint mb-2">
+              En <code>npm run dev</code> no existe <code>/api/gemini</code> salvo que uses <code>vercel dev</code>. Podés
+              pegar acá tu key solo para probar en localhost.
+            </p>
+            <label className="cfg-ti-gemini-label" htmlFor="cfg-gemini-key">
+              API key personal
+            </label>
+            <input
+              id="cfg-gemini-key"
+              className="cfg-ti-input input mb-0"
+              type="password"
+              autoComplete="off"
+              placeholder="AIza… (opcional)"
+              value={config.geminiApiKey || ''}
+              onChange={(e) => setConfig((c) => ({ ...c, geminiApiKey: e.target.value.trim() }))}
+            />
+          </details>
+          <label className="cfg-ti-gemini-label" htmlFor="cfg-gemini-modelo">
+            Modelo
+          </label>
+          <div className="select is-fullwidth mb-2">
+            <select
+              id="cfg-gemini-modelo"
+              value={config.geminiModelo || 'gemini-2.0-flash'}
+              onChange={(e) => setConfig((c) => ({ ...c, geminiModelo: e.target.value }))}
+            >
+              {GEMINI_MODELOS_SUGERIDOS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <label className="cfg-ti-gemini-check mb-2">
+            <input
+              type="checkbox"
+              checked={Boolean(config.geminiHabilitado)}
+              onChange={(e) => setConfig((c) => ({ ...c, geminiHabilitado: e.target.checked }))}
+            />
+            Activar asistente en Comida → pestaña Consultas
+          </label>
+          <Link to="/comida" state={{ vistaComida: 'asistente' }} className="cfg-ti-btn cfg-ti-btn--ghost">
+            Abrir Consultas en Comida
+          </Link>
+        </section>
+
         {user && (
           <SeguimientoCaja
             id="exportar-datos"
@@ -385,6 +455,30 @@ export default function Config() {
               Descargá tu historial para Excel, Google Sheets o respaldo.
               {exportLoading ? ' Cargando datos…' : ''}
             </p>
+            <div className="cfg-ti-export-all buttons are-small mb-2">
+              <button
+                type="button"
+                className="button is-small is-link is-light"
+                onClick={async () => {
+                  if (!totalExportTodo) return avisoSinDatos('datos')
+                  const d = await exportarConDatos()
+                  if (d) await exportarTodoExcel(d)
+                }}
+              >
+                ↓ Todo Excel
+              </button>
+              <button
+                type="button"
+                className="button is-small is-light"
+                onClick={async () => {
+                  if (!totalExportTodo) return avisoSinDatos('datos')
+                  const d = await exportarConDatos()
+                  if (d) exportarTodoJson(d)
+                }}
+              >
+                ↓ Todo JSON ({totalExportTodo})
+              </button>
+            </div>
             <p className="config-section-label cfg-ti-export-label mb-1">Comidas</p>
             <div className="cfg-ti-export-grid buttons are-small mb-2">
               <button type="button" className="button is-small is-link is-light" onClick={async () => { if (!totalComidas) return avisoSinDatos('comidas'); const d = await exportarConDatos(); if (d) exportarComidasExcel(d.comidas) }}>↓ Excel ({totalComidas})</button>
