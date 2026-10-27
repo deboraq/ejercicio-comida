@@ -525,9 +525,17 @@ export default function Comida() {
     }
   }, [location.state, navigate])
 
+  const planPrefillConsumidoRef = useRef(null)
+
   useEffect(() => {
     const pre = location.state?.planPrefill
     if (!pre) return
+    const sig = JSON.stringify(pre)
+    if (planPrefillConsumidoRef.current === sig) return
+    planPrefillConsumidoRef.current = sig
+    if (pre.fecha && /^\d{4}-\d{2}-\d{2}$/.test(pre.fecha)) {
+      setFechaInput(pre.fecha)
+    }
     aplicarPlanPrefill(pre)
     setVistaComida('hoy')
     navigate('/comida', { replace: true, state: null })
@@ -968,11 +976,20 @@ export default function Comida() {
     cambiarVistaComida('hoy')
   }
 
+  const asistentePrefillConsumidoRef = useRef(null)
+
   useEffect(() => {
     const pre = location.state?.asistentePrefill
     if (!pre?.descripcion) return
+    const sig = JSON.stringify(pre)
+    if (asistentePrefillConsumidoRef.current === sig) return
+    asistentePrefillConsumidoRef.current = sig
     setVistaComida('hoy')
-    iniciarEntradaManual(pre.descripcion)
+    salirModoEdicion()
+    setReferenciaActiva(null)
+    setItems([])
+    setBusquedaRef('')
+    setEntradaManual(true)
     setManualForm({
       descripcion: pre.descripcion,
       calorias: pre.calorias ? String(pre.calorias) : '',
@@ -981,9 +998,10 @@ export default function Comida() {
       grasas: pre.grasas ? String(pre.grasas) : '',
       porciones: pre.porcion || '1 porción (estimado IA)',
     })
+    setCantidadPorciones('1')
     setPanelPulse({ at: Date.now(), modo: 'agregar' })
     navigate('/comida', { replace: true, state: null })
-  }, [location.state, navigate, iniciarEntradaManual])
+  }, [location.state, navigate])
 
   const onToggleVaso = (index) => {
     const n = index + 1

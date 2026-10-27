@@ -13,6 +13,7 @@ const EJEMPLOS = [
   '¿Cuántas kcal llevo hoy vs mi meta?',
   '¿Qué comí hoy según mis registros?',
   'Estimá un plato de ravioles con salsa bolognesa, porción normal',
+  'Quiero registrar la opción 2 del almuerzo de hoy en el plan',
 ]
 
 export default function AsistenteGemini({
@@ -27,9 +28,10 @@ export default function AsistenteGemini({
   rutinas = [],
   rutinaActivaId = '',
   rutinaPesos = [],
-  onAgregarEstimacion,
+  onIrRegistroComida,
   ajustesAsistenteAdmin = false,
   modoFlotante = false,
+  flotanteAbierto = false,
   onCerrar,
   datosListos = true,
 }) {
@@ -39,16 +41,28 @@ export default function AsistenteGemini({
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
   const [ultimoAlimento, setUltimoAlimento] = useState(null)
+  const [ultimoPlanRegistro, setUltimoPlanRegistro] = useState(null)
   const [minimizado, setMinimizado] = useState(false)
   const listRef = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => {
     setMensajes([])
     setInput('')
     setError('')
     setUltimoAlimento(null)
+    setUltimoPlanRegistro(null)
     setMinimizado(false)
   }, [user?.id])
+
+  useEffect(() => {
+    if (!modoFlotante || !flotanteAbierto || !datosListos) return
+    const t = window.setTimeout(() => {
+      inputRef.current?.focus({ preventScroll: false })
+      inputRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+    }, 280)
+    return () => window.clearTimeout(t)
+  }, [modoFlotante, flotanteAbierto, datosListos])
 
   const hoy = fechaRef || fechaToISO(new Date())
   const tieneKeyLocal = Boolean(String(config.geminiApiKey || '').trim())
@@ -97,6 +111,7 @@ export default function AsistenteGemini({
     if (!pregunta || cargando || !datosListos) return
     setError('')
     setUltimoAlimento(null)
+    setUltimoPlanRegistro(null)
     setInput('')
 
     const userMsg = { role: 'user', text: pregunta }
@@ -121,7 +136,13 @@ export default function AsistenteGemini({
         historial,
       })
       setMensajes((prev) => [...prev, { role: 'model', text: res.visible }])
-      if (res.alimentoSugerido) setUltimoAlimento(res.alimentoSugerido)
+      if (res.planRegistroSugerido) {
+        setUltimoPlanRegistro(res.planRegistroSugerido)
+        setUltimoAlimento(null)
+      } else if (res.alimentoSugerido) {
+        setUltimoAlimento(res.alimentoSugerido)
+        setUltimoPlanRegistro(null)
+      }
     } catch (e) {
       setError(e.message || 'Error al consultar')
     } finally {
@@ -223,7 +244,25 @@ export default function AsistenteGemini({
 
           {error && <p className="cd-asistente-error mb-2">{error}</p>}
 
-          {ultimoAlimento && onAgregarEstimacion && (
+          {ultimoPlanRegistro && onIrRegistroComida && (
+            <div className="cd-asistente-sugerido mb-2">
+              <p className="mb-1">
+                <strong>Plan · {ultimoPlanRegistro.momento}</strong>
+                {ultimoPlanRegistro.opcion ? ` · Opción ${ultimoPlanRegistro.opcion}` : ''}
+                <br />
+                {ultimoPlanRegistro.textoPlan}
+              </p>
+              <button
+                type="button"
+                className="cd-btn cd-btn--primary cd-btn--sm"
+                onClick={() => onIrRegistroComida({ tipo: 'plan', ...ultimoPlanRegistro })}
+              >
+                Ir a registrar esta comida del plan
+              </button>
+            </div>
+          )}
+
+          {ultimoAlimento && onIrRegistroComida && !ultimoPlanRegistro && (
             <div className="cd-asistente-sugerido mb-2">
               <p className="mb-1">
                 <strong>Sugerencia:</strong> {ultimoAlimento.descripcion}
@@ -232,7 +271,7 @@ export default function AsistenteGemini({
               <button
                 type="button"
                 className="cd-btn cd-btn--primary cd-btn--sm"
-                onClick={() => onAgregarEstimacion(ultimoAlimento)}
+                onClick={() => onIrRegistroComida({ tipo: 'estimacion', ...ultimoAlimento })}
               >
                 Usar en registro de comida
               </button>
@@ -247,12 +286,21 @@ export default function AsistenteGemini({
             }}
           >
             <input
+              ref={inputRef}
               className="input cd-asistente-input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onFocus={() => {
+                if (modoFlotante) {
+                  requestAnimationFrame(() => {
+                    inputRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+                  })
+                }
+              }}
               placeholder="Preguntá sobre tu mes, tu día o un alimento…"
               disabled={cargando || !datosListos}
               autoComplete="off"
+              enterKeyHint="send"
             />
             <button
               type="submit"

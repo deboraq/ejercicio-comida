@@ -64,18 +64,41 @@ export default function AsistenteIaFlotante() {
 
   const ajustesAdmin = puedeConfigurarAsistenteGemini(profile)
 
-  const onAgregarEstimacion = (est) => {
-    if (!est?.descripcion) return
+  const onIrRegistroComida = (payload) => {
+    if (!payload) return
     setAbierto(false)
+    if (payload.tipo === 'plan' || payload.textoPlan) {
+      const notas =
+        payload.notas ||
+        [
+          'Plan',
+          payload.dia_plan ? `Día ${payload.dia_plan}` : '',
+          payload.momento,
+          payload.opcion ? `Opción ${payload.opcion}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      navigate('/comida', {
+        state: {
+          planPrefill: {
+            momento: payload.momento || 'Snack',
+            textoPlan: payload.textoPlan,
+            notas,
+          },
+        },
+      })
+      return
+    }
+    if (!payload.descripcion) return
     navigate('/comida', {
       state: {
         asistentePrefill: {
-          descripcion: est.descripcion,
-          calorias: est.calorias,
-          proteinas: est.proteinas,
-          carbohidratos: est.carbohidratos,
-          grasas: est.grasas,
-          porcion: est.porcion,
+          descripcion: payload.descripcion,
+          calorias: payload.calorias,
+          proteinas: payload.proteinas,
+          carbohidratos: payload.carbohidratos,
+          grasas: payload.grasas,
+          porcion: payload.porcion,
         },
       },
     })
@@ -91,10 +114,11 @@ export default function AsistenteIaFlotante() {
             aria-label="Cerrar asistente"
             onClick={() => setAbierto(false)}
           />
-          <div className="app-ia-float-panel" role="dialog" aria-label="Asistente IA">
+          <div className="app-ia-float-panel is-centered-mobile" role="dialog" aria-label="Asistente IA">
             <AsistenteGemini
               key={user.id}
               modoFlotante
+              flotanteAbierto={abierto}
               onCerrar={() => setAbierto(false)}
               config={config}
               comida={comida}
@@ -106,7 +130,7 @@ export default function AsistenteIaFlotante() {
               rutinas={rutinas}
               rutinaActivaId={rutinaActivaId}
               rutinaPesos={rutinaPesos}
-              onAgregarEstimacion={onAgregarEstimacion}
+              onIrRegistroComida={onIrRegistroComida}
               ajustesAsistenteAdmin={ajustesAdmin}
               datosListos={datosListos}
             />
