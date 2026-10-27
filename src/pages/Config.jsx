@@ -127,7 +127,7 @@ export default function Config() {
     planMes1Origen: 'guia',
     geminiApiKey: '',
     geminiHabilitado: true,
-    geminiModelo: 'gemini-2.0-flash',
+    geminiModelo: 'gemini-2.5-flash-lite',
   })
   const [, setPlanPropio] = useStorage('planPropio', { inactivo: true, dias: {} })
 

@@ -48,7 +48,7 @@ export default async function handler(req, res) {
 
   try {
     const result = await ejecutarConsultaGemini(geminiKey, {
-      modelo: modelo || process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+      modelo: modelo || process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite',
       pregunta: String(pregunta),
       contexto: contexto || {},
       historial: Array.isArray(historial) ? historial : [],

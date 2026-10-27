@@ -22,7 +22,7 @@ function sumMacrosRegistros(lista) {
 function resumenComidaDia(registros, fecha) {
   const delDia = (registros || []).filter((r) => fechaSoloDia(r.fecha) === fecha)
   const tot = sumMacrosRegistros(delDia)
-  const lineas = delDia.slice(0, 40).map((r) => ({
+  const lineas = delDia.slice(0, 18).map((r) => ({
     momento: r.comida,
     descripcion: r.descripcion,
     kcal: Math.round(num(r.calorias)),
@@ -43,7 +43,7 @@ function resumenComidaDia(registros, fecha) {
  */
 export function buildAsistenteContexto({ config = {}, comida = [], ejercicios = [], pregunta = '', fechaRef }) {
   const hoy = fechaSoloDia(fechaRef) || fechaToISO(new Date())
-  const dias = getUltimosNDias(7)
+  const dias = getUltimosNDias(5)
 
   const resumenPorDia = dias.map((f) => {
     const r = resumenComidaDia(comida, f)
@@ -63,7 +63,7 @@ export function buildAsistenteContexto({ config = {}, comida = [], ejercicios = 
   })
   const pesoKg = num(config.pesoKg) || 70
   let kcalEjercicioSemana = 0
-  const ejerciciosRecientes = ejerciciosSemana.slice(0, 25).map((e) => {
+  const ejerciciosRecientes = ejerciciosSemana.slice(0, 10).map((e) => {
     const kcal = caloriasEjercicioRegistro(e, pesoKg)
     kcalEjercicioSemana += kcal
     return {
