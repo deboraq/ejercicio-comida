@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useMyProfile } from '../hooks/useMyProfile'
@@ -24,6 +25,8 @@ import { normalizarPesoHistorial } from '../utils/pesoStorage'
 import { normalizarMedidasHistorial } from '../utils/medidasStorage'
 import { asArray } from '../hooks/useLocalStorage'
 import { numeroFlexibleO } from '../utils/comidaLineItems'
+import { planMes1TieneInicio } from '../utils/planMes1'
+import { configConPlanBibliotecaActivo } from '../utils/planesNutricion'
 
 const LABEL_TIPO_CONSEJO = {
   nutricion: 'Nutrición',
@@ -169,6 +172,8 @@ export default function Inicio() {
   const [historialPesoRaw] = useStorage('pesoHistorial', [])
   const [historialMedidasRaw] = useStorage('medidasHistorial', [])
   const [configRaw] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
+  const [planesNutricion] = useStorage('planesNutricion', [])
+  const [planNutricionActivoId] = useStorage('planNutricionActivoId', '')
 
   const ejercicios = asArray(ejerciciosRaw)
   const comida = asArray(comidaRaw)
@@ -187,6 +192,7 @@ export default function Inicio() {
   const [mesModalAbierto, setMesModalAbierto] = useState(false)
   const [mesCalendario, setMesCalendario] = useState(() => hoy.slice(0, 7))
   const [barrasAnimadas, setBarrasAnimadas] = useState(false)
+  const [kpiDetalleAbierto, setKpiDetalleAbierto] = useState(false)
 
   const diasSemana = useMemo(() => getSemanaDe(anclaSemana), [anclaSemana])
 
@@ -277,6 +283,7 @@ export default function Inicio() {
   const metaCarb = Number(config?.metaCarbohidratos) || 0
   const metaGra = Number(config?.metaGrasa) || 0
   const metaQuemadas = Number(config?.metaCaloriasQuemadas) || 0
+  const faltanMetasDiarias = metaKcal <= 0 || metaPro <= 0
   const faltanKcal = metaKcal > 0 ? Math.max(0, Math.round(metaKcal - caloriasConsumidasDia)) : null
   const pctKcal = pctMeta(caloriasConsumidasDia, metaKcal)
   const pctPro = pctMeta(proteinasDia, metaPro)
@@ -365,7 +372,45 @@ export default function Inicio() {
   const numEjerciciosDia =
     ejerciciosDelDia.length + registrosRutina.filter((r) => fechaSoloDia(r.fecha) === diaEnVista).length
   const suplementosTomados = listaParaMarcar.filter((s) => suplementosDelDia.includes(s.id)).length
+  const suplementosPendientes = useMemo(
+    () => listaParaMarcar.filter((s) => !suplementosDelDia.includes(s.id)),
+    [listaParaMarcar, suplementosDelDia],
+  )
+  const suplementosOrdenados = useMemo(
+    () => [
+      ...suplementosPendientes,
+      ...listaParaMarcar.filter((s) => suplementosDelDia.includes(s.id)),
+    ],
+    [listaParaMarcar, suplementosDelDia, suplementosPendientes],
+  )
+  const suplementosCompletos = suplementosPendientes.length === 0
+  const [supsListaAbierta, setSupsListaAbierta] = useState(true)
+
+  useEffect(() => {
+    setSupsListaAbierta(suplementosPendientes.length > 0)
+  }, [diaEnVista, suplementosPendientes.length])
+
+  useEffect(() => {
+    if (!mesModalAbierto) return undefined
+    const onKey = (e) => {
+      if (e.key === 'Escape') setMesModalAbierto(false)
+    }
+    document.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prev
+    }
+  }, [mesModalAbierto])
+
   const alDiaComidas = comidasDelDia.length > 0
+  const tienePlanComida = useMemo(() => {
+    const planActivoId = planNutricionActivoId || config?.planNutricionId || ''
+    const configPlan = configConPlanBibliotecaActivo(config, planesNutricion, planActivoId)
+    return planMes1TieneInicio(configPlan)
+  }, [config, planesNutricion, planNutricionActivoId])
+  const rutinaHoyUrl = `/rutina?vista=hoy&fecha=${encodeURIComponent(diaEnVista)}&iniciar=1`
 
   const fechaPesoRef = resumenPesoCorporal?.ult?.fecha || resumenMedidas?.ult?.fecha
   const diasDesdeUpdate = diasDesde(fechaPesoRef, hoy)
@@ -438,22 +483,10 @@ export default function Inicio() {
                 </span>
               )}
             </div>
-            <p className="inicio-dash-sub mb-0">
-              Resumen diario de nutrición, gasto calórico y progreso físico.
-            </p>
           </div>
         </header>
 
-        <InicioAccesosSection
-          hoyISO={diaEnVista}
-          ocultarNav={ocultarNav}
-          mostrarProfe={mostrarProfe}
-          mostrarAdmin={mostrarAdmin}
-        />
-
-        <InicioPlanesHoy fechaISO={diaEnVista} />
-
-        <div className="inicio-week-strip">
+        <div className="inicio-week-strip inicio-week-strip--top">
           <div className="inicio-week-toolbar">
             <div className="inicio-week-nav-group">
               <button type="button" className="inicio-week-nav" onClick={() => shiftSemana(-1)} aria-label="Semana anterior">‹</button>
@@ -468,7 +501,10 @@ export default function Inicio() {
                 setMesModalAbierto(true)
               }}
             >
-              Mes completo
+              <span className="inicio-week-mes-btn-full">Mes completo</span>
+              <span className="inicio-week-mes-btn-short" aria-hidden>
+                Mes
+              </span>
             </button>
           </div>
 
@@ -488,7 +524,16 @@ export default function Inicio() {
                   aria-disabled={futuro}
                 >
                   <span className="inicio-week-day-name">
-                    {esHoy ? `HOY • ${DIAS_CORTO[i]}` : DIAS_CORTO[i]}
+                    {esHoy ? (
+                      <>
+                        <span className="inicio-week-day-hoy">HOY</span>
+                        {!sel ? (
+                          <span className="inicio-week-day-abbr">{DIAS_CORTO[i]}</span>
+                        ) : null}
+                      </>
+                    ) : (
+                      DIAS_CORTO[i]
+                    )}
                   </span>
                   <span className="inicio-week-day-num">{d.getDate()}</span>
                   <span className="inicio-week-day-dots" aria-hidden>
@@ -501,7 +546,32 @@ export default function Inicio() {
           </div>
         </div>
 
-        <div className="inicio-kpi-grid">
+        {faltanMetasDiarias && (
+          <div className="inicio-metas-banner" role="status">
+            <p className="inicio-metas-banner-text mb-0">
+              Completá tus metas de kcal y proteína para ver barras y % en Inicio.
+            </p>
+            <Link to="/config#metas-diarias" className="inicio-metas-banner-link">
+              Ir a Config
+            </Link>
+          </div>
+        )}
+
+        <InicioPlanesHoy
+          fechaISO={diaEnVista}
+          accesosSlot={(vistaRapida) => (
+            <InicioAccesosSection
+              hoyISO={diaEnVista}
+              ocultarNav={ocultarNav}
+              mostrarProfe={mostrarProfe}
+              mostrarAdmin={mostrarAdmin}
+              vistaRapida={vistaRapida}
+            />
+          )}
+        />
+
+        <div className="inicio-kpi-block">
+          <div className={`inicio-kpi-grid${kpiDetalleAbierto ? ' is-expanded' : ''}`}>
           <article className="box inicio-kpi-card">
             <div className="inicio-kpi-top">
               <p className="inicio-kpi-label">
@@ -612,14 +682,30 @@ export default function Inicio() {
               {minutosDia}
               <span className="inicio-kpi-meta"> minutos</span>
             </p>
-            <p className="inicio-kpi-hint mb-0">
-              {numEjerciciosDia > 0 ? (
-                <span className="inicio-kpi-ok">● Rutina completada · {numEjerciciosDia} ejercicio{numEjerciciosDia !== 1 ? 's' : ''}</span>
-              ) : (
-                'Sin entrenos este día'
-              )}
-            </p>
+            {numEjerciciosDia > 0 ? (
+              <p className="inicio-kpi-hint mb-0">
+                <span className="inicio-kpi-ok">
+                  ● Rutina completada · {numEjerciciosDia} ejercicio{numEjerciciosDia !== 1 ? 's' : ''}
+                </span>
+              </p>
+            ) : (
+              <div className="inicio-kpi-empty">
+                <p className="inicio-kpi-hint mb-0">Sin entrenos este día.</p>
+                <Link to={rutinaHoyUrl} className="inicio-kpi-empty-btn">
+                  Registrar rutina
+                </Link>
+              </div>
+            )}
           </article>
+          </div>
+          <button
+            type="button"
+            className="inicio-kpi-toggle"
+            aria-expanded={kpiDetalleAbierto}
+            onClick={() => setKpiDetalleAbierto((v) => !v)}
+          >
+            {kpiDetalleAbierto ? 'Ocultar macros y actividad' : 'Ver macros y actividad'}
+          </button>
         </div>
 
         <div className="inicio-dash-grid">
@@ -627,25 +713,27 @@ export default function Inicio() {
             <div className="box inicio-chart-card">
               <div className="inicio-chart-head">
                 <div>
-                  <h2 className="inicio-card-title mb-0">Calorías por día</h2>
-                  <p className="inicio-card-sub mb-0">
-                    Comparación diaria de consumidas (azul) y quemadas (verde)
-                  </p>
+                  <h2 id="inicio-chart-title" className="inicio-card-title mb-0">
+                    Calorías por día
+                  </h2>
                 </div>
                 <p className="inicio-chart-legend mb-0">
                   <span className="swatch swatch--c" /> Consumidas
                   <span className="swatch swatch--q" /> Quemadas
                 </p>
               </div>
-              <div className="inicio-week-chart">
-                {caloriasPorDiaSemana.map((d) => {
+              <div
+                className="inicio-week-chart"
+                role="group"
+                aria-labelledby="inicio-chart-title"
+              >
+                {caloriasPorDiaSemana.map((d, i) => {
                   const pctCal = maxGrafico > 0 ? Math.round((d.cal / maxGrafico) * 100) : 0
                   const pctQuem = maxGrafico > 0 ? Math.round((d.quemadas / maxGrafico) * 100) : 0
                   const sel = d.fecha === diaEnVista
                   const esHoy = d.fecha === hoy
-                  const fechaObj = new Date(`${d.fecha}T12:00:00`)
                   const [, mm, dd] = d.fecha.split('-')
-                  const diaAbbr = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'][fechaObj.getDay()]
+                  const diaAbbr = DIAS_CORTO[i] ?? DIAS_CORTO[0]
                   const hCal = !barrasAnimadas
                     ? '0%'
                     : pctCal > 0
@@ -665,6 +753,8 @@ export default function Inicio() {
                       onClick={() => seleccionarDia(d.fecha)}
                       disabled={esFuturo}
                       aria-disabled={esFuturo}
+                      aria-pressed={sel}
+                      aria-label={`${diaAbbr} ${dd}/${mm}: ${Math.round(d.cal).toLocaleString('es-AR')} kcal consumidas, ${Math.round(d.quemadas).toLocaleString('es-AR')} quemadas${sel ? ', seleccionado' : ''}${esFuturo ? ', no disponible' : ''}`}
                     >
                       <span className="inicio-week-chart-val">
                         {sel && d.cal > 0 ? formatK(d.cal) : '\u00A0'}
@@ -706,13 +796,28 @@ export default function Inicio() {
                   </h2>
                   {alDiaComidas && <span className="inicio-meals-badge">Al día</span>}
                 </div>
-                <Link to="/comida" className="inicio-meals-add">+ Agregar ítem</Link>
+                {comidasAgrupadas.length > 0 ? (
+                  <Link to="/comida" className="inicio-meals-add">
+                    + Agregar ítem
+                  </Link>
+                ) : null}
               </div>
               {comidasAgrupadas.length === 0 ? (
-                <p className="is-size-7 has-text-grey mb-0 mt-3">
-                  Sin comidas registradas este día.{' '}
-                  <Link to="/comida">Registrar ahora</Link>
-                </p>
+                <div className="inicio-empty-state inicio-empty-state--meals">
+                  <p className="inicio-empty-state-title mb-0">Sin comidas este día</p>
+                  <div className="inicio-empty-state-actions">
+                    <Link to="/comida" className="inicio-empty-chip inicio-empty-chip--primary">
+                      Registrar
+                    </Link>
+                    <Link
+                      to="/comida"
+                      state={{ vistaComida: 'plan' }}
+                      className="inicio-empty-chip"
+                    >
+                      {tienePlanComida ? 'Marcar plan' : 'Plan'}
+                    </Link>
+                  </div>
+                </div>
               ) : (
                 <ul className="inicio-meals-list">
                   {comidasAgrupadas.map((g) => {
@@ -794,38 +899,56 @@ export default function Inicio() {
             </div>
 
             {listaParaMarcar.length > 0 && (
-              <div className="box inicio-sups-card">
+              <div className={`box inicio-sups-card${suplementosCompletos ? ' is-complete' : ''}`}>
                 <div className="inicio-sups-head">
                   <div>
                     <h2 className="inicio-card-title mb-0">Suplementos de hoy</h2>
-                    <p className="inicio-card-sub mb-0">Marca los que ya tomaste para no olvidar.</p>
+                    <p className="inicio-card-sub mb-0">
+                      {suplementosCompletos
+                        ? 'Completaste todos los de hoy.'
+                        : `${suplementosPendientes.length} pendiente${suplementosPendientes.length !== 1 ? 's' : ''} · marcá al tomarlos`}
+                    </p>
                   </div>
-                  <span className="inicio-sups-count">
+                  <span
+                    className={`inicio-sups-count${suplementosCompletos ? ' is-complete' : ''}`}
+                  >
                     {suplementosTomados} / {listaParaMarcar.length}
                   </span>
                 </div>
-                <ul className="inicio-sups-list">
-                  {listaParaMarcar.map((s) => {
-                    const tomado = suplementosDelDia.includes(s.id)
-                    return (
-                      <li key={s.id}>
-                        <button
-                          type="button"
-                          className={`inicio-sups-item${tomado ? ' is-done' : ''}`}
-                          onClick={() => toggleSuplementoDia(s.id)}
-                        >
-                          <span className="inicio-sups-check" aria-hidden>{tomado ? '✓' : ''}</span>
-                          <span className="inicio-sups-name">{s.label}</span>
-                          {tomado ? (
-                            <span className="inicio-sups-ok" aria-hidden>✓</span>
-                          ) : (
-                            <span className="inicio-sups-pend">Pendiente</span>
-                          )}
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
+                {supsListaAbierta ? (
+                  <ul className="inicio-sups-list">
+                    {suplementosOrdenados.map((s) => {
+                      const tomado = suplementosDelDia.includes(s.id)
+                      return (
+                        <li key={s.id}>
+                          <button
+                            type="button"
+                            className={`inicio-sups-item${tomado ? ' is-done' : ''}`}
+                            onClick={() => toggleSuplementoDia(s.id)}
+                          >
+                            <span className="inicio-sups-check" aria-hidden>{tomado ? '✓' : ''}</span>
+                            <span className="inicio-sups-name">{s.label}</span>
+                            {tomado ? (
+                              <span className="inicio-sups-ok" aria-hidden>✓</span>
+                            ) : (
+                              <span className="inicio-sups-pend">Pendiente</span>
+                            )}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : null}
+                {suplementosCompletos && (
+                  <button
+                    type="button"
+                    className="inicio-sups-toggle"
+                    aria-expanded={supsListaAbierta}
+                    onClick={() => setSupsListaAbierta((v) => !v)}
+                  >
+                    {supsListaAbierta ? 'Ocultar lista' : 'Ver suplementos'}
+                  </button>
+                )}
               </div>
             )}
 
@@ -847,18 +970,26 @@ export default function Inicio() {
         </div>
       </div>
 
-      {mesModalAbierto && (
-        <div className="inicio-mes-modal" role="dialog" aria-modal="true" aria-label="Calendario mensual">
+      {mesModalAbierto && typeof document !== 'undefined'
+        ? createPortal(
+        <div
+          className="inicio-mes-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="inicio-mes-modal-title"
+        >
           <button type="button" className="inicio-mes-backdrop" aria-label="Cerrar" onClick={() => setMesModalAbierto(false)} />
           <div className="inicio-mes-panel box">
             <div className="inicio-mes-panel-head">
-              <h2 className="title is-6 mb-0">Calendario</h2>
+              <h2 id="inicio-mes-modal-title" className="title is-6 mb-0">
+                Calendario
+              </h2>
               <button type="button" className="delete" aria-label="Cerrar" onClick={() => setMesModalAbierto(false)} />
             </div>
-            <div className="cal-mes-nav cal-mes-nav--modal mb-3">
+            <div className="cal-mes-nav cal-mes-nav--modal inicio-mes-nav">
               <button
                 type="button"
-                className="button is-small is-light cal-mes-nav-prev"
+                className="button is-small cal-mes-nav-prev inicio-mes-nav-arrow"
                 aria-label="Mes anterior"
                 onClick={() => {
                   const [y, m] = mesCalendario.split('-').map(Number)
@@ -868,7 +999,7 @@ export default function Inicio() {
               >
                 ←
               </button>
-              <span className="cal-mes-nav-mes is-size-6 has-text-weight-medium">
+              <span className="cal-mes-nav-mes is-size-7 has-text-weight-semibold">
                 {(() => {
                   const [y, m] = mesCalendario.split('-').map(Number)
                   return new Date(y, m - 1, 1).toLocaleDateString('es', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase())
@@ -876,7 +1007,7 @@ export default function Inicio() {
               </span>
               <button
                 type="button"
-                className="button is-small is-light cal-mes-nav-next"
+                className="button is-small cal-mes-nav-next inicio-mes-nav-arrow"
                 aria-label="Mes siguiente"
                 onClick={() => {
                   const [y, m] = mesCalendario.split('-').map(Number)
@@ -895,12 +1026,24 @@ export default function Inicio() {
                 if (celda.vacio) return <div key={`v-${idx}`} className="app-calendar-empty" />
                 const sel = celda.fecha === diaEnVista
                 const act = fechasConComida.has(celda.fecha) || fechasConEjercicio.has(celda.fecha)
+                const futuroMes = celda.fecha > hoy
+                const [yC, mC, dC] = celda.fecha.split('-').map(Number)
+                const fechaLegible = new Date(yC, mC - 1, dC).toLocaleDateString('es-AR', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                })
                 return (
                   <button
                     key={celda.fecha}
                     type="button"
                     className={`button is-small has-text-weight-semibold app-calendar-day ${sel ? 'is-link is-selected' : act ? 'has-activity' : 'is-light'}`}
+                    disabled={futuroMes}
+                    aria-disabled={futuroMes}
+                    aria-pressed={sel}
+                    aria-label={`${fechaLegible}${sel ? ', día en vista' : ''}${act ? ', con actividad' : ''}${futuroMes ? ', no disponible' : ''}`}
                     onClick={() => {
+                      if (futuroMes) return
                       seleccionarDia(celda.fecha)
                       setMesModalAbierto(false)
                     }}
@@ -917,8 +1060,10 @@ export default function Inicio() {
               })}
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body,
+          )
+        : null}
     </section>
   )
 }

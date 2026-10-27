@@ -1,4 +1,5 @@
 import { normalizeStorageValue } from '../hooks/useLocalStorage'
+import { normalizeInicioAccesosFavoritos } from './inicioAccesosFavoritos'
 import { mergeCloudAndLocal } from './storageMerge'
 import { isSessionLostUnexpectedly } from './authSessionUi'
 
@@ -174,7 +175,27 @@ function readJsonKey(storageKey, fallback = null) {
 /**
  * Lee solo localStorage con prefijo de usuario (sin mezclar cuentas en el mismo navegador).
  */
+function persistInicioAccesosFavoritosLocal(storageKey, raw) {
+  const normalized = normalizeInicioAccesosFavoritos(raw)
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(normalized))
+  } catch {
+    /* noop */
+  }
+  return normalized
+}
+
 export function resolveUserLocalStorage(logicalKey, userId, initialValue, mergeArrays) {
+  if (logicalKey === 'inicioAccesosFavoritos') {
+    if (!userId) {
+      migrateUnscopedLegacyToGuest()
+      const guestKey = scopedStorageKey(logicalKey, null)
+      return persistInicioAccesosFavoritosLocal(guestKey, readJsonKey(guestKey, null))
+    }
+    const scopedKey = scopedStorageKey(logicalKey, userId)
+    return persistInicioAccesosFavoritosLocal(scopedKey, readJsonKey(scopedKey, null))
+  }
+
   if (!userId) {
     migrateUnscopedLegacyToGuest()
     const guestKey = scopedStorageKey(logicalKey, null)

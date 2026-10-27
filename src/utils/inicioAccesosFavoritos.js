@@ -5,10 +5,41 @@
 
 export const INICIO_ACCESOS_SUGERIDOS = [
   'comida-plan',
-  'rutina-plan',
+  'rutina-hoy',
   'comida-hoy',
   'config',
 ]
+
+/** @typedef {{ customized: boolean, ids: string[] | null }} InicioAccesosFavoritosStored */
+
+export const INICIO_ACCESOS_FAVORITOS_INITIAL = Object.freeze({
+  customized: false,
+  ids: null,
+})
+
+/** Normaliza local/nube (arrays legacy o objeto nuevo). */
+export function normalizeInicioAccesosFavoritos(raw) {
+  if (raw == null) {
+    return { customized: false, ids: null }
+  }
+  if (Array.isArray(raw)) {
+    return { customized: true, ids: raw.filter((id) => typeof id === 'string' && id) }
+  }
+  if (typeof raw === 'object') {
+    if (raw.customized) {
+      const ids = Array.isArray(raw.ids) ? raw.ids.filter((id) => typeof id === 'string' && id) : []
+      return { customized: true, ids }
+    }
+    return { customized: false, ids: null }
+  }
+  return { customized: false, ids: null }
+}
+
+function idsAccesosEfectivos(stored) {
+  const norm = normalizeInicioAccesosFavoritos(stored)
+  if (norm.customized) return norm.ids ?? []
+  return [...INICIO_ACCESOS_SUGERIDOS]
+}
 
 /** @typedef {{ id: string, label: string, desc?: string, icon: string, tone: string, navModule?: string, requiresProfe?: boolean, requiresAdmin?: boolean, pathname: string, search?: string, hash?: string, state?: object }} InicioAccesoDef */
 
@@ -45,8 +76,8 @@ export const INICIO_ACCESOS_CATALOGO = [
   },
   {
     id: 'rutina-hoy',
-    label: 'Rutina de hoy',
-    desc: 'Registrar entrenamiento',
+    label: 'Rutina',
+    desc: 'Marcar entrenamiento y abrir la rutina',
     icon: '🏋️',
     tone: 'rutina',
     navModule: 'rutina',
@@ -225,27 +256,22 @@ export function accesosInicioVisibles(
     mostrarAdmin,
   })
   const permitidos = new Set(catalogo.map((a) => a.id))
-  const base =
-    Array.isArray(idsGuardados) && idsGuardados.length
-      ? idsGuardados
-      : INICIO_ACCESOS_SUGERIDOS
+  const base = idsAccesosEfectivos(idsGuardados)
   return resolverAccesosInicio(base.filter((id) => permitidos.has(id)))
 }
 
 export function esAccesoInicioFavorito(favoritos, id) {
   if (!id) return false
-  const list = Array.isArray(favoritos) ? favoritos : []
-  if (list.length) return list.includes(id)
-  return INICIO_ACCESOS_SUGERIDOS.includes(id)
+  return idsAccesosEfectivos(favoritos).includes(id)
 }
 
 export function toggleAccesoInicioFavorito(setFavoritos, id) {
   if (!id) return
   setFavoritos((prev) => {
-    const list =
-      Array.isArray(prev) && prev.length ? [...prev] : [...INICIO_ACCESOS_SUGERIDOS]
-    if (list.includes(id)) return list.filter((x) => x !== id)
-    return [...list, id]
+    const norm = normalizeInicioAccesosFavoritos(prev)
+    const list = norm.customized ? [...(norm.ids ?? [])] : [...INICIO_ACCESOS_SUGERIDOS]
+    const next = list.includes(id) ? list.filter((x) => x !== id) : [...list, id]
+    return { customized: true, ids: next }
   })
 }
 

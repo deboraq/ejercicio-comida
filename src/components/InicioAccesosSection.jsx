@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useStorage } from '../hooks/useStorage'
 import {
   INICIO_ACCESOS_CATALOGO,
+  INICIO_ACCESOS_FAVORITOS_INITIAL,
   accesoInicioTone,
   accesosInicioVisibles,
   buildAccesoInicioLink,
@@ -16,13 +17,21 @@ function chipClass(id, extra = '') {
   return `inicio-acceso-chip inicio-acceso-chip--tone-${tone}${extra ? ` ${extra}` : ''}`
 }
 
+/**
+ * @param {object} props
+ * @param {Record<string, { subtitle: string, onOpen: () => void, isActive?: boolean, displayLabel?: string }>} [props.vistaRapida]
+ */
 export default function InicioAccesosSection({
   hoyISO,
   ocultarNav,
   mostrarProfe,
   mostrarAdmin,
+  vistaRapida = {},
 }) {
-  const [favoritos, setFavoritos] = useStorage('inicioAccesosFavoritos', [])
+  const [favoritos, setFavoritos] = useStorage(
+    'inicioAccesosFavoritos',
+    INICIO_ACCESOS_FAVORITOS_INITIAL,
+  )
   const [editando, setEditando] = useState(false)
 
   const filtroCtx = useMemo(
@@ -59,6 +68,31 @@ export default function InicioAccesosSection({
       {accesos.length > 0 ? (
         <div className="inicio-accesos-chips inicio-accesos-chips--favoritos" role="list">
           {accesos.map((item) => {
+            const rapido = vistaRapida[item.id]
+            if (rapido?.subtitle) {
+              const esRutinaUnificada =
+                (item.id === 'rutina-hoy' || item.id === 'rutina-plan') && rapido.displayLabel
+              const chipLabel = rapido.displayLabel || item.label
+              const chipIcon = esRutinaUnificada ? '🏋️' : item.icon
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={chipClass(item.id, `inicio-acceso-chip--vista-rapida${rapido.isActive ? ' is-active' : ''}`)}
+                  role="listitem"
+                  onClick={rapido.onOpen}
+                  aria-expanded={Boolean(rapido.isActive)}
+                >
+                  <span className="inicio-acceso-chip-ico" aria-hidden>
+                    {chipIcon}
+                  </span>
+                  <span className="inicio-acceso-chip-body">
+                    <span className="inicio-acceso-chip-label">{chipLabel}</span>
+                    <span className="inicio-acceso-chip-sub">{rapido.subtitle}</span>
+                  </span>
+                </button>
+              )
+            }
             const { to, state } = buildAccesoInicioLink(item, { hoyISO })
             return (
               <Link
@@ -97,7 +131,11 @@ export default function InicioAccesosSection({
                     className={chipClass(item.id, on ? 'is-active' : '')}
                     aria-label={on ? `Quitar ${item.label}` : `Agregar ${item.label}`}
                     aria-pressed={on}
-                    onClick={() => toggleAccesoInicioFavorito(setFavoritos, item.id)}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      toggleAccesoInicioFavorito(setFavoritos, item.id)
+                    }}
                   >
                     <span className="inicio-acceso-picker-star" aria-hidden>
                       {on ? '★' : '☆'}

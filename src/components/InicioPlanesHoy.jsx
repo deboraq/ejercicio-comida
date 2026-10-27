@@ -85,11 +85,13 @@ function subtituloPlanComida(planComida) {
   return 'Ver menú'
 }
 
+/** @typedef {{ subtitle: string, onOpen: () => void, isActive?: boolean, displayLabel?: string }} VistaRapidaAcceso */
+
 /**
  * Botones compactos en Inicio; al tocar, tarjeta/modal con resumen del día.
- * @param {{ fechaISO: string }} props
+ * @param {{ fechaISO: string, accesosSlot?: (vistaRapida: Record<string, VistaRapidaAcceso>) => import('react').ReactNode }} props
  */
-export default function InicioPlanesHoy({ fechaISO }) {
+export default function InicioPlanesHoy({ fechaISO, accesosSlot }) {
   const [config] = useStorage('config', {})
   const [planesNutricion] = useStorage('planesNutricion', [])
   const [planNutricionActivoId] = useStorage('planNutricionActivoId', '')
@@ -137,11 +139,43 @@ export default function InicioPlanesHoy({ fechaISO }) {
   const tienePlanComidaVista = planComida.tipo !== 'sin-plan'
   const tieneRutinaVista = rutinaHoy.tipo !== 'sin-rutina'
 
-  const abrirPanel = (id) => {
+  const abrirPanel = (id, opts) => {
     if (id === 'comida' && !tienePlanComidaVista) return
     if (id === 'rutina' && !tieneRutinaVista) return
-    setPanel((prev) => (prev === id ? null : id))
+    if (opts?.forceOpen) setPanel(id)
+    else setPanel((prev) => (prev === id ? null : id))
   }
+
+  const vistaRapidaAccesos = useMemo(() => {
+    /** @type {Record<string, VistaRapidaAcceso>} */
+    const map = {}
+    if (tienePlanComidaVista) {
+      const entry = {
+        subtitle: subtituloPlanComida(planComida),
+        onOpen: () => abrirPanel('comida', { forceOpen: true }),
+        isActive: panel === 'comida',
+      }
+      map['comida-plan'] = entry
+    }
+    if (tieneRutinaVista) {
+      const sub = subtituloRutina(rutinaHoy)
+      const entry = {
+        subtitle: sub,
+        displayLabel: 'Rutina',
+        onOpen: () => abrirPanel('rutina', { forceOpen: true }),
+        isActive: panel === 'rutina',
+      }
+      map['rutina-hoy'] = entry
+      map['rutina-plan'] = entry
+    }
+    return map
+  }, [
+    tienePlanComidaVista,
+    tieneRutinaVista,
+    planComida,
+    rutinaHoy,
+    panel,
+  ])
 
   useEffect(() => {
     if (!panel) return undefined
@@ -433,12 +467,23 @@ export default function InicioPlanesHoy({ fechaISO }) {
             )}
 
             {panel === 'rutina' && (
-              <RutinaMarcadoRapido
-                fechaISO={fechaRutinaModal}
-                diaIndice={diaRutinaModalIdx}
-                onDiaIndiceChange={setDiaRutinaModalIdx}
-                onAntesIrRutinaCompleta={cerrarPanel}
-              />
+              <>
+                <RutinaMarcadoRapido
+                  fechaISO={fechaRutinaModal}
+                  diaIndice={diaRutinaModalIdx}
+                  onDiaIndiceChange={setDiaRutinaModalIdx}
+                  onAntesIrRutinaCompleta={cerrarPanel}
+                />
+                <div className="inicio-plan-hoy-actions">
+                  <Link
+                    to="/rutina?vista=gym&gym=configurar"
+                    className="button is-link is-small"
+                    onClick={cerrarPanel}
+                  >
+                    Armar rutina
+                  </Link>
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -452,8 +497,20 @@ export default function InicioPlanesHoy({ fechaISO }) {
         ? 'Rutina'
         : 'Plan comida'
 
+  const modalPortal =
+    typeof document !== 'undefined' && panel ? createPortal(sheetModal, document.body) : null
+
+  if (accesosSlot) {
+    return (
+      <>
+        {accesosSlot(vistaRapidaAccesos)}
+        {modalPortal}
+      </>
+    )
+  }
+
   if (!tienePlanComidaVista && !tieneRutinaVista) {
-    return typeof document !== 'undefined' && panel ? createPortal(sheetModal, document.body) : null
+    return modalPortal || null
   }
 
   return (
@@ -502,7 +559,7 @@ export default function InicioPlanesHoy({ fechaISO }) {
         </div>
       </section>
 
-      {typeof document !== 'undefined' && panel ? createPortal(sheetModal, document.body) : null}
+      {modalPortal}
     </>
   )
 }

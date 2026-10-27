@@ -1,4 +1,8 @@
 import { mergeStorageArrays } from '../hooks/useLocalStorage'
+import {
+  INICIO_ACCESOS_FAVORITOS_INITIAL,
+  normalizeInicioAccesosFavoritos,
+} from './inicioAccesosFavoritos'
 import { normalizarHidratacionPorDia, mergeHidratacionPorDia } from './hidratacionStorage'
 import { dedupeRegistrosSync } from './storageRecordDedupe'
 import { dedupeRegistrosPorPlanRef, slotKeyDesdeCheckKey } from './planRegistroSync'
@@ -122,8 +126,20 @@ function mergeArraysForKey(key, localArr, cloudArr, preferCloud) {
 
 const ARRAY_KEYS_DEDUPE = new Set(['ejercicios', 'comida', 'rutinaPesos'])
 
+function mergeInicioAccesosFavoritos(localNorm, fromCloud) {
+  const local = normalizeInicioAccesosFavoritos(localNorm)
+  const cloud = normalizeInicioAccesosFavoritos(fromCloud)
+  if (local.customized) return local
+  if (cloud.customized) return cloud
+  return { ...INICIO_ACCESOS_FAVORITOS_INITIAL }
+}
+
 /** Une local + nube según tipo de dato; la nube manda si el local está vacío o es el valor inicial. */
 export function mergeCloudAndLocal(key, localNorm, fromCloud, initial, preferCloud = false) {
+  if (key === 'inicioAccesosFavoritos') {
+    return mergeInicioAccesosFavoritos(localNorm, fromCloud)
+  }
+
   if (Array.isArray(initial)) {
     const localArr = Array.isArray(localNorm) ? localNorm : []
     const cloudArr = Array.isArray(fromCloud) ? fromCloud : []

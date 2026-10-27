@@ -27,8 +27,17 @@ import {
 import { normalizarPlanPropioEnStorage } from '../utils/planPropio.js'
 import { migrarEstadoLegacyAMes1, normalizarEstadoMultiplan } from '../utils/planEstadoStorage.js'
 import { normalizarBibliotecaPlanesNutricion } from '../utils/planesNutricion.js'
+import { normalizeInicioAccesosFavoritos } from '../utils/inicioAccesosFavoritos.js'
 
 function mergeLocalWithLive(key, fromLs, fromLive, initial) {
+  if (key === 'inicioAccesosFavoritos') {
+    const ls = normalizeInicioAccesosFavoritos(fromLs)
+    const live = normalizeInicioAccesosFavoritos(fromLive)
+    if (live.customized) return live
+    if (ls.customized) return ls
+    return live
+  }
+
   if (Array.isArray(initial)) {
     if (isStorageInitial(fromLive, initial)) return fromLs
     if (key === 'suplementos') {
@@ -62,6 +71,9 @@ function normalizeStoredValue(key, normalizedRaw, initial) {
   if (key === 'hidratacionDia' && normalizedRaw && typeof normalizedRaw === 'object') {
     return normalizarHidratacionPorDia(normalizedRaw)
   }
+  if (key === 'inicioAccesosFavoritos') {
+    return normalizeInicioAccesosFavoritos(normalizedRaw)
+  }
   return normalizedRaw
 }
 
@@ -71,10 +83,11 @@ function resolveMergedValue(userId, key, initial, cloudMap, localValRef, preferC
   const localNorm = preferCloud
     ? fromLs
     : mergeLocalWithLive(key, fromLs, fromLive, initial)
-  const fromCloud = normalizeStorageValue(
-    cloudMap[key] != null ? cloudMap[key] : null,
-    initial,
-  )
+  const fromCloudRaw = cloudMap[key] != null ? cloudMap[key] : null
+  const fromCloud =
+    key === 'inicioAccesosFavoritos'
+      ? normalizeInicioAccesosFavoritos(fromCloudRaw)
+      : normalizeStorageValue(fromCloudRaw, initial)
   const cloudRowExists = Object.prototype.hasOwnProperty.call(cloudMap, key)
 
   let resolved = mergeCloudAndLocal(key, localNorm, fromCloud, initial, preferCloud)
@@ -88,10 +101,15 @@ function resolveMergedValue(userId, key, initial, cloudMap, localValRef, preferC
     && !Array.isArray(initial)
     && !isStorageInitial(fromLive, initial)
     && key !== 'hidratacionDia'
+    && key !== 'inicioAccesosFavoritos'
   ) {
     const base = resolved && typeof resolved === 'object' && !Array.isArray(resolved) ? resolved : initial
     const live = fromLive && typeof fromLive === 'object' && !Array.isArray(fromLive) ? fromLive : initial
     resolved = { ...base, ...live }
+  }
+
+  if (key === 'inicioAccesosFavoritos') {
+    resolved = normalizeInicioAccesosFavoritos(resolved)
   }
 
   resolved = postProcessStorageKey(key, resolved, initial)
@@ -162,7 +180,10 @@ export function useStorage(key, initialValue) {
     return cloudVal ?? localVal
   }, [user, isConfigured, cloudReady, localVal, cloudVal])
 
-  const safeValue = normalizeStorageValue(value, initial)
+  const safeValue =
+    key === 'inicioAccesosFavoritos'
+      ? normalizeInicioAccesosFavoritos(value)
+      : normalizeStorageValue(value, initial)
   valueRef.current = safeValue
 
   useEffect(() => {
@@ -206,10 +227,11 @@ export function useStorage(key, initialValue) {
 
       const pendingLocal = hasPendingCloudWrite(user.id, key)
       const cloudHasRow = Object.prototype.hasOwnProperty.call(cloudMap, key)
-      const fromCloudPreview = normalizeStorageValue(
-        cloudMap[key] != null ? cloudMap[key] : null,
-        initial,
-      )
+      const fromCloudPreviewRaw = cloudMap[key] != null ? cloudMap[key] : null
+      const fromCloudPreview =
+        key === 'inicioAccesosFavoritos'
+          ? normalizeInicioAccesosFavoritos(fromCloudPreviewRaw)
+          : normalizeStorageValue(fromCloudPreviewRaw, initial)
       const pullRemote =
         !alreadyHydrated
         && didLastCloudFetchSucceed(user.id)
@@ -269,7 +291,10 @@ export function useStorage(key, initialValue) {
         typeof nextValueOrFn === 'function'
           ? nextValueOrFn(valueRef.current)
           : nextValueOrFn
-      const normalizedRaw = normalizeStorageValue(next, initial)
+      const normalizedRaw =
+        key === 'inicioAccesosFavoritos'
+          ? normalizeInicioAccesosFavoritos(next)
+          : normalizeStorageValue(next, initial)
       const normalized = normalizeStoredValue(key, normalizedRaw, initial)
       const normalizedFinal = postProcessStorageKey(key, normalized, initial)
       setLocalVal(normalizedFinal)
