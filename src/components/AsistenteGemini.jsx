@@ -5,6 +5,7 @@ import { consultarGemini } from '../utils/geminiAsistente'
 import { fechaToISO } from '../utils/calorias'
 import { useAuth } from '../context/AuthContext'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { flushPendingCloudWrites } from '../utils/offlineDataSync'
 
 const EJEMPLOS = [
   'Estoy en el día 3 del plan: ¿qué comida y qué gym toca?',
@@ -121,6 +122,7 @@ export default function AsistenteGemini({
     try {
       let accessToken = null
       if (user && isSupabaseConfigured()) {
+        await flushPendingCloudWrites().catch(() => {})
         const { data } = await supabase.auth.getSession()
         accessToken = data.session?.access_token ?? null
       }
@@ -134,6 +136,8 @@ export default function AsistenteGemini({
         pregunta,
         contexto,
         historial,
+        fechaRef: hoy,
+        comidaRegistrosCliente: Array.isArray(comida) ? comida.length : 0,
       })
       setMensajes((prev) => [...prev, { role: 'model', text: res.visible }])
       if (res.planRegistroSugerido) {

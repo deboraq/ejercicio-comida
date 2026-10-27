@@ -34,6 +34,9 @@ async function consultarGeminiServidor(accessToken, params) {
     body: JSON.stringify({
       pregunta: params.pregunta,
       historial: params.historial,
+      fechaRef: params.fechaRef || params.contexto?.fecha_hoy || null,
+      comidaRegistrosCliente:
+        typeof params.comidaRegistrosCliente === 'number' ? params.comidaRegistrosCliente : null,
     }),
   })
   const data = await res.json().catch(() => ({}))

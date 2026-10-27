@@ -82,7 +82,9 @@ export default async function handler(req, res) {
   }
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
-  const { pregunta, historial } = body
+  const { pregunta, historial, fechaRef: fechaRefBody } = body
+  const fechaRef =
+    fechaRefBody && /^\d{4}-\d{2}-\d{2}$/.test(String(fechaRefBody)) ? String(fechaRefBody) : null
   if (!pregunta || !String(pregunta).trim()) {
     return res.status(400).json({ error: 'Falta la pregunta.' })
   }
@@ -92,7 +94,7 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Supabase no configurado en el servidor.' })
   }
 
-  const { map, error: userDataError } = await fetchUserDataForAsistente(
+  let { map, error: userDataError } = await fetchUserDataForAsistente(
     env,
     sesion.token,
     sesion.user.id,
@@ -103,11 +105,27 @@ export default async function handler(req, res) {
     })
   }
 
+  const comidaRegistrosCliente = Number(body.comidaRegistrosCliente)
+  const comidaEnNube = (() => {
+    try {
+      const raw = map?.comida
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+      return Array.isArray(parsed) ? parsed.length : 0
+    } catch {
+      return 0
+    }
+  })()
+  if (comidaRegistrosCliente > 0 && comidaEnNube === 0) {
+    await new Promise((r) => setTimeout(r, 450))
+    const retry = await fetchUserDataForAsistente(env, sesion.token, sesion.user.id)
+    if (!retry.error) map = retry.map
+  }
+
   const preguntaStr = String(pregunta).trim()
 
   let contexto
   try {
-    contexto = buildContextoDesdeUserData(map, preguntaStr)
+    contexto = buildContextoDesdeUserData(map, preguntaStr, fechaRef)
   } catch (ctxErr) {
     console.error('asistente contexto:', ctxErr)
     return res.status(500).json({
