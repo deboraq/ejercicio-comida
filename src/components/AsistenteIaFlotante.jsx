@@ -4,6 +4,7 @@ import { useMyProfile } from '../hooks/useMyProfile'
 import { useStorage } from '../hooks/useStorage'
 import { puedeUsarConsultasGemini, puedeConfigurarAsistenteGemini } from '../utils/asistenteGeminiAccess'
 import { PLAN_ESTADO_MULTIPLAN_VACIO } from '../utils/planEstadoStorage'
+import { mergeRutinasUsuario } from '../utils/asistenteRutinas'
 import AsistenteGemini from './AsistenteGemini'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
@@ -11,10 +12,22 @@ import { useState } from 'react'
 function IconoRobot() {
   return (
     <svg className="app-ia-fab-icon" viewBox="0 0 24 24" aria-hidden focusable="false">
-      <path
-        fill="currentColor"
-        d="M12 2a2 2 0 0 1 2 2v1h3a2 2 0 0 1 2 2v3.5a1.5 1.5 0 0 1-1.5 1.5H17v7.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 19.5V12H5.5A1.5 1.5 0 0 1 4 10.5V7a2 2 0 0 1 2-2h3V4a2 2 0 0 1 2-2Zm-4 7v7.5h8V9H8Zm1.5 2.25a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5Zm5 0a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5ZM8 4.5V6h8V4.5a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0-.5.5Z"
-      />
+      <circle cx="12" cy="2.6" r="1.45" fill="currentColor" />
+      <rect x="11.1" y="3.85" width="1.8" height="2.35" rx="0.55" fill="currentColor" />
+      <circle cx="4.1" cy="11.4" r="2.15" fill="currentColor" />
+      <circle cx="19.9" cy="11.4" r="2.15" fill="currentColor" />
+      <rect x="5.25" y="6" width="13.5" height="11.5" rx="2.6" fill="currentColor" />
+      <rect x="7.1" y="8.1" width="9.8" height="7.4" rx="1.4" className="app-ia-fab-icon-face" />
+      <circle cx="9.35" cy="10.85" r="1.55" fill="#fff" />
+      <circle cx="14.65" cy="10.85" r="1.55" fill="#fff" />
+      <circle cx="9.55" cy="10.65" r="0.62" className="app-ia-fab-icon-pupil" />
+      <circle cx="14.85" cy="10.65" r="0.62" className="app-ia-fab-icon-pupil" />
+      <rect x="8.35" y="13.15" width="7.3" height="0.85" rx="0.3" fill="#fff" opacity="0.92" />
+      <rect x="8.35" y="14.35" width="7.3" height="0.85" rx="0.3" fill="#fff" opacity="0.92" />
+      <rect x="8.35" y="15.55" width="7.3" height="0.85" rx="0.3" fill="#fff" opacity="0.92" />
+      <rect x="8.6" y="18.15" width="2.55" height="2.35" rx="0.55" fill="currentColor" />
+      <rect x="12.85" y="18.15" width="2.55" height="2.35" rx="0.55" fill="currentColor" />
+      <rect x="7.4" y="17.45" width="9.2" height="1.35" rx="0.45" fill="currentColor" />
     </svg>
   )
 }
@@ -35,6 +48,10 @@ export default function AsistenteIaFlotante() {
   const [planPropio] = useStorage('planPropio', { inactivo: true, dias: {} })
   const [planNutricionActivoId] = useStorage('planNutricionActivoId', '')
   const [planesNutricion] = useStorage('planesNutricion', [])
+  const [rutinasPropias] = useStorage('rutinas', [])
+  const [rutinasAsignadas] = useStorage('rutinasAsignadas', [])
+  const rutinas = mergeRutinasUsuario(rutinasPropias, rutinasAsignadas)
+  const [rutinaActivaId] = useStorage('rutinaActivaId', '')
   const [rutinaPesos] = useStorage('rutinaPesos', [])
 
   const visible =
@@ -86,6 +103,8 @@ export default function AsistenteIaFlotante() {
               planPropio={planPropio}
               planNutricionActivoId={planNutricionActivoId}
               planesNutricion={planesNutricion}
+              rutinas={rutinas}
+              rutinaActivaId={rutinaActivaId}
               rutinaPesos={rutinaPesos}
               onAgregarEstimacion={onAgregarEstimacion}
               ajustesAsistenteAdmin={ajustesAdmin}

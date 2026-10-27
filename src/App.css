@@ -18800,7 +18800,9 @@ select.ap-input {
 /* Asistente IA flotante (global) */
 .app-ia-float-root {
   position: fixed;
-  inset: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   pointer-events: none;
   z-index: 140;
 }
@@ -18836,8 +18838,25 @@ select.ap-input {
 }
 
 .app-ia-fab-icon {
-  width: 1.65rem;
-  height: 1.65rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.35));
+}
+
+.app-ia-fab-icon-face {
+  fill: #312e81;
+}
+
+.app-ia-fab.is-open .app-ia-fab-icon-face {
+  fill: #1e293b;
+}
+
+.app-ia-fab-icon-pupil {
+  fill: #6366f1;
+}
+
+.app-ia-fab.is-open .app-ia-fab-icon-pupil {
+  fill: #818cf8;
 }
 
 .app-ia-float-backdrop {

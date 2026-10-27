@@ -3,9 +3,8 @@ import {
   extraerAlimentoJson,
   respuestaVisible,
   mensajeErrorGemini,
-  ejecutarConsultaGemini,
   esModeloChatPermitido,
-} from '../../lib/geminiCore.js'
+} from '../../lib/geminiCoreShared.js'
 
 export { extraerAlimentoJson, respuestaVisible }
 
@@ -21,6 +20,7 @@ async function consultarGeminiCliente(apiKey, params) {
   if (!key) throw new Error('Falta API key personal (solo desarrollo local).')
   const modelo =
     params.modelo && esModeloChatPermitido(params.modelo) ? params.modelo : GEMINI_MODELO_CHAT_DEFAULT
+  const { ejecutarConsultaGemini } = await import('../../lib/geminiCore.js')
   return ejecutarConsultaGemini(key, { ...params, modelo })
 }
 

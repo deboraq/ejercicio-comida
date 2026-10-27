@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ProfileProvider } from './context/ProfileContext'
@@ -23,7 +23,7 @@ import AppMenuToggle from './components/AppMenuToggle'
 import AppBottomNav from './components/AppBottomNav'
 import { AppMobileNavProvider } from './context/AppMobileNavContext'
 import OfflineStatusBanner from './components/OfflineStatusBanner'
-import AsistenteIaFlotante from './components/AsistenteIaFlotante'
+const AsistenteIaFlotante = lazy(() => import('./components/AsistenteIaFlotante.jsx'))
 import AuthSessionNotice from './components/AuthSessionNotice'
 import { isNavModuleBlocked } from './utils/navModules'
 import './App.css'
@@ -179,7 +179,11 @@ function AppRoutes() {
           mostrarAdmin={mostrarAdmin}
         />
       )}
-      {!isAuthPage && <AsistenteIaFlotante />}
+      {!isAuthPage && (
+        <Suspense fallback={null}>
+          <AsistenteIaFlotante />
+        </Suspense>
+      )}
     </div>
     </AppMobileNavProvider>
   )

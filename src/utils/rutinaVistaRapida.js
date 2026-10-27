@@ -1,15 +1,15 @@
-import { fechaSoloDia, fechaToISO, formatearFecha } from './calorias'
+import { fechaSoloDia, fechaToISO, formatearFecha } from './calorias.js'
 import {
   agruparPlanEnBloques,
   itemEjercicioDiaNormalizado,
   nombresEjercicioCoinciden,
   parseNumSeriesPlan,
   seriesEfectivasDeItem,
-} from './rutinaEjercicioDia'
+} from './rutinaEjercicioDia.js'
 
 export { agruparPlanEnBloques }
-import { asArray } from '../hooks/useLocalStorage'
-import { nuevoIdRegistro } from './ids'
+import { asArray } from '../hooks/useLocalStorage.js'
+import { nuevoIdRegistro } from './ids.js'
 
 export function etiquetaCortaDiaRutina(nombre) {
   if (!nombre) return 'Día'

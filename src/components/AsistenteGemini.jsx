@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 const EJEMPLOS = [
+  'Estoy en el día 3 del plan: ¿qué comida y qué gym toca?',
   '¿Qué opciones de comida tengo hoy en el plan?',
   '¿Cómo venís este mes con comida, ejercicio y el plan?',
   '¿Cuántas kcal llevo hoy vs mi meta?',
@@ -23,6 +24,8 @@ export default function AsistenteGemini({
   planPropio = null,
   planNutricionActivoId = '',
   planesNutricion = [],
+  rutinas = [],
+  rutinaActivaId = '',
   rutinaPesos = [],
   onAgregarEstimacion,
   ajustesAsistenteAdmin = false,
@@ -61,6 +64,8 @@ export default function AsistenteGemini({
       planPropio,
       planNutricionActivoId,
       planesNutricion,
+      rutinas,
+      rutinaActivaId,
       rutinaPesos,
     }),
     [
@@ -72,14 +77,20 @@ export default function AsistenteGemini({
       planPropio,
       planNutricionActivoId,
       planesNutricion,
+      rutinas,
+      rutinaActivaId,
       rutinaPesos,
     ],
   )
 
-  const contextoPreview = useMemo(
-    () => buildAsistenteContexto({ ...contextoBase, pregunta: input }),
-    [contextoBase, input],
-  )
+  const contextoPreview = useMemo(() => {
+    try {
+      return buildAsistenteContexto({ ...contextoBase, pregunta: input })
+    } catch (err) {
+      console.error('buildAsistenteContexto', err)
+      return { error_contexto: err?.message || 'No se pudo armar el contexto' }
+    }
+  }, [contextoBase, input])
 
   const enviar = async (texto) => {
     const pregunta = (texto ?? input).trim()
