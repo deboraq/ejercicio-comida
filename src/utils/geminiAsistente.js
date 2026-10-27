@@ -62,7 +62,7 @@ async function consultarGeminiServidor(accessToken, params) {
     const err = new Error(
       data.error ||
         (res.status === 403
-          ? 'El asistente Gemini solo está disponible para administradores.'
+          ? 'Iniciá sesión para usar las consultas con IA.'
           : `Error del servidor (${res.status})`),
     )
     err.status = res.status

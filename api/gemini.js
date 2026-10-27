@@ -7,7 +7,7 @@ function supabaseEnv() {
   return { supabaseUrl: supabaseUrl.replace(/\/$/, ''), anonKey }
 }
 
-async function validarAdminSupabase(authHeader) {
+async function validarSesionSupabase(authHeader) {
   if (!authHeader?.startsWith('Bearer ')) return null
   const token = authHeader.slice(7).trim()
   if (!token) return null
@@ -21,22 +21,7 @@ async function validarAdminSupabase(authHeader) {
   })
   if (!resUser.ok) return null
   const user = await resUser.json()
-  const userId = user?.id
-  if (!userId) return null
-
-  const resProfile = await fetch(
-    `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=role`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        apikey: anonKey,
-        Accept: 'application/json',
-      },
-    },
-  )
-  if (!resProfile.ok) return null
-  const rows = await resProfile.json()
-  if (rows?.[0]?.role !== 'admin') return null
+  if (!user?.id) return null
   return user
 }
 
@@ -48,9 +33,9 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
 
-  const user = await validarAdminSupabase(req.headers.authorization)
+  const user = await validarSesionSupabase(req.headers.authorization)
   if (!user) {
-    return res.status(403).json({ error: 'El asistente Gemini solo está disponible para administradores.' })
+    return res.status(403).json({ error: 'Iniciá sesión para usar las consultas con IA.' })
   }
 
   const geminiKey = process.env.GEMINI_API_KEY

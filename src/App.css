@@ -18657,6 +18657,33 @@ select.ap-input {
   margin-bottom: 0.35rem;
 }
 
+.cd-asistente-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.cd-asistente-minimize {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.5);
+  color: #cbd5e1;
+  font: inherit;
+  font-size: 0.62rem;
+  padding: 0.28rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cd-asistente--minimized {
+  padding-bottom: 0.55rem;
+}
+
+.cd-asistente-minimized-hint {
+  margin-top: 0.15rem;
+}
+
 .cd-asistente-config-link {
   font-size: 0.65rem;
   color: #93c5fd;

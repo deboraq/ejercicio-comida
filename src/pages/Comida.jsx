@@ -23,7 +23,8 @@ import { normalizarMedidasHistorial } from '../utils/medidasStorage'
 import { asArray } from '../hooks/useLocalStorage'
 import { PLAN_ESTADO_MULTIPLAN_VACIO } from '../utils/planEstadoStorage'
 import { useMyProfile } from '../hooks/useMyProfile'
-import { puedeUsarAsistenteGemini } from '../utils/asistenteGeminiAccess'
+import { useAuth } from '../context/AuthContext'
+import { puedeUsarConsultasGemini, puedeConfigurarAsistenteGemini } from '../utils/asistenteGeminiAccess'
 
 const COMIDAS = MOMENTOS_COMIDA
 
@@ -376,8 +377,10 @@ function ListaComidaAgrupada({ bloques, onEliminar, onEditar }) {
 export default function Comida() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { profile, loading: profileLoading } = useMyProfile()
-  const mostrarAsistenteGemini = puedeUsarAsistenteGemini(profile)
+  const { user, loading: authLoading } = useAuth()
+  const { profile } = useMyProfile()
+  const mostrarConsultasGemini = puedeUsarConsultasGemini(user)
+  const ajustesAsistenteAdmin = puedeConfigurarAsistenteGemini(profile)
   const [registros, setRegistros, comidaCloudReady] = useStorage('comida', [])
   const [, setPlanMes1Estado] = useStorage('planMes1Estado', PLAN_ESTADO_MULTIPLAN_VACIO)
   const [planNutricionActivoId] = useStorage('planNutricionActivoId', '')
@@ -519,7 +522,7 @@ export default function Comida() {
 
   useEffect(() => {
     const v = location.state?.vistaComida
-    if (v === 'plan' || v === 'historial' || (v === 'asistente' && mostrarAsistenteGemini)) {
+    if (v === 'plan' || v === 'historial' || (v === 'asistente' && mostrarConsultasGemini)) {
       setVistaComida(v)
       const abrirEditor = v === 'plan' && location.state?.abrirEditorPlan
       navigate('/comida', {
@@ -527,14 +530,14 @@ export default function Comida() {
         state: abrirEditor ? { abrirEditorPlan: true } : null,
       })
     }
-  }, [location.state, navigate, mostrarAsistenteGemini])
+  }, [location.state, navigate, mostrarConsultasGemini])
 
   useEffect(() => {
-    if (profileLoading) return
-    if (vistaComida === 'asistente' && !mostrarAsistenteGemini) {
+    if (authLoading) return
+    if (vistaComida === 'asistente' && !mostrarConsultasGemini) {
       setVistaComida('hoy')
     }
-  }, [vistaComida, mostrarAsistenteGemini, profileLoading])
+  }, [vistaComida, mostrarConsultasGemini, authLoading])
 
   useEffect(() => {
     const pre = location.state?.planPrefill
@@ -1111,7 +1114,8 @@ export default function Comida() {
           config={config}
           ejercicios={ejercicios}
           onAgregarDesdeAsistente={agregarDesdeAsistente}
-          mostrarAsistenteGemini={mostrarAsistenteGemini}
+          mostrarConsultasGemini={mostrarConsultasGemini}
+          ajustesAsistenteAdmin={ajustesAsistenteAdmin}
         />
       </div>
     </section>

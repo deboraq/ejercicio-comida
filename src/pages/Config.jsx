@@ -51,7 +51,7 @@ import {
   exportarTodoJson,
 } from '../utils/exportData'
 import { GEMINI_MODELOS_SUGERIDOS } from '../utils/geminiAsistente'
-import { puedeUsarAsistenteGemini } from '../utils/asistenteGeminiAccess'
+import { puedeConfigurarAsistenteGemini } from '../utils/asistenteGeminiAccess'
 import '../components/config/ConfigTitanium.css'
 
 const OBJETIVO_DETALLE = {
@@ -238,7 +238,7 @@ export default function Config() {
 
   const cargandoPerfilNube = Boolean(user && isConfigured && profileLoading)
   const esProfe = profile?.role === 'profe'
-  const mostrarAsistenteGemini = puedeUsarAsistenteGemini(profile)
+  const mostrarConfigAsistenteGemini = puedeConfigurarAsistenteGemini(profile)
   const mostrarSeccionesAlumno = !user || !isConfigured || profile?.role !== 'profe'
   const objetivosSeleccionados = useMemo(() => normalizeObjetivosConfig(config), [config])
   const objetivoPrimarioId = useMemo(() => objetivoPrimario(config), [config])
@@ -379,12 +379,12 @@ export default function Config() {
           </div>
         )}
 
-        {mostrarAsistenteGemini && (
+        {mostrarConfigAsistenteGemini && (
         <section className="cfg-ti-gemini mb-4" id="asistente-gemini">
-          <h2 className="cfg-ti-gemini-title">Asistente Gemini</h2>
+          <h2 className="cfg-ti-gemini-title">Consultas IA (admin)</h2>
           <p className="cfg-ti-gemini-hint mb-2">
-            <strong>Uso normal:</strong> cada persona con <strong>su cuenta</strong> usa Consultas en Comida. La API key
-            de Google va <strong>una sola vez en Vercel</strong> (<code>GEMINI_API_KEY</code>), no por usuario.
+            Los usuarios con sesión usan la pestaña <strong>Consultas</strong> en Comida; no ven esta sección. La API key
+            de Google va <strong>una sola vez en Vercel</strong> (<code>GEMINI_API_KEY</code>).
           </p>
           <p className="cfg-ti-gemini-hint mb-2">
             Vercel → proyecto → Settings → Environment Variables →{' '}
@@ -430,14 +430,6 @@ export default function Config() {
               ))}
             </select>
           </div>
-          <label className="cfg-ti-gemini-check mb-2">
-            <input
-              type="checkbox"
-              checked={Boolean(config.geminiHabilitado)}
-              onChange={(e) => setConfig((c) => ({ ...c, geminiHabilitado: e.target.checked }))}
-            />
-            Activar asistente en Comida → pestaña Consultas
-          </label>
           <Link to="/comida" state={{ vistaComida: 'asistente' }} className="cfg-ti-btn cfg-ti-btn--ghost">
             Abrir Consultas en Comida
           </Link>
