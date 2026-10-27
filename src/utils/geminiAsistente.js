@@ -1,46 +1,27 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import {
-  GEMINI_SYSTEM_INSTRUCTION,
+  GEMINI_MODELO_CHAT_DEFAULT,
   extraerAlimentoJson,
   respuestaVisible,
   mensajeErrorGemini,
+  ejecutarConsultaGemini,
+  esModeloChatPermitido,
 } from '../../lib/geminiCore.js'
 
 export { extraerAlimentoJson, respuestaVisible }
 
 export const GEMINI_MODELOS_SUGERIDOS = [
-  { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (recomendado, free tier)' },
-  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite (~500/día, recomendado)' },
+  { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
   { id: 'gemini-1.5-flash-8b', label: 'Gemini 1.5 Flash 8B' },
 ]
 
 async function consultarGeminiCliente(apiKey, params) {
   const key = String(apiKey || '').trim()
   if (!key) throw new Error('Falta API key personal (solo desarrollo local).')
-
-  const genAI = new GoogleGenerativeAI(key)
-  const model = genAI.getGenerativeModel({
-    model: params.modelo || 'gemini-2.0-flash',
-    systemInstruction: GEMINI_SYSTEM_INSTRUCTION,
-  })
-
-  const contextBlock = JSON.stringify(params.contexto, null, 2)
-  const parts = []
-  for (const h of (params.historial || []).slice(-8)) {
-    parts.push({
-      role: h.role === 'model' ? 'model' : 'user',
-      parts: [{ text: h.text }],
-    })
-  }
-  const userTurn = `Contexto actual (JSON):\n${contextBlock}\n\nPregunta del usuario:\n${params.pregunta.trim()}`
-  const chat = model.startChat({ history: parts })
-  const result = await chat.sendMessage(userTurn)
-  const raw = result.response.text()
-  return {
-    raw,
-    visible: respuestaVisible(raw),
-    alimentoSugerido: extraerAlimentoJson(raw),
-  }
+  const modelo =
+    params.modelo && esModeloChatPermitido(params.modelo) ? params.modelo : GEMINI_MODELO_CHAT_DEFAULT
+  return ejecutarConsultaGemini(key, { ...params, modelo })
 }
 
 async function consultarGeminiServidor(accessToken, params) {
@@ -54,7 +35,6 @@ async function consultarGeminiServidor(accessToken, params) {
       pregunta: params.pregunta,
       contexto: params.contexto,
       historial: params.historial,
-      modelo: params.modelo,
     }),
   })
   const data = await res.json().catch(() => ({}))
@@ -85,7 +65,7 @@ async function consultarGeminiServidor(accessToken, params) {
 export async function consultarGemini({
   accessToken,
   apiKey,
-  modelo = 'gemini-2.0-flash',
+  modelo = GEMINI_MODELO_CHAT_DEFAULT,
   pregunta,
   contexto,
   historial = [],

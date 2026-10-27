@@ -128,7 +128,7 @@ export default function Config() {
     planMes1Origen: 'guia',
     geminiApiKey: '',
     geminiHabilitado: true,
-    geminiModelo: 'gemini-1.5-flash',
+    geminiModelo: 'gemini-3.5-flash-lite',
   })
   const [, setPlanPropio] = useStorage('planPropio', { inactivo: true, dias: {} })
 
@@ -381,46 +381,14 @@ export default function Config() {
 
         {mostrarConfigAsistenteGemini && (
         <section className="cfg-ti-gemini mb-4" id="asistente-gemini">
-          <h2 className="cfg-ti-gemini-title">Consultas IA (admin)</h2>
-          <p className="cfg-ti-gemini-hint mb-2">
-            Los usuarios con sesión usan la pestaña <strong>Consultas</strong> en Comida; no ven esta sección. La API key
-            de Google va <strong>una sola vez en Vercel</strong> (<code>GEMINI_API_KEY</code>).
-          </p>
-          <p className="cfg-ti-gemini-hint mb-2">
-            Vercel → proyecto → Settings → Environment Variables →{' '}
-            <code>GEMINI_API_KEY</code> = tu key de{' '}
-            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
-              AI Studio
-            </a>
-            . Redeploy. También necesitás <code>SUPABASE_URL</code> y <code>SUPABASE_ANON_KEY</code> (o las{' '}
-            <code>VITE_*</code> que ya uses).
-          </p>
-          <details className="cfg-ti-gemini-advanced mb-2">
-            <summary>Desarrollo local: API key personal (opcional)</summary>
-            <p className="cfg-ti-gemini-hint mb-2">
-              En <code>npm run dev</code> no existe <code>/api/gemini</code> salvo que uses <code>vercel dev</code>. Podés
-              pegar acá tu key solo para probar en localhost.
-            </p>
-            <label className="cfg-ti-gemini-label" htmlFor="cfg-gemini-key">
-              API key personal
-            </label>
-            <input
-              id="cfg-gemini-key"
-              className="cfg-ti-input input mb-0"
-              type="password"
-              autoComplete="off"
-              placeholder="AIza… (opcional)"
-              value={config.geminiApiKey || ''}
-              onChange={(e) => setConfig((c) => ({ ...c, geminiApiKey: e.target.value.trim() }))}
-            />
-          </details>
+          <h2 className="cfg-ti-gemini-title">Consultas IA</h2>
           <label className="cfg-ti-gemini-label" htmlFor="cfg-gemini-modelo">
             Modelo
           </label>
           <div className="select is-fullwidth mb-2">
             <select
               id="cfg-gemini-modelo"
-              value={config.geminiModelo || 'gemini-1.5-flash'}
+              value={config.geminiModelo || 'gemini-3.5-flash-lite'}
               onChange={(e) => setConfig((c) => ({ ...c, geminiModelo: e.target.value }))}
             >
               {GEMINI_MODELOS_SUGERIDOS.map((m) => (

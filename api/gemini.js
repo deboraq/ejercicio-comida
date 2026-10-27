@@ -1,4 +1,9 @@
-import { ejecutarConsultaGemini, mensajeErrorGemini } from '../lib/geminiCore.js'
+import {
+  ejecutarConsultaGemini,
+  mensajeErrorGemini,
+  GEMINI_MODELO_CHAT_DEFAULT,
+  esModeloChatPermitido,
+} from '../lib/geminiCore.js'
 
 function supabaseEnv() {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
@@ -46,14 +51,18 @@ export default async function handler(req, res) {
   }
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
-  const { pregunta, contexto, historial, modelo } = body
+  const { pregunta, contexto, historial } = body
   if (!pregunta || !String(pregunta).trim()) {
     return res.status(400).json({ error: 'Falta la pregunta.' })
   }
 
+  const envModel = String(process.env.GEMINI_MODEL || '').trim()
+  const modeloServidor =
+    envModel && esModeloChatPermitido(envModel) ? envModel : GEMINI_MODELO_CHAT_DEFAULT
+
   try {
     const result = await ejecutarConsultaGemini(geminiKey, {
-      modelo: process.env.GEMINI_MODEL || modelo || 'gemini-1.5-flash',
+      modelo: modeloServidor,
       pregunta: String(pregunta),
       contexto: contexto || {},
       historial: Array.isArray(historial) ? historial : [],
