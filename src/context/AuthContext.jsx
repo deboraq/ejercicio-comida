@@ -86,11 +86,31 @@ export function AuthProvider({ children }) {
       setLoading(false)
       return
     }
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSessionUser(session?.user ?? null)
+    const finishBootstrap = (session) => {
       authBootstrapDoneRef.current = true
       setLoading(false)
-    })
+      handleSessionUser(session?.user ?? null)
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (!authBootstrapDoneRef.current) {
+        console.warn('[auth] getSession timeout — modo offline')
+        finishBootstrap(null)
+      }
+    }, 8000)
+
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        window.clearTimeout(timeoutId)
+        if (authBootstrapDoneRef.current) return
+        finishBootstrap(session)
+      })
+      .catch((err) => {
+        window.clearTimeout(timeoutId)
+        console.warn('[auth] getSession error', err)
+        if (!authBootstrapDoneRef.current) finishBootstrap(null)
+      })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       handleSessionUser(session?.user ?? null)
     })

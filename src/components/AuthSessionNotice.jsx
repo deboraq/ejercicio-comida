@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -51,56 +52,67 @@ export default function AuthSessionNotice() {
     navigate('/login', { state: { from: location.pathname + location.search } })
   }
 
+  const modalNode =
+    showModal && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className="modal is-active auth-session-modal auth-session-modal--portal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="auth-session-modal-title"
+          >
+            <button
+              type="button"
+              className="modal-background"
+              aria-label="Cerrar"
+              onClick={handleContinueGuest}
+            />
+            <div className="modal-card auth-session-modal-card">
+              <header className="modal-card-head">
+                <p className="modal-card-title" id="auth-session-modal-title">
+                  {sessionLost ? 'Tu sesión se cerró' : 'Iniciar sesión'}
+                </p>
+              </header>
+              <section className="modal-card-body">
+                {sessionLost ? (
+                  <>
+                    <p className="mb-3">
+                      No estás conectado a tu cuenta. Si cargás rutina, comida o ejercicios ahora,{' '}
+                      <strong>queda solo en este dispositivo</strong> y no se verá al volver a iniciar sesión
+                      hasta que sincronices.
+                    </p>
+                    <p className="is-size-7 has-text-grey mb-0">
+                      Para seguir con tu historial en la nube, iniciá sesión antes de registrar.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mb-3">
+                      Podés iniciar sesión para guardar y sincronizar tu progreso entre dispositivos.
+                    </p>
+                    <p className="is-size-7 has-text-grey mb-0">
+                      Si preferís, también podés usar la app solo en este teléfono o navegador.
+                    </p>
+                  </>
+                )}
+              </section>
+              <footer className="modal-card-foot auth-session-modal-foot">
+                <button type="button" className="button is-link" onClick={handleGoLogin}>
+                  Iniciar sesión
+                </button>
+                <button type="button" className="button is-light" onClick={handleContinueGuest}>
+                  Continuar sin iniciar
+                </button>
+              </footer>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null
+
   return (
     <>
-      {showModal && (
-        <div className="modal is-active auth-session-modal" role="dialog" aria-modal="true" aria-labelledby="auth-session-modal-title">
-          <button
-            type="button"
-            className="modal-background"
-            aria-label="Cerrar"
-            onClick={handleContinueGuest}
-          />
-          <div className="modal-card auth-session-modal-card">
-            <header className="modal-card-head">
-              <p className="modal-card-title" id="auth-session-modal-title">
-                {sessionLost ? 'Tu sesión se cerró' : 'Iniciar sesión'}
-              </p>
-            </header>
-            <section className="modal-card-body">
-              {sessionLost ? (
-                <>
-                  <p className="mb-3">
-                    No estás conectado a tu cuenta. Si cargás rutina, comida o ejercicios ahora,{' '}
-                    <strong>queda solo en este dispositivo</strong> y no se verá al volver a iniciar sesión
-                    hasta que sincronices.
-                  </p>
-                  <p className="is-size-7 has-text-grey mb-0">
-                    Para seguir con tu historial en la nube, iniciá sesión antes de registrar.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="mb-3">
-                    Podés iniciar sesión para guardar y sincronizar tu progreso entre dispositivos.
-                  </p>
-                  <p className="is-size-7 has-text-grey mb-0">
-                    Si preferís, también podés usar la app solo en este teléfono o navegador.
-                  </p>
-                </>
-              )}
-            </section>
-            <footer className="modal-card-foot auth-session-modal-foot">
-              <button type="button" className="button is-link" onClick={handleGoLogin}>
-                Iniciar sesión
-              </button>
-              <button type="button" className="button is-light" onClick={handleContinueGuest}>
-                Continuar sin iniciar
-              </button>
-            </footer>
-          </div>
-        </div>
-      )}
+      {modalNode}
 
       {showBanner && (
         <div

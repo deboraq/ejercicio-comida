@@ -215,7 +215,7 @@ function AuthSessionShell() {
   const { user } = useAuth()
   const location = useLocation()
   return (
-    <AppErrorBoundary key={`${user?.id ?? 'guest'}-${location.pathname}`}>
+    <AppErrorBoundary key={user?.id ?? 'guest'}>
       <div className="app-layout">
         <OfflineStatusBanner />
         <AuthSessionNotice />
