@@ -4,7 +4,8 @@ import { useStorage } from '../hooks/useStorage'
 import { useConfigExportData } from '../hooks/useConfigExportData'
 import { useAuth } from '../context/AuthContext'
 import { useMyProfile } from '../hooks/useMyProfile'
-import { updateMyFullName } from '../lib/profeDb'
+import { updateMyFullName, setConsultasIaEnabled } from '../lib/profeDb'
+import { useConsultasIa } from '../context/ConsultasIaContext'
 import { OBJETIVOS } from '../utils/consejos'
 import {
   labelsObjetivosTexto,
@@ -236,9 +237,33 @@ export default function Config() {
     window.location.hash = 'exportar-datos'
   }
 
+  const { enabled: consultasIaGlobal, refresh: refreshConsultasIa } = useConsultasIa()
+  const [guardandoConsultasIa, setGuardandoConsultasIa] = useState(false)
+  const [consultasIaMsg, setConsultasIaMsg] = useState(null)
+  const [consultasIaErr, setConsultasIaErr] = useState(null)
+
   const cargandoPerfilNube = Boolean(user && isConfigured && profileLoading)
   const esProfe = profile?.role === 'profe'
   const mostrarConfigAsistenteGemini = puedeConfigurarAsistenteGemini(profile)
+
+  const toggleConsultasIaGlobal = async () => {
+    const next = !consultasIaGlobal
+    setConsultasIaMsg(null)
+    setConsultasIaErr(null)
+    setGuardandoConsultasIa(true)
+    const { error } = await setConsultasIaEnabled(next)
+    setGuardandoConsultasIa(false)
+    if (error) {
+      setConsultasIaErr(
+        /app_settings|does not exist|relation/i.test(error.message || '')
+          ? 'Falta crear la tabla app_settings en Supabase (ver SUPABASE.md).'
+          : error.message || 'No se pudo guardar.',
+      )
+      return
+    }
+    await refreshConsultasIa()
+    setConsultasIaMsg(next ? 'Consultas activadas para todos.' : 'Consultas desactivadas para todos.')
+  }
   const mostrarSeccionesAlumno = !user || !isConfigured || profile?.role !== 'profe'
   const objetivosSeleccionados = useMemo(() => normalizeObjetivosConfig(config), [config])
   const objetivoPrimarioId = useMemo(() => objetivoPrimario(config), [config])
@@ -382,6 +407,17 @@ export default function Config() {
         {mostrarConfigAsistenteGemini && (
         <section className="cfg-ti-gemini mb-4" id="asistente-gemini">
           <h2 className="cfg-ti-gemini-title">Consultas IA</h2>
+          <label className="cfg-ti-gemini-check mb-2">
+            <input
+              type="checkbox"
+              checked={consultasIaGlobal}
+              disabled={guardandoConsultasIa}
+              onChange={() => toggleConsultasIaGlobal()}
+            />
+            Consultas activas para todos los usuarios con sesión
+          </label>
+          {consultasIaMsg && <p className="cfg-ti-msg-ok mb-2">{consultasIaMsg}</p>}
+          {consultasIaErr && <p className="cfg-ti-msg-err mb-2">{consultasIaErr}</p>}
           <label className="cfg-ti-gemini-label" htmlFor="cfg-gemini-modelo">
             Modelo
           </label>

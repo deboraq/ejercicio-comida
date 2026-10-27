@@ -27,7 +27,30 @@ async function validarSesionSupabase(authHeader) {
   if (!resUser.ok) return null
   const user = await resUser.json()
   if (!user?.id) return null
-  return user
+  return { user, token }
+}
+
+async function consultasIaHabilitadasGlobal(token) {
+  const env = supabaseEnv()
+  if (!env || !token) return true
+  const { supabaseUrl, anonKey } = env
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/app_settings?key=eq.consultas_ia&select=value`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: anonKey,
+          Accept: 'application/json',
+        },
+      },
+    )
+    if (!res.ok) return true
+    const rows = await res.json()
+    return rows?.[0]?.value?.enabled !== false
+  } catch {
+    return true
+  }
 }
 
 export default async function handler(req, res) {
@@ -38,9 +61,16 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
 
-  const user = await validarSesionSupabase(req.headers.authorization)
-  if (!user) {
+  const sesion = await validarSesionSupabase(req.headers.authorization)
+  if (!sesion) {
     return res.status(403).json({ error: 'Iniciá sesión para usar las consultas con IA.' })
+  }
+
+  const consultasOn = await consultasIaHabilitadasGlobal(sesion.token)
+  if (!consultasOn) {
+    return res.status(503).json({
+      error: 'Las consultas con IA están desactivadas. Probá más tarde.',
+    })
   }
 
   const geminiKey = process.env.GEMINI_API_KEY

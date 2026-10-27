@@ -107,6 +107,38 @@ export async function updateRoleNavHidden(role, hiddenKeys) {
   return supabase.from('role_nav_hidden').update({ hidden_keys: arr }).eq('role', role)
 }
 
+const CONSULTAS_IA_SETTINGS_KEY = 'consultas_ia'
+
+/** Ajuste global: pestaña Consultas y API /api/gemini. Default true si falta la fila. */
+export async function fetchConsultasIaEnabled() {
+  if (!supabase) return { enabled: true, error: null }
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', CONSULTAS_IA_SETTINGS_KEY)
+    .maybeSingle()
+  if (error) {
+    if (/app_settings|does not exist|relation/i.test(error.message || '')) {
+      return { enabled: true, error: null }
+    }
+    return { enabled: true, error }
+  }
+  const enabled = data?.value?.enabled
+  return { enabled: enabled !== false, error: null }
+}
+
+/** Solo admin (RLS). */
+export async function setConsultasIaEnabled(enabled) {
+  if (!supabase) return { error: new Error('Sin cliente') }
+  const value = { enabled: Boolean(enabled) }
+  const row = {
+    key: CONSULTAS_IA_SETTINGS_KEY,
+    value,
+    updated_at: new Date().toISOString(),
+  }
+  return supabase.from('app_settings').upsert(row, { onConflict: 'key' })
+}
+
 /** Solo un usuario con rol `admin` en BD puede cambiar roles (RLS + trigger). */
 export async function adminUpdateUserRole(targetUserId, role) {
   if (!supabase || !targetUserId) return { error: new Error('Sin cliente') }

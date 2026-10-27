@@ -620,6 +620,36 @@ alter table public.profiles add column if not exists nav_force_visible text[] no
 
 `nav_force_visible`: claves del menú que **sí** debe ver el usuario aunque el rol las oculte por defecto (el admin las desmarca en «Usuarios y roles»). Las ocultaciones extra siguen en `blocked_modules`.
 
+**Consultas IA (activar/desactivar para todos)** — ajuste global que lee la app y `/api/gemini`:
+
+```sql
+create table if not exists public.app_settings (
+  key text primary key,
+  value jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.app_settings (key, value) values
+  ('consultas_ia', '{"enabled": true}'::jsonb)
+on conflict (key) do nothing;
+
+alter table public.app_settings enable row level security;
+
+drop policy if exists "app_settings_select_auth" on public.app_settings;
+create policy "app_settings_select_auth"
+  on public.app_settings for select
+  to authenticated
+  using (true);
+
+drop policy if exists "app_settings_admin_write" on public.app_settings;
+create policy "app_settings_admin_write"
+  on public.app_settings for all
+  using (exists (select 1 from public.admin_accounts a where a.user_id = auth.uid()))
+  with check (exists (select 1 from public.admin_accounts a where a.user_id = auth.uid()));
+```
+
+El admin lo cambia en **Config → Consultas IA**. Si la tabla no existe, la app asume consultas **activadas**.
+
 **Menú por rol** (qué pestañas oculta cada rol por defecto; lo puede editar un admin en la app). Los usuarios pueden tener además `blocked_modules` como extras. Ejecutá después de tener `admin_accounts` (punto 6) para que las políticas de admin existan:
 
 ```sql

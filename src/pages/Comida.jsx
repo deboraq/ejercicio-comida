@@ -24,6 +24,7 @@ import { asArray } from '../hooks/useLocalStorage'
 import { PLAN_ESTADO_MULTIPLAN_VACIO } from '../utils/planEstadoStorage'
 import { useMyProfile } from '../hooks/useMyProfile'
 import { useAuth } from '../context/AuthContext'
+import { useConsultasIa } from '../context/ConsultasIaContext'
 import { puedeUsarConsultasGemini, puedeConfigurarAsistenteGemini } from '../utils/asistenteGeminiAccess'
 
 const COMIDAS = MOMENTOS_COMIDA
@@ -378,8 +379,9 @@ export default function Comida() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, loading: authLoading } = useAuth()
+  const { enabled: consultasIaGlobal, loading: consultasIaLoading } = useConsultasIa()
   const { profile } = useMyProfile()
-  const mostrarConsultasGemini = puedeUsarConsultasGemini(user)
+  const mostrarConsultasGemini = puedeUsarConsultasGemini(user) && consultasIaGlobal
   const ajustesAsistenteAdmin = puedeConfigurarAsistenteGemini(profile)
   const [registros, setRegistros, comidaCloudReady] = useStorage('comida', [])
   const [, setPlanMes1Estado] = useStorage('planMes1Estado', PLAN_ESTADO_MULTIPLAN_VACIO)
@@ -533,11 +535,11 @@ export default function Comida() {
   }, [location.state, navigate, mostrarConsultasGemini])
 
   useEffect(() => {
-    if (authLoading) return
+    if (authLoading || consultasIaLoading) return
     if (vistaComida === 'asistente' && !mostrarConsultasGemini) {
       setVistaComida('hoy')
     }
-  }, [vistaComida, mostrarConsultasGemini, authLoading])
+  }, [vistaComida, mostrarConsultasGemini, authLoading, consultasIaLoading])
 
   useEffect(() => {
     const pre = location.state?.planPrefill

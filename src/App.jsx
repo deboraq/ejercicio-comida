@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { ProfileProvider } from './context/ProfileContext'
 import { AppNotificationsProvider } from './context/AppNotificationsContext'
 import { RoleNavProvider, useRoleNav } from './context/RoleNavContext'
+import { ConsultasIaProvider } from './context/ConsultasIaContext'
 import Inicio from './pages/Inicio'
 import Entrenamiento from './pages/Entrenamiento'
 import EntrenamientoModuleGate from './components/EntrenamientoModuleGate'
@@ -188,7 +189,9 @@ export default function App() {
         <ProfileProvider>
         <AppNotificationsProvider>
           <RoleNavProvider>
-            <AuthSessionShell />
+            <ConsultasIaProvider>
+              <AuthSessionShell />
+            </ConsultasIaProvider>
           </RoleNavProvider>
         </AppNotificationsProvider>
         </ProfileProvider>
