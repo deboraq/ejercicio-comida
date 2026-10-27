@@ -127,7 +127,7 @@ export default function Config() {
     planMes1Origen: 'guia',
     geminiApiKey: '',
     geminiHabilitado: true,
-    geminiModelo: 'gemini-2.5-flash-lite',
+    geminiModelo: 'gemini-1.5-flash',
   })
   const [, setPlanPropio] = useStorage('planPropio', { inactivo: true, dias: {} })
 
@@ -417,7 +417,7 @@ export default function Config() {
           <div className="select is-fullwidth mb-2">
             <select
               id="cfg-gemini-modelo"
-              value={config.geminiModelo || 'gemini-2.0-flash'}
+              value={config.geminiModelo || 'gemini-1.5-flash'}
               onChange={(e) => setConfig((c) => ({ ...c, geminiModelo: e.target.value }))}
             >
               {GEMINI_MODELOS_SUGERIDOS.map((m) => (

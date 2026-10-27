@@ -9,9 +9,9 @@ import {
 export { extraerAlimentoJson, respuestaVisible }
 
 export const GEMINI_MODELOS_SUGERIDOS = [
-  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (recomendado, free tier)' },
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-  { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite' },
+  { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (recomendado, free tier)' },
+  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  { id: 'gemini-1.5-flash-8b', label: 'Gemini 1.5 Flash 8B' },
 ]
 
 async function consultarGeminiCliente(apiKey, params) {
