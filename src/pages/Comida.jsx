@@ -22,10 +22,6 @@ import { vasosHidratacionDia, actualizarVasosHidratacion } from '../utils/hidrat
 import { normalizarMedidasHistorial } from '../utils/medidasStorage'
 import { asArray } from '../hooks/useLocalStorage'
 import { PLAN_ESTADO_MULTIPLAN_VACIO } from '../utils/planEstadoStorage'
-import { useMyProfile } from '../hooks/useMyProfile'
-import { useAuth } from '../context/AuthContext'
-import { useConsultasIa } from '../context/ConsultasIaContext'
-import { puedeUsarConsultasGemini, puedeConfigurarAsistenteGemini } from '../utils/asistenteGeminiAccess'
 
 const COMIDAS = MOMENTOS_COMIDA
 
@@ -378,11 +374,6 @@ function ListaComidaAgrupada({ bloques, onEliminar, onEditar }) {
 export default function Comida() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user, loading: authLoading } = useAuth()
-  const { enabled: consultasIaGlobal, loading: consultasIaLoading } = useConsultasIa()
-  const { profile } = useMyProfile()
-  const mostrarConsultasGemini = puedeUsarConsultasGemini(user) && consultasIaGlobal
-  const ajustesAsistenteAdmin = puedeConfigurarAsistenteGemini(profile)
   const [registros, setRegistros, comidaCloudReady] = useStorage('comida', [])
   const [, setPlanMes1Estado] = useStorage('planMes1Estado', PLAN_ESTADO_MULTIPLAN_VACIO)
   const [planNutricionActivoId] = useStorage('planNutricionActivoId', '')
@@ -524,7 +515,7 @@ export default function Comida() {
 
   useEffect(() => {
     const v = location.state?.vistaComida
-    if (v === 'plan' || v === 'historial' || (v === 'asistente' && mostrarConsultasGemini)) {
+    if (v === 'plan' || v === 'historial') {
       setVistaComida(v)
       const abrirEditor = v === 'plan' && location.state?.abrirEditorPlan
       navigate('/comida', {
@@ -532,14 +523,7 @@ export default function Comida() {
         state: abrirEditor ? { abrirEditorPlan: true } : null,
       })
     }
-  }, [location.state, navigate, mostrarConsultasGemini])
-
-  useEffect(() => {
-    if (authLoading || consultasIaLoading) return
-    if (vistaComida === 'asistente' && !mostrarConsultasGemini) {
-      setVistaComida('hoy')
-    }
-  }, [vistaComida, mostrarConsultasGemini, authLoading, consultasIaLoading])
+  }, [location.state, navigate])
 
   useEffect(() => {
     const pre = location.state?.planPrefill
@@ -984,20 +968,22 @@ export default function Comida() {
     cambiarVistaComida('hoy')
   }
 
-  const agregarDesdeAsistente = (est) => {
-    if (!est?.descripcion) return
-    cambiarVistaComida('hoy')
-    iniciarEntradaManual(est.descripcion)
+  useEffect(() => {
+    const pre = location.state?.asistentePrefill
+    if (!pre?.descripcion) return
+    setVistaComida('hoy')
+    iniciarEntradaManual(pre.descripcion)
     setManualForm({
-      descripcion: est.descripcion,
-      calorias: est.calorias ? String(est.calorias) : '',
-      proteinas: est.proteinas ? String(est.proteinas) : '',
-      carbohidratos: est.carbohidratos ? String(est.carbohidratos) : '',
-      grasas: est.grasas ? String(est.grasas) : '',
-      porciones: est.porcion || '1 porción (estimado IA)',
+      descripcion: pre.descripcion,
+      calorias: pre.calorias ? String(pre.calorias) : '',
+      proteinas: pre.proteinas ? String(pre.proteinas) : '',
+      carbohidratos: pre.carbohidratos ? String(pre.carbohidratos) : '',
+      grasas: pre.grasas ? String(pre.grasas) : '',
+      porciones: pre.porcion || '1 porción (estimado IA)',
     })
     setPanelPulse({ at: Date.now(), modo: 'agregar' })
-  }
+    navigate('/comida', { replace: true, state: null })
+  }, [location.state, navigate, iniciarEntradaManual])
 
   const onToggleVaso = (index) => {
     const n = index + 1
@@ -1113,11 +1099,6 @@ export default function Comida() {
               abrirEditorInicial={Boolean(location.state?.abrirEditorPlan)}
             />
           }
-          config={config}
-          ejercicios={ejercicios}
-          onAgregarDesdeAsistente={agregarDesdeAsistente}
-          mostrarConsultasGemini={mostrarConsultasGemini}
-          ajustesAsistenteAdmin={ajustesAsistenteAdmin}
         />
       </div>
     </section>

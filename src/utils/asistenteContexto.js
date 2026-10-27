@@ -1,6 +1,9 @@
 import { fechaSoloDia, fechaToISO, caloriasEjercicioRegistro } from './calorias'
 import { buscarAlimentos } from './referenciaComidas'
-import { getUltimosNDias } from './estadisticas'
+import { getUltimosNDias, getRangoPorPeriodo, filtrarPorRango } from './estadisticas'
+import { resumenPlanAlimenticioHoy, labelOrigenPlan, planPropioStorageActivo } from './planPropio'
+import { getEstadoPlanActivo } from './planEstadoStorage'
+import { diaPlanMes1, PLAN_MES1_TOTAL_DIAS } from './planMes1'
 
 function num(val) {
   const n = Number(val)
@@ -31,19 +34,152 @@ function resumenComidaDia(registros, fecha) {
   return { fecha, totales: tot, comidas: lineas, count: delDia.length }
 }
 
+function getRangoMesEnCurso(fechaRef) {
+  const hasta = fechaSoloDia(fechaRef) || fechaToISO(new Date())
+  const [y, m] = hasta.split('-')
+  const desde = `${y}-${m}-01`
+  return { desde, hasta, etiqueta: `${m}/${y}` }
+}
+
+function resumenPeriodoComida(registros, desde, hasta) {
+  const enRango = filtrarPorRango(registros || [], desde, hasta)
+  const tot = sumMacrosRegistros(enRango)
+  const diasConRegistro = new Set(enRango.map((r) => fechaSoloDia(r.fecha))).size
+  const porDia = {}
+  for (const r of enRango) {
+    const f = fechaSoloDia(r.fecha)
+    if (!porDia[f]) porDia[f] = { kcal: 0, registros: 0, proteinas_g: 0 }
+    porDia[f].kcal += num(r.calorias)
+    porDia[f].proteinas_g += num(r.proteinas)
+    porDia[f].registros += 1
+  }
+  const serie = Object.keys(porDia)
+    .sort()
+    .map((fecha) => ({
+      fecha,
+      kcal: Math.round(porDia[fecha].kcal),
+      proteinas_g: Math.round(porDia[fecha].proteinas_g),
+      registros: porDia[fecha].registros,
+    }))
+  const diasCalendario = Math.max(
+    1,
+    Math.round((new Date(`${hasta}T12:00:00`) - new Date(`${desde}T12:00:00`)) / 86400000) + 1,
+  )
+  return {
+    desde,
+    hasta,
+    dias_calendario: diasCalendario,
+    dias_con_registro: diasConRegistro,
+    total_registros: enRango.length,
+    totales: {
+      kcal: Math.round(tot.kcal),
+      proteinas_g: Math.round(tot.p),
+      carbohidratos_g: Math.round(tot.c),
+      grasas_g: Math.round(tot.g),
+    },
+    promedio_kcal_dia_con_datos:
+      diasConRegistro > 0 ? Math.round(tot.kcal / diasConRegistro) : 0,
+    por_dia: serie,
+  }
+}
+
+function resumenPeriodoEjercicio(ejercicios, desde, hasta, pesoKg) {
+  const enRango = (ejercicios || []).filter((e) => {
+    const f = fechaSoloDia(e.fecha)
+    return f >= desde && f <= hasta
+  })
+  let kcalTotal = 0
+  const porTipo = {}
+  for (const e of enRango) {
+    const kcal = caloriasEjercicioRegistro(e, pesoKg)
+    kcalTotal += kcal
+    const t = e.tipo || e.nombre || 'otro'
+    porTipo[t] = (porTipo[t] || 0) + 1
+  }
+  const diasConActividad = new Set(enRango.map((e) => fechaSoloDia(e.fecha))).size
+  const muestra = enRango.slice(-20).map((e) => ({
+    fecha: fechaSoloDia(e.fecha),
+    nombre: e.nombre,
+    tipo: e.tipo,
+    duracion_min: num(e.duracion),
+    distancia_km: e.distanciaKm != null ? num(e.distanciaKm) : undefined,
+    kcal_est: Math.round(caloriasEjercicioRegistro(e, pesoKg)),
+  }))
+  return {
+    desde,
+    hasta,
+    sesiones: enRango.length,
+    dias_con_actividad: diasConActividad,
+    kcal_estimadas_total: Math.round(kcalTotal),
+    conteo_por_tipo: porTipo,
+    ultimos_registros: muestra,
+  }
+}
+
+function resumenPlanNutricion(config, planPropio, planMes1Estado, planNutricionActivoId, hoy) {
+  const planHoy = resumenPlanAlimenticioHoy(config, planPropio, hoy)
+  const planId = planNutricionActivoId || config?.planNutricionId || null
+  const estado = getEstadoPlanActivo(planMes1Estado, planId)
+  const checks = Object.keys(estado.checks || {}).length
+  const omitidos = Object.keys(estado.omitidos || {}).length
+  const extras = Object.keys(estado.extras || {}).length
+  const inicio = config?.planMes1Inicio || null
+  const diaCalendario = inicio ? diaPlanMes1(inicio, hoy) : null
+
+  let adherenciaAprox = null
+  if (diaCalendario != null && diaCalendario >= 1) {
+    adherenciaAprox = {
+      dia_plan_actual: diaCalendario,
+      dias_plan_total: PLAN_MES1_TOTAL_DIAS,
+      comidas_marcadas_ok: checks,
+      comidas_omitidas: omitidos,
+      extras_registrados: extras,
+    }
+  }
+
+  return {
+    activo: Boolean(inicio),
+    origen: labelOrigenPlan(config),
+    plan_nutricion_id: planId,
+    inicio_calendario: inicio,
+    plan_propio_activo: planPropioStorageActivo(planPropio),
+    hoy: planHoy,
+    adherencia_aprox: adherenciaAprox,
+  }
+}
+
+function resumenRutinaGym(rutinaPesos, desde, hasta) {
+  const enRango = (rutinaPesos || []).filter((r) => {
+    const f = fechaSoloDia(r.fecha)
+    return f && f >= desde && f <= hasta
+  })
+  const series = enRango.reduce((acc, r) => acc + (Array.isArray(r.series) ? r.series.length : 1), 0)
+  const dias = new Set(enRango.map((r) => fechaSoloDia(r.fecha))).size
+  return {
+    sesiones_registradas: enRango.length,
+    dias_con_gym: dias,
+    series_aprox: series,
+  }
+}
+
 /**
- * JSON compacto para el asistente (metas + comida + ejercicio reciente).
- * @param {{
- *   config?: object,
- *   comida?: object[],
- *   ejercicios?: object[],
- *   pregunta?: string,
- *   fechaRef?: string,
- * }} params
+ * JSON compacto para el asistente (metas, comida, ejercicio, mes, plan).
  */
-export function buildAsistenteContexto({ config = {}, comida = [], ejercicios = [], pregunta = '', fechaRef }) {
+export function buildAsistenteContexto({
+  config = {},
+  comida = [],
+  ejercicios = [],
+  pregunta = '',
+  fechaRef,
+  planMes1Estado = null,
+  planPropio = null,
+  planNutricionActivoId = '',
+  rutinaPesos = [],
+}) {
   const hoy = fechaSoloDia(fechaRef) || fechaToISO(new Date())
-  const dias = getUltimosNDias(5)
+  const dias = getUltimosNDias(7)
+  const mesEnCurso = getRangoMesEnCurso(hoy)
+  const ultimos30 = getRangoPorPeriodo('mes')
 
   const resumenPorDia = dias.map((f) => {
     const r = resumenComidaDia(comida, f)
@@ -56,12 +192,12 @@ export function buildAsistenteContexto({ config = {}, comida = [], ejercicios = 
   })
 
   const hoyDetalle = resumenComidaDia(comida, hoy)
+  const pesoKg = num(config.pesoKg) || 70
 
   const ejerciciosSemana = (ejercicios || []).filter((e) => {
     const f = fechaSoloDia(e.fecha)
     return dias.includes(f)
   })
-  const pesoKg = num(config.pesoKg) || 70
   let kcalEjercicioSemana = 0
   const ejerciciosRecientes = ejerciciosSemana.slice(0, 10).map((e) => {
     const kcal = caloriasEjercicioRegistro(e, pesoKg)
@@ -90,6 +226,29 @@ export function buildAsistenteContexto({ config = {}, comida = [], ejercicios = 
       }))
   }
 
+  const comidaMesEnCurso = resumenPeriodoComida(comida, mesEnCurso.desde, mesEnCurso.hasta)
+  const comidaUltimos30 = resumenPeriodoComida(comida, ultimos30.desde, ultimos30.hasta)
+  const ejercicioMesEnCurso = resumenPeriodoEjercicio(
+    ejercicios,
+    mesEnCurso.desde,
+    mesEnCurso.hasta,
+    pesoKg,
+  )
+  const ejercicioUltimos30 = resumenPeriodoEjercicio(
+    ejercicios,
+    ultimos30.desde,
+    ultimos30.hasta,
+    pesoKg,
+  )
+  const gymMes = resumenRutinaGym(rutinaPesos, mesEnCurso.desde, mesEnCurso.hasta)
+  const planNutricion = resumenPlanNutricion(
+    config,
+    planPropio,
+    planMes1Estado,
+    planNutricionActivoId,
+    hoy,
+  )
+
   return {
     app: 'Mi rutina',
     fecha_hoy: hoy,
@@ -111,11 +270,24 @@ export function buildAsistenteContexto({ config = {}, comida = [], ejercicios = 
       detalle: hoyDetalle.comidas,
     },
     comida_ultimos_7_dias: resumenPorDia,
+    mes_en_curso: {
+      etiqueta: mesEnCurso.etiqueta,
+      comida: comidaMesEnCurso,
+      ejercicio: ejercicioMesEnCurso,
+      rutina_gym: gymMes,
+    },
+    ultimos_30_dias: {
+      comida: comidaUltimos30,
+      ejercicio: ejercicioUltimos30,
+    },
+    plan_alimentacion: planNutricion,
     ejercicio_ultimos_7_dias: {
       kcal_estimadas_total: Math.round(kcalEjercicioSemana),
       registros: ejerciciosRecientes,
     },
     catalogo_local_coincidencias: catalogoHits,
+    nota_analisis:
+      'Para preguntas del mes usá mes_en_curso y plan_alimentacion; compará con metas en perfil. No inventes datos.',
     nota_catalogo:
       'Si catalogo_local_coincidencias tiene ítems, priorizá esos datos sobre estimaciones genéricas.',
   }

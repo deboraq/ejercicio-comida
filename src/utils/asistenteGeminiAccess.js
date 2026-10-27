@@ -1,4 +1,4 @@
-/** Pestaña Consultas en Comida: cualquier usuario con sesión iniciada. */
+/** Asistente IA flotante: cualquier usuario con sesión iniciada. */
 export function puedeUsarConsultasGemini(user) {
   return Boolean(user)
 }

@@ -434,9 +434,6 @@ export default function Config() {
               ))}
             </select>
           </div>
-          <Link to="/comida" state={{ vistaComida: 'asistente' }} className="cfg-ti-btn cfg-ti-btn--ghost">
-            Abrir Consultas en Comida
-          </Link>
         </section>
         )}
 

@@ -23,6 +23,7 @@ import AppMenuToggle from './components/AppMenuToggle'
 import AppBottomNav from './components/AppBottomNav'
 import { AppMobileNavProvider } from './context/AppMobileNavContext'
 import OfflineStatusBanner from './components/OfflineStatusBanner'
+import AsistenteIaFlotante from './components/AsistenteIaFlotante'
 import AuthSessionNotice from './components/AuthSessionNotice'
 import { isNavModuleBlocked } from './utils/navModules'
 import './App.css'
@@ -178,6 +179,7 @@ function AppRoutes() {
           mostrarAdmin={mostrarAdmin}
         />
       )}
+      {!isAuthPage && <AsistenteIaFlotante />}
     </div>
     </AppMobileNavProvider>
   )
