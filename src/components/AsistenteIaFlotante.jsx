@@ -20,15 +20,17 @@ function IconoRobot() {
 }
 
 export default function AsistenteIaFlotante() {
-  const { user } = useAuth()
+  const { user, isConfigured } = useAuth()
   const { enabled: consultasGlobal, loading: consultasLoading } = useConsultasIa()
   const { profile } = useMyProfile()
   const navigate = useNavigate()
   const [abierto, setAbierto] = useState(false)
 
-  const [config] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
+  const [config, , configReady] = useStorage('config', { objetivo: 'mantener_peso', pesoKg: 70 })
   const [comida] = useStorage('comida', [])
+  const [, , comidaReady] = useStorage('comida', [])
   const [ejercicios] = useStorage('ejercicios', [])
+  const [, , ejerciciosReady] = useStorage('ejercicios', [])
   const [planMes1Estado] = useStorage('planMes1Estado', PLAN_ESTADO_MULTIPLAN_VACIO)
   const [planPropio] = useStorage('planPropio', { inactivo: true, dias: {} })
   const [planNutricionActivoId] = useStorage('planNutricionActivoId', '')
@@ -37,7 +39,10 @@ export default function AsistenteIaFlotante() {
   const visible =
     !consultasLoading && puedeUsarConsultasGemini(user) && consultasGlobal
 
-  if (!visible) return null
+  const datosListos =
+    !user || !isConfigured || (configReady && comidaReady && ejerciciosReady)
+
+  if (!visible || !user?.id) return null
 
   const ajustesAdmin = puedeConfigurarAsistenteGemini(profile)
 
@@ -59,7 +64,7 @@ export default function AsistenteIaFlotante() {
   }
 
   return (
-    <div className="app-ia-float-root">
+    <div className="app-ia-float-root" key={user.id}>
       {abierto && (
         <>
           <button
@@ -70,6 +75,7 @@ export default function AsistenteIaFlotante() {
           />
           <div className="app-ia-float-panel" role="dialog" aria-label="Asistente IA">
             <AsistenteGemini
+              key={user.id}
               modoFlotante
               onCerrar={() => setAbierto(false)}
               config={config}
@@ -81,6 +87,7 @@ export default function AsistenteIaFlotante() {
               rutinaPesos={rutinaPesos}
               onAgregarEstimacion={onAgregarEstimacion}
               ajustesAsistenteAdmin={ajustesAdmin}
+              datosListos={datosListos}
             />
           </div>
         </>

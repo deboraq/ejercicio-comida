@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { buildAsistenteContexto } from '../utils/asistenteContexto'
 import { consultarGemini } from '../utils/geminiAsistente'
@@ -26,6 +26,7 @@ export default function AsistenteGemini({
   ajustesAsistenteAdmin = false,
   modoFlotante = false,
   onCerrar,
+  datosListos = true,
 }) {
   const { user } = useAuth()
   const [mensajes, setMensajes] = useState([])
@@ -35,6 +36,14 @@ export default function AsistenteGemini({
   const [ultimoAlimento, setUltimoAlimento] = useState(null)
   const [minimizado, setMinimizado] = useState(false)
   const listRef = useRef(null)
+
+  useEffect(() => {
+    setMensajes([])
+    setInput('')
+    setError('')
+    setUltimoAlimento(null)
+    setMinimizado(false)
+  }, [user?.id])
 
   const hoy = fechaRef || fechaToISO(new Date())
   const tieneKeyLocal = Boolean(String(config.geminiApiKey || '').trim())
@@ -61,7 +70,7 @@ export default function AsistenteGemini({
 
   const enviar = async (texto) => {
     const pregunta = (texto ?? input).trim()
-    if (!pregunta || cargando) return
+    if (!pregunta || cargando || !datosListos) return
     setError('')
     setUltimoAlimento(null)
     setInput('')
@@ -153,9 +162,14 @@ export default function AsistenteGemini({
         </p>
       ) : (
         <>
+          {!datosListos && (
+            <p className="cd-asistente-hint mb-2">Cargando tus datos…</p>
+          )}
+          {datosListos && (
           <p className="cd-asistente-hint mb-2">
-            Leo comida, ejercicio, gym y plan del mes. Las estimaciones son aproximadas.
+            Solo uso <strong>tus</strong> registros (comida, ejercicio, gym y plan). Las estimaciones son aproximadas.
           </p>
+          )}
 
           <div className="cd-asistente-ejemplos mb-2">
             {EJEMPLOS.map((ej) => (
@@ -163,7 +177,7 @@ export default function AsistenteGemini({
                 key={ej}
                 type="button"
                 className="cd-asistente-chip"
-                disabled={cargando}
+                disabled={cargando || !datosListos}
                 onClick={() => enviar(ej)}
               >
                 {ej}
@@ -213,10 +227,14 @@ export default function AsistenteGemini({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Preguntá sobre tu mes, tu día o un alimento…"
-              disabled={cargando}
+              disabled={cargando || !datosListos}
               autoComplete="off"
             />
-            <button type="submit" className="cd-btn cd-btn--primary" disabled={cargando || !input.trim()}>
+            <button
+              type="submit"
+              className="cd-btn cd-btn--primary"
+              disabled={cargando || !datosListos || !input.trim()}
+            >
               Enviar
             </button>
           </form>

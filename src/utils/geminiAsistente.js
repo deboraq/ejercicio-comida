@@ -33,7 +33,6 @@ async function consultarGeminiServidor(accessToken, params) {
     },
     body: JSON.stringify({
       pregunta: params.pregunta,
-      contexto: params.contexto,
       historial: params.historial,
     }),
   })

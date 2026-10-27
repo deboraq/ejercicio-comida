@@ -4,6 +4,7 @@ import {
   GEMINI_MODELO_CHAT_DEFAULT,
   esModeloChatPermitido,
 } from '../lib/geminiCore.js'
+import { fetchUserDataForAsistente, buildContextoDesdeUserData } from '../lib/asistenteUserData.js'
 
 function supabaseEnv() {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
@@ -81,10 +82,29 @@ export default async function handler(req, res) {
   }
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
-  const { pregunta, contexto, historial } = body
+  const { pregunta, historial } = body
   if (!pregunta || !String(pregunta).trim()) {
     return res.status(400).json({ error: 'Falta la pregunta.' })
   }
+
+  const env = supabaseEnv()
+  if (!env) {
+    return res.status(503).json({ error: 'Supabase no configurado en el servidor.' })
+  }
+
+  const { map, error: userDataError } = await fetchUserDataForAsistente(
+    env,
+    sesion.token,
+    sesion.user.id,
+  )
+  if (userDataError) {
+    return res.status(502).json({
+      error: 'No se pudieron cargar tus datos. Reintentá en unos segundos.',
+    })
+  }
+
+  const preguntaStr = String(pregunta).trim()
+  const contexto = buildContextoDesdeUserData(map, preguntaStr)
 
   const envModel = String(process.env.GEMINI_MODEL || '').trim()
   const modeloServidor =
@@ -93,8 +113,8 @@ export default async function handler(req, res) {
   try {
     const result = await ejecutarConsultaGemini(geminiKey, {
       modelo: modeloServidor,
-      pregunta: String(pregunta),
-      contexto: contexto || {},
+      pregunta: preguntaStr,
+      contexto,
       historial: Array.isArray(historial) ? historial : [],
     })
     return res.status(200).json(result)
