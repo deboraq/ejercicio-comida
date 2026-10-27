@@ -104,7 +104,16 @@ export default async function handler(req, res) {
   }
 
   const preguntaStr = String(pregunta).trim()
-  const contexto = buildContextoDesdeUserData(map, preguntaStr)
+
+  let contexto
+  try {
+    contexto = buildContextoDesdeUserData(map, preguntaStr)
+  } catch (ctxErr) {
+    console.error('asistente contexto:', ctxErr)
+    return res.status(500).json({
+      error: 'No se pudo preparar tus datos para la consulta. Reintentá en unos segundos.',
+    })
+  }
 
   const envModel = String(process.env.GEMINI_MODEL || '').trim()
   const modeloServidor =
