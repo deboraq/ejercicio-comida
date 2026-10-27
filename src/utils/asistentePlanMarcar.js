@@ -1,13 +1,10 @@
 import { buildComidasDiaKanban } from './planMes1Kanban'
 import { diaPlanMes1, planMes1TieneInicio } from './planMes1'
 import { fechaToISO } from './calorias'
+import { textoSinAcentos } from './textoNormalizado.js'
 
 function normalizarTextoMomento(m) {
-  return String(m || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
+  return textoSinAcentos(String(m || '').trim())
 }
 
 /** Mapea texto libre (Almuerzo, media mañana, colación…) al id de slot del plan. */

@@ -1,3 +1,5 @@
+import { textoSinAcentos } from './textoNormalizado.js'
+
 /** Momentos del día para registro de comidas (fuente única). */
 export const MOMENTOS_COMIDA = ['Desayuno', 'Almuerzo', 'Merienda', 'Snack', 'Cena']
 
@@ -38,16 +40,9 @@ export function esMomentoComida(comida) {
   return MOMENTOS_COMIDA.includes(m)
 }
 
-function textoNormalizado(text) {
-  return String(text || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-}
-
 /** Detecta momento del día en frases como "en el almuerzo comí…". */
 export function inferMomentoDesdeTexto(text) {
-  const s = textoNormalizado(text)
+  const s = textoSinAcentos(text)
   if (!s) return ''
   if (/\balmuerzo\b/.test(s)) return 'Almuerzo'
   if (/\bdesayuno\b/.test(s)) return 'Desayuno'

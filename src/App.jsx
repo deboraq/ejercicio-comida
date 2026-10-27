@@ -23,7 +23,12 @@ import AppMenuToggle from './components/AppMenuToggle'
 import AppBottomNav from './components/AppBottomNav'
 import { AppMobileNavProvider } from './context/AppMobileNavContext'
 import OfflineStatusBanner from './components/OfflineStatusBanner'
-const AsistenteIaFlotante = lazy(() => import('./components/AsistenteIaFlotante.jsx'))
+const AsistenteIaFlotante = lazy(() =>
+  import('./components/AsistenteIaFlotante.jsx').catch((err) => {
+    console.error('Asistente IA (lazy):', err)
+    return { default: function AsistenteIaFallback() { return null } }
+  }),
+)
 import AuthSessionNotice from './components/AuthSessionNotice'
 import { isNavModuleBlocked } from './utils/navModules'
 import './App.css'
