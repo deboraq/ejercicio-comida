@@ -71,8 +71,17 @@ export async function consultarGemini({
   pregunta,
   contexto,
   historial = [],
+  fechaRef = null,
+  comidaRegistrosCliente = null,
 }) {
-  const params = { modelo, pregunta, contexto, historial }
+  const params = {
+    modelo,
+    pregunta,
+    contexto,
+    historial,
+    fechaRef,
+    comidaRegistrosCliente,
+  }
 
   if (accessToken) {
     try {

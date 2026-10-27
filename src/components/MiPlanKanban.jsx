@@ -159,6 +159,8 @@ export default function MiPlanKanban({
   onSyncPlanRegistro,
   embedded = true,
   abrirEditorInicial = false,
+  scrollDiaPlan = null,
+  onScrollDiaPlanDone,
 }) {
   const { user, isConfigured } = useAuth()
   const [config, setConfig, configCloudReady] = useStorage('config', {
@@ -441,6 +443,15 @@ export default function MiPlanKanban({
     const t = window.setTimeout(() => scrollADiaPlan(dia), 60)
     return () => window.clearTimeout(t)
   }, [semanaActiva, diasSemana, tienePlan, scrollADiaPlan])
+
+  useEffect(() => {
+    const d = Number(scrollDiaPlan)
+    if (!tienePlan || !Number.isFinite(d) || d < 1) return
+    setSemanaActiva(Math.min(4, Math.max(1, Math.ceil(d / 7))))
+    setEditDiaPlan(d)
+    pendingScrollDiaRef.current = d
+    onScrollDiaPlanDone?.()
+  }, [scrollDiaPlan, tienePlan, onScrollDiaPlanDone])
 
   useEffect(() => {
     if (!tienePlan || (planMobile && vistaPlanZoom === '1')) return

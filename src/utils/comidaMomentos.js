@@ -37,3 +37,31 @@ export function esMomentoComida(comida) {
   const m = normalizarMomento(comida)
   return MOMENTOS_COMIDA.includes(m)
 }
+
+function textoNormalizado(text) {
+  return String(text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+}
+
+/** Detecta momento del día en frases como "en el almuerzo comí…". */
+export function inferMomentoDesdeTexto(text) {
+  const s = textoNormalizado(text)
+  if (!s) return ''
+  if (/\balmuerzo\b/.test(s)) return 'Almuerzo'
+  if (/\bdesayuno\b/.test(s)) return 'Desayuno'
+  if (/\bmerienda\b/.test(s)) return 'Merienda'
+  if (/\bcena\b/.test(s)) return 'Cena'
+  if (/\b(snack|media\s*ma[nñ]ana|colaci[oó]n)\b/.test(s)) return 'Snack'
+  return ''
+}
+
+/** Momento para prefill desde asistente (JSON + pregunta del usuario). */
+export function resolverMomentoPrefillAsistente({ momento, preguntaUsuario, descripcion } = {}) {
+  const m = normalizarMomento(momento)
+  if (m && MOMENTOS_COMIDA.includes(m)) return m
+  const inf =
+    inferMomentoDesdeTexto(preguntaUsuario) || inferMomentoDesdeTexto(descripcion)
+  return inf || 'Desayuno'
+}

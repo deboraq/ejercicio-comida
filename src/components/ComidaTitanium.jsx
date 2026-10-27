@@ -860,6 +860,7 @@ export default function ComidaTitanium({
   const litrosConsumidosFmt = (Math.round(litrosConsumidos * 10) / 10).toFixed(1)
 
   const [buscadorDestacado, setBuscadorDestacado] = useState(false)
+  const [manualDestacado, setManualDestacado] = useState(false)
   const [recetasCenaAbiertas, setRecetasCenaAbiertas] = useState(false)
   const [balanceDestacado, setBalanceDestacado] = useState(false)
   const [registrarExpandido, setRegistrarExpandido] = useState(false)
@@ -893,7 +894,29 @@ export default function ComidaTitanium({
     []
   )
 
+  const activarGuiaEntradaManual = useCallback(() => {
+    if (esVistaMobile()) {
+      setRegistrarExpandido(true)
+    }
+    setManualDestacado(true)
+    setBuscadorDestacado(false)
+    if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current)
+    pulseTimerRef.current = setTimeout(() => setManualDestacado(false), 5500)
+
+    const scrollYManual = () => {
+      document.getElementById('cd-entrada-manual')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+    requestAnimationFrame(() => {
+      document.getElementById('cd-agregar-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      window.setTimeout(scrollYManual, 120)
+      window.setTimeout(() => {
+        document.querySelector('#cd-entrada-manual input[type="text"]')?.focus({ preventScroll: true })
+      }, 420)
+    })
+  }, [esVistaMobile])
+
   const activarGuiaPanel = useCallback((modo = 'agregar', focusSearch = true) => {
+    setManualDestacado(false)
     if (esVistaMobile()) {
       setRegistrarExpandido(true)
       if (modo !== 'editar') {
@@ -935,8 +958,20 @@ export default function ComidaTitanium({
 
   useEffect(() => {
     if (!panelPulse?.at) return
+    if (panelPulse.foco === 'manual') {
+      if (!entradaManual) return
+      activarGuiaEntradaManual()
+      return
+    }
     activarGuiaPanel(panelPulse.modo === 'editar' ? 'editar' : 'agregar', panelPulse.modo !== 'editar')
-  }, [panelPulse?.at, panelPulse?.modo, activarGuiaPanel])
+  }, [
+    panelPulse?.at,
+    panelPulse?.modo,
+    panelPulse?.foco,
+    entradaManual,
+    activarGuiaPanel,
+    activarGuiaEntradaManual,
+  ])
 
   const agregarMomento = useCallback((momento) => {
     onSalirEdicion?.()
@@ -1482,7 +1517,10 @@ export default function ComidaTitanium({
             )}
 
             {entradaManual && (
-              <div className="cd-manual-form">
+              <div
+                id="cd-entrada-manual"
+                className={`cd-manual-form${manualDestacado ? ' is-guide-pulse' : ''}`}
+              >
                 <p className="cd-manual-hint mb-0">
                   Completá los datos del alimento y tocá <strong>Agregar</strong>.
                 </p>

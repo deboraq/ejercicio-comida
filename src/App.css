@@ -18765,7 +18765,6 @@ select.ap-input {
   line-height: 1.45;
   padding: 0.45rem 0.55rem;
   border-radius: 8px;
-  white-space: pre-wrap;
 }
 
 .cd-asistente-msg--user {
@@ -18773,6 +18772,7 @@ select.ap-input {
   max-width: 92%;
   background: rgba(59, 130, 246, 0.2);
   color: #e2e8f0;
+  white-space: pre-wrap;
 }
 
 .cd-asistente-msg--model {
@@ -18780,6 +18780,33 @@ select.ap-input {
   max-width: 96%;
   background: rgba(30, 41, 59, 0.65);
   color: #e2e8f0;
+  white-space: normal;
+}
+
+.cd-asistente-msg-body p.cd-asistente-msg-p {
+  margin: 0.25rem 0;
+}
+
+.cd-asistente-msg-body p.cd-asistente-msg-p:first-child {
+  margin-top: 0;
+}
+
+.cd-asistente-msg-body p.cd-asistente-msg-p:last-child {
+  margin-bottom: 0;
+}
+
+.cd-asistente-msg-list {
+  margin: 0.2rem 0 0.35rem;
+  padding-left: 1.15rem;
+}
+
+.cd-asistente-msg-list li {
+  margin: 0.15rem 0;
+}
+
+.cd-asistente-msg-body strong {
+  font-weight: 600;
+  color: #f8fafc;
 }
 
 .cd-asistente-form {
@@ -18956,8 +18983,13 @@ select.ap-input {
     flex-shrink: 0;
   }
 
-  .app-ia-float-panel.is-centered-mobile .cd-asistente-compose.has-history .cd-asistente-chat {
-    max-height: min(38vh, 14rem);
+  .app-ia-float-panel.is-centered-mobile .cd-asistente-compose.is-chat-active .cd-asistente-chat {
+    max-height: min(60vh, 30rem);
+    min-height: 14rem;
+  }
+
+  .app-ia-float-panel.is-centered-mobile:has(.ai-asistente-float.is-conversacion) {
+    overflow: hidden;
   }
 }
 
@@ -18969,6 +19001,34 @@ select.ap-input {
 
 .ai-asistente-float .cd-asistente-chat {
   max-height: min(38vh, 16rem);
+}
+
+.ai-asistente-float.is-conversacion {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.ai-asistente-float.is-conversacion .cd-asistente-head {
+  flex-shrink: 0;
+}
+
+.ai-asistente-float.is-conversacion .cd-asistente-compose.is-chat-active {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-asistente-float.is-conversacion .cd-asistente-compose.is-chat-active .cd-asistente-chat {
+  flex: 1 1 auto;
+  min-height: 11rem;
+  max-height: min(52vh, 26rem);
+}
+
+.ai-asistente-float.is-conversacion .cd-asistente-compose.is-chat-active .cd-asistente-form {
+  flex-shrink: 0;
 }
 
 @media (min-width: 900px) {
@@ -20280,6 +20340,14 @@ select.ap-input {
 .cd-search-panel.is-guide-pulse {
   border-color: rgba(52, 211, 153, 0.85);
   animation: cd-guide-panel-pulse 0.75s ease-in-out infinite;
+}
+
+.cd-manual-form.is-guide-pulse {
+  border-radius: 12px;
+  outline: 2px solid rgba(52, 211, 153, 0.9);
+  outline-offset: 3px;
+  animation: cd-guide-panel-pulse 0.75s ease-in-out infinite;
+  box-shadow: 0 0 22px rgba(16, 185, 129, 0.28);
 }
 
 .cd-search-panel.is-guide-edit {

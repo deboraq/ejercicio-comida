@@ -67,23 +67,29 @@ export default function AsistenteIaFlotante() {
   const onIrRegistroComida = (payload) => {
     if (!payload) return
     setAbierto(false)
-    if (payload.tipo === 'plan' || payload.textoPlan) {
-      const notas =
-        payload.notas ||
-        [
-          'Plan',
-          payload.dia_plan ? `Día ${payload.dia_plan}` : '',
-          payload.momento,
-          payload.opcion ? `Opción ${payload.opcion}` : '',
-        ]
-          .filter(Boolean)
-          .join(' · ')
+    if (payload.tipo === 'plan' || payload.accion === 'marcar' || (payload.momento && payload.opcion != null)) {
       navigate('/comida', {
         state: {
-          planPrefill: {
-            momento: payload.momento || 'Snack',
+          vistaComida: 'plan',
+          asistentePlanMarcar: {
+            diaPlan: payload.dia_plan,
+            momento: payload.momento,
+            opcion: payload.opcion ?? 1,
+            slotId: payload.slot_id,
             textoPlan: payload.textoPlan,
-            notas,
+          },
+        },
+      })
+      return
+    }
+    if (payload.textoPlan && payload.momento) {
+      navigate('/comida', {
+        state: {
+          vistaComida: 'plan',
+          asistentePlanMarcar: {
+            momento: payload.momento,
+            opcion: payload.opcion ?? 1,
+            textoPlan: payload.textoPlan,
           },
         },
       })
@@ -99,6 +105,8 @@ export default function AsistenteIaFlotante() {
           carbohidratos: payload.carbohidratos,
           grasas: payload.grasas,
           porcion: payload.porcion,
+          momento: payload.momento,
+          preguntaUsuario: payload.preguntaUsuario || '',
         },
       },
     })

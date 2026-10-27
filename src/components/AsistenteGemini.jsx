@@ -6,6 +6,12 @@ import { fechaToISO } from '../utils/calorias'
 import { useAuth } from '../context/AuthContext'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { flushPendingCloudWrites } from '../utils/offlineDataSync'
+import { AsistenteMensajeMarkdown } from '../utils/asistenteMarkdown.jsx'
+import {
+  guardarAsistenteChatCache,
+  leerAsistenteChatCache,
+  limpiarAsistenteChatCache,
+} from '../utils/asistenteChatCache'
 
 const EJEMPLOS = [
   'Estoy en el día 3 del plan: ¿qué comida y qué gym toca?',
@@ -48,13 +54,45 @@ export default function AsistenteGemini({
   const inputRef = useRef(null)
 
   useEffect(() => {
-    setMensajes([])
     setInput('')
     setError('')
-    setUltimoAlimento(null)
-    setUltimoPlanRegistro(null)
     setMinimizado(false)
+    if (!user?.id) {
+      setMensajes([])
+      setUltimoAlimento(null)
+      setUltimoPlanRegistro(null)
+      return
+    }
+    const cached = leerAsistenteChatCache(user.id)
+    if (cached) {
+      setMensajes(cached.mensajes)
+      setUltimoAlimento(cached.ultimoAlimento)
+      setUltimoPlanRegistro(cached.ultimoPlanRegistro)
+    } else {
+      setMensajes([])
+      setUltimoAlimento(null)
+      setUltimoPlanRegistro(null)
+    }
   }, [user?.id])
+
+  useEffect(() => {
+    if (!user?.id) return
+    if (mensajes.length === 0 && !ultimoAlimento && !ultimoPlanRegistro) {
+      limpiarAsistenteChatCache(user.id)
+      return
+    }
+    guardarAsistenteChatCache(user.id, {
+      mensajes,
+      ultimoAlimento,
+      ultimoPlanRegistro,
+    })
+  }, [user?.id, mensajes, ultimoAlimento, ultimoPlanRegistro])
+
+  useEffect(() => {
+    if (mensajes.length > 0 && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight
+    }
+  }, [mensajes.length, flotanteAbierto])
 
   useEffect(() => {
     if (!modoFlotante || !flotanteAbierto || !datosListos) return
@@ -127,8 +165,11 @@ export default function AsistenteGemini({
         accessToken = data.session?.access_token ?? null
       }
 
-      const contexto = buildAsistenteContexto({ ...contextoBase, pregunta })
       const historial = mensajes.slice(-4).map((m) => ({ role: m.role, text: m.text }))
+      const contexto =
+        ajustesAsistenteAdmin && String(config.geminiApiKey || '').trim() && !accessToken
+          ? buildAsistenteContexto({ ...contextoBase, pregunta })
+          : null
       const res = await consultarGemini({
         accessToken,
         apiKey: ajustesAsistenteAdmin ? config.geminiApiKey : '',
@@ -157,9 +198,12 @@ export default function AsistenteGemini({
     }
   }
 
+  const conversacionActiva = mensajes.length > 0 || cargando
+
   const shellClass = [
     modoFlotante ? 'ai-asistente-float' : 'cd-panel cd-asistente',
     !modoFlotante && minimizado ? ' cd-asistente--minimized' : '',
+    conversacionActiva ? ' is-conversacion' : '',
   ].join('')
 
   if (!listo) {
@@ -214,34 +258,36 @@ export default function AsistenteGemini({
           {!datosListos && (
             <p className="cd-asistente-hint mb-2">Cargando tus datos…</p>
           )}
-          {datosListos && (
-          <p className="cd-asistente-hint mb-2">
-            Solo uso <strong>tus</strong> registros (comida, ejercicio, gym y plan). Las estimaciones son aproximadas.
-          </p>
+          {datosListos && !conversacionActiva && (
+            <p className="cd-asistente-hint mb-2">
+              Solo uso <strong>tus</strong> registros (comida, ejercicio, gym y plan). Las estimaciones son aproximadas.
+            </p>
           )}
 
-          <div className="cd-asistente-ejemplos mb-2">
-            {EJEMPLOS.map((ej) => (
-              <button
-                key={ej}
-                type="button"
-                className="cd-asistente-chip"
-                disabled={cargando || !datosListos}
-                onClick={() => enviar(ej)}
-              >
-                {ej}
-              </button>
-            ))}
-          </div>
+          {!conversacionActiva && (
+            <div className="cd-asistente-ejemplos mb-2">
+              {EJEMPLOS.map((ej) => (
+                <button
+                  key={ej}
+                  type="button"
+                  className="cd-asistente-chip"
+                  disabled={cargando || !datosListos}
+                  onClick={() => enviar(ej)}
+                >
+                  {ej}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div
-            className={`cd-asistente-compose${mensajes.length > 0 || cargando ? ' has-history' : ''}`}
+            className={`cd-asistente-compose${conversacionActiva ? ' has-history is-chat-active' : ''}`}
           >
             {(mensajes.length > 0 || cargando) && (
               <div className="cd-asistente-chat" ref={listRef} aria-live="polite">
                 {mensajes.map((m, i) => (
                   <div key={`${i}-${m.role}`} className={`cd-asistente-msg cd-asistente-msg--${m.role}`}>
-                    {m.text}
+                    {m.role === 'model' ? <AsistenteMensajeMarkdown text={m.text} /> : m.text}
                   </div>
                 ))}
                 {cargando && <p className="cd-asistente-loading mb-0">Pensando…</p>}
@@ -298,7 +344,7 @@ export default function AsistenteGemini({
                 className="cd-btn cd-btn--primary cd-btn--sm"
                 onClick={() => onIrRegistroComida({ tipo: 'plan', ...ultimoPlanRegistro })}
               >
-                Ir a registrar esta comida del plan
+                Marcar en mi plan
               </button>
             </div>
           )}
@@ -306,13 +352,24 @@ export default function AsistenteGemini({
           {ultimoAlimento && onIrRegistroComida && !ultimoPlanRegistro && (
             <div className="cd-asistente-sugerido mb-2">
               <p className="mb-1">
-                <strong>Sugerencia:</strong> {ultimoAlimento.descripcion}
-                {ultimoAlimento.porcion ? ` · ${ultimoAlimento.porcion}` : ''} — ~{ultimoAlimento.calorias} kcal
+                <strong>Sugerencia:</strong>                 {ultimoAlimento.descripcion}
+                {ultimoAlimento.porcion ? ` · ${ultimoAlimento.porcion}` : ''} — {ultimoAlimento.calorias} kcal
+                {ultimoAlimento.proteinas != null
+                  ? ` (P ${ultimoAlimento.proteinas}g · C ${ultimoAlimento.carbohidratos}g · G ${ultimoAlimento.grasas}g)`
+                  : ''}
               </p>
               <button
                 type="button"
                 className="cd-btn cd-btn--primary cd-btn--sm"
-                onClick={() => onIrRegistroComida({ tipo: 'estimacion', ...ultimoAlimento })}
+                onClick={() => {
+                  const preguntaUsuario =
+                    [...mensajes].reverse().find((m) => m.role === 'user')?.text || ''
+                  onIrRegistroComida({
+                    tipo: 'estimacion',
+                    ...ultimoAlimento,
+                    preguntaUsuario,
+                  })
+                }}
               >
                 Usar en registro de comida
               </button>

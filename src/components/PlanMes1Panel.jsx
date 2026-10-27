@@ -13,6 +13,8 @@ export default function PlanMes1Panel({
   onRegistrarComida,
   onSyncPlanRegistro,
   abrirEditorInicial = false,
+  scrollDiaPlan = null,
+  onScrollDiaPlanDone,
 }) {
   const [config] = useStorage('config', {})
   const [, setRegistros] = useStorage('comida', [])
@@ -31,6 +33,8 @@ export default function PlanMes1Panel({
         onRegistrarComida={onRegistrarComida}
         onSyncPlanRegistro={syncPlan}
         abrirEditorInicial={abrirEditorInicial}
+        scrollDiaPlan={scrollDiaPlan}
+        onScrollDiaPlanDone={onScrollDiaPlanDone}
       />
     )
   }
@@ -59,6 +63,8 @@ export default function PlanMes1Panel({
         embedded={false}
         onRegistrarComida={onRegistrarComida}
         onSyncPlanRegistro={syncPlan}
+        scrollDiaPlan={scrollDiaPlan}
+        onScrollDiaPlanDone={onScrollDiaPlanDone}
       />
     </div>
   )

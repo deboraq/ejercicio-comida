@@ -4,7 +4,12 @@ import { useStorage } from '../hooks/useStorage'
 import { getConsejos, buildContextoDia, buildContextoSemana } from '../utils/consejos'
 import { formatearFecha, fechaToISO, fechaSoloDia } from '../utils/calorias'
 import { REFERENCIA_ALIMENTOS, buscarAlimentos } from '../utils/referenciaComidas'
-import { MOMENTOS_COMIDA, MOMENTO_ICON, normalizarMomento } from '../utils/comidaMomentos'
+import {
+  MOMENTOS_COMIDA,
+  MOMENTO_ICON,
+  normalizarMomento,
+  resolverMomentoPrefillAsistente,
+} from '../utils/comidaMomentos'
 import { PERIODOS, getRangoPorPeriodo, filtrarPorRango, getUltimosNDias } from '../utils/estadisticas'
 import ComidaTitanium from '../components/ComidaTitanium'
 import PlanMes1Panel from '../components/PlanMes1Panel'
@@ -16,7 +21,14 @@ import {
   dedupeRegistrosPorPlanRef,
   syncPlanChecksFromRegistros,
   applyPlanRegistroSyncPayload,
+  togglePlanOpcionCheck,
 } from '../utils/planRegistroSync'
+import { resolverSlotPlanParaMarcar } from '../utils/asistentePlanMarcar'
+import {
+  getEstadoPlanActivo,
+  normalizarEstadoMultiplan,
+  setEstadoPlanActivo,
+} from '../utils/planEstadoStorage'
 import { toggleFavoritoComida } from '../utils/comidaFavoritos'
 import { vasosHidratacionDia, actualizarVasosHidratacion } from '../utils/hidratacionStorage'
 import { normalizarMedidasHistorial } from '../utils/medidasStorage'
@@ -405,6 +417,7 @@ export default function Comida() {
   const [desdeCustom, setDesdeCustom] = useState('')
   const [hastaCustom, setHastaCustom] = useState('')
   const [vistaComida, setVistaComida] = useState('hoy')
+  const [planScrollDia, setPlanScrollDia] = useState(null)
   const [historialMostrado, setHistorialMostrado] = useState(true)
   const [diasExpandidos, setDiasExpandidos] = useState(() => new Set())
 
@@ -518,13 +531,16 @@ export default function Comida() {
     if (v === 'plan' || v === 'historial') {
       setVistaComida(v)
       const abrirEditor = v === 'plan' && location.state?.abrirEditorPlan
-      navigate('/comida', {
-        replace: true,
-        state: abrirEditor ? { abrirEditorPlan: true } : null,
-      })
+      const marcar = location.state?.asistentePlanMarcar
+      let nextState = null
+      if (abrirEditor && marcar) nextState = { abrirEditorPlan: true, asistentePlanMarcar: marcar }
+      else if (abrirEditor) nextState = { abrirEditorPlan: true }
+      else if (marcar) nextState = { asistentePlanMarcar: marcar }
+      navigate('/comida', { replace: true, state: nextState })
     }
   }, [location.state, navigate])
 
+  const asistentePlanMarcarRef = useRef(null)
   const planPrefillConsumidoRef = useRef(null)
 
   useEffect(() => {
@@ -984,24 +1000,91 @@ export default function Comida() {
     const sig = JSON.stringify(pre)
     if (asistentePrefillConsumidoRef.current === sig) return
     asistentePrefillConsumidoRef.current = sig
+    const momentoRegistro = resolverMomentoPrefillAsistente({
+      momento: pre.momento,
+      preguntaUsuario: pre.preguntaUsuario,
+      descripcion: pre.descripcion,
+    })
     setVistaComida('hoy')
     salirModoEdicion()
+    setComida(momentoRegistro)
     setReferenciaActiva(null)
     setItems([])
     setBusquedaRef('')
     setEntradaManual(true)
     setManualForm({
       descripcion: pre.descripcion,
-      calorias: pre.calorias ? String(pre.calorias) : '',
-      proteinas: pre.proteinas ? String(pre.proteinas) : '',
-      carbohidratos: pre.carbohidratos ? String(pre.carbohidratos) : '',
-      grasas: pre.grasas ? String(pre.grasas) : '',
+      calorias: pre.calorias != null && pre.calorias !== '' ? String(pre.calorias) : '',
+      proteinas: pre.proteinas != null && pre.proteinas !== '' ? String(pre.proteinas) : '',
+      carbohidratos:
+        pre.carbohidratos != null && pre.carbohidratos !== '' ? String(pre.carbohidratos) : '',
+      grasas: pre.grasas != null && pre.grasas !== '' ? String(pre.grasas) : '',
       porciones: pre.porcion || '1 porción (estimado IA)',
     })
     setCantidadPorciones('1')
-    setPanelPulse({ at: Date.now(), modo: 'agregar' })
+    setPanelPulse({ at: Date.now(), modo: 'agregar', foco: 'manual' })
     navigate('/comida', { replace: true, state: null })
   }, [location.state, navigate])
+
+  useEffect(() => {
+    const cmd = location.state?.asistentePlanMarcar
+    if (!cmd?.momento && !cmd?.slotId) return
+    const sig = JSON.stringify(cmd)
+    if (asistentePlanMarcarRef.current === sig) return
+    asistentePlanMarcarRef.current = sig
+
+    setVistaComida('plan')
+
+    const resolved = resolverSlotPlanParaMarcar({
+      diaPlan: cmd.diaPlan ?? cmd.dia_plan,
+      momento: cmd.momento,
+      slotId: cmd.slotId ?? cmd.slot_id,
+      configPlan,
+      planPropio,
+      fechaRef: hoy,
+    })
+
+    if (resolved.error || !resolved.slot) {
+      if (resolved.diaPlan) setPlanScrollDia(resolved.diaPlan)
+      navigate('/comida', { replace: true, state: null })
+      return
+    }
+
+    const opNum = Number(cmd.opcion ?? 1)
+    const opIdx = Number.isFinite(opNum) && opNum >= 1 ? opNum - 1 : 0
+    const maxOp = (resolved.slot.opciones || []).length
+    const opIdxSafe = maxOp > 0 ? Math.min(Math.max(0, opIdx), maxOp - 1) : 0
+
+    if (planActivoId) {
+      setPlanMes1Estado((prevRoot) => {
+        const slice = getEstadoPlanActivo(prevRoot, planActivoId)
+        const { nextSlice, syncPayload } = togglePlanOpcionCheck({
+          slice,
+          diaPlan: resolved.diaPlan,
+          slot: resolved.slot,
+          opIdx: opIdxSafe,
+          inicioISO: resolved.inicioISO,
+          configPlan,
+        })
+        if (syncPayload) {
+          queueMicrotask(() => syncPlanRegistro(syncPayload))
+        }
+        return setEstadoPlanActivo(normalizarEstadoMultiplan(prevRoot), planActivoId, nextSlice)
+      })
+    }
+
+    setPlanScrollDia(resolved.diaPlan)
+    navigate('/comida', { replace: true, state: null })
+  }, [
+    location.state,
+    navigate,
+    configPlan,
+    planPropio,
+    planActivoId,
+    hoy,
+    syncPlanRegistro,
+    setPlanMes1Estado,
+  ])
 
   const onToggleVaso = (index) => {
     const n = index + 1
@@ -1115,6 +1198,8 @@ export default function Comida() {
               onRegistrarComida={onRegistrarDesdePlan}
               onSyncPlanRegistro={syncPlanRegistro}
               abrirEditorInicial={Boolean(location.state?.abrirEditorPlan)}
+              scrollDiaPlan={planScrollDia}
+              onScrollDiaPlanDone={() => setPlanScrollDia(null)}
             />
           }
         />

@@ -115,7 +115,7 @@ export default async function handler(req, res) {
     }
   })()
   if (comidaRegistrosCliente > 0 && comidaEnNube === 0) {
-    await new Promise((r) => setTimeout(r, 180))
+    await new Promise((r) => setTimeout(r, 60))
     const retry = await fetchUserDataForAsistente(env, sesion.token, sesion.user.id)
     if (!retry.error) map = retry.map
   }
