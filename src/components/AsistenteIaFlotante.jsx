@@ -34,6 +34,7 @@ export default function AsistenteIaFlotante() {
   const [planMes1Estado] = useStorage('planMes1Estado', PLAN_ESTADO_MULTIPLAN_VACIO)
   const [planPropio] = useStorage('planPropio', { inactivo: true, dias: {} })
   const [planNutricionActivoId] = useStorage('planNutricionActivoId', '')
+  const [planesNutricion] = useStorage('planesNutricion', [])
   const [rutinaPesos] = useStorage('rutinaPesos', [])
 
   const visible =
@@ -84,6 +85,7 @@ export default function AsistenteIaFlotante() {
               planMes1Estado={planMes1Estado}
               planPropio={planPropio}
               planNutricionActivoId={planNutricionActivoId}
+              planesNutricion={planesNutricion}
               rutinaPesos={rutinaPesos}
               onAgregarEstimacion={onAgregarEstimacion}
               ajustesAsistenteAdmin={ajustesAdmin}

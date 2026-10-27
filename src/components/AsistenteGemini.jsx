@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 const EJEMPLOS = [
+  '¿Qué opciones de comida tengo hoy en el plan?',
   '¿Cómo venís este mes con comida, ejercicio y el plan?',
   '¿Cuántas kcal llevo hoy vs mi meta?',
   '¿Qué comí hoy según mis registros?',
@@ -21,6 +22,7 @@ export default function AsistenteGemini({
   planMes1Estado = null,
   planPropio = null,
   planNutricionActivoId = '',
+  planesNutricion = [],
   rutinaPesos = [],
   onAgregarEstimacion,
   ajustesAsistenteAdmin = false,
@@ -58,9 +60,20 @@ export default function AsistenteGemini({
       planMes1Estado,
       planPropio,
       planNutricionActivoId,
+      planesNutricion,
       rutinaPesos,
     }),
-    [config, comida, ejercicios, hoy, planMes1Estado, planPropio, planNutricionActivoId, rutinaPesos],
+    [
+      config,
+      comida,
+      ejercicios,
+      hoy,
+      planMes1Estado,
+      planPropio,
+      planNutricionActivoId,
+      planesNutricion,
+      rutinaPesos,
+    ],
   )
 
   const contextoPreview = useMemo(
